@@ -10,6 +10,9 @@ const colors = {
   lightGrey: "#958F8F",
   thickGreyColor: "#DDDDE1",
   darkBlackColor: "#141516",
+  whiteGrey: "#f7f6f2",
+  barLineColor: "#520100",
+  barColor: "#FDE6E6",
 };
 
 export default colors;

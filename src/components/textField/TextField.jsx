@@ -17,6 +17,8 @@ const InputField = ({
   min,
   showPassword1,
   handleClickShowConfirmPassword,
+  sx,
+  isSearch,
 }) => {
   return (
     <TextField
@@ -29,6 +31,19 @@ const InputField = ({
       placeholder={placeholder}
       variant="outlined"
       InputProps={{
+        startAdornment: isSearch && (
+          <InputAdornment position="start">
+            <IconButton
+              edge="start"
+              sx={{
+                p: 0,
+                paddingInline:1
+              }}
+            >
+              <img src={assets?.search} />
+            </IconButton>
+          </InputAdornment>
+        ),
         endAdornment: isPassword && (
           <InputAdornment position="end">
             <IconButton
@@ -62,6 +77,7 @@ const InputField = ({
         },
         backgroundColor: colors?.whiteColor,
         borderRadius: 2,
+        ...sx,
       }}
     />
   );
