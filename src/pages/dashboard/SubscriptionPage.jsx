@@ -1,19 +1,25 @@
 import React, { useState } from "react";
-import "../auth/auth.css";
-import { Container, Grid, Paper, Typography, Box } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
-import ButtonComponent from "../../components/button/ButtonComponent";
-import LoginHeader from "../../components/loginHeader/LoginHeader";
-import colors from "../../utlis/Colors";
+import "../dashboard/auth.css";
+import { Container, Grid, Paper, Typography, Box } from "@mui/material";
+import colors from "@/utlis/Colors";
+import ButtonComponent from "@/components/buttons/CustomButton";
+import { logo } from "@/assets";
 const SubscriptionPage = () => {
   const navigation = useNavigate();
 
   const location = useLocation();
   const { selectedCard } = location.state;
-  console.log("selectedCard ==>", selectedCard);
+  const fromPath = location.state?.from;
 
   const handleSubmit = () => {
-    navigation("/payment_success");
+    if (fromPath === "/BillingInvoice") {
+      navigation("/BillingInvoice");
+
+    } else {
+      navigation("/payment_success");
+
+    }
   };
   const formatPrice = (price) => {
     if (price.includes("/month")) {
@@ -43,7 +49,7 @@ const SubscriptionPage = () => {
           flexDirection: "column",
         }}
       >
-        <LoginHeader />
+        <img src={logo} className='w-full max-w-[180px] md:max-w-[200px] mb-12 justify-center self-center' />
         <Paper
           elevation={3}
           className="paper"

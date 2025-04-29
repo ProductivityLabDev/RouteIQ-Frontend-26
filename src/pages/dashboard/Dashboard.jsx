@@ -1,61 +1,144 @@
-import React from "react";
-import colors from "../../utlis/Colors";
-import MainLayout from "../layout/MainLayout";
-import { Box, Grid } from "@mui/material";
-import CustomCardComponent from "../../components/customDashboardCard/CustomCardComponent";
-import assets from "../../utlis/assets";
-import LineChartComponent from "../../components/charts/LineChart";
-import CustomPieChart from "../../components/charts/PieChart";
+import React, { useState } from "react";
+import { Grid, Typography } from "@mui/material";
+import MainLayout from "@/layouts/SchoolLayout";
+import CustomCardComponent from "@/components/customCards/CustomCard";
+import SchoolTable from "@/components/SchoolTable";
+import ButtonComponent from "@/components/buttons/CustomButton";
+import colors from "@/utlis/Colors";
+import RoutesCard from "@/components/RoutesCard";
+import DriversCard from "@/components/DriversCard";
+import Invoices from "@/components/Invoices";
+import EditDashboard from "./EditDashboard";
+import { editIcon, linkIcon } from "@/assets";
+import GlobalModal from "@/components/Modals/GlobalModal";
+import { useNavigate } from "react-router-dom";
 
-const Dashboard = () => {
+const SchoolDashboard = () => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
+
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  }
+  const handleBackClick = () => {
+    setIsEditing(false);
+  };
+
+  const handleModalBtn = () => {
+    setIsModalOpen(false);
+    navigate('/accessManagement')
+  }
+
   return (
     <MainLayout>
-      <div style={{ width: "100%", height: "100vh", marginTop: 12 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
-            <CustomCardComponent
-              title="New Net Income"
-              icon={assets?.cardDollar}
-              value="£8,245.00"
-              change="-0.5%"
-              changeText="from last week"
-            />
+      {isEditing ? (
+        <EditDashboard onBack={handleBackClick} />
+      ) : (
+        <div style={{ width: "100%", height: "100vh", marginTop: 12 }}>
+          <div className="flex w-[82%] justify-between flex-row h-[65px] mb-3 items-center">
+            <Typography
+              className="text-[23px] md:text-[38px] mt-5 ps-2"
+              sx={{ fontSize: { xs: '23px', md: '38px' }, fontWeight: 800 }}
+            >
+              Good Morning, Moni Roy
+            </Typography>
+
+            <div className="flex flex-row gap-6 md:gap-20">
+              <ButtonComponent
+                label="Invite Link"
+                Icon={true}
+                sx={{
+                  backgroundColor: colors.redColor,
+                  width: "130%",
+                  "&:hover": {
+                    backgroundColor: colors.redColor,
+                  },
+                  textTransform: 'none'
+                }}
+                IconName={linkIcon}
+                onClick={handleOpenModal}
+              />
+              <ButtonComponent
+                label="Edit Dashboard"
+                Icon={true}
+                sx={{
+                  backgroundColor: colors.redColor,
+                  width: "130%",
+                  "&:hover": {
+                    backgroundColor: colors.redColor,
+                  },
+                  textTransform: 'none'
+                }}
+                IconName={editIcon}
+                onClick={handleEditClick}
+              />
+            </div>
+          </div>
+          <Grid container spacing={3}>
+            <Grid container spacing={2} className="gap-[82px]" mt={2} pl={3}>
+              <Grid item xs={12} sm={6} md={4} lg={3}>
+                <CustomCardComponent
+                  title="No. Of Vehicle"
+                  value="437"
+                  change="24 Vehicles Inactive"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4} lg={3}>
+                <CustomCardComponent
+                  title="No. Of Schools"
+                  value="256"
+                  change="14 Schools Pending"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={4} lg={3}>
+                <CustomCardComponent
+                  title="Total Trips"
+                  value="1256"
+                  change="56 Trips Rejected"
+                />
+              </Grid>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              sx={{
+                width: "100%",
+                display: "flex",
+                flexDirection: "row",
+                gap: 2,
+                flexWrap: "wrap",
+              }}
+            >
+              <SchoolTable />
+              <RoutesCard />
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              sx={{
+                width: "100%",
+                display: "flex",
+                flexDirection: "row",
+                gap: 2,
+                marginBottom: 5,
+                flexWrap: "wrap",
+              }}
+            >
+              <Invoices />
+              <DriversCard />
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <CustomCardComponent
-              title="Total Bookings"
-              icon={assets?.cardShopping}
-              value="256"
-              change="+1.0%"
-              changeText="from last week"
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <CustomCardComponent
-              title="Resolved Issues"
-              icon={assets?.cardTag}
-              value="1,256"
-              change="+1.0%"
-              changeText="from last week"
-            />
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            sx={{
-              width: "100%",
-              display: "flex",
-              flexDirection: "row",
-              gap: 4,
-            }}
-          >
-            <LineChartComponent />
-            <CustomPieChart />
-          </Grid>
-        </Grid>
-      </div>
+        </div>
+      )}
+      <GlobalModal isOpen={isModalOpen} btnClose={handleModalBtn} onClose={() => setIsModalOpen(false)} title={'Invite Link'} />
     </MainLayout>
   );
 };
 
-export default Dashboard;
+export default SchoolDashboard;

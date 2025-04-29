@@ -1,19 +1,21 @@
 import React, { useState } from "react";
-import "../auth/auth.css";
+import "../dashboard/auth.css";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Container, Grid, Paper, Typography, Box } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import ButtonComponent from "../../components/button/ButtonComponent";
-import colors from "../../utlis/Colors";
-import assets from "../../utlis/assets";
+import colors from "@/utlis/Colors";
+import { dollar, dollarless } from "@/assets";
+import ButtonComponent from "@/components/buttons/CustomButton";
 
 const DashboardSubcription = () => {
   const [selectedCard, setSelectedCard] = useState(null);
 
   const navigation = useNavigate();
-
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const fromPath = queryParams.get('from');
   const handleSubmit = () => {
     if (selectedCard) {
-      navigation("/subscription_page", { state: { selectedCard } });
+      navigation("/subscription_page", { state: { selectedCard, from: fromPath } });
     }
   };
 
@@ -138,9 +140,9 @@ const DashboardSubcription = () => {
               ) : null}
               <Box textAlign="center" color={colors?.whiteColor} mt={4}>
                 {card.id === 1 ? (
-                  <img src={assets?.dollarless} />
+                  <img src={dollarless} />
                 ) : (
-                  <img src={assets?.dollar} />
+                  <img src={dollar} />
                 )}
                 <Grid
                   sx={{

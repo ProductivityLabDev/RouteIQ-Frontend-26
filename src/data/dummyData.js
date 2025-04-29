@@ -1,0 +1,900 @@
+import { invoiceSlip, reportGenerateUser, reportGenerateUser1, reportGenerateUser2, reportGenerateUser3, reportGenerateUser4 } from "@/assets";
+
+export const leftColumnOptions = [
+    'No of Vehicles',
+    'No of Schools',
+    'Total Trips',
+    'Schools',
+    'Routes',
+    'Invoices',
+    'Drivers',
+    'Total # of vehicle defects (ability to select date range)',
+    'Total number of trips to be scheduled',
+    'Total driver hrs per terminal'
+];
+
+// Second column options
+export const rightColumnOptions = [
+    'Profit/Loss statement',
+    'Profit/Loss per terminal',
+    'Total accounts payable (date range)',
+    'Accounts payable per terminal (date range)',
+    'Total accounts receivable (date range)',
+    'Accounts receivable per terminal (date range)',
+    'Total Pending (quotes $)',
+    'Pending quotes (number of quotes that are:) 7 day old, 14 days old, greater than 30 days old',
+    'Total Pending (quotes $) per terminal',
+    'Total number of schedule conflicts per terminal'
+];
+
+export const columns = [
+    { id: "title", label: "Title" },
+    { id: "name", label: "Name", sortable: true },
+    { id: "address", label: "Address" },
+    { id: "city", label: "City" },
+    { id: "dob", label: "Date of Birth" },
+    { id: "state", label: "State" },
+    { id: "zip", label: "Zip" },
+    { id: "terminal", label: "Terminal" },
+];
+
+
+
+export const employees = [
+    {
+        title: "Driver",
+        name: "Devon Lane",
+        avatar: "https://i.pravatar.cc/40?img=1",
+        address: "3605 Parker Rd.",
+        city: "Pembroke Pines",
+        dob: "23/03/2020",
+        state: "Guanajuato",
+        zip: "45785",
+        terminal: "Terminal 1",
+        email: "employee1@example.com",
+        emergencyContactName: "Bessie Cooper",
+        emergencyContact: "+1 (555) 012-000",
+        payGrade: "Lead",
+        tripRate: "$45/hr",
+        routeRate: "$120/hr",
+        payCycle: "Weekly",
+        payType: "Hourly",
+        w2: "Lorem",
+        _1099: "Lorem",
+        ytd: "$5678",
+        terminalAssigned: "Darrell Steward",
+        fuelCardCode: "623-4534",
+        appUserName: "cido",
+        directDeposit: "1425-C",
+        appPasswordReset: "Reset",
+        appStatus: "Active",
+        availability: "Present",
+    },
+    {
+        title: "Driver",
+        name: "Jacob Jones",
+        avatar: "https://i.pravatar.cc/40?img=2",
+        address: "3605 Parker Rd.",
+        city: "Pembroke Pines",
+        dob: "23/03/2020",
+        state: "Guanajuato",
+        zip: "45785",
+        terminal: "Terminal 2",
+        email: "employee2@example.com",
+        emergencyContactName: "Brooklyn Simmons",
+        emergencyContact: "+1 (555) 012-001",
+        payGrade: "Lead",
+        tripRate: "$89/hr",
+        routeRate: "$190/hr",
+        payCycle: "Bi-weekly",
+        payType: "Salary",
+        w2: "Lorem",
+        _1099: "Lorem",
+        ytd: "$7564",
+        terminalAssigned: "Arlene McCoy",
+        fuelCardCode: "998-5878",
+        appUserName: "xeno",
+        directDeposit: "1489-S",
+        appPasswordReset: "Reset",
+        appStatus: "Inactive",
+        availability: "Absent",
+    },
+    {
+        title: "Driver",
+        name: "Jane Cooper",
+        avatar: "https://i.pravatar.cc/40?img=3",
+        address: "3605 Parker Rd.",
+        city: "Pembroke Pines",
+        dob: "23/03/2020",
+        state: "Guanajuato",
+        zip: "45785",
+        terminal: "Terminal 3",
+        email: "employee3@example.com",
+        emergencyContactName: "Kristin Watson",
+        emergencyContact: "+1 (555) 012-002",
+        payGrade: "Senior",
+        tripRate: "$32/hr",
+        routeRate: "$145/hr",
+        payCycle: "Monthly",
+        payType: "Hourly",
+        w2: "Lorem",
+        _1099: "Lorem",
+        ytd: "$3456",
+        terminalAssigned: "Jane Cooper",
+        fuelCardCode: "234-5343",
+        appUserName: "warn",
+        directDeposit: "1425-C",
+        appPasswordReset: "Reset",
+        appStatus: "Active",
+        availability: "Present",
+    },
+    {
+        title: "Terminal Manager",
+        name: "Kristin Watson",
+        avatar: "https://i.pravatar.cc/40?img=3",
+        address: "8558 Green Rd.",
+        city: "Orange",
+        dob: "26/04/2020",
+        state: "Queretaro",
+        zip: "97133",
+        terminal: "Terminal 4",
+        email: "warn@mail.ru",
+        emergencyContactName: "Kristin Watson",
+        emergencyContact: "(702) 555-0122",
+        payGrade: "Senior",
+        tripRate: "$32/hr",
+        routeRate: "$145/hr",
+        payCycle: "Monthly",
+        payType: "Hourly",
+        w2: "Lorem",
+        _1099: "Lorem",
+        ytd: "$3456",
+        terminalAssigned: "Jane Cooper",
+        fuelCardCode: "395-9823",
+        appUserName: "osgoodwy",
+        directDeposit: "1425-C",
+        appPasswordReset: "Reset",
+        appStatus: "Active",
+        availability: "Present",
+    },
+];
+
+export const drivers = [
+    { id: 1, name: 'Devon Lane', workHours: 360, trips: 360, payCycle: 'Weekly', payType: 'Salary', job: 'Part Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=1', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 2, name: 'Jacob Jones', workHours: 360, trips: 360, payCycle: 'Bi-weekly', payType: 'Hourly', job: 'Full Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=2', localTax: '41%', ssn: '14200', payStatus: 'In review', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 3, name: 'Jane Cooper', workHours: 775, trips: 775, payCycle: 'Monthly', payType: 'Hourly', job: 'Part Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=3', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 4, name: 'Floyd Miles', workHours: 389, trips: 389, payCycle: 'Weekly', payType: 'Hourly', job: 'Part Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=4', localTax: '41%', ssn: '14200', payStatus: 'In review', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 5, name: 'Theresa Webb', workHours: 855, trips: 855, payCycle: 'Weekly', payType: 'Hourly', job: 'Part Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=5', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 6, name: 'Kristin Watson', workHours: 855, trips: 855, payCycle: 'Monthly', payType: 'Salary', job: 'Full Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=6', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 7, name: 'Cameron Williamson', workHours: 389, trips: 389, payCycle: 'Monthly', payType: 'Salary', job: 'Full Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=7', localTax: '41%', ssn: '14200', payStatus: 'In review', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 8, name: 'Courtney Henry', workHours: 808, trips: 808, payCycle: 'Weekly', payType: 'Salary', job: 'Full Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=8', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 9, name: 'Robert Fox', workHours: 752, trips: 752, payCycle: 'Monthly', payType: 'Salary', job: 'Part Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=9', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 10, name: 'Ralph Edwards', workHours: 855, trips: 855, payCycle: 'Bi-weekly', payType: 'Hourly', job: 'Full Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=10', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 11, name: 'Guy Hawkins', workHours: 855, trips: 855, payCycle: 'Bi-weekly', payType: 'Salary', job: 'Part Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=11', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+    { id: 12, name: 'Marvin McKinney', workHours: 855, trips: 855, payCycle: 'Weekly', payType: 'Hourly', job: 'Part Time', fedralTax: '52%', stateTax: '41%', image: 'https://i.pravatar.cc/40?img=12', localTax: '41%', ssn: '14200', payStatus: 'Processed', ytd: '$1420', currentPayPeriod: '$1,546.12', payStub: 'Veiw' },
+];
+
+export const studentsData = [
+    {
+        id: '25065',
+        icon: '🐘',
+        name: 'Kathryn Murphy',
+        time: '7:10',
+        address: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956'
+    },
+    {
+        id: '25065',
+        icon: '🦊',
+        name: 'Annette Black, Daniel Fox, Grace Howard',
+        time: '7:25',
+        address: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956'
+    },
+    {
+        id: '25065',
+        icon: '🦊',
+        name: 'Robert Fox',
+        time: '7:35',
+        address: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956'
+    },
+    {
+        id: '25065',
+        icon: '🦁',
+        name: 'Esther Howard',
+        time: '7:40',
+        address: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956'
+    },
+    {
+        id: '25065',
+        icon: '🐘',
+        name: 'Bessie Cooper',
+        time: '7:50',
+        address: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956'
+    }
+];
+
+
+export const busTrips = [
+    {
+        id: 1,
+        tripNo: "25065",
+        busNo: "SSD 104",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Kathryn Murphy",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        hasAction: true,
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 52,
+        glCode: "GL#122-11",
+        status: "Approved",
+    },
+    {
+        id: 2,
+        tripNo: "25065",
+        busNo: "SSD 125,SSD 129\nSSD 126",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Annette Black, Daniel Fox\nGrace Howard",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "",
+        dropoffAddress: "",
+        numberOfPersons: 102,
+        glCode: "GL#122-11",
+        status: "Approved"
+    },
+    {
+        id: 3,
+        tripNo: "25065",
+        busNo: "SSD 107",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Robert Fox",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 115,
+        glCode: "GL#122-11",
+        status: "Approved"
+    },
+    {
+        id: 4,
+        tripNo: "25065",
+        busNo: "SSD 259",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Esther Howard",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 90,
+        glCode: "GL#122-11",
+        status: "Approved",
+        hasAction: true
+    },
+    {
+        id: 5,
+        tripNo: "25065",
+        busNo: "SSD 101",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Bessie Cooper",
+        pickup: "",
+        pickupAddress: "",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 212,
+        glCode: "GL#122-11",
+        status: "Approved"
+    },
+    {
+        id: 6,
+        tripNo: "25065",
+        busNo: "SSD 521",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Guy Hawkins",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 312,
+        glCode: "GL#122-11",
+        status: "Approved"
+    },
+    {
+        id: 7,
+        tripNo: "25065",
+        busNo: "SSD 004",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Dianne Russell",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 100,
+        glCode: "GL#122-11",
+        status: "Approved"
+    },
+    {
+        id: 8,
+        tripNo: "25065",
+        busNo: "SSD 018",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Floyd Miles",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        hasAction: true,
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 152,
+        glCode: "GL#122-11",
+        status: "Approved",
+    },
+    {
+        id: 9,
+        tripNo: "25065",
+        busNo: "SSD 222",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Arlene McCoy",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        pickup: "Hoover Elementary School",
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "",
+        dropoffAddress: "",
+        numberOfPersons: 314,
+        glCode: "GL#122-11",
+        status: "Approved"
+    },
+    {
+        id: 10,
+        tripNo: "25065",
+        busNo: "SSD 012",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Courtney Henry",
+        pickup: "",
+        pickupAddress: "",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 125,
+        glCode: "GL#122-11",
+        status: "Approved"
+    },
+    {
+        id: 11,
+        tripNo: "25065",
+        busNo: "SSD 115",
+        date: "28/MAR/24",
+        time: "8:30 AM",
+        driverName: "Jerome Bell",
+        pickup: "Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956",
+        pickupAddress: "950 Hunt Ave Neenah, WI 54956",
+        dropoff: "WI State Capital",
+        dropoffAddress: "2E. Main St Madison, WI 53703",
+        numberOfPersons: 254,
+        glCode: "GL#122-11",
+        status: "Approved"
+    }
+];
+
+export const accountingTab = ['Subscription', 'School Invoices', 'Trip invoices', 'GL Codes', 'Income Statement', 'Balance Sheet', 'Generate Report', 'Terminal', 'KPI']
+export const glCodesTab = ['Accounts Payable', 'Accounts Receivable', 'GL Code List', 'History Log']
+export const terminalTab = ['Terminals Details', 'Terminal Invoices', 'Track Terminal']
+export const documentTab = ['Corporate Documents', 'Training Documents', 'Safety', 'Terms & Conditions']
+export const InvoicesData = [
+    { date: 'May 28, 2024', desc: 'Business Subscription', invoiceTotal: '$30.00', status: 'Paid' },
+    { date: 'Apr 28, 2024', desc: 'Business Subscription', invoiceTotal: '$30.00', status: 'Paid' },
+    { date: 'Mar 28, 2024', desc: 'Business Subscription', invoiceTotal: '$30.00', status: 'Paid' },
+];
+
+export const vendors = [
+    {
+        name: "Annette Black",
+        address: "8558 Green Rd.",
+        phone: "(316) 555-0116",
+        paymentMethod: "Credit Card",
+        paymentTerms: "Monthly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense"
+    },
+    {
+        name: "Robert Fox",
+        address: "7529 E. Pecan St.",
+        phone: "(229) 555-0109",
+        paymentMethod: "Bank Transfer",
+        paymentTerms: "Weekly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense"
+    },
+    {
+        name: "Ronald Richards",
+        address: "3890 Poplar Dr.",
+        phone: "(270) 555-0117",
+        paymentMethod: "Credit Card",
+        paymentTerms: "Weekly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense"
+    },
+    {
+        name: "Jerome Bell",
+        address: "8080 Railroad St.",
+        phone: "(303) 555-0105",
+        paymentMethod: "Bank Transfer",
+        paymentTerms: "Monthly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense"
+    },
+    {
+        name: "Cody Fisher",
+        address: "775 Rolling Green Rd.",
+        phone: "(208) 555-0112",
+        paymentMethod: "Credit Card",
+        paymentTerms: "Monthly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense"
+    }
+];
+export const vendorsHistoryTable = [
+    {
+        name: "Annette Black",
+        address: "8558 Green Rd.",
+        phone: "(316) 555-0116",
+        paymentMethod: "Credit Card",
+        paymentTerms: "Monthly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense",
+        amount: "$24589"
+    },
+    {
+        name: "Robert Fox",
+        address: "7529 E. Pecan St.",
+        phone: "(229) 555-0109",
+        paymentMethod: "Bank Transfer",
+        paymentTerms: "Weekly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense",
+        amount: '$24589'
+    },
+    {
+        name: "Ronald Richards",
+        address: "3890 Poplar Dr.",
+        phone: "(270) 555-0117",
+        paymentMethod: "Credit Card",
+        paymentTerms: "Weekly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense",
+        amount: '$24589'
+    },
+    {
+        name: "Jerome Bell",
+        address: "8080 Railroad St.",
+        phone: "(303) 555-0105",
+        paymentMethod: "Bank Transfer",
+        paymentTerms: "Monthly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense",
+        amount: '$24589'
+    },
+    {
+        name: "Cody Fisher",
+        address: "775 Rolling Green Rd.",
+        phone: "(208) 555-0112",
+        paymentMethod: "Credit Card",
+        paymentTerms: "Monthly",
+        glCodes: "GL # 201-01",
+        expenses: "Add Expense",
+        amount: '$24589'
+    }
+];
+export const schoolsNames = [
+    { id: '01', name: 'Lakeview High School' },
+    { id: '02', name: 'Springdale Elementary School' },
+    { id: '03', name: 'Meadowbrook Academy' },
+    { id: '04', name: 'Willowbrook Elementary School' },
+    { id: '05', name: 'Sunset Middle School' },
+    { id: '06', name: 'Mountainview Elementary School' },
+    { id: '07', name: 'Brookwood High School' },
+    { id: '08', name: 'Riverside Elementary School' },
+    { id: '09', name: 'Bluegrass High School' },
+    { id: '10', name: 'Redwood High School' },
+    { id: '11', name: 'Forest Hills High School' },
+    { id: '12', name: 'Pinehill Elementary School' },
+];
+
+export const schoolInvoices = [
+    {
+        date: 'May 28, 2024',
+        invoiceNumber: '12501',
+        billTo: 'Lakeview High School',
+        glCode: '120-05',
+        type: 'Monthly',
+        milesPerRate: '$200',
+        invoiceTotal: '$250,000.00'
+    },
+    {
+        date: 'Apr 28, 2024',
+        invoiceNumber: '12501',
+        billTo: 'Lakeview High School',
+        glCode: '120-05',
+        type: 'Weekly',
+        milesPerRate: '$200',
+        invoiceTotal: '$250,000.00'
+    },
+    {
+        date: 'Mar 28, 2024',
+        invoiceNumber: '12501',
+        billTo: 'Lakeview High School',
+        glCode: '120-05',
+        type: 'Weekly',
+        milesPerRate: '$200',
+        invoiceTotal: '$250,000.00'
+    },
+    {
+        date: 'Feb 28, 2024',
+        invoiceNumber: '12501',
+        billTo: 'Lakeview High School',
+        glCode: '120-05',
+        type: 'Monthly',
+        milesPerRate: '$200',
+        invoiceTotal: '$250,000.00'
+    },
+    {
+        date: 'Jan 28, 2024',
+        invoiceNumber: '12501',
+        billTo: 'Lakeview High School',
+        glCode: '120-05',
+        type: 'Monthly',
+        milesPerRate: '$200',
+        invoiceTotal: '$250,000.00'
+    },
+];
+
+export const payementTablesData = [
+    {
+        date: "May 28, 2024",
+        paymentDate: "May 28, 2024",
+        paymentMethod: "Bank Transfer",
+        tripId: "125-01",
+        tripStatus: "Approved",
+        client: "Theresa Webb",
+        invoiceId: "12501",
+        billTo: "8080 Railroad St.",
+        type: "Monthly",
+        milesPerRate: "$200",
+        invoiceTotal: "$250,000.00"
+    },
+    {
+        date: "Apr 28, 2024",
+        paymentDate: "Apr 28, 2024",
+        paymentMethod: "Credit Card",
+        tripId: "125-01",
+        tripStatus: "Approved",
+        client: "Jane Cooper",
+        invoiceId: "12501",
+        billTo: "8558 Green Rd.",
+        type: "Weekly",
+        milesPerRate: "$200",
+        invoiceTotal: "$250,000.00"
+    },
+    {
+        date: "Mar 28, 2024",
+        paymentDate: "Mar 28, 2024",
+        paymentMethod: "Credit Card",
+        tripId: "125-01",
+        tripStatus: "Approved",
+        client: "Dianne Russell",
+        invoiceId: "12501",
+        billTo: "775 Rolling Green Rd.",
+        type: "Weekly",
+        milesPerRate: "$200",
+        invoiceTotal: "$250,000.00"
+    },
+    {
+        date: "Feb 28, 2024",
+        paymentDate: "Feb 28, 2024",
+        paymentMethod: "Bank Transfer",
+        tripId: "125-01",
+        tripStatus: "Approved",
+        client: "Albert Flores",
+        invoiceId: "12501",
+        billTo: "3605 Parker Rd.",
+        type: "Monthly",
+        milesPerRate: "$200",
+        invoiceTotal: "$250,000.00"
+    },
+    {
+        date: "Jan 28, 2024",
+        paymentDate: "Jan 28, 2024",
+        paymentMethod: "Bank Transfer",
+        tripId: "125-01",
+        tripStatus: "Approved",
+        client: "Eleanor Pena",
+        invoiceId: "12501",
+        billTo: "7529 E. Pecan St.",
+        type: "Monthly",
+        milesPerRate: "$200",
+        invoiceTotal: "$250,000.00"
+    }
+]
+
+export const glCodeData = [
+    { glCode: "GL # 101-00", assignTo: "Fuel" },
+    { glCode: "GL # 111-00", assignTo: "Driver Salary" },
+    { glCode: "GL # 112-00", assignTo: "School Contract" },
+    { glCode: "GL # 113-00", assignTo: "Vehicle license" },
+    { glCode: "GL # 221-00", assignTo: "Property taxes" },
+    { glCode: "GL # 222-00", assignTo: "Property rent" },
+    { glCode: "GL # 224-00", assignTo: "Driver per diems" },
+    { glCode: "GL # 313-00", assignTo: "Oil and fluids" },
+    { glCode: "GL # 314-00", assignTo: "Insurance Premiums" },
+    { glCode: "GL # 152-00", assignTo: "Net Income" },
+    { glCode: "GL # 114-00", assignTo: "Total wage/benefits" },
+    { glCode: "GL # 114-00", assignTo: "Total wage/benefits" },
+];
+
+export const generateReportEmployeesData = [
+    {
+        name: "Albert Flores",
+        glCode: "GL # 101-00",
+        workingDays: "22",
+        workHours: "209",
+        presentDays: "15",
+        absentDays: "04",
+        leaves: "03",
+        invoiceTotal: "$250,000.00",
+        image: reportGenerateUser
+    },
+    {
+        name: "Floyd Miles",
+        glCode: "GL # 101-00",
+        workingDays: "22",
+        workHours: "314",
+        presentDays: "20",
+        absentDays: "02",
+        leaves: "00",
+        invoiceTotal: "$250,000.00",
+        image: reportGenerateUser1
+    },
+    {
+        name: "Ronald Richards",
+        glCode: "GL # 101-00",
+        workingDays: "22",
+        workHours: "245",
+        presentDays: "15",
+        absentDays: "05",
+        leaves: "02",
+        invoiceTotal: "$250,000.00",
+        image: reportGenerateUser2
+    },
+    {
+        name: "Devon Lane",
+        glCode: "GL # 101-00",
+        workingDays: "22",
+        workHours: "112",
+        presentDays: "13",
+        absentDays: "00",
+        leaves: "09",
+        invoiceTotal: "$250,000.00",
+        image: reportGenerateUser3
+    },
+    {
+        name: "Jacob Jones",
+        glCode: "GL # 101-00",
+        workingDays: "22",
+        workHours: "105",
+        presentDays: "11",
+        absentDays: "10",
+        leaves: "01",
+        invoiceTotal: "$250,000.00",
+        image: reportGenerateUser4
+    }
+];
+
+export const accessUsersData = [
+    { username: "Nick Jonas", password: "*********" },
+    { username: "Nick Jonas", password: "*********" },
+    { username: "Nick Jonas", password: "*********" },
+];
+
+export const accordionItems = [
+    { id: 'parent', title: 'Parent' },
+    { id: 'school', title: 'School' },
+    { id: 'driver', title: 'Driver' },
+    { id: 'terminal', title: 'Terminal' }
+];
+
+export const routeStudents = [
+    {
+        date: '8/21/19',
+        pickupTime: '8:00',
+        studentName: 'Kathryn Murphy',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '10/6/20',
+        pickupTime: '8:10',
+        studentName: 'Annette Black, Daniel Fox, Grace Howard',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703',
+        highlight: true
+    },
+    {
+        date: '10/26/20',
+        pickupTime: '8:20',
+        studentName: 'Robert Fox',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '7/4/20',
+        pickupTime: '8:30',
+        studentName: 'Esther Howard',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '9/27/20',
+        pickupTime: '8:40',
+        studentName: 'Bessie Cooper',
+        pickup: '',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '3/19/20',
+        pickupTime: '8:50',
+        studentName: 'Guy Hawkins',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '12/10/20',
+        pickupTime: '9:00',
+        studentName: 'Dianne Russell',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '8/25/20',
+        pickupTime: '9:10',
+        studentName: 'Floyd Miles',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '10/8/20',
+        pickupTime: '9:20',
+        studentName: 'Arlene McCoy',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '1/26/20',
+        pickupTime: '9:30',
+        studentName: 'Courtney Henry',
+        pickup: '',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    },
+    {
+        date: '1/28/20',
+        pickupTime: '9:40',
+        studentName: '',
+        pickup: 'Hoover Elementary School\n950 Hunt Ave Neenah, WI 54956',
+        dropoff: 'WI State Capital\n2E. Main St Madison, WI 53703'
+    }
+];
+
+export const rolesOfEmployeeDesgnation = [
+    'Terminal manager', 'Dispatch', 'Driver', 'Bus Monitor',
+    'Admin - Accounting', 'Admin - Safety', 'Admin - Fleet management',
+    'Admin - IT', 'Admin - Contract', 'Admin - Other', 'Admin - Regional manager',
+    'Terminal - Accounting', 'Terminal - Payroll', 'Terminal - Contract', 'Terminal - Helper'
+];
+
+export const attendanceReportData = [
+    { date: "6/19/14", punchIn: "01:11", punchedOut: "00:36", breakHours: "15h 40m", workHours: "15h 40m" },
+    { date: "10/28/12", punchIn: "08:00", punchedOut: "12:34", breakHours: "11h 45m", workHours: "11h 45m" },
+    { date: "2/11/12", punchIn: "02:45", punchedOut: "05:12", breakHours: "10h 25m", workHours: "10h 25m" },
+    { date: "8/2/19", punchIn: "03:44", punchedOut: "08:00", breakHours: "15h 45m", workHours: "15h 45m" },
+    { date: "5/30/14", punchIn: "12:34", punchedOut: "02:45", breakHours: "10h 45m", workHours: "10h 45m" },
+];
+
+export const days = [
+    { day: 30, isCurrentMonth: false },
+    { day: 1, isCurrentMonth: true },
+    { day: 2, isCurrentMonth: true, isSelected: true },
+    { day: 3, isCurrentMonth: true },
+    { day: 4, isCurrentMonth: true },
+    { day: 5, isCurrentMonth: true },
+    { day: 6, isCurrentMonth: true },
+    { day: 7, isCurrentMonth: true },
+    { day: 8, isCurrentMonth: true },
+    { day: 9, isCurrentMonth: true },
+    { day: 10, isCurrentMonth: true },
+    { day: 11, isCurrentMonth: true },
+    { day: 12, isCurrentMonth: true },
+    { day: 13, isCurrentMonth: true },
+    { day: 14, isCurrentMonth: true },
+    { day: 15, isCurrentMonth: true },
+    { day: 16, isCurrentMonth: true },
+    { day: 17, isCurrentMonth: true },
+    { day: 18, isCurrentMonth: true },
+    { day: 19, isCurrentMonth: true },
+    { day: 20, isCurrentMonth: true },
+    { day: 21, isCurrentMonth: true },
+    { day: 22, isCurrentMonth: true },
+    { day: 23, isCurrentMonth: true },
+    { day: 24, isCurrentMonth: true },
+    { day: 25, isCurrentMonth: true },
+    { day: 26, isCurrentMonth: true },
+    { day: 27, isCurrentMonth: true },
+    { day: 28, isCurrentMonth: true },
+    { day: 29, isCurrentMonth: true },
+    { day: 30, isCurrentMonth: true },
+    { day: 31, isCurrentMonth: true },
+    { day: 1, isCurrentMonth: false },
+    { day: 2, isCurrentMonth: false },
+    { day: 3, isCurrentMonth: false }
+];
+export const weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+export const PayRollChartdata = [
+    { name: 'Total Pay', value: 54, color: '#4CAF50' },
+    { name: 'Taxes', value: 26, color: '#D32F2F' },
+    { name: 'Deduction', value: 12, color: '#FFCDD2' },
+    { name: 'Benefits', value: 8, color: '#212121' }
+];
+
+export const payrollData = [
+    { id: 1, date: '6/19/14', amount: '$1,546', invoiceImage: invoiceSlip },
+    { id: 2, date: '10/28/12', amount: '$1,546', invoiceImage: invoiceSlip },
+    { id: 3, date: '2/11/12', amount: '$1,546', invoiceImage: invoiceSlip },
+    { id: 4, date: '8/2/19', amount: '$1,546', invoiceImage: invoiceSlip },
+    { id: 5, date: '5/30/14', amount: '$1,546', invoiceImage: invoiceSlip },
+];
+
+export const timeEntries = [
+    {
+        date: '6/19/14',
+        punchIn: '01:11',
+        punchedOut: '00:36',
+        workHours: '15h 40m',
+        status: 'Approved'
+    },
+    {
+        date: '10/28/12',
+        punchIn: '08:00',
+        punchedOut: '12:34',
+        workHours: '11h 45m',
+        status: 'Rejected'
+    },
+    {
+        date: '2/11/12',
+        punchIn: '02:45',
+        punchedOut: '05:12',
+        workHours: '10h 25m',
+        status: 'Approved'
+    },
+    {
+        date: '8/2/19',
+        punchIn: '03:44',
+        punchedOut: '08:00',
+        workHours: '15h 45m',
+        status: 'Approved'
+    },
+    {
+        date: '5/30/14',
+        punchIn: '12:34',
+        punchedOut: '02:45',
+        workHours: '10h 45m',
+        status: 'Pending'
+    }
+];
