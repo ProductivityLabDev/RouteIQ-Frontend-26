@@ -1,152 +1,169 @@
-import React from 'react';
-import { PieChart, Pie, Cell } from 'recharts';
-import { IoEyeSharp } from 'react-icons/io5';
-import { BiSolidReport } from 'react-icons/bi';
-import { HiCalendar } from 'react-icons/hi';
-import { IoMdArrowDropdown } from 'react-icons/io';
-import { PayRollChartdata } from '@/data/dummyData';
+import React from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { IoMdArrowDropdown } from "react-icons/io";
+import { IoEyeSharp } from "react-icons/io5";
+import { payroll, signal } from "@/assets";
 
-const PayrollSummary = () => {
+const data = [
+  { name: "Benefits", value: 37.13, color: "#2e2e2e" },
+  { name: "Taxes", value: 181.34, color: "#cc0000" },
+  { name: "Deduction", value: 95.86, color: "#fda4af" },
+  { name: "Remaining", value: 234.2, color: "#22c55e" },
+];
 
-    return (
-        <div className="flex flex-col w-[100%] mt-4">
-            <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xl font-medium text-gray-800">
-                    Payroll Summary <span className="text-gray-500 font-normal">(From 1-31 March, 2022)</span>
-                </h2>
-                <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-1">
-                    <span className="text-sm text-gray-700">Last 30 days</span>
-                    <IoMdArrowDropdown className="ml-1 text-gray-600" />
-                </div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex flex-wrap">
-                    {/* Left side - Pie Chart */}
-                    <div className="w-full md:w-1/3 relative">
-                        <div className="flex justify-center">
-                            <div className="relative">
-                                <PieChart width={230} height={230}>
-                                    <Pie
-                                        data={PayRollChartdata}
-                                        cx={115}
-                                        cy={115}
-                                        innerRadius={70}
-                                        outerRadius={100}
-                                        paddingAngle={0}
-                                        dataKey="value"
-                                    >
-                                        {PayRollChartdata.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                </PieChart>
-                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                                    <button className="mt-2 flex items-center border border-gray-300 rounded-md px-4 text-sm text-gray-700">
-                                        <IoEyeSharp className="mr-2" /> View Pay Stub
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+export default function PayrollSummary() {
+  return (
+    <>
+      <div className="flex justify-between items-center mt-5 mb-4">
+        <h2 className="text-xl font-medium text-gray-800">
+          Payroll Summary{" "}
+          <span className="text-gray-500 font-normal">
+            (From 1 – 31 March 2022)
+          </span>
+        </h2>
 
-                    {/* Right side - Pay details */}
-                    <div className="w-full md:w-2/3 md:pl-6">
-                        {/* Top row */}
-                        <div className="grid grid-cols-2 gap-6 mb-6">
-                            {/* Total Pay */}
-                            <div className="flex items-center">
-                                <div className="w-1 h-10 bg-green-600 mr-3 rounded-sm"></div>
-                                <div>
-                                    <div className="text-gray-600 text-sm mb-1">Total Pay</div>
-                                    <div className="text-2xl font-bold">
-                                        $234<span className="text-gray-400 font-normal text-xl">.20</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Deduction */}
-                            <div className="flex items-center">
-                                <div className="w-1 h-10 bg-red-200 mr-3 rounded-sm"></div>
-                                <div>
-                                    <div className="text-gray-600 text-sm mb-1">Deduction</div>
-                                    <div className="text-2xl font-bold">
-                                        $95<span className="text-gray-400 font-normal text-xl">.86</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Bottom row */}
-                        <div className="grid grid-cols-2 gap-6 mb-6">
-                            {/* Taxes */}
-                            <div className="flex items-center">
-                                <div className="w-1 h-10 bg-red-600 mr-3 rounded-sm"></div>
-                                <div>
-                                    <div className="text-gray-600 text-sm mb-1">Taxes</div>
-                                    <div className="text-2xl font-bold">
-                                        $181<span className="text-gray-400 font-normal text-xl">.34</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Benefits */}
-                            <div className="flex items-center">
-                                <div className="w-1 h-10 bg-gray-800 mr-3 rounded-sm"></div>
-                                <div>
-                                    <div className="text-gray-600 text-sm mb-1">Benefits</div>
-                                    <div className="text-2xl font-bold">
-                                        $37<span className="text-gray-400 font-normal text-xl">.13</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Previous Payroll */}
-                        <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center">
-                                    <div className="text-blue-500 mr-2">
-                                        <BiSolidReport size={20} />
-                                    </div>
-                                    <span className="text-gray-700">Previous Payroll</span>
-                                </div>
-                                <span className="text-gray-500 text-sm">March 1, 2022</span>
-                            </div>
-                            <div className="flex justify-between items-center mt-2">
-                                <div className="text-xl font-bold">
-                                    $58,764<span className="text-gray-400 font-normal">.25</span>
-                                </div>
-                                <div className="bg-[#CEEFDF] text-green-600 px-3 py-1 rounded-full text-xs font-bold">
-                                    • PAID
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Upcoming Payroll */}
-                        <div className="border border-gray-200 rounded-lg p-4">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center">
-                                    <div className="text-blue-500 mr-2">
-                                        <HiCalendar size={20} />
-                                    </div>
-                                    <span className="text-gray-700">Upcoming Payroll</span>
-                                </div>
-                                <span className="text-[#3981F7] text-sm">April 1, 2022</span>
-                            </div>
-                            <div className="flex justify-between items-center mt-2">
-                                <div className="text-xl font-bold">
-                                    $2,670<span className="text-gray-400 font-normal">.50</span>
-                                </div>
-                                <div className="bg-[#FEEDDA] text-[#FAA745] px-3 py-1 rounded-full text-xs font-bold">
-                                    • PENDING
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-1">
+          <span className="text-sm text-gray-700">Last 30 days</span>
+          <IoMdArrowDropdown className="ml-1 text-gray-600" />
         </div>
-    );
-};
+      </div>
 
-export default PayrollSummary;
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-white rounded-lg shadow-md">
+        <div className="relative w-80 h-80 mx-auto">
+          <div className="absolute inset-6 bg-[#EBF3FE] rounded-full z-0" />
+
+          {/* Donut Chart */}
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                innerRadius={80}
+                outerRadius={110}
+                paddingAngle={1}
+                dataKey="value"
+                startAngle={90}
+                endAngle={-270}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+
+          {/* Center Button */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full shadow-sm text-sm font-medium hover:bg-gray-50">
+              <IoEyeSharp className="w-4 h-4" />
+              View Pay Stub
+            </button>
+          </div>
+
+          {/* Percentage Bubble */}
+          <div className="absolute w-[60px] h-[60px] top-[40px] right-16 bg-white border border-gray-100 shadow text-[23px] rounded-full font-medium text-[#0A112F] flex items-center justify-center z-10">
+            54<span className="text-gray-400 text-xs">%</span>
+          </div>
+        </div>
+
+        {/* Second Column: Financial Details in Two Groups */}
+        <div className="flex flex-col justify-around">
+          <div className="grid grid-cols-2 gap-1">
+            <div className="flex items-center">
+              <div className="w-2 h-[80px] bg-[#529C42] mr-3 rounded-lg" />
+              <div>
+                <div className="text-[#70707A] text-sm font-normal mb-1">
+                  Total Pay
+                </div>
+                <div className="text-[39px] font-bold text-[#0A112F]">
+                  $234
+                  <span className="text-gray-400 font-normal text-xl">.20</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <div className="w-2 h-[80px] bg-[#FFBBBF] mr-3 rounded-lg" />
+              <div>
+                <div className="text-[#70707A] text-sm font-normal mb-1">
+                  Deduction
+                </div>
+                <div className="text-[39px] font-bold text-[#0A112F]">
+                  $95
+                  <span className="text-gray-400 font-normal text-xl">.86</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Group 2 */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="flex items-center">
+              <div className="w-2 h-[80px] bg-[#C01824] mr-3 rounded-lg" />
+              <div>
+                <div className="text-[#70707A] text-sm font-normal mb-1">
+                  Taxes
+                </div>
+                <div className="text-[39px] font-bold text-[#0A112F]">
+                  $181
+                  <span className="text-gray-400 font-normal text-xl">.34</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <div className="w-2 h-[80px] bg-[#202224] mr-3 rounded-lg" />
+              <div>
+                <div className="text-[#70707A] text-sm font-normal mb-1">
+                  Benefits
+                </div>
+                <div className="text-[39px] font-bold text-[#0A112F]">
+                  $37
+                  <span className="text-gray-400 font-normal text-xl">.13</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Third Column: Payroll Status */}
+        <div className="flex flex-col justify-around space-y-6">
+          <div className="border rounded-lg p-4 shadow-sm">
+            <div className="flex items-center text-sm text-[#70707A] font-medium">
+              <div className="flex items-center space-x-2">
+                <img src={signal} alt="Signal" className="w-5 h-5" />
+                <span>Previous Payroll</span>
+              </div>
+              <span className="ml-auto text-[#70707A] text-sm font-normal">
+                March 1, 2022
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center text-[24px] font-medium ml-8 text-[#0A112F] mt-2">
+              <span>$58,764.25</span>
+              <span className="inline-block bg-[#CEEFDF] text-[#0AAF60] text-xs font-bold px-3 py-1 rounded-full">
+                • PAID
+              </span>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4 shadow-sm">
+            <div className="flex items-center text-sm text-[#70707A] font-medium">
+              <div className="flex items-center space-x-2">
+                <img src={payroll} alt="Signal" className="w-5 h-5" />
+                <span>Upcoming Payroll</span>
+              </div>
+              <span className="ml-auto text-[#3981F7] text-sm font-normal">
+                April 1, 2022
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center text-[24px] font-medium ml-8 text-[#0A112F] mt-2">
+              <span>$2,670.50</span>
+              <span className="inline-block bg-[#FEEDDA] text-[#FAA745] text-xs font-bold px-3 py-1 rounded-full">
+                • PENDING
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

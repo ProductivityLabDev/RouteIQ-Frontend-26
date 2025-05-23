@@ -20,19 +20,20 @@ const VendorGlobalModal = ({
             overlayClassName="fixed inset-0 bg-black bg-opacity-40"
             ariaHideApp={false}
         >
-            <div className="bg-white rounded-md p-6 shadow-lg relative w-[50%] mx-auto">
+            <div className="bg-white rounded-md p-6 shadow-lg relative w-[35%] mx-auto">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-700 hover:text-gray-900"
                 >
-                    <IoMdClose size={20} />
+                    <IoMdClose size={20} className='text-[#000000]'/>
                 </button>
 
-                <h2 className="text-2xl font-medium text-gray-800 mb-6">{title}</h2>
+                <h2 className="text-2xl font-bold text-[#202224] mb-6">{title}</h2>
 
                 <div className="mb-6">
                     {children}
                 </div>
+                
                 <div className='flex justify-end items-end'>
                     {(primaryButtonText || secondaryButtonText) && (
                         <div className="flex w-[25%] justify-end gap-4 mt-6">

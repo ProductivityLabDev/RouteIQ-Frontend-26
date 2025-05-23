@@ -4,11 +4,11 @@ import { MdKeyboardArrowDown } from "react-icons/md";
 
 // Sample data for charts
 const ptoData = [
-    { name: 'Jan', available: 35, used: 15 },
-    { name: 'Feb', available: 25, used: 20 },
-    { name: 'Mar', available: 40, used: 10 },
-    { name: 'Apr', available: 30, used: 25 },
-    { name: 'May', available: 45, used: 20 },
+    { name: 'Jan', available: 150, used: 80 },
+    { name: 'Feb', available: 180, used: 40 },
+    { name: 'Mar', available: 60, used: 40 },
+    { name: 'Apr', available: 60, used: 40 },
+    // { name: 'May', available: 45, used: 20 },
 ];
 
 const tripsData = [
@@ -32,7 +32,7 @@ export default function EmployeeInsights() {
     return (
         <div className="p-4">
             <div className="flex justify-between items-center mb-4">
-                <h1 className="text-xl font-medium text-gray-800">Insights</h1>
+                <h1 className="text-xl font-medium text-black">Insights</h1>
                 <div className="flex gap-2">
                     <div className="relative inline-block text-left">
                         <div className="flex items-center gap-1 border rounded px-3 py-1 bg-white">
@@ -52,10 +52,10 @@ export default function EmployeeInsights() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Take Home Card */}
                 <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <p className="text-sm text-gray-600 mb-2">Take Home</p>
+                    <p className="text-sm font-bold text-black-600 mb-2">Take Home</p>
                     <div className="flex items-center justify-between">
                         <h2 className="text-3xl font-bold">$363.44</h2>
-                        <div className="w-15 h-20">
+                        <div className="w-15 h-30">
                             <div className="w-full h-full relative">
                                 <div className="w-24 h-24">
                                     <PieChart width={96} height={96}>
@@ -83,10 +83,10 @@ export default function EmployeeInsights() {
 
                 {/* YTD Card */}
                 <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <p className="text-sm text-gray-600 mb-2">YTD</p>
+                    <p className="text-sm font-bold text-black-600 mb-2">YTD</p>
                     <div className="flex items-center justify-between">
                         <h2 className="text-3xl font-bold">$363.44</h2>
-                        <div className="w-15 h-20">
+                        <div className="w-15 h-30">
                             <div className="w-full h-full relative">
                                 <PieChart width={96} height={96}>
                                     <Pie
@@ -112,7 +112,7 @@ export default function EmployeeInsights() {
 
                 {/* Total PTO Card */}
                 <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <p className="text-sm text-gray-600 mb-2">Total PTO</p>
+                    <p className="text-sm font-bold text-black-600 mb-2">Total PTO</p>
                     <div className="flex flex-row items-center justify-between gap-4">
                         <div className="flex flex-col justify-center">
                             <p className="text-sm mb-1">00 Hours Available</p>
@@ -120,7 +120,7 @@ export default function EmployeeInsights() {
                             <p className="text-sm">00 Total</p>
                         </div>
 
-                        <div className="w-40 h-16">
+                        <div className="w-40 h-[100px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={ptoData} barGap={2}>
                                     <Bar dataKey="available" fill="#000000" />
@@ -134,18 +134,18 @@ export default function EmployeeInsights() {
 
                 {/* YTD # of Trips Card */}
                 <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <p className="text-sm text-gray-600 mb-2">YTD # of Trips</p>
+                    <p className="text-sm font-bold text-black-600 mb-2">YTD # of Trips</p>
                     <div className="flex flex-row items-center justify-between gap-4">
                         <div className="flex flex-col justify-center">
                             <p className="text-sm mb-1">00 Trip Hours</p>
                             <p className="text-sm mb-1">40 # of Trips</p>
                         </div>
 
-                        <div className="w-40 h-16">
+                        <div className="w-40 h-[100px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={ptoData} barGap={2}>
-                                    <Bar dataKey="available" fill="#000000" />
                                     <Bar dataKey="used" fill="#E53E3E" />
+                                    <Bar dataKey="available" fill="#000000" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

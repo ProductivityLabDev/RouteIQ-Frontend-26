@@ -5,7 +5,7 @@ const LeaveWidget = () => {
         <div className="flex flex-row justify-between gap-4 w-full">
             {/* Total leave allowance */}
             <div className="flex-1 bg-white rounded-md shadow-sm p-4">
-                <div className="text-gray-500 text-sm mb-2">Total leave allowance</div>
+                <div className="text-[#666666] text-md mb-2 font-medium">Total leave allowance</div>
                 <div className="text-2xl font-semibold mb-2">34</div>
                 <div className="flex text-xs">
                     <span className="text-gray-500 mr-2">Paid: <span className="font-medium text-[#1158B7]">31</span></span>
@@ -15,7 +15,7 @@ const LeaveWidget = () => {
 
             {/* Total leave taken */}
             <div className="flex-1 bg-white rounded-md shadow-sm p-4">
-                <div className="text-gray-500 text-sm mb-2">Total leave taken</div>
+                <div className="text-[#666666] text-md font-medium mb-2">Total leave taken</div>
                 <div className="text-2xl font-semibold mb-2">20</div>
                 <div className="flex text-xs">
                     <span className="text-gray-500 mr-2">Paid: <span className="font-medium text-[#1158B7]">12</span></span>
@@ -25,7 +25,7 @@ const LeaveWidget = () => {
 
             {/* Total leave available */}
             <div className="flex-1 bg-white rounded-md shadow-sm p-4">
-                <div className="text-gray-500 text-sm mb-2">Total leave available</div>
+                <div className="text-[#666666] text-md font-medium mb-2">Total leave available</div>
                 <div className="text-2xl font-semibold mb-2">50</div>
                 <div className="flex text-xs">
                     <span className="text-gray-500 mr-2">Paid: <span className="font-medium text-[#1158B7]">50</span></span>
@@ -35,7 +35,7 @@ const LeaveWidget = () => {
 
             {/* Leave request pending */}
             <div className="flex-1 bg-white rounded-md shadow-sm p-4">
-                <div className="text-gray-500 text-sm mb-2">Leave request pending</div>
+                <div className="text-[#666666] text-md font-medium mb-2">Leave request pending</div>
                 <div className="text-2xl font-semibold mb-2">20</div>
                 <div className="flex text-xs">
                     <span className="text-gray-500 mr-2">Paid: <span className="font-medium text-[#1158B7]">10</span></span>

@@ -1,4 +1,4 @@
-import { EmployeeClock, employeeTimeTracking } from '@/assets';
+import { clock, EmployeeClock, employeeTimeTracking, homeclock, punch } from '@/assets';
 import { days, weekdays } from '@/data/dummyData';
 import React, { useState } from 'react';
 import { FaClock, FaCalendarAlt } from 'react-icons/fa';
@@ -6,14 +6,17 @@ import { FaClock, FaCalendarAlt } from 'react-icons/fa';
 export default function TimeTrackingCard() {
     const [currentMonth] = useState('February 2023');
     return (
-        <div className="flex flex-row w-full gap-4 p-4">
+        <>
+       
+         <h1 className="text-xl font-semibold text-gray-800 ml-5">Attendance</h1>
+        <div className="flex flex-row w-full gap-4 p-4 mt-[-20px]">
             <div className="max-w-md mx-auto shadow-sm w-[400px]">
-                <h1 className="text-xl font-semibold text-gray-800 mb-4">Attendance</h1>
-                <div className="bg-white rounded-xl shadow-sm p-6">
+                
+                <div className="bg-white rounded-xl shadow-sm p-6 h-[400px]">
                     <div className="text-center text-red-600 font-medium text-xl mb-4">
                         {currentMonth}
                     </div>
-                    <div className="border-t border-gray-200 pt-4">
+                    <div className="border-t border-[] pt-4">
                         <div className="grid grid-cols-7 gap-4 mb-2">
                             {weekdays.map((day, index) => (
                                 <div key={index} className="text-center text-sm font-medium">
@@ -39,13 +42,14 @@ export default function TimeTrackingCard() {
                     </div>
                 </div>
             </div>
+            
             <div className="bg-[#FFFFFF] p-6 rounded-lg shadow-sm w-100 mx-auto flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Clock Section */}
                     <div className="flex flex-col items-center justify-center">
                         <div className="relative w-100 h-[100%]">
-                            <img src={EmployeeClock} />
-                            <div className="mt-0 text-2xl font-medium text-center">12 : 16 PM</div>
+                            <img src={homeclock} />
+                            <div className="mt-5 text-2xl font-medium text-center">12 : 16 PM</div>
                         </div>
 
                     </div>
@@ -53,24 +57,29 @@ export default function TimeTrackingCard() {
                     {/* Middle Section */}
                     <div className="flex flex-col justify-between">
                         {/* Working Hours */}
-                        <div className="border border-gray-200 rounded-lg p-4 mb-4">
+                        <div className="border border-gray-200 rounded-lg p-4 mb-4 shadow-md">
                             <div className="text-[#1F4062] font-medium text-sm mb-1">Working Hours</div>
                             <div className="text-[#141516] font-bold">0 Hr 00 Mins 00 Secs</div>
                         </div>
 
                         {/* Break Hours */}
-                        <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="border border-gray-200 rounded-lg p-4 shadow-md">
                             <div className="text-[#1F4062] font-medium text-sm mb-1">Break Hours</div>
                             <div className="text-[#141516] font-bold">00 Hr 00 Mins 55 Secs</div>
                         </div>
 
+                        {/* <div className='border border-gray-200 rounded-lg'></div>        */}
                         {/* Buttons */}
-                        <div className="mt-4 flex space-x-4">
+                       
+                       <div className='mt-[50px] border w-[530px] pl-3 rounded-md h-[120px] shadow-md'>
+
+                        <div className="mt-2 flex space-x-4">
                             <div className="flex items-center text-[#C01824]">
-                                <FaCalendarAlt size={20} />
+                                 <img src={punch} />
+                                
                             </div>
                             <div className="flex-1">
-                                <button className="w-full bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
+                                <button className="w-[470px] mt-1 mr-[10px] bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
                                     Punch In
                                 </button>
                             </div>
@@ -78,29 +87,31 @@ export default function TimeTrackingCard() {
 
                         <div className="mt-4 flex space-x-4">
                             <div className="flex items-center text-[#C01824]">
-                                <FaClock size={20} />
+                                <img src={clock} />
                             </div>
                             <div className="flex-1">
-                                <button className="w-full bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
+                                <button className="w-[470px] mr-[10px] bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
                                     Time Card
                                 </button>
                             </div>
                         </div>
+                        </div>
                     </div>
 
                     {/* Right Section */}
-                    <div className="flex flex-col items-center justify-center w-100 h-60 rounded-lg bg-white"
+                    <div className="flex flex-col items-center justify-center w-100 h-[220px] border border-gray-200 rounded-lg bg-white shadow-md"
                         style={{
                             boxShadow: '#F9E8E9',
                         }}
                     >
-                        <div className="w-100 h-32 items-center justify-center">
-                            <img src={employeeTimeTracking} className="w-48 h-[100%] mx-3" />
+                        <div className="w-100  items-center justify-center">
+                            <img src={employeeTimeTracking} className="w-[180px] mx-3" />
                             <p className="mt-2 text-sm text-[#C01824] text-center  italic">Punctuality is the virtue of the bored.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        </>
     );
 }

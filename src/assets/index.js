@@ -216,6 +216,11 @@ import Client3 from './Client3.png'
 import Client4 from './Client4.png'
 import Client5 from './Client5.png'
 import Client6 from './Client6.png'
+import punch from './punchin.png'
+import clock from './clock.png'
+import homeclock from './homeclock.png'
+import signal from './signal.png'
+import payroll from './payroll.png'
 export {
     greentickicon,
     licenseimg,
@@ -433,5 +438,11 @@ export {
     Client3,
     Client4,
     Client5,
-    Client6
+    Client6,
+    punch,
+    clock,
+    homeclock,
+    signal,
+    payroll
+    
 }

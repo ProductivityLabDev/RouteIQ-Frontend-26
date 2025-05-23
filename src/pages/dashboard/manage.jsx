@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -10,16 +10,31 @@ import {
   Checkbox,
   ButtonGroup,
 } from "@material-tailwind/react";
-import { AddStudent, Delete, Note } from '@/components/TripPlanner';
-import { deleteicon, editicon, guardianicon, licenseimg, nexticon, previcon, readnoticon } from '@/assets';
-import { EditStudent } from '@/components/Modals/EditStudent';
-import { DrivingLicense } from '@/components/Modals/DrivingLicense';
-import { DRIVERS_TABLE_HEAD, DRIVERS_TABLE_ROWS, STUDENTS_TABLE_HEAD, STUDENTS_TABLE_ROWS, STUDENTS_TABS } from '@/data';
-import { EditDriver } from '@/components/Modals/EditDriverModal';
+import { AddStudent, Delete, Note } from "@/components/TripPlanner";
+import {
+  deleteicon,
+  editicon,
+  guardianicon,
+  licenseimg,
+  nexticon,
+  previcon,
+  readnoticon,
+} from "@/assets";
+import { EditStudent } from "@/components/Modals/EditStudent";
+import { DrivingLicense } from "@/components/Modals/DrivingLicense";
+import {
+  DRIVERS_TABLE_HEAD,
+  DRIVERS_TABLE_ROWS,
+  STUDENTS_TABLE_HEAD,
+  STUDENTS_TABLE_ROWS,
+  STUDENTS_TABS,
+} from "@/data";
+import { EditDriver } from "@/components/Modals/EditDriverModal";
+import { RiDeleteBin6Line } from "react-icons/ri";
 
 export function Manage() {
-  const [selectedTab, setSelectedTab] = useState('Students');
-  const [selectedOption, setSelectedOption] = useState('');
+  const [selectedTab, setSelectedTab] = useState("Students");
+  const [selectedOption, setSelectedOption] = useState("");
   const [openNote, setOpenNote] = useState(false);
   const [openAddStudent, setOpenAddStudent] = useState(false);
   const [openEditStudent, setOpenEditStudent] = useState(false);
@@ -39,7 +54,9 @@ export function Manage() {
   const next = () => setActive((prev) => Math.min(prev + 1, 10));
 
   const [selectedAll, setSelectedAll] = useState(false);
-  const [selectedRows, setSelectedRows] = useState(STUDENTS_TABLE_ROWS.map(() => false));
+  const [selectedRows, setSelectedRows] = useState(
+    STUDENTS_TABLE_ROWS.map(() => false)
+  );
   const [rowsToDelete, setRowsToDelete] = useState([]);
 
   const handleSelectAll = () => {
@@ -47,7 +64,13 @@ export function Manage() {
     setSelectedAll(newSelectedAll);
     const newSelectedRows = selectedRows.map(() => newSelectedAll);
     setSelectedRows(newSelectedRows);
-    setRowsToDelete(newSelectedRows.map((selected, index) => selected ? STUDENTS_TABLE_ROWS[index] : null).filter(row => row !== null));
+    setRowsToDelete(
+      newSelectedRows
+        .map((selected, index) =>
+          selected ? STUDENTS_TABLE_ROWS[index] : null
+        )
+        .filter((row) => row !== null)
+    );
   };
 
   const handleSelectRow = (index) => {
@@ -55,7 +78,11 @@ export function Manage() {
     newSelectedRows[index] = !newSelectedRows[index];
     setSelectedRows(newSelectedRows);
     setSelectedAll(newSelectedRows.every(Boolean));
-    setRowsToDelete(newSelectedRows.map((selected, idx) => selected ? STUDENTS_TABLE_ROWS[idx] : null).filter(row => row !== null));
+    setRowsToDelete(
+      newSelectedRows
+        .map((selected, idx) => (selected ? STUDENTS_TABLE_ROWS[idx] : null))
+        .filter((row) => row !== null)
+    );
   };
 
   const handleDelete = () => {
@@ -74,14 +101,26 @@ export function Manage() {
     }
   }, [location.state]);
   return (
-    <section className='rounded-md mt-5 h-full bg-white p-3'>
-      <CardHeader floated={false} shadow={false} className="rounded-none bg-transparent">
+    <section className="rounded-md mt-5 h-full bg-white p-3">
+      <CardHeader
+        floated={false}
+        shadow={false}
+        className="rounded-none bg-transparent"
+      >
         <div className="flex items-center flex-wrap justify-between gap-4">
-          <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='lg'>
-            {['Students', 'Drivers'].map(tab => (
+          <ButtonGroup
+            className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0"
+            variant="text"
+            size="lg"
+          >
+            {["Students", "Drivers"].map((tab) => (
               <Button
                 key={tab}
-                className={selectedTab === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-3 lg:text-[14px] capitalize font-bold' : 'bg-white px-6 py-3 capitalize font-bold'}
+                className={
+                  selectedTab === tab
+                    ? "bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-3 lg:text-[14px] capitalize font-bold"
+                    : "bg-white px-6 py-3 capitalize font-bold"
+                }
                 onClick={() => setSelectedTab(tab)}
               >
                 {tab}
@@ -89,9 +128,9 @@ export function Manage() {
             ))}
           </ButtonGroup>
 
-          {selectedTab === 'Students' && (
+          {selectedTab === "Students" && (
             <>
-              <ButtonGroup className="border-2 border-[#DDDDE1]/50 flex rounded-[10px] outline-none p-0" variant="text" size='lg'>
+              {/* <ButtonGroup className="border-2 border-[#DDDDE1]/50 flex rounded-[10px] outline-none p-0" variant="text" size='lg'>
                 {STUDENTS_TABS.map(tab => (
                   <Button
                     key={tab.label}
@@ -115,22 +154,39 @@ export function Manage() {
                     {tab.label}
                   </Button>
                 ))}
-              </ButtonGroup>
-              <div className='flex gap-x-3'>
-                <Button onClick={handleOpenAddStudent} className="flex items-center capitalize font-normal rounded-[6px] px-4 md:px-6 py-3 md:py-3.5 md:text-[14px] bg-[#C01824] gap-3" size="md">
+              </ButtonGroup> */}
+              <div className="flex gap-x-3">
+                <Button
+                  onClick={handleOpenAddStudent}
+                  className="flex items-center capitalize font-normal rounded-[6px] px-4 md:px-6 py-3 md:py-3.5 md:text-[14px] bg-[#C01824] gap-3"
+                  size="md"
+                >
                   Add Student
                 </Button>
-                <Button className="flex items-center capitalize font-normal px-4 md:px-6 py-3 md:py-3.5 md:text-[14px] rounded-[6px] bg-[#C01824] gap-3" size="md">
+                <Button
+                  className="flex items-center capitalize font-normal px-4 md:px-6 py-3 md:py-3.5 md:text-[14px] rounded-[6px] bg-[#C01824] gap-3"
+                  size="md"
+                >
                   Download Attendance Report
                 </Button>
               </div>
             </>
           )}
 
-          {selectedTab === 'Drivers' && (
-            <Button onClick={handleOpenLicense} variant="text" className='flex py-2 px-4 rounded-[6px] space-x-3 items-center border-[1px] border-[#DDDDE1]'>
-              <img src={licenseimg} className='w-full max-w-[40px]' alt="License Icon" />
-              <p className='text-[14px] text-[#141516] font-bold capitalize'>View Driving Licenses</p>
+          {selectedTab === "Drivers" && (
+            <Button
+              onClick={handleOpenLicense}
+              variant="text"
+              className="flex py-2 px-4 rounded-[6px] space-x-3 items-center border-[1px] border-[#DDDDE1]"
+            >
+              <img
+                src={licenseimg}
+                className="w-full max-w-[40px]"
+                alt="License Icon"
+              />
+              <p className="text-[14px] text-[#141516] font-bold capitalize">
+                View Driving Licenses
+              </p>
             </Button>
           )}
         </div>
@@ -146,7 +202,10 @@ export function Manage() {
                   className="rounded-[4px] custom-checkbox"
                 />
               </th>
-              {(selectedTab === 'Students' ? STUDENTS_TABLE_HEAD : DRIVERS_TABLE_HEAD).map((head) => (
+              {(selectedTab === "Students"
+                ? STUDENTS_TABLE_HEAD
+                : DRIVERS_TABLE_HEAD
+              ).map((head) => (
                 <th key={head.id} className="border bg-[#EEEEEE] px-4">
                   <Typography className="font-bold text-[14px] leading-none text-[#141516]">
                     {head.label}
@@ -156,9 +215,20 @@ export function Manage() {
             </tr>
           </thead>
           <tbody>
-            {(selectedTab === 'Students' ? STUDENTS_TABLE_ROWS : DRIVERS_TABLE_ROWS).map((row, index) => {
-              const isLast = index === (selectedTab === 'Students' ? STUDENTS_TABLE_ROWS : DRIVERS_TABLE_ROWS).length - 1;
-              const classes = isLast ? "px-4 py-1" : "px-4 py-1 border-b border-[#D9D9D9]";
+            {(selectedTab === "Students"
+              ? STUDENTS_TABLE_ROWS
+              : DRIVERS_TABLE_ROWS
+            ).map((row, index) => {
+              const isLast =
+                index ===
+                (selectedTab === "Students"
+                  ? STUDENTS_TABLE_ROWS
+                  : DRIVERS_TABLE_ROWS
+                ).length -
+                  1;
+              const classes = isLast
+                ? "px-4 py-1"
+                : "px-4 py-1 border-b border-[#D9D9D9]";
               return (
                 <tr key={row.id}>
                   <td className={classes}>
@@ -178,7 +248,7 @@ export function Manage() {
                       {row.lastname}
                     </Typography>
                   </td>
-                  {selectedTab === 'Students' ? (
+                  {selectedTab === "Students" ? (
                     <>
                       <td className={classes}>
                         <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
@@ -202,7 +272,12 @@ export function Manage() {
                       </td>
                       <td className={classes}>
                         <Tooltip content="View Note">
-                          <img onClick={handleOpenNote} src={readnoticon} className="cursor-pointer" alt="Note Icon" />
+                          <img
+                            onClick={handleOpenNote}
+                            src={readnoticon}
+                            className="cursor-pointer"
+                            alt="Note Icon"
+                          />
                         </Tooltip>
                       </td>
                     </>
@@ -231,39 +306,85 @@ export function Manage() {
                     </>
                   )}
                   <td className={classes}>
-                    <div className={`flex space-x-2 md:space-x-7 justify-start items-center`}>
+                    <div
+                      className={`flex space-x-2 md:space-x-7 justify-start items-center`}
+                    >
                       <Chip
                         variant="ghost"
                         size="sm"
-                        className={row.present ? 'bg-[#CCFAEB] text-[#0BA071] rounded-[4px] w-[81px] p-1 text-center capitalize text-[16px]' : 'bg-[#F6DCDE] w-[81px] text-[#C01824] rounded-[4px] px-1 text-center capitalize text-[16px]'}
+                        className={
+                          row.present
+                            ? "bg-[#CCFAEB] text-[#0BA071] rounded-[4px] w-[81px] p-1 text-center capitalize text-[16px]"
+                            : "bg-[#F6DCDE] w-[81px] text-[#C01824] rounded-[4px] px-1 text-center capitalize text-[16px]"
+                        }
                         value={row.present ? "Present" : "Absent"}
                       />
-                      {selectedTab === 'Students' ? (
-                        <img src={editicon} onClick={handleOpenEditStudent} className="cursor-pointer" alt="Edit Icon" />
-                      ) : (
-                        selectedTab === 'Drivers' && (
-                          <img src={editicon} onClick={handleOpenEditDriver} className="cursor-pointer" alt="Edit Icon" />
-                        )
-                      )}
+
                       {/* {selectedRows[index] && ( */}
                       {/* <img src={editicon} onClick={handleOpenEditStudent} className="cursor-pointer" alt="Edit Icon" /> */}
                       {/* )} */}
                     </div>
+                  </td>
+                  <td className={classes}>
+                    {selectedTab === "Students" ? (
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={editicon}
+                          onClick={handleOpenEditStudent}
+                          className="cursor-pointer"
+                          alt="Edit Icon"
+                        />
+                        <RiDeleteBin6Line
+                          size={20}
+                          className="cursor-pointer text-[#C01824]"
+                           onClick={handleOpenDelete}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={editicon}
+                          onClick={handleOpenEditDriver}
+                          className="cursor-pointer"
+                          alt="Edit Icon"
+                        />
+                        <RiDeleteBin6Line
+                          size={20}
+                          className="cursor-pointer text-[#C01824]"
+                         onClick={handleOpenDelete}
+                        />
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        <div className='flex justify-between items-center mt-6 mb-4 px-7 py-3'>
-          <Typography color="gray" className='text-[#202224]/60 font-semibold text-[14px]'>
+        <div className="flex justify-between items-center mt-6 mb-4 px-7 py-3">
+          <Typography
+            color="gray"
+            className="text-[#202224]/60 font-semibold text-[14px]"
+          >
             Page {active} - 06 of 20
           </Typography>
-          <div className='!p-0 bg-[#FAFBFD] flex justify-around items-center w-[86px] h-[33px] border border-[#D5D5D5] rounded-[12px] space-x-3'>
-            <img onClick={prev}
-              disabled={active === 1} src={previcon} alt='' strokeWidth={2} className="h-[24px] w-[24px] cursor-pointer" />
-            <img onClick={next}
-              disabled={active === 10} src={nexticon} alt='' strokeWidth={2} className="h-[24px] w-[24px] cursor-pointer" />
+          <div className="!p-0 bg-[#FAFBFD] flex justify-around items-center w-[86px] h-[33px] border border-[#D5D5D5] rounded-[12px] space-x-3">
+            <img
+              onClick={prev}
+              disabled={active === 1}
+              src={previcon}
+              alt=""
+              strokeWidth={2}
+              className="h-[24px] w-[24px] cursor-pointer"
+            />
+            <img
+              onClick={next}
+              disabled={active === 10}
+              src={nexticon}
+              alt=""
+              strokeWidth={2}
+              className="h-[24px] w-[24px] cursor-pointer"
+            />
           </div>
         </div>
       </Card>
@@ -279,6 +400,5 @@ export function Manage() {
       <EditStudent open={openEditStudent} handleOpen={handleOpenEditStudent} />
       <DrivingLicense open={openLicense} handleOpen={handleOpenLicense} />
     </section>
-
   );
 }

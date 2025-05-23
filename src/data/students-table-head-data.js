@@ -6,5 +6,6 @@ export const STUDENTS_TABLE_HEAD = [
     { id: 5, label: "Enrollment" },
     { id: 6, label: "Address" },
     { id: 7, label: "Note" },
-    { id: 8, label: "Attendance Status" }
+    { id: 8, label: "Attendance Status" },
+    { id: 9, label: "Action" }
   ];

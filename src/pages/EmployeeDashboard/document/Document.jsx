@@ -27,7 +27,7 @@ const Document = () => {
         onPrimaryAction={closeModal}
       >
         <div className="w-full">
-          <div className="border border-dashed border-[#C01824] rounded-md p-16 flex flex-row gap-3 items-center justify-center">
+          <div className="border-4 border-dashed border-[#C01824] rounded-md p-16 flex flex-row gap-3 items-center justify-center">
             <div className="text-[#C01824] mb-2">
               <img src={uploadDocumentIcon} />
             </div>

@@ -23,7 +23,7 @@ import {
   setOpenSidenav,
 } from "@/context";
 import { Chat, chevroncircleicon, GrNotification, notificationicon, PiChatCircleTextBold, profileavatar } from '@/assets';
-import { CiSearch } from "react-icons/ci";
+import { FiSearch } from 'react-icons/fi'
 
 export function DashboardNavbar({ user }) {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -70,9 +70,18 @@ export function DashboardNavbar({ user }) {
               />
             </div>
           )}
-          {/* <div className="mr-auto w-72 md:max-w-screen-3xl md:w-full rounded-md bg-white">
-            <input type='search' placeholder="Search" className='p-3 w-full text-[#090909] font-light outline-none border border-[#DCDCDC] rounded-[6px]' />
-          </div> */}
+            <div className="mr-auto w-72 md:max-w-screen-3xl md:w-full rounded-md bg-white">
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                <FiSearch />
+              </span>
+              <input
+                type="search"
+                placeholder="Search"
+                className="pl-10 pr-4 py-3 w-full text-[#090909] font-light outline-none border border-[#DCDCDC] rounded-[6px]"
+              />
+            </div>
+          </div>
           <IconButton
             variant="text"
             color="blue-gray"

@@ -22,36 +22,36 @@ const TimeOffRequestTable = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-sm font-medium text-gray-800">
-                                Date
+                            <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
+                            Date 
                             </th>
-                            <th scope="col" className="px-6 py-3 text-left text-sm font-medium text-gray-800">
-                                Punch In
+                            <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
+                            Punch In
                             </th>
-                            <th scope="col" className="px-6 py-3 text-left text-sm font-medium text-gray-800">
-                                Punched Out
+                            <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
+                            Punched Out
                             </th>
-                            <th scope="col" className="px-6 py-3 text-left text-sm font-medium text-gray-800">
-                                Work Hours
+                            <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
+                            Work Hours
                             </th>
-                            <th scope="col" className="px-6 py-3 text-left text-sm font-medium text-gray-800">
-                                Status
+                            <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800">
+                            Status
                             </th>
                         </tr>
-                    </thead>
+                        </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {timeEntries.map((entry, index) => (
                             <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
                                     {entry.date}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
                                     {entry.punchIn}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
                                     {entry.punchedOut}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
                                     {entry.workHours}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">

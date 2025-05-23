@@ -137,14 +137,14 @@ const CalendarView = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm">
             {/* Header section */}
             <div className="flex justify-between items-center mb-4">
-                <div className="font-medium bg-white border shadow p-3 py-2" style={{ borderRadius: 20 }}>
+                <div className="font-bold bg-white border shadow p-3 py-2" style={{ borderRadius: 20 }}>
                     Today
                 </div>
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 ml-[210px]">
                     <button className="text-gray-500 bg-white border shadow p-3 py-2" style={{ borderRadius: 20 }}>
                         <IoIosArrowBack />
                     </button>
-                    <span className="text-sm">May 12 - 18, 2020</span>
+                    <span className="text-sm font-bold">May 12 - 18, 2020</span>
                     <button className="p-1 text-gray-500 bg-white border shadow p-3 py-2" style={{ borderRadius: 20 }}>
                         <IoIosArrowForward />
                     </button>
@@ -168,15 +168,15 @@ const CalendarView = () => {
             </div>
 
             {/* Calendar grid */}
-            <div className="grid grid-cols-8 gap-1">
+            <div className="grid grid-cols-8 gap-1 border">
                 {/* Time column */}
                 <div className="col-span-1">
-                    <div className="h-16 flex items-center justify-center">
+                    <div className="h-16 flex items-center justify-center border-l border-t border-b">
                         <img src={Watch} />
                     </div>
                     {hours.map(hour => (
-                        <div key={hour} className="h-16 flex items-start justify-end pr-2 text-xs text-gray-500">
-                            {hour <= 12 ? hour : hour}
+                       <div key={hour} className="h-16 flex font-bold items-center justify-center text-xs text-black-500 border-l border-t border-b">
+                        {hour <= 12 ? hour : hour}
                         </div>
                     ))}
                 </div>
@@ -185,12 +185,13 @@ const CalendarView = () => {
                 {days.map((day, index) => (
                     <div key={index} className="col-span-1 border-l border-t border-b border-gray-100">
                         {/* Day header */}
-                        <div className="h-16 text-center  border-b border-gray-100">
-                            <div className="text-xs text-black font-bold">{day.day} {day.date}</div>
+
+                        <div className="h-16 border-b border-gray-100 flex items-center justify-center text-center">
+                        <div className="text-xs text-black font-bold">{day.day} {day.date}</div>
                         </div>
 
                         {/* Events container */}
-                        <div className="relative h-[576px] border-b border-gray-100">
+                        <div className="relative h-[576px] border-l border-t border-b border-black-100">
                             {day.events.map((event, eventIndex) => {
                                 // Calculate position based on time
                                 const [startTime, endTime] = event.time.split('-');

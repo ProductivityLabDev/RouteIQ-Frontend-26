@@ -15,9 +15,9 @@ const EventModal = ({ closeModal }) => {
                 {/* Header with event title */}
                 <div className="p-6 border-b border-gray-200">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-800">Event Title</h2>
-                        <div className="flex items-center">
-                            <div className="w-8 h-8 bg-yellow-400 rounded-full mr-2"></div>
+                        <h2 className="text-2xl font-bold text-[#202224]">Event Title</h2>
+                        <div className="flex items-center shadow-[0_4px_6px_rgba(0,0,0,0.1)] p-2 rounded-full w-[60px]">
+                            <div className="w-5 h-5 bg-[#FFCB33] rounded-full mr-2"></div>
                             <IoChevronDownOutline className="text-[#5C5C5C]" />
                         </div>
                     </div>
@@ -28,31 +28,31 @@ const EventModal = ({ closeModal }) => {
                     {/* Place */}
                     <div className="flex items-center px-6 py-4">
                         <IoLocationOutline className="text-[#5C5C5C] text-xl mr-4" />
-                        <span className="text-gray-800 font-medium">Add Place</span>
+                        <span className="text-[#202224] font-bold">Add Place</span>
                     </div>
 
                     {/* Date and time in a grid */}
                     <div className="grid grid-cols-2 divide-x divide-gray-200">
                         <div className="flex items-center px-6 py-4">
                             <IoCalendarOutline className="text-gray-500 text-xl mr-4" />
-                            <span className="text-gray-800 font-medium">Add Date</span>
+                            <span className="text-[#202224] font-bold">Add Date</span>
                         </div>
                         <div className="flex items-center px-6 py-4">
                             <IoTimeOutline className="text-[#5C5C5C] text-xl mr-4" />
-                            <span className="text-gray-800 font-medium">Add Time</span>
+                            <span className="text-[#202224] font-bold">Add Time</span>
                         </div>
                     </div>
 
                     {/* Members */}
                     <div className="flex items-center px-6 py-4">
                         <HiUserGroup className="text-[#5C5C5C] text-xl mr-4" />
-                        <span className="text-gray-800 font-medium">Add Members</span>
+                        <span className="text-[#202224] font-bold">Add Members</span>
                     </div>
 
                     {/* Notes */}
                     <div className="flex items-center px-6 py-4">
                         <IoPencilOutline className="text-[#5C5C5C] text-xl mr-4" />
-                        <span className="text-gray-800 font-medium">Add Notes</span>
+                        <span className="text-[#202224] font-bold">Add Notes</span>
                     </div>
                 </div>
 

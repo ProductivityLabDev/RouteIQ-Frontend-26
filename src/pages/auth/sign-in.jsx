@@ -122,13 +122,13 @@ export function SignIn() {
                 <input
                   required
                   placeholder="Enter the shown text"
-                  className="outline-none rounded-[6px] w-full max-w-[327px] pl-3 pr-10 border border-[#808080]/60 h-[50px] bg-[#FAFAFA]"
+                  className="outline-none rounded-[6px] w-full max-w-[327px] pl-3 pr-10 border border-[#808080]/60 h-[52px] bg-[#FAFAFA]"
                   value={securityCode}
                   onChange={(e) => setSecurityCode(e.target.value)}
                 />
                 <div className="flex justify-between items-center w-full max-w-[180px] border border-[#808080]/60 rounded-[6px] bg-[#FAFAFA]">
                   <Typography
-                    className="!border-t-blue-gray-200 select-none h-[50px] text-xl md:text-3xl font-extrabold text-black focus:!border-t-gray-900 line-through p-3"
+                    className="!border-t-blue-gray-200 select-none h-[50px] text-xl md:text-3xl font-extrabold text-black focus:!border-t-gray-900 line-through p-2"
                   >
                     {securityText}
                   </Typography>

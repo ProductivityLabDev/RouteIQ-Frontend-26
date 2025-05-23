@@ -19,7 +19,7 @@ export function FeedbackSupport() {
 
     return (
         <section>
-            <h1 className="block antialiased tracking-normal text-[24px] md:text-[32px] font-semibold leading-[1.3] my-6 text-inherit">
+            <h1 className="block antialiased tracking-normal text-[24px] md:text-[32px] font-bold leading-[1.3] my-6 text-inherit">
                 Feedback & Support
             </h1>
             <div className='flex md:space-x-5 md:flex-row flex-col h-full'>
@@ -47,6 +47,7 @@ export function FeedbackSupport() {
                                     isOwnMessage={msg.isOwnMessage}
                                     message={msg.message}
                                     avatarUrl={msg.avatarUrl}
+                                    time={msg.time}
                                 />
                             ))}
                         </div>

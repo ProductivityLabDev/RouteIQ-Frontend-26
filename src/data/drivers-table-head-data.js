@@ -5,5 +5,6 @@ export const DRIVERS_TABLE_HEAD = [
     { id: 4, label: "Emergency Contact 1" },
     { id: 5, label: "Emergency Contact 2" },
     { id: 6, label: "Email" },
-    { id: 7, label: "Attendance Status" }
+    { id: 7, label: "Attendance Status" },
+    { id: 8, label: "Action" }
   ];
