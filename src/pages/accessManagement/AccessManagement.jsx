@@ -25,8 +25,8 @@ const AccessManagement = () => {
                     <>
                         <div className='w-full'>
                             <div className="flex justify-between items-center my-3 pb-2">
-                                <h2 className="text-[22px] lg:text-[26px] xl:text-[29px] font-bold text-black">
-                                    Create Access
+                                <h2 className="text-[22px] ml-2 lg:text-[26px] xl:text-[29px] font-bold text-black">
+                                    Access Management
                                 </h2>
                                 <Button
                                     className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"

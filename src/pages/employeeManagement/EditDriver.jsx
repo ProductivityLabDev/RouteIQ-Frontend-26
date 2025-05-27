@@ -13,36 +13,36 @@ const EditDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mb-1">Name</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Zip</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Date</label>
                         <input
                             type="date"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] w-full py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Email</label>
                         <input
                             type="email"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Rate changes</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Cycle</label>
                         <div className="relative">
-                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA] w-full">
+                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
                                 <option>Select</option>
                                 <option>Weekly</option>
                                 <option>Bi-weekly</option>
@@ -56,36 +56,36 @@ const EditDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mb-1">Address</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">State</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Status</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Grade</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Terminal Assigned To</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Type</label>
                         <div className="relative">
-                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA] w-full">
+                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
                                 <option>Select</option>
                                 <option>Hourly</option>
                                 <option>Salary</option>
@@ -99,62 +99,62 @@ const EditDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mb-1">City</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Date of Birth</label>
                         <input
                             type="date"
-                            className="outline-none border border-[#D5D5D5] w-full rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Type</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Rate</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">Trip Rate</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Fuel Card Code</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
                     </div>
                 </div>
                 <div className='w-full mt-6 flex flex-col gap-5 p-6'>
-                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 
-                      border border-gray-200 rounded-md">
-                        <span className="text-gray-700 text-sm">Image.jpg</span>
+                    <div className="flex items-center justify-between py-4 px-6 bg-[#F5F6FA] 
+                      border border-gray-200 rounded-md w-[600px]">
+                        <span className="text-[#2C2F32] text-[18] font-semibold">Image.jpg</span>
                         <button
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-gray-500 hover:text-[#5C5C5C]"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                             </svg>
                         </button>
                     </div>
-                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 
-                      border border-gray-200 rounded-md">
-                        <span className="text-gray-700 text-sm">Document.pdf</span>
+                    <div className="flex items-center justify-between py-4 px-6 bg-[#F5F6FA] 
+                      border border-gray-200 rounded-md w-[600px]">
+                        <span className="text-[#2C2F32] text-[18] font-semibold">Document.pdf</span>
                         <button
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-gray-500 hover:text-[#5C5C5C]"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                             </svg>
                         </button>
                     </div>
-                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 
-                      border border-gray-200 rounded-md">
-                        <span className="text-gray-700 text-sm">License.pdf</span>
+                    <div className="flex items-center justify-between py-4 px-6 bg-[#F5F6FA] 
+                      border border-gray-200 rounded-md w-[600px]">
+                        <span className="text-[#2C2F32] text-[18] font-semibold">License.pdf</span>
                         <button
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-gray-500 hover:text-[#5C5C5C]"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -164,7 +164,7 @@ const EditDriver = ({ handleCancel }) => {
                 </div>
 
                 {/* File upload section */}
-                <div className="mt-6 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center m-6 w-full h-32 flex flex-row gap-3 items-center justify-center">
+                <div className="mt-6 border-[3px] border-dashed border-[#EBB7BB] rounded-lg p-8 text-center m-6 w-[600px] h-50 flex flex-row gap-3 items-center justify-center">
                     <div className="flex justify-center">
                         <img src={pickFileIcon} className="w-10 h-10" />
                     </div>

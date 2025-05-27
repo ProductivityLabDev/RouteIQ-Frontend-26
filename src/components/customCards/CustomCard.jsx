@@ -58,7 +58,7 @@ const CustomCardComponent = ({ title, value, change }) => {
     return (
         <CustomCard>
             <CardHeader>
-                <IconButton
+                {/* <IconButton
                     size="small"
                     color="inherit"
                     sx={{
@@ -70,7 +70,7 @@ const CustomCardComponent = ({ title, value, change }) => {
                     }}
                 >
                     <img src={VerticalDot} alt="Options" />
-                </IconButton>
+                </IconButton> */}
             </CardHeader>
             <CardContent sx={{
                 padding: theme => theme.spacing(2),

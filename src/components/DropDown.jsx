@@ -1,6 +1,8 @@
 import { Button } from '@material-tailwind/react';
 import React, { useState } from 'react';
 import { FaBars, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { PiPencilSimpleFill } from "react-icons/pi";
+
 
 export const DropdownItem = ({ title, children, isOpen, onToggle, icon, isSchool = false, }) => {
     return (
@@ -14,6 +16,7 @@ export const DropdownItem = ({ title, children, isOpen, onToggle, icon, isSchool
                     <FaBars className="mr-2" />
                     {title}
                 </span>
+                 <PiPencilSimpleFill className="ml-2" size={18} color='#1C1B1F'/>
                 {isSchool ? (
                     isOpen ? <FaChevronUp className="ml-auto" /> : <FaChevronDown className="ml-auto" />
                 ) : (

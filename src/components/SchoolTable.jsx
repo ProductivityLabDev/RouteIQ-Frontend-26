@@ -1,5 +1,6 @@
 import { VerticalDot } from '@/assets';
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const SchoolTable = () => {
     const [allChecked, setAllChecked] = useState(false);
@@ -31,15 +32,16 @@ const SchoolTable = () => {
         }
     };
     return (
-        <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-[50%] lg:w-[45%] xl:w-[40%] h-[100%]">
+        <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-[50%] lg:w-[50%] xl:w-[50%] h-[100%]">
             {/* ---------------- Header of Card --------------- */}
             <div className="flex justify-between items-center pb-2">
                 <h2 className="text-[22px] lg:text-[24px] xl:text-[26px] font-bold text-black font-Nunito Sans">Schools</h2>
-                <button className="focus:outline-none border border-[#DADADA] w-[24px] lg:w-[28px] h-[24px] lg:h-[28px] flex items-center justify-center bg-[#F5F5F5]" style={{ borderRadius: "8px" }}>
+                <Link to='/SchoolManagement'><h2 className='text-[#C01824] text-[16px] font-semibold font-[Nunito Sans]'>View All</h2></Link>
+                {/* <button className="focus:outline-none border border-[#DADADA] w-[24px] lg:w-[28px] h-[24px] lg:h-[28px] flex items-center justify-center bg-[#F5F5F5]" style={{ borderRadius: "8px" }}>
                     <div className="w-[14px] lg:w-[17px] h-[14px] lg:h-[17px]">
                         <img src={VerticalDot} />
                     </div>
-                </button>
+                </button> */}
             </div>
 
             {/* Table Section */}
@@ -76,8 +78,14 @@ const SchoolTable = () => {
                                     {school.contact}
                                 </td>
                                 <td className="px-3 lg:px-4 xl:px-5 py-2 lg:py-3 border-b text-sm lg:text-md font-bold">
-                                    <span className={`${school.status === 'Active' ? 'text-[#28A745]' : 'text-[#D39A08]'} font-bold`}>
-                                        {school.status}
+                                    <span
+                                    className={`font-bold ${
+                                        school.status === 'Active'
+                                        ? 'bg-[#CCFAEB] text-[#28A745] p-2 rounded-md'
+                                        : 'bg-[#FDFFA4] text-[#393E08] p-2  rounded-md'
+                                    }`}
+                                    >
+                                    {school.status}
                                     </span>
                                 </td>
                             </tr>

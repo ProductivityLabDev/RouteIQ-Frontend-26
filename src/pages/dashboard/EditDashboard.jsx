@@ -50,12 +50,12 @@ const EditDashboard = ({ onBack }) => {
                 Select options you want to populate in the dashboard
             </h2>
 
-            <div className="flex flex-col lg:flex-row gap-6 mt-4">
+            <div className="flex flex-col lg:flex-row gap-20 mt-4">
                 {/* First Column */}
                 <div className="w-full lg:w-1/2">
                     {leftColumnOptions.map((option, index) => (
                         <div key={index} className="flex items-center justify-between mb-4 md:mb-6">
-                            <span className="text-base md:text-xl font-normal font-[Nunito Sans] pr-4 flex-1">{option}</span>
+                            <span className="text-[24px] md:text-[24px] font-normal font-[Nunito Sans] pr-4 flex-1">{option}</span>
                             <div
                                 className={`w-6 h-6 md:w-7 md:h-7 border-2 rounded flex items-center justify-center cursor-pointer ${selectedOptions[option] ? 'border-[#D21917] bg-transparent' : 'border-[#000] bg-transparent'
                                     }`}
@@ -76,7 +76,7 @@ const EditDashboard = ({ onBack }) => {
                 <div className="w-full lg:w-1/2">
                     {rightColumnOptions.map((option, index) => (
                         <div key={index} className="flex items-center justify-between mb-4 md:mb-6">
-                            <span className="text-base md:text-xl font-normal font-[Nunito Sans] pr-4 flex-1">{option}</span>
+                            <span className="text-[24px] md:text-[24px] font-normal font-[Nunito Sans] pr-4 flex-1">{option}</span>
                             <div
                                 className={`w-6 h-6 md:w-7 md:h-7 border-2 rounded flex items-center justify-center cursor-pointer ${selectedOptions[option] ? 'border-[#D21917] bg-transparent' : 'border-[#000] bg-transparent'
                                     }`}

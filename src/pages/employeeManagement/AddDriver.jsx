@@ -13,36 +13,36 @@ const AddDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mb-1">Name</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Zip</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Date</label>
                         <input
                             type="date"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] w-full py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Email</label>
                         <input
                             type="email"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Rate changes</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Cycle</label>
                         <div className="relative">
-                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA] w-full">
+                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
                                 <option>Select</option>
                                 <option>Weekly</option>
                                 <option>Bi-weekly</option>
@@ -56,36 +56,36 @@ const AddDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mb-1">Address</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">State</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Status</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Grade</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Terminal Assigned To</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Type</label>
                         <div className="relative">
-                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA] w-full">
+                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
                                 <option>Select</option>
                                 <option>Hourly</option>
                                 <option>Salary</option>
@@ -99,31 +99,31 @@ const AddDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mb-1">City</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Date of Birth</label>
                         <input
                             type="date"
-                            className="outline-none border border-[#D5D5D5] w-full rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Type</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Rate</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Fuel Card Code</label>
                         <input
                             type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
                     </div>
                 </div>

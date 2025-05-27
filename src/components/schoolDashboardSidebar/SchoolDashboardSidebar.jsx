@@ -44,12 +44,12 @@ const DashboardSidebar = () => {
             activeImageUrl: schoolManagementWhite,
             path: "/SchoolManagement",
         },
-        {
-            text: "Students Management",
-            imageUrl: usersGroup,
-            activeImageUrl: usresGroupWhite,
-            path: "/StudentManagement",
-        },
+        // {
+        //     text: "Students Management",
+        //     imageUrl: usersGroup,
+        //     activeImageUrl: usresGroupWhite,
+        //     path: "/StudentManagement",
+        // },
         {
             text: "Route Management",
             imageUrl: routeMangement,
@@ -81,7 +81,7 @@ const DashboardSidebar = () => {
             path: "/accounting",
         },
         {
-            text: "Accounting",
+            text: "Access Management",
             imageUrl: accessManagement,
             activeImageUrl: accountingWhite,
             path: "/accessManagement",

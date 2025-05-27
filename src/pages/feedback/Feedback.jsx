@@ -7,6 +7,9 @@ import { Button, Input, Tabs, TabsBody } from '@material-tailwind/react';
 import { FaSearch } from 'react-icons/fa';
 import { ChatItem } from '@/components/ChatItem';
 import { VendorFeedbackChatMessage } from '@/components/VendorFeedbackMessage';
+import { IoMdThumbsUp } from "react-icons/io";
+import { IoMdThumbsDown } from "react-icons/io";
+
 
 
 const Feedback = () => {
@@ -91,6 +94,23 @@ const Feedback = () => {
                     </div>
                     <div className='bg-white w-full max-w-[300px] rounded-xl space-y-1 h-[90%] border shadow-sm capitalize md:mb-0 mb-4'>
                         <div className="space-y-2 overflow-y-auto max-h-[600px]">
+                            <div className=" border-b border-[#D2D2D2]  rounded-t-lg p-3 max-w-md">
+                            <div className="flex justify-between items-center text-[14] font-normal text-[#000000]">
+                                <div className="font-medium">
+                                Total Feedback: <span className="font-normal text-[#000000]">254</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1">
+                                    <IoMdThumbsUp size={20} className="text-[#6F6F6F]"/>
+                                    <span>55</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <IoMdThumbsDown size={20} className="text-[#6F6F6F]"/>
+                                    <span>12</span>
+                                </div>
+                                </div>
+                            </div>
+                            </div>
                             <Tabs value={activeTab}>
                                 <div className=" flex flex-row bg-[#fff] items-center self-center justify-center">
                                     <input

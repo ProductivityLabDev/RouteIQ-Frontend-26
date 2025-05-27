@@ -8,6 +8,8 @@ const CreateAccessCard = ({ setCreateAccess }) => {
         setForms((prev) => [...prev, Date.now()]);
     };
     return (
+        <>
+        <h2 className="text=[#202224] text-[32px] font-bold mt-4 mb-4 font-[Nunito Sans]">Create Access</h2>
         <div className="bg-white rounded-lg shadow-sm p-6 w-full h-full max-h-[700px] overflow-y-auto">
             {/* Form Header */}
             <div className="grid grid-cols-3 gap-4 mb-6">
@@ -58,7 +60,7 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                                             type="radio"
                                             id={`dept-${formId}-${dept}`}
                                             name={`department-${formId}`}
-                                            className="w-4 h-4 text-gray-500 border-gray-300"
+                                            className="w-4 h-4 accent-red-600 border-gray-300"
                                         />
                                         <label htmlFor={`dept-${formId}-${dept}`} className="ml-2 text-sm text-black">
                                             {dept}
@@ -79,7 +81,7 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                                         type="radio"
                                         id={`terminal-${formId}-${num}`}
                                         name={`terminal-${formId}`}
-                                        className="w-4 h-4 text-gray-500 border-gray-300"
+                                        className="w-4 h-4 accent-red-600 border-gray-300"
                                     />
                                     <label htmlFor={`terminal-${formId}-${num}`} className="ml-2 text-sm text-black">
                                         Terminal {num}
@@ -98,7 +100,7 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                                     type="radio"
                                     id={`read-only-${formId}`}
                                     name={`control-${formId}`}
-                                    className="w-4 h-4 text-gray-500 border-gray-300"
+                                    className="w-4 h-4 accent-red-600 border-gray-300"
                                 />
                                 <label htmlFor={`read-only-${formId}`} className="ml-2 text-sm text-black">
                                     Read Only
@@ -109,7 +111,7 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                                     type="radio"
                                     id={`read-write-${formId}`}
                                     name={`control-${formId}`}
-                                    className="w-4 h-4 text-gray-500 border-gray-300"
+                                   className="w-4 h-4 accent-red-600 border-gray-300"
                                 />
                                 <label htmlFor={`read-write-${formId}`} className="ml-2 text-sm text-black">
                                     Read & Write
@@ -142,6 +144,7 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                 </Button>
             </div>
         </div>
+        </>
     );
 };
 

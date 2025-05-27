@@ -18,22 +18,22 @@ const SchoolDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
-
   const handleEditClick = () => {
     setIsEditing(true);
   };
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
-  }
+  };
+
   const handleBackClick = () => {
     setIsEditing(false);
   };
 
   const handleModalBtn = () => {
     setIsModalOpen(false);
-    navigate('/accessManagement')
-  }
+    navigate('/accessManagement');
+  };
 
   return (
     <MainLayout>
@@ -41,21 +41,21 @@ const SchoolDashboard = () => {
         <EditDashboard onBack={handleBackClick} />
       ) : (
         <div style={{ width: "100%", height: "100vh", marginTop: 12 }}>
-          <div className="flex w-[82%] justify-between flex-row h-[65px] mb-3 items-center">
+          <div className="flex w-[98.3%] justify-between flex-row h-[65px] mb-3 items-center">
             <Typography
               className="text-[23px] md:text-[38px] mt-5 ps-2"
-              sx={{ fontSize: { xs: '23px', md: '38px' }, fontWeight: 800 }}
+              sx={{ fontSize: { xs: '23px', md: '38px' }, fontWeight: 700 }}
             >
               Good Morning, Moni Roy
             </Typography>
 
-            <div className="flex flex-row gap-6 md:gap-20">
+            <div className="flex flex-row gap-6 md:gap-5">
               <ButtonComponent
                 label="Invite Link"
                 Icon={true}
                 sx={{
                   backgroundColor: colors.redColor,
-                  width: "130%",
+                  width: "300px",
                   "&:hover": {
                     backgroundColor: colors.redColor,
                   },
@@ -69,7 +69,7 @@ const SchoolDashboard = () => {
                 Icon={true}
                 sx={{
                   backgroundColor: colors.redColor,
-                  width: "130%",
+                  width: "300px",
                   "&:hover": {
                     backgroundColor: colors.redColor,
                   },
@@ -80,30 +80,34 @@ const SchoolDashboard = () => {
               />
             </div>
           </div>
-          <Grid container spacing={3}>
-            <Grid container spacing={2} className="gap-[82px]" mt={2} pl={3}>
-              <Grid item xs={12} sm={6} md={4} lg={3}>
-                <CustomCardComponent
-                  title="No. Of Vehicle"
-                  value="437"
-                  change="24 Vehicles Inactive"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={4} lg={3}>
-                <CustomCardComponent
-                  title="No. Of Schools"
-                  value="256"
-                  change="14 Schools Pending"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={4} lg={3}>
-                <CustomCardComponent
-                  title="Total Trips"
-                  value="1256"
-                  change="56 Trips Rejected"
-                />
-              </Grid>
+
+          {/* Updated Card Layout */}
+          <Grid container spacing={3} mt={2} pl={3} pr={3}>
+            <Grid item xs={12} md={4}>
+              <CustomCardComponent
+                title="No. Of Vehicle"
+                value="437"
+                change="24 Vehicles Inactive"
+              />
             </Grid>
+            <Grid item xs={12} md={4}>
+              <CustomCardComponent
+                title="No. Of Schools"
+                value="256"
+                change="14 Schools Pending"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <CustomCardComponent
+                title="Total Trips"
+                value="1256"
+                change="56 Pending Trips"
+              />
+            </Grid>
+          </Grid>
+
+          {/* Rest of the dashboard layout */}
+          <Grid container spacing={3} mt={2} pl={3} pr={3}>
             <Grid
               item
               xs={12}
@@ -118,6 +122,7 @@ const SchoolDashboard = () => {
               <SchoolTable />
               <RoutesCard />
             </Grid>
+
             <Grid
               item
               xs={12}
@@ -136,7 +141,12 @@ const SchoolDashboard = () => {
           </Grid>
         </div>
       )}
-      <GlobalModal isOpen={isModalOpen} btnClose={handleModalBtn} onClose={() => setIsModalOpen(false)} title={'Invite Link'} />
+      <GlobalModal
+        isOpen={isModalOpen}
+        btnClose={handleModalBtn}
+        onClose={() => setIsModalOpen(false)}
+        title={'Invite Link'}
+      />
     </MainLayout>
   );
 };

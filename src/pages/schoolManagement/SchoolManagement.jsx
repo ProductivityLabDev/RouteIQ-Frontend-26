@@ -56,9 +56,9 @@ const SchoolManagement = () => {
     return (
         <MainLayout>
             <section className='w-full h-full'>
-                <div className="flex w-[96%] justify-between flex-row h-[65px] mb-3 items-center">
-                    <Typography className="text-[23px] md:text-[32px] font-[700] text-[#000] mt-5 ps-2" sx={{ fontSize: { xs: '23px', md: '38px' }, fontWeight: 800 }}>School Management</Typography>
-                    <Button className="mt-8 px-8 py-2.5 bg-[#C01824] text-[14px] capitalize rounded-[6px]" variant='filled' size='lg' onClick={handleOpenPopUp}>
+                <div className="flex w-[100%] justify-between flex-row mt-5 mb-8 items-center">
+                    <Typography className="text-[23px] md:text-[32px] font-[700] text-[#000] mt-5 ps-2" sx={{ fontSize: { xs: '23px', md: '38px' }, fontWeight: 700 }}>School Management</Typography>
+                    <Button className="mt-5 px-8 py-2.5 bg-[#C01824] text-[14px] font-semibold capitalize rounded-[6px]" variant='filled' size='lg' onClick={handleOpenPopUp}>
                         Add School
                     </Button>
                 </div>

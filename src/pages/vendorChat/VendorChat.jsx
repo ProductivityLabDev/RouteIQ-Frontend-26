@@ -96,9 +96,9 @@ export function VendorChat() {
                 </div>
                 <div className="w-full space-y-4">
                     <div className="w-full bg-white rounded shadow-sm mb-4">
-                        <div className="flex items-center justify-between px-4 py-3 cursor-pointer" onClick={() => toggleAccordion('parent')}>
+                        <div className="flex items-center justify-between border border-[#D6D6D6] rounded px-4 py-4 cursor-pointer" onClick={() => toggleAccordion('parent')}>
                             <div className="flex items-center space-x-3">
-                                <span className="text-gray-600">
+                                <span className="text-[#202224]">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                     </svg>
@@ -111,7 +111,7 @@ export function VendorChat() {
                             <div className="flex items-center">
                                 <button className="text-black">
                                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform duration-200 ${openAccordions.parent ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
                             </div>
@@ -123,22 +123,22 @@ export function VendorChat() {
                                 <div className="space-y-2">
                                     {['School', 'Driver', 'Terminal'].map((title, index) => (
                                         <div key={index} className="bg-white shadow-sm">
-                                            <div className="flex items-center justify-between px-4 py-3 cursor-pointer">
+                                            <div className="flex items-center justify-between border border-[#D6D6D6] rounded px-4 py-4 cursor-pointer">
                                                 <div className="flex items-center space-x-3">
-                                                    <span className="text-gray-600">
+                                                    <span className="text-[#202224]">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                                         </svg>
                                                     </span>
                                                     <h2 className="font-medium text-gray-800">{title}</h2>
-                                                    <button>
+                                                    <button onClick={() => toggleNested(title)}>
                                                         <img src={BlackPencilEdit} />
                                                     </button>
                                                 </div>
                                                 <div className="flex items-center">
                                                     <button className="text-black" onClick={() => toggleNested(title)}>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform duration-200 ${openAccordions.parent ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                                         </svg>
                                                     </button>
                                                 </div>
@@ -160,7 +160,7 @@ export function VendorChat() {
                         <div key={index} className="w-full bg-white rounded shadow-sm mb-4">
                             <div className="flex items-center justify-between px-4 py-3 cursor-pointer">
                                 <div className="flex items-center space-x-3">
-                                    <span className="text-gray-600">
+                                    <span className="text-[#202224]">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                         </svg>
@@ -173,7 +173,7 @@ export function VendorChat() {
                                 <div className="flex items-center">
                                     <button className="text-black">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </button>
                                 </div>
