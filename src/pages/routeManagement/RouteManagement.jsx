@@ -107,7 +107,7 @@ const RouteManagement = () => {
                 <CreateRoute onBack={handleBackClick} editRoute={isEditRoute} isEditable={isEditable} handleBackTrip={handleBackTrip} />
             ) :
                 <section className='w-full h-full'>
-                    <div className="flex w-[96%] justify-between flex-row h-[65px] mb-3 items-center">
+                    <div className="flex w-[100%] justify-between flex-row h-[65px] mb-3 items-center">
                         <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='lg'>
                             {['Route Schedules', 'Trip Planner'].map(tab => (
                                 <Button
@@ -154,10 +154,11 @@ const RouteManagement = () => {
                                             </svg>
                                         </button>
                                         <h2 className="font-medium text-gray-800 text-lg">Terminal 1</h2>
-                                        <button className="text-gray-600 hover:text-gray-800">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                            </svg>
+                                        <button className="text-gray-600 hover:text-gray-800"  onClick={() => setIsOpen(index === isOpen ? null : index)}>
+                                           <svg width="20" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                           <path d="M3.27702 20.6328C3.01105 20.6328 2.78653 20.5278 2.60348 20.318C2.42056 20.1079 2.3291 19.8503 2.3291 19.5451V17.1006C2.3291 16.8114 2.3766 16.535 2.4716 16.2714C2.56646 16.0079 2.70195 15.7753 2.87806 15.5733L13.3191 3.61121C13.4924 3.42443 13.6848 3.28132 13.8962 3.18188C14.1074 3.08244 14.3292 3.03271 14.5614 3.03271C14.7903 3.03271 15.0139 3.08244 15.2322 3.18188C15.4504 3.28132 15.6426 3.43049 15.8087 3.62938L17.1687 5.19657C17.342 5.38334 17.4694 5.60295 17.5508 5.85538C17.6322 6.10765 17.6729 6.36096 17.6729 6.61531C17.6729 6.88177 17.6322 7.13715 17.5508 7.38145C17.4694 7.62592 17.342 7.8476 17.1687 8.04648L6.74848 20.0029C6.5725 20.205 6.36966 20.3604 6.13994 20.4693C5.91035 20.5783 5.66952 20.6328 5.41744 20.6328H3.27702ZM14.5556 7.94823L15.7222 6.61531L14.5506 5.26517L13.3789 6.60384L14.5556 7.94823Z" fill="#1C1B1F"/>
+                                           </svg>
+
                                         </button>
 
                                     </div>
@@ -166,16 +167,16 @@ const RouteManagement = () => {
 
                                         <button
                                             onClick={() => setIsOpen(index === isOpen ? null : index)}
-                                            className="text-gray-600 hover:text-gray-800"
+                                            className="text-black hover:text-gray-800"
                                         >
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
-                                                className={`h-6 w-6 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                                                className={`h-6 w-6 transition-transform duration-200 `}
                                                 fill="none"
                                                 viewBox="0 0 24 24"
                                                 stroke="currentColor"
                                             >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </button>
                                     </div>

@@ -56,41 +56,41 @@ const EditInvoiceForm = ({ batchInvoice, }) => {
             <div className="mx-auto bg-white p-6 rounded shadow-sm border border-gray-200">
                 {/* Header Section */}
                 <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-lg font-medium">{batchInvoice ? "Trip 1 Invoice" : "Invoice # 12501"}</h2>
+                    <h2 className="font-bold text-[#333843] text-[23px]">{batchInvoice ? "Trip 1 Invoice" : "Invoice # 12501"}</h2>
                     <div className="text-right">
-                        <div className="text-sm text-gray-600">Date</div>
-                        <div>25-10-2024</div>
+                        <div className="text-[16] text-[#667085] font-medium">Date</div>
+                        <h2 className='text-[20px] font-bold text-[#333843]'>25-10-2024</h2>
                     </div>
                 </div>
 
-                <hr className="border-t border-gray-200 my-4" />
+                <hr className="border-t border-[#C2C2C2] my-4" />
 
                 {/* Top Form Fields */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
                     <div>
-                        <label className="block text-sm mb-1">GL Code</label>
-                        <input type="text" className="w-full outline-none border border-gray-300 rounded p-2" />
+                        <label className="block text-[14] mb-1 text-[#333843] font-bold">GL Code</label>
+                        <input type="text" className="w-full outline-none border border-[#C1C1C1] rounded p-2" />
                     </div>
 
                     <div>
-                        <label className="block text-sm mb-1">Bill From</label>
-                        <input type="text" className="w-full outline-none border border-gray-300 rounded p-2" />
+                        <label className="block text-[14] text-[#333843] font-bold mb-1">Bill From</label>
+                        <input type="text" className="w-full outline-none border border-[#C1C1C1] rounded p-2" />
                     </div>
 
                     <div>
-                        <label className="block text-sm mb-1">Bill To</label>
-                        <input type="text" className="w-full outline-none border border-gray-300 rounded p-2" />
+                        <label className="block text-[14] text-[#333843] font-bold mb-1">Bill To</label>
+                        <input type="text" className="w-full outline-none border border-[#C1C1C1] rounded p-2" />
                     </div>
                     {!batchInvoice && (
                         <>
                             <div>
-                                <label className="block text-sm mb-1">Type</label>
-                                <input type="text" className="w-full outline-none border border-gray-300 rounded p-2" />
+                                <label className="block text-[14] text-[#333843] font-bold mb-1">Type</label>
+                                <input type="text" className="w-full outline-none border border-[#C1C1C1] rounded p-2" />
                             </div>
 
                             <div className="relative">
-                                <label className="block text-sm mb-1">No of Buses</label>
-                                <input type="text" className="w-full outline-none border border-gray-300 rounded p-2" />
+                                <label className="block text-[14] text-[#333843] font-bold mb-1">No of Buses</label>
+                                <input type="text" className="w-full outline-none border border-[#C1C1C1] rounded p-2" />
                             </div>
                             <button className=" right-0 top-7 text-[#C01824] mr-2">
                                 <FiPlus size={20} />
@@ -99,19 +99,19 @@ const EditInvoiceForm = ({ batchInvoice, }) => {
                     )}
                 </div>
 
-                <hr className="border-t border-gray-200 my-4" />
+                <hr className="border-t border-[#C2C2C2] my-4" />
 
                 {/* Line Items Table */}
                 <div className="mb-6">
                     <div className="w-full bg-white rounded border border-gray-200 overflow-hidden">
                         {/* Header Row */}
-                        <div className="grid grid-cols-6 gap-2 bg-gray-100 p-4">
-                            <div className="font-medium">#</div>
-                            <div className="font-medium">GL Code</div>
-                            <div className="font-medium">Unit Price</div>
-                            <div className="font-medium">Mileage</div>
-                            <div className="font-medium">Total Cost</div>
-                            <div className="font-medium flex items-center justify-center">Action</div>
+                        <div className="grid grid-cols-6 gap-2 bg-[#EEEEEE] p-4">
+                            <div className="font-bold text-[#141516] text-[14]">S. No</div>
+                            <div className="font-bold text-[#141516] text-[14]">GL Code</div>
+                            <div className="font-bold text-[#141516] text-[14]">Unit Price</div>
+                            <div className="font-bold text-[#141516] text-[14]">Mileage</div>
+                            <div className="font-bold text-[#141516] text-[14]">Total Cost</div>
+                            <div className="font-bold text-[#141516] text-[14] flex items-center justify-center">Action</div>
                         </div>
 
 
@@ -183,7 +183,7 @@ const EditInvoiceForm = ({ batchInvoice, }) => {
                 <div className="flex justify-end">
                     <div className="w-1/2">
                         <div className="flex justify-end gap-1 items-center mb-2">
-                            <div className="font-medium">Total:</div>
+                            <div className="font-bold text-[#141516] text-[18]">Total:</div>
                             <div className="flex items-center">
                                 <span className="mr-2">$</span>
                                 <input type="text" value="2561000" className="outline-none border border-gray-300 rounded p-1 w-24" />
@@ -191,7 +191,7 @@ const EditInvoiceForm = ({ batchInvoice, }) => {
                         </div>
 
                         <div className="flex justify-end gap-1 items-center mb-2">
-                            <div className="font-medium">Total Tax<span className="text-xs">(6%)</span>:</div>
+                            <div className="font-bold text-[#141516] text-[18]">Total Tax<span className="text-xs">(6%)</span>:</div>
                             <div className="flex items-center">
                                 <span className="mr-2">$</span>
                                 <input type="text" value="100" className="outline-none border border-gray-300 rounded p-1 w-24" />
@@ -203,9 +203,9 @@ const EditInvoiceForm = ({ batchInvoice, }) => {
                         </div>
 
                         <div className="flex justify-end gap-1 items-center">
-                            <div className="font-medium">Grand Total:</div>
+                            <div className="font-bold text-[#141516] text-[18]">Grand Total:</div>
                             <div className="flex items-center">
-                                <span className="mr-2">$ 5200000</span>
+                                <span className="mr-2 text-[#141516] text-[18] font-medium">$ 5200000</span>
                             </div>
                         </div>
                         {batchInvoice && (

@@ -69,6 +69,11 @@ export function SignIn() {
   const handleEmployeeLogin = () => {
     navigate("/EmployeeDashboard");
   };
+
+  const handleVendorLogin = () => {
+    navigate("/dashboard");
+  };
+
   return (
     <>
       {loading && <Loader />}
@@ -168,7 +173,10 @@ export function SignIn() {
               LOG IN
             </Button>
             <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleEmployeeLogin}            >
-              LOG AS A Employee
+              LOGIN AS A EMPLOYEE
+            </Button>
+             <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleVendorLogin}            >
+              LOGIN AS A VENDOR
             </Button>
           </form>
         </div>

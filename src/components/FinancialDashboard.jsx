@@ -51,57 +51,57 @@ export default function FinancialDashboard({ selectedTab }) {
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 {/* Year Selector */}
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
+                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-8">
                     <div className="bg-[#C01824] text-white p-2 rounded mr-3">
-                        <img src={JanCalenderFrame} />
+                         <img src={CalenderTickFrame} width="30" /> 
                     </div>
                     <div>
-                        <div className="text-xs text-gray-500">Year</div>
+                        <div className="text-xs text-[#565656] text-[14px] font-bold">Year</div>
                         <div className="flex items-center">
-                            <span className="font-medium">2024</span>
+                            <span className="font-medium text-[#141516] text-[33px]">2024</span>
                             <FaCaretDown className="ml-1 text-gray-600" />
                         </div>
                     </div>
                 </div>
 
                 {/* Month Selector */}
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
+                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-8">
                     <div className="bg-[#C01824] text-red-600 p-2 rounded mr-3">
-                        <img src={CalenderTickFrame} />
+                      <img src={JanCalenderFrame} width="30"/>
                     </div>
                     <div>
-                        <div className="text-xs text-gray-500">Month</div>
+                        <div className="text-[#565656] text-[14px] font-bold">Month</div>
                         <div className="flex items-center">
-                            <span className="font-medium">August</span>
+                            <span className="font-medium text-[#141516] text-[33px]">August</span>
                             <FaCaretDown className="ml-1 text-gray-600" />
                         </div>
                     </div>
                 </div>
                 {/* Gross Income */}
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
+                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-8">
                     <div className="bg-[#C01824] text-green-600 p-2 rounded mr-3">
-                        <img src={downArrow} />
+                        <img src={downArrow} width="30"/>
                     </div>
                     <div>
                         <div className="flex items-center">
-                            <div className="text-xs text-gray-500">Gross Income</div>
+                            <div className="text-[#565656] text-[14px] font-bold">Gross Income</div>
                             <span className="text-xs ml-2 px-1 bg-green-100 text-green-600 rounded">+10%</span>
                         </div>
-                        <div className="font-medium">$41,210</div>
+                        <div className="font-medium text-[#141516] text-[33px]">$41,210</div>
                     </div>
                 </div>
 
                 {/* Net Income */}
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
+                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-8">
                     <div className="bg-[#C01824] text-red-600 p-2 rounded mr-3">
-                        <img src={rightUpArrow} />
+                        <img src={rightUpArrow} width="30"/>
                     </div>
                     <div>
                         <div className="flex items-center">
-                            <div className="text-xs text-gray-500">Net Income</div>
+                            <div className="text-[14px] text-[#565656] font-bold">Net Income</div>
                             <span className="text-xs ml-2 px-1 bg-red-100 text-red-600 rounded">-2%</span>
                         </div>
-                        <div className="font-medium">$41,210</div>
+                        <div className="font-medium text-[#141516] text-[33px]">$41,210</div>
                     </div>
                 </div>
             </div>
@@ -119,38 +119,38 @@ export default function FinancialDashboard({ selectedTab }) {
                         </div>
 
                         {/* ASSETS Section */}
-                        <div className="text-center font-bold bg-white py-2 mb-2">ASSETS</div>
+                        <div className="text-center font-bold bg-white py-2 mb-2 text-[#141516] text-[18px]">ASSETS</div>
 
                         {/* Current Assets */}
                         <div className="bg-gray-200 p-2 mb-1">
-                            <div className="font-semibold">Current assets</div>
+                            <div className="font-bold text-[#141516]">Current assets</div>
                         </div>
 
                         {Array(6).fill(0).map((_, index) => (
                             <div key={`current-asset-${index}`} className="flex justify-between py-1 px-2 bg-gray-100">
-                                <div className="text-sm">GLR-101-01. Marketable securities</div>
-                                <div className="text-sm">$ 30,816</div>
+                                <div className="text-sm text-[#141516] font-semibold">GLR-101-01. Marketable securities</div>
+                                <div className="text-sm text-[#141516] font-semibold">$ 30,816</div>
                             </div>
                         ))}
 
-                        <div className="flex justify-between py-2 px-2 font-bold text-red-600">
+                        <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                             <div>Total current assets</div>
                             <div>$ 143,713</div>
                         </div>
 
                         {/* Non-Current Assets */}
                         <div className="bg-gray-200 p-2 mb-1">
-                            <div className="font-semibold">Non-Current assets</div>
+                            <div className="font-bold text-[#141516]">Non-Current assets</div>
                         </div>
 
                         {Array(5).fill(0).map((_, index) => (
                             <div key={`non-current-asset-${index}`} className="flex justify-between py-1 px-2 bg-gray-100">
-                                <div className="text-sm">GLR-101-01. Marketable securities</div>
-                                <div className="text-sm">$ 30,816</div>
+                                <div className="text-sm text-[#141516] font-semibold">GLR-101-01. Marketable securities</div>
+                                <div className="text-sm text-[#141516] font-semibold">$ 30,816</div>
                             </div>
                         ))}
 
-                        <div className="flex justify-between py-2 px-2 font-bold text-red-600">
+                        <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                             <div>Total current assets</div>
                             <div>$ 143,713</div>
                         </div>
@@ -160,17 +160,17 @@ export default function FinancialDashboard({ selectedTab }) {
 
                         {/* Current Liabilities */}
                         <div className="bg-gray-200 p-2 mb-1">
-                            <div className="font-semibold">Current Liabilities</div>
+                            <div className="font-bold text-[#141516]">Current Liabilities</div>
                         </div>
 
                         {Array(5).fill(0).map((_, index) => (
                             <div key={`current-liability-${index}`} className="flex justify-between py-1 px-2 bg-gray-100">
-                                <div className="text-sm">GLR-101-01. Marketable securities</div>
-                                <div className="text-sm">$ 30,816</div>
+                                <div className="text-sm text-[#141516] font-semibold">GLR-101-01. Marketable securities</div>
+                                <div className="text-sm text-[#141516] font-semibold">$ 30,816</div>
                             </div>
                         ))}
 
-                        <div className="flex justify-between py-2 px-2 font-bold text-red-600">
+                        <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                             <div>Total current liability</div>
                             <div>$ 143,713</div>
                         </div>
@@ -182,12 +182,12 @@ export default function FinancialDashboard({ selectedTab }) {
 
                         {Array(3).fill(0).map((_, index) => (
                             <div key={`non-current-liability-${index}`} className="flex justify-between py-1 px-2 bg-gray-100">
-                                <div className="text-sm">GLR-101-01. Marketable securities</div>
-                                <div className="text-sm">$ 30,816</div>
+                                <div className="text-sm text-[#141516] font-semibold">GLR-101-01. Marketable securities</div>
+                                <div className="text-sm text-[#141516] font-semibold">$ 30,816</div>
                             </div>
                         ))}
 
-                        <div className="flex justify-between py-2 px-2 font-bold text-red-600">
+                        <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                             <div>Total current assets</div>
                             <div>$ 143,713</div>
                         </div>
@@ -284,68 +284,68 @@ export default function FinancialDashboard({ selectedTab }) {
                     {/* Income Statement */}
                     <div className="bg-white rounded-lg shadow-sm p-4">
                         <div className="flex items-center justify-between  mb-4">
-                            <p className="mb-0 text-center font-medium text-black-700">CONSOLIDATED INCOME STATEMENTS</p>
+                            <p className="mb-0 text-center font-bold text-[14px] text-[#141516]">CONSOLIDATED INCOME STATEMENTS</p>
                             <p className='flex items-center text-[#C01824] font-bold'><img src={penicon} /> Edit</p>
                         </div>
 
                         <table className="w-full text-sm">
                             {/* Revenues Section */}
                             <thead>
-                                <tr className="bg-gray-300">
-                                    <th className="text-left p-2 font-medium text-red-600">Revenues</th>
+                                <tr className="bg-[#CCC9C9]">
+                                    <th className="text-left p-2 font-bold text-[#C01824] text-[18px]">Revenues</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="border-b border-gray-200">
-                                    <td className="p-2 text-gray-600">Cost of sales</td>
-                                    <td className="p-2 text-right">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#EFEEEE]">
+                                    <td className="p-2 text-[#141516] text-[14px] font-semibold">Cost of sales</td>
+                                    <td className="p-2 text-right text-[#141516] text-[14px] font-semibold">$ 38,016</td>
                                 </tr>
-                                <tr className="border-b border-gray-200 bg-gray-100">
-                                    <td className="p-2 text-gray-600">Fulfillment</td>
-                                    <td className="p-2 text-right">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#CCC9C9]">
+                                    <td className="p-2  text-[#141516] text-[14px] font-semibold">Fulfillment</td>
+                                    <td className="p-2 text-right text-[#141516] text-[14px] font-semibold">$ 38,016</td>
                                 </tr>
-                                <tr className="border-b border-gray-200 bg-gray-300">
-                                    <td className="p-2 font-medium">Total Revenues</td>
-                                    <td className="p-2 text-right text-red-600 font-medium">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#EFEEEE]">
+                                    <td className="p-2  text-[#141516] text-[14px] font-bold">Total Revenues</td>
+                                    <td className="p-2 text-right text-[#C01824] font-bold text-[18px]">$ 38,016</td>
                                 </tr>
                             </tbody>
 
                             {/* Expenses Section */}
                             <thead>
-                                <tr className="bg-gray-300">
-                                    <th className="text-left p-2 font-medium text-red-600">Expenses</th>
+                                <tr className="bg-[#CCC9C9]">
+                                    <th className="text-left p-2 font-bold text-[#C01824] text-[18px]">Expenses</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="border-b border-gray-200">
-                                    <td className="p-2 text-gray-600">Rent expense</td>
-                                    <td className="p-2 text-right">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#EFEEEE]">
+                                    <td className="p-2 text-[#141516] text-[14px] font-semibold">Rent expense</td>
+                                    <td className="p-2 text-right text-[#141516] text-[14px] font-semibold">$ 38,016</td>
                                 </tr>
-                                <tr className="border-b border-gray-200">
-                                    <td className="p-2 text-gray-600">Supplies expense</td>
-                                    <td className="p-2 text-right">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#CCC9C9]">
+                                    <td className="p-2 text-[#141516] text-[14px] font-semibold ">Supplies expense</td>
+                                    <td className="p-2 text-right text-[#141516] text-[14px] font-semibold">$ 38,016</td>
                                 </tr>
-                                <tr className="border-b border-gray-200 bg-gray-100">
-                                    <td className="p-2 text-gray-600">Operating Income</td>
-                                    <td className="p-2 text-right">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#EFEEEE]">
+                                    <td className="p-2 text-[#141516] text-[14px] font-semibold">Operating Income</td>
+                                    <td className="p-2 text-right text-[#141516] text-[14px] font-semibold">$ 38,016</td>
                                 </tr>
-                                <tr className="border-b border-gray-200">
-                                    <td className="p-2 text-gray-600">Interest income</td>
-                                    <td className="p-2 text-right">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#CCC9C9]">
+                                    <td className="p-2  text-[#141516] text-[14px] font-semibold">Interest income</td>
+                                    <td className="p-2 text-right text-[#141516] text-[14px] font-semibold">$ 38,016</td>
                                 </tr>
-                                <tr className="border-b border-gray-200 bg-gray-100">
-                                    <td className="p-2 text-gray-600">Interest expense</td>
-                                    <td className="p-2 text-right">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#EFEEEE]">
+                                    <td className="p-2 text-[#141516] text-[14px] font-semibold">Interest expense</td>
+                                    <td className="p-2 text-right text-[#141516] text-[14px] font-semibold">$ 38,016</td>
                                 </tr>
-                                <tr className="border-b border-gray-200 bg-gray-300">
-                                    <td className="p-2 font-medium">Total Expense</td>
-                                    <td className="p-2 text-right text-red-600 font-medium">$ 38,016</td>
+                                <tr className="border-b border-gray-200 bg-[#CCC9C9]">
+                                    <td className="p-2 font-bold text-[#141516] text-[14px]">Total Expense</td>
+                                    <td className="p-2 text-right text-[#C01824] font-bold text-[18px]">$ 38,016</td>
                                 </tr>
-                                <tr className="bg-gray-300">
-                                    <td className="p-2 font-medium">Net Income</td>
-                                    <td className="p-2 text-right text-red-600 font-medium">$ 38,016</td>
+                                <tr className="bg-[#EFEEEE]">
+                                    <td className="p-2 font-bold text-[#C01824] text-[18px]">Net Income</td>
+                                    <td className="p-2 text-right text-[#C01824] font-bold text-[18px]">$ 38,016</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -364,7 +364,7 @@ export default function FinancialDashboard({ selectedTab }) {
                         </div>
                         <div className="bg-white rounded-lg shadow-sm p-4">
                             <div className="flex justify-between items-center mb-4">
-                                <div className="font-medium text-gray-700">Overview</div>
+                                <div className="font-medium text-[#141516] text-[20px]">Overview</div>
                                 <div className="flex mb-2 text-xs">
                                     <div className="flex items-center mr-4">
                                         <div className="w-2 h-2 rounded-full bg-[#C01824] mr-1"></div>
@@ -421,17 +421,17 @@ export default function FinancialDashboard({ selectedTab }) {
                         </div>
                         <div className="bg-white rounded-lg shadow-sm p-4">
                             <div className="flex justify-between items-center mb-4">
-                                <div className="font-medium text-gray-700">Total Revenue</div>
+                                <div className="font-bold text-[#000000E5] text-[14px]">Total Revenue</div>
                             </div>
 
                             <div className="h-48">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={barChartData} barGap={4}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <BarChart data={barChartData} barGap={30}>
+                                        <CartesianGrid strokeDasharray="1" vertical={false} />
                                         <XAxis dataKey="month" axisLine={false} tickLine={false} />
                                         <YAxis axisLine={false} tickLine={false} />
-                                        <Bar dataKey="revenue" fill="#EF4444" radius={[2, 2, 0, 0]} />
-                                        <Bar dataKey="expenses" fill="#6B7280" radius={[2, 2, 0, 0]} />
+                                        <Bar dataKey="revenue" fill="#EF4444" radius={[30, 30, 30, 30]} />
+                                        <Bar dataKey="expenses" fill="#6B7280" radius={[30, 30, 30, 30]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>

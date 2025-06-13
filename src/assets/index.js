@@ -221,6 +221,11 @@ import clock from './clock.png'
 import homeclock from './homeclock.png'
 import signal from './signal.png'
 import payroll from './payroll.png'
+import AnimalIcon from './animalIcon.png'
+
+
+
+
 export {
     greentickicon,
     licenseimg,
@@ -443,6 +448,7 @@ export {
     clock,
     homeclock,
     signal,
-    payroll
+    payroll,
+    AnimalIcon,
     
 }

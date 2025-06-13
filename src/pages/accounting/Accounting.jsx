@@ -109,7 +109,7 @@ const Accounting = () => {
     };
     return (
         <MainLayout>
-            <section className='w-full h-full'>
+            <section className='w-full h-full mt-8'>
                 {createBatchInvoice || createInvoice ?
                     <div className='w-full'>
                         <div className="flex justify-between items-center my-3 pb-2">
@@ -119,7 +119,7 @@ const Accounting = () => {
                                         Create Invoice
                                     </h2>
                                     {batchInvoice &&
-                                        <h2 className="text-[22px] ps-12 lg:text-[26px] xl:text-[29px] mx-3 font-bold text-black">
+                                        <h2 className="text-[22px] ps-5 lg:text-[26px] xl:text-[29px] mx-3 font-bold text-black">
                                             Invoice # 12501
                                         </h2>
                                     }
@@ -233,37 +233,37 @@ const Accounting = () => {
                             </div>
                             {selectedTab === 'Subscription' &&
                                 <div className="bg-white rounded-lg shadow-md p-4 w-full">
-                                    <div className="overflow-x-auto mt-4 border border-gray-200 rounded h-[40vh] lg:h-[38vh]">
+                                    <div className="overflow-x-auto mt-4 border border-[#DDDDE1] rounded h-[40vh] lg:h-[38vh]">
                                         <table className="min-w-full text-[10px] md:text-[12px]">
                                             <thead className="bg-[#EEEEEE]">
                                                 <tr>
-                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[12px] lg:text-[14px] font-bold text-black">
+                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[14px] lg:text-[14px] font-bold text-[#141516]">
                                                         Date
                                                     </th>
-                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[12px] lg:text-[14px] font-bold text-black">
+                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[14px] lg:text-[14px] font-bold text-[#141516]">
                                                         Description
                                                     </th>
-                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[12px] lg:text-[14px] font-bold text-black">
+                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[14px] lg:text-[14px] font-bold text-[#141516]">
                                                         Invoice Total
                                                     </th>
-                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[12px] lg:text-[14px] font-bold text-black">
+                                                    <th className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-left text-[10px] md:text-[14px] lg:text-[14px] font-bold text-[#141516]">
                                                         Status
                                                     </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {InvoicesData.map((invoice, index) => (
-                                                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-[10px] md:text-[12px] font-semibold text-[#141516]">
+                                                    <tr key={index} className='bg-white'>
+                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b border-[#D9D9D9] text-[14px] md:text-[14px] font-semibold text-[#141516]">
                                                             {invoice.date}
                                                         </td>
-                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-[10px] md:text-[12px] font-semibold text-[#141516]">
+                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b border-[#D9D9D9] text-[14px] md:text-[14px] font-semibold text-[#141516]">
                                                             {invoice.desc}
                                                         </td>
-                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-[10px] md:text-[12px] font-semibold text-[#141516]">
+                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b border-[#D9D9D9] text-[14px] md:text-[14px] font-semibold text-[#141516]">
                                                             {invoice.invoiceTotal}
                                                         </td>
-                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-[10px] md:text-[12px] font-semibold">
+                                                        <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b border-[#D9D9D9] text-[14px] md:text-[14px] font-semibold">
                                                             <div className="flex flex-col items-center w-[35]">
                                                                 <span className="text-black font-bold self-start">Paid</span>
                                                                 <button className="text-[#C01824] text-[10px] md:text-[12px] mt-1 hover:text-red-800 focus:outline-none self-start" onClick={() => setInvoiceForm(!invoiceForm)}>
@@ -280,42 +280,42 @@ const Accounting = () => {
                             }
                             {schoolData ?
                                 <div className="w-full p-4 bg-white h-[66vh] rounded-xl">
-                                    <div className="bg-white shadow-md rounded-xl w-full h-[45vh] overflow-hidden border border-gray-200">
+                                    <div className="bg-white shadow-md rounded-xl w-full h-[45vh] overflow-hidden border border-[#D9D9D9]">
                                         <div className="w-full overflow-x-auto">
                                             <table className="w-full border-collapse">
                                                 <thead>
                                                     <tr className="bg-gray-100">
-                                                        <th className="p-3 border-b border-gray-200">
+                                                        <th className="p-3 border-b border-[#D9D9D9]">
                                                             <input type="checkbox" className="w-4 h-4" />
                                                         </th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Date</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Invoice#</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Bill To</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">GL Code#</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Type</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Miles per Rate</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Invoice Total</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Invoice</th>
-                                                        <th className="p-3 text-left font-medium text-gray-700 border-b border-gray-200">Action</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Date</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Invoice#</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Bill To</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">GL Code#</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Type</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Miles per Rate</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Invoice Total</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Invoice</th>
+                                                        <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {schoolInvoices.map((invoice, index) => (
-                                                        <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                                            <td className="p-3 border-b flex justify-center items-center border-gray-200">
+                                                        <tr key={index} className="bg-whit">
+                                                            <td className="p-8 border-b flex justify-center items-center border-[#D9D9D9]">
                                                                 <input type="checkbox" className="w-4 h-4" />
                                                             </td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.date}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.invoiceNumber}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.billTo}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.glCode}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.type}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.milesPerRate}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.invoiceTotal}</td>
-                                                            <td className="p-3 border-b border-gray-200">
+                                                            <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">{invoice.date}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">{invoice.invoiceNumber}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">{invoice.billTo}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">{invoice.glCode}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">{invoice.type}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">{invoice.milesPerRate}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">{invoice.invoiceTotal}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9]">
                                                                 <a className="text-[#C01824] font-bold cursor-pointer" onClick={handleInvoiceList}>View</a>
                                                             </td>
-                                                            <td className="p-3 border-b border-gray-200">
+                                                            <td className="p-3 border-b border-[#D9D9D9]">
                                                                 <button className="text-red-500" aria-label="Delete">
                                                                     <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
                                                                 </button>
@@ -331,8 +331,8 @@ const Accounting = () => {
                                 selectedTab === 'School Invoices' &&
                                 <div className="w-full space-y-4">
                                     {[...Array(4)].map((_, index) => (
-                                        <div className="w-full bg-white border-b border-gray-200 shadow-sm">
-                                            <div className="flex items-center justify-between px-4 py-2">
+                                        <div className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
+                                            <div className="flex items-center justify-between px-4 py-4 border rounded-md border-[#D9D9D9]">
                                                 <div className="flex items-center space-x-3">
                                                     <button className="text-gray-600 hover:text-gray-800">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -341,9 +341,10 @@ const Accounting = () => {
                                                     </button>
                                                     <h2 className="font-medium text-gray-800 text-lg">Terminal {index + 1}</h2>
                                                     <button className="text-gray-600 hover:text-gray-800">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                        </svg>
+                                                      <svg width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                      <path d="M3.78276 17.6688C3.51278 17.6688 3.28488 17.5774 3.09907 17.3945C2.91339 17.2114 2.82056 16.9869 2.82056 16.7209V14.5905C2.82056 14.3384 2.86877 14.0975 2.9652 13.8678C3.06149 13.6382 3.19902 13.4354 3.37779 13.2595L13.9762 2.83425C14.1521 2.67147 14.3474 2.54674 14.562 2.46008C14.7764 2.37341 15.0015 2.33008 15.2372 2.33008C15.4695 2.33008 15.6965 2.37341 15.9181 2.46008C16.1396 2.54674 16.3347 2.67675 16.5033 2.85008L17.8838 4.21591C18.0597 4.37869 18.189 4.57008 18.2716 4.79008C18.3542 5.00994 18.3956 5.2307 18.3956 5.45237C18.3956 5.68459 18.3542 5.90716 18.2716 6.12008C18.189 6.33313 18.0597 6.52633 17.8838 6.69966L7.30654 17.1199C7.12791 17.296 6.92201 17.4315 6.68882 17.5263C6.45578 17.6213 6.21132 17.6688 5.95543 17.6688H3.78276ZM15.2313 6.61404L16.4155 5.45237L15.2262 4.2757L14.0369 5.44237L15.2313 6.61404Z" fill="#1C1B1F"/>
+                                                      </svg>
+
                                                     </button>
 
                                                 </div>
@@ -351,7 +352,7 @@ const Accounting = () => {
 
                                                     <button
                                                         onClick={() => setIsOpen(index === isOpen ? null : index)}
-                                                        className="text-gray-600 hover:text-gray-800"
+                                                        className="text-black hover:text-gray-800"
                                                     >
                                                         <svg
                                                             xmlns="http://www.w3.org/2000/svg"
@@ -360,7 +361,7 @@ const Accounting = () => {
                                                             viewBox="0 0 24 24"
                                                             stroke="currentColor"
                                                         >
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                                         </svg>
                                                     </button>
                                                 </div>
@@ -388,19 +389,20 @@ const Accounting = () => {
                             {selectedTab === 'Trip invoices' &&
                                 <div className="w-full space-y-4">
                                     {[...Array(4)].map((_, index) => (
-                                        <div className="w-full bg-white border-b border-gray-200 shadow-sm">
-                                            <div className="flex items-center justify-between px-4 py-2">
+                                        <div className="w-full bg-white border-b  shadow-sm">
+                                            <div className="flex items-center justify-between px-4 py-4 border rounded-md border-[#D6D6D6]">
                                                 <div className="flex items-center space-x-3">
-                                                    <button className="text-gray-600 hover:text-gray-800">
+                                                    <button className="text-[#000]">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 6h16M4 12h16M4 18h16" />
                                                         </svg>
                                                     </button>
                                                     <h2 className="font-medium text-gray-800 text-lg">Terminal {index + 1}</h2>
                                                     <button className="text-gray-600 hover:text-gray-800">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        <svg width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M3.78276 17.6688C3.51278 17.6688 3.28488 17.5774 3.09907 17.3945C2.91339 17.2114 2.82056 16.9869 2.82056 16.7209V14.5905C2.82056 14.3384 2.86877 14.0975 2.9652 13.8678C3.06149 13.6382 3.19902 13.4354 3.37779 13.2595L13.9762 2.83425C14.1521 2.67147 14.3474 2.54674 14.562 2.46008C14.7764 2.37341 15.0015 2.33008 15.2372 2.33008C15.4695 2.33008 15.6965 2.37341 15.9181 2.46008C16.1396 2.54674 16.3347 2.67675 16.5033 2.85008L17.8838 4.21591C18.0597 4.37869 18.189 4.57008 18.2716 4.79008C18.3542 5.00994 18.3956 5.2307 18.3956 5.45237C18.3956 5.68459 18.3542 5.90716 18.2716 6.12008C18.189 6.33313 18.0597 6.52633 17.8838 6.69966L7.30654 17.1199C7.12791 17.296 6.92201 17.4315 6.68882 17.5263C6.45578 17.6213 6.21132 17.6688 5.95543 17.6688H3.78276ZM15.2313 6.61404L16.4155 5.45237L15.2262 4.2757L14.0369 5.44237L15.2313 6.61404Z" fill="#1C1B1F"/>
                                                         </svg>
+
                                                     </button>
 
                                                 </div>
@@ -408,7 +410,7 @@ const Accounting = () => {
 
                                                     <button
                                                         onClick={() => setIsTripInvoice(index === isTripInvoice ? null : index)}
-                                                        className="text-gray-600 hover:text-gray-800"
+                                                        className="text-black"
                                                     >
                                                         <svg
                                                             xmlns="http://www.w3.org/2000/svg"
@@ -417,7 +419,7 @@ const Accounting = () => {
                                                             viewBox="0 0 24 24"
                                                             stroke="currentColor"
                                                         >
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                                                         </svg>
                                                     </button>
                                                 </div>
@@ -468,37 +470,37 @@ const Accounting = () => {
                                                     <table className="w-full border-collapse">
                                                         <thead>
                                                             <tr className="bg-gray-100">
-                                                                <th className="p-3 border-b border-gray-200">
+                                                                <th className="p-3 border-b border-[#EEEEEE]">
                                                                     <input type="checkbox" className="w-4 h-4" />
                                                                 </th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Date</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Invoice#</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Bill To</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">GL Code#</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Type</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Miles per Rate</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Invoice Total</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Invoice</th>
-                                                                <th className="p-3 text-left font-medium text-black border-b border-gray-200">Action</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Date</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Invoice#</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Bill To</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">GL Code#</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Type</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Miles per Rate</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Invoice Total</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Invoice</th>
+                                                                <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Action</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {schoolInvoices.map((invoice, index) => (
-                                                                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                                                    <td className="p-3 border-b flex justify-center items-center border-gray-200">
+                                                                <tr key={index} className="bg-white">
+                                                                    <td className="p-8   border-b flex justify-center items-center border-[#D9D9D9]">
                                                                         <input type="checkbox" className="w-4 h-4" />
                                                                     </td>
-                                                                    <td className="p-3 border-b border-gray-200">{invoice.date}</td>
-                                                                    <td className="p-3 border-b border-gray-200">{invoice.invoiceNumber}</td>
-                                                                    <td className="p-3 border-b border-gray-200">{invoice.billTo}</td>
-                                                                    <td className="p-3 border-b border-gray-200">{invoice.glCode}</td>
-                                                                    <td className="p-3 border-b border-gray-200">{invoice.type}</td>
-                                                                    <td className="p-3 border-b border-gray-200">{invoice.milesPerRate}</td>
-                                                                    <td className="p-3 border-b border-gray-200">{invoice.invoiceTotal}</td>
-                                                                    <td className="p-3 border-b border-gray-200">
+                                                                    <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.date}</td>
+                                                                    <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceNumber}</td>
+                                                                    <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.billTo}</td>
+                                                                    <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.glCode}</td>
+                                                                    <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.type}</td>
+                                                                    <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.milesPerRate}</td>
+                                                                    <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceTotal}</td>
+                                                                    <td className="p-3 border-b border-[#D9D9D9]">
                                                                         <a className="text-[#C01824] font-bold cursor-pointer" onClick={handleInvoiceList}>View</a>
                                                                     </td>
-                                                                    <td className="p-3 border-b border-gray-200">
+                                                                    <td className="p-3 border-b border-[#D9D9D9]">
                                                                         <button className="text-red-500" aria-label="Delete">
                                                                             <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
                                                                         </button>
@@ -527,7 +529,7 @@ const Accounting = () => {
                                 </div>
                             }
                             {selectedTab === 'GL Codes' &&
-                                <div className="w-full space-y-4">
+                                <div className="w-full space-y-4 bg-[#fff] shadow-md p-5 rounded-md">
                                     {addVendor || addExpense ?
                                         <div className="w-full text-start">
                                             <h1 className="text-[20px] text-black font-bold">{addVendor ? "Add Vendor" : "Add Expense"}</h1>
@@ -608,7 +610,7 @@ const Accounting = () => {
                                         </div>
                                     }
                                     {selectedGlCodesTab === 'Accounts Payable' && (
-                                        <div className="w-full bg-white border-b border-gray-200 shadow-sm">
+                                        <div className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
                                             {addVendor ?
                                                 <div className="max-w-3xl p-6">
                                                     <div className="grid grid-cols-2 gap-6">
@@ -812,7 +814,7 @@ const Accounting = () => {
                                     )}
                                     {selectedGlCodesTab === 'Accounts Receivable' && (
                                         <div className="w-[100%] h-[75vh] p-4 bg-white border-0 shadow-sm">
-                                            <div className="overflow-x-auto w-[100%] bg-white border-1 rounded-[12px] border-gray-200 shadow-sm">
+                                            <div className="overflow-x-auto w-[100%] bg-white border-1 rounded-[12px] border-[#D9D9D9] shadow-sm">
                                                 <table className="w-full">
                                                     <thead>
                                                         <tr className="bg-gray-100">
@@ -920,35 +922,35 @@ const Accounting = () => {
                                             <input
                                                 type="text"
                                                 placeholder="Search"
-                                                className="pl-10 pr-4 py-2 rounded-md border border-gray-200 w-52 outline-0"
+                                                className="pl-10 pr-4 py-2 rounded-md border border-[#D9D9D9] w-52 outline-0"
                                             />
                                         </div>
 
-                                        <div className="relative bg-white rounded-md border border-gray-200 flex items-center px-4 py-2 w-52">
+                                        <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
                                             <span className="text-gray-500 text-sm mr-1">Data Type : </span>
                                             <span className="font-medium">Table</span>
                                             <FaChevronDown className="ml-auto text-gray-500" />
                                         </div>
 
-                                        <div className="relative bg-white rounded-md border border-gray-200 flex items-center px-4 py-2 w-52">
+                                        <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
                                             <span className="text-gray-500 text-sm mr-1">Short by : </span>
                                             <span className="font-medium">Newest</span>
                                             <FaChevronDown className="ml-auto text-gray-500" />
                                         </div>
 
-                                        <div className="relative bg-white rounded-md border border-gray-200 flex items-center px-4 py-2 w-52">
+                                        <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
                                             <span className="text-gray-500 text-sm mr-1">Year : </span>
                                             <span className="font-medium">2024</span>
                                             <FaChevronDown className="ml-auto text-gray-500" />
                                         </div>
 
-                                        <div className="relative bg-white rounded-md border border-gray-200 flex items-center px-4 py-2 w-52">
+                                        <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
                                             <span className="text-gray-500 text-sm mr-1">Month : </span>
                                             <span className="font-medium">August</span>
                                             <FaChevronDown className="ml-auto text-gray-500" />
                                         </div>
 
-                                        <div className="relative bg-white rounded-md border border-gray-200 flex items-center px-4 py-2 w-52">
+                                        <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
                                             <span className="text-gray-500 text-sm mr-1">Category : </span>
                                             <span className="font-medium">Employees</span>
                                             <FaChevronDown className="ml-auto text-gray-500" />
@@ -958,33 +960,33 @@ const Accounting = () => {
                                     {/* Data Table */}
                                     <div className="bg-white rounded-lg shadow overflow-hidden">
                                         {/* Table Header */}
-                                        <div className="grid grid-cols-8 bg-gray-100 text-gray-800 font-medium text-sm">
-                                            <div className="py-4 px-6">Date</div>
-                                            <div className="py-4 px-6">GL Code</div>
-                                            <div className="py-4 px-6">Working Days</div>
-                                            <div className="py-4 px-6">Work Hours</div>
-                                            <div className="py-4 px-6">Present Days</div>
-                                            <div className="py-4 px-6">Absent Days</div>
-                                            <div className="py-4 px-6">Leaves</div>
-                                            <div className="py-4 px-6">Invoice Total</div>
+                                        <div className="grid grid-cols-8 bg-[#EEEEEE] text-gray-800 font-medium text-sm">
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Date</div>
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">GL Code</div>
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Working Days</div>
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Work Hours</div>
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Present Days</div>
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Absent Days</div>
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Leaves</div>
+                                            <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Invoice Total</div>
                                         </div>
 
                                         {/* Table Body */}
                                         {generateReportEmployeesData.map((employee, index) => (
-                                            <div key={index} className="grid grid-cols-8 border-t border-gray-200">
+                                            <div key={index} className="grid grid-cols-8 border-t border-[#D9D9D9]">
                                                 <div className="py-4 px-6 flex items-center">
                                                     <div className="w-8 h-8 rounded-full bg-gray-200 mr-3 overflow-hidden">
                                                         <img src={employee.image} alt={employee.name} className="w-full h-full object-cover" />
                                                     </div>
-                                                    <span>{employee.name}</span>
+                                                    <span className='text-[#141516] text-[14px] font-semibold'>{employee.name}</span>
                                                 </div>
-                                                <div className="py-4 px-6">{employee.glCode}</div>
-                                                <div className="py-4 px-6">{employee.workingDays}</div>
-                                                <div className="py-4 px-6">{employee.workHours}</div>
-                                                <div className="py-4 px-6">{employee.presentDays}</div>
-                                                <div className="py-4 px-6">{employee.absentDays}</div>
-                                                <div className="py-4 px-6">{employee.leaves}</div>
-                                                <div className="py-4 px-6">{employee.invoiceTotal}</div>
+                                                <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.glCode}</div>
+                                                <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.workingDays}</div>
+                                                <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.workHours}</div>
+                                                <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.presentDays}</div>
+                                                <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.absentDays}</div>
+                                                <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.leaves}</div>
+                                                <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.invoiceTotal}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -1071,7 +1073,7 @@ const Accounting = () => {
                                                 {[...Array(4)].map((_, index) => {
                                                     if (index === 0) {
                                                         return (
-                                                            <div key={index} className="w-full bg-white border-b border-gray-200 shadow-sm">
+                                                            <div key={index} className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
                                                                 <div className="flex items-center justify-between px-4 py-2">
                                                                     <div className="flex items-center space-x-3">
                                                                         <button className="text-black hover:text-gray-800">
@@ -1082,9 +1084,10 @@ const Accounting = () => {
                                                                         <h2 className="font-medium text-black text-lg">Terminal {index + 1}</h2>
 
                                                                         <button className="text-black hover:text-gray-800">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                                            </svg>
+                                                                          <svg width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                          <path d="M3.78252 17.6688C3.51253 17.6688 3.28464 17.5774 3.09882 17.3945C2.91315 17.2114 2.82031 16.9869 2.82031 16.7209V14.5905C2.82031 14.3384 2.86853 14.0975 2.96496 13.8678C3.06125 13.6382 3.19878 13.4354 3.37754 13.2595L13.9759 2.83425C14.1519 2.67147 14.3471 2.54674 14.5617 2.46008C14.7762 2.37341 15.0012 2.33008 15.237 2.33008C15.4693 2.33008 15.6963 2.37341 15.9179 2.46008C16.1394 2.54674 16.3344 2.67675 16.503 2.85008L17.8835 4.21591C18.0595 4.37869 18.1888 4.57008 18.2714 4.79008C18.354 5.00994 18.3953 5.2307 18.3953 5.45237C18.3953 5.68459 18.354 5.90716 18.2714 6.12008C18.1888 6.33313 18.0595 6.52633 17.8835 6.69966L7.30629 17.1199C7.12767 17.296 6.92176 17.4315 6.68858 17.5263C6.45554 17.6213 6.21107 17.6688 5.95519 17.6688H3.78252ZM15.231 6.61404L16.4153 5.45237L15.226 4.2757L14.0366 5.44237L15.231 6.61404Z" fill="#1C1B1F"/>
+                                                                          </svg>
+
                                                                         </button>
                                                                     </div>
                                                                     <div className="flex items-center space-x-4">
@@ -1127,7 +1130,7 @@ const Accounting = () => {
                                                                             <div className="flex space-x-2 mb-2">
                                                                                 {/* YTD Revenue Card */}
                                                                                 <div className="w-[300px] px-2 mb-4">
-                                                                                    <div className="border border-gray-200 rounded p-3 bg-white">
+                                                                                    <div className="border border-[#D9D9D9] rounded p-3 bg-white">
                                                                                         <div className="flex items-start">
                                                                                             <div className="bg-[#C01824] p-2 rounded text-white mr-3">
                                                                                                 <img src={busIcon} />
@@ -1142,7 +1145,7 @@ const Accounting = () => {
 
                                                                                 {/* Total # of Open Trips Card */}
                                                                                 <div className="w-[300px] px-2 mb-4">
-                                                                                    <div className="border border-gray-200 rounded p-3 bg-white">
+                                                                                    <div className="border border-[#D9D9D9] rounded p-3 bg-white">
                                                                                         <div className="flex items-start">
                                                                                             <div className="bg-[#C01824] p-2 rounded text-white mr-3">
                                                                                                 <img src={busIcon} />
@@ -1157,7 +1160,7 @@ const Accounting = () => {
 
                                                                                 {/* Total # of Completed Trips Card */}
                                                                                 <div className="w-[300px] px-2 mb-4">
-                                                                                    <div className="border border-gray-200 rounded p-3 bg-white">
+                                                                                    <div className="border border-[#D9D9D9] rounded p-3 bg-white">
                                                                                         <div className="flex items-start">
                                                                                             <div className="bg-[#C01824] p-2 rounded text-white mr-3">
                                                                                                 <img src={busIcon} />
@@ -1186,7 +1189,7 @@ const Accounting = () => {
                                                                             <div className="flex flex-wrap mx-1">
                                                                                 {/* YTD Trips Card */}
                                                                                 <div className="w-[300px] px-2">
-                                                                                    <div className="border border-gray-200 rounded p-3 bg-white">
+                                                                                    <div className="border border-[#D9D9D9] rounded p-3 bg-white">
                                                                                         <div className="flex items-start">
                                                                                             <div className="bg-[#C01824] p-2 rounded text-white mr-3">
                                                                                                 <img src={busIcon} />
@@ -1201,7 +1204,7 @@ const Accounting = () => {
 
                                                                                 {/* Total $ of Open Trips Card */}
                                                                                 <div className="w-[300px] px-2">
-                                                                                    <div className="border border-gray-200 rounded p-3 bg-white">
+                                                                                    <div className="border border-[#D9D9D9] rounded p-3 bg-white">
                                                                                         <div className="flex items-start">
                                                                                             <div className="bg-[#C01824] p-2 rounded text-white mr-3">
                                                                                                 <img src={busIcon} />
@@ -1216,7 +1219,7 @@ const Accounting = () => {
 
                                                                                 {/* Total $ of Completed Trips Card */}
                                                                                 <div className="w-[300px] px-2">
-                                                                                    <div className="border border-gray-200 rounded p-3 bg-white">
+                                                                                    <div className="border border-[#D9D9D9] rounded p-3 bg-white">
                                                                                         <div className="flex items-start">
                                                                                             <div className="bg-[#C01824] p-2 rounded text-white mr-3">
                                                                                                 <img src={busIcon} />
@@ -1251,7 +1254,7 @@ const Accounting = () => {
                                                     }
                                                 })}
                                                 {[...Array(3)].map((_, index) => (
-                                                    <div className="w-full bg-white border-b border-gray-200 shadow-sm">
+                                                    <div className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
                                                         <div className="flex items-center justify-between px-4 py-2">
                                                             <div className="flex items-center space-x-3">
                                                                 <button className="text-black hover:text-gray-800">
@@ -1261,9 +1264,10 @@ const Accounting = () => {
                                                                 </button>
                                                                 <h2 className="font-medium text-black text-lg">Terminal {index + 2}</h2>
                                                                 <button className="text-black hover:text-gray-800">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                                    <svg width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d="M3.78252 17.6688C3.51253 17.6688 3.28464 17.5774 3.09882 17.3945C2.91315 17.2114 2.82031 16.9869 2.82031 16.7209V14.5905C2.82031 14.3384 2.86853 14.0975 2.96496 13.8678C3.06125 13.6382 3.19878 13.4354 3.37754 13.2595L13.9759 2.83425C14.1519 2.67147 14.3471 2.54674 14.5617 2.46008C14.7762 2.37341 15.0012 2.33008 15.237 2.33008C15.4693 2.33008 15.6963 2.37341 15.9179 2.46008C16.1394 2.54674 16.3344 2.67675 16.503 2.85008L17.8835 4.21591C18.0595 4.37869 18.1888 4.57008 18.2714 4.79008C18.354 5.00994 18.3953 5.2307 18.3953 5.45237C18.3953 5.68459 18.354 5.90716 18.2714 6.12008C18.1888 6.33313 18.0595 6.52633 17.8835 6.69966L7.30629 17.1199C7.12767 17.296 6.92176 17.4315 6.68858 17.5263C6.45554 17.6213 6.21107 17.6688 5.95519 17.6688H3.78252ZM15.231 6.61404L16.4153 5.45237L15.226 4.2757L14.0366 5.44237L15.231 6.61404Z" fill="#1C1B1F"/>
                                                                     </svg>
+
                                                                 </button>
 
                                                             </div>
@@ -1284,31 +1288,31 @@ const Accounting = () => {
                                             <table className="w-[100%] border-collapse">
                                                 <thead>
                                                     <tr className="bg-gray-100">
-                                                        <th className="p-3 border-b border-gray-200">
+                                                        <th className="p-3 border-b border-[#D9D9D9]">
                                                             <input type="checkbox" className="w-4 h-4" />
                                                         </th>
-                                                        <th className="p-3 text-left font-medium text-black border-b border-gray-200">Date</th>
-                                                        <th className="p-3 text-left font-medium text-black border-b border-gray-200">GL Code#</th>
-                                                        <th className="p-3 text-left font-medium text-black border-b border-gray-200">Type</th>
-                                                        <th className="p-3 text-left font-medium text-black border-b border-gray-200">Invoice Total</th>
-                                                        <th className="p-3 text-left font-medium text-black border-b border-gray-200">Invoice</th>
-                                                        <th className="p-3 text-left font-medium text-black border-b border-gray-200">Action</th>
+                                                        <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Date</th>
+                                                        <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">GL Code#</th>
+                                                        <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Type</th>
+                                                        <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Invoice Total</th>
+                                                        <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Invoice</th>
+                                                        <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {schoolInvoices.map((invoice, index) => (
-                                                        <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                                            <td className="p-3 border-b flex justify-center items-center border-gray-200">
+                                                        <tr key={index} className="bg-whit">
+                                                            <td className="p-5 border-b mb-[-1px] flex justify-center items-center border-[#D9D9D9]">
                                                                 <input type="checkbox" className="w-4 h-4" />
                                                             </td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.date}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.glCode}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.type}</td>
-                                                            <td className="p-3 border-b border-gray-200">{invoice.invoiceTotal}</td>
-                                                            <td className="p-3 border-b border-gray-200">
+                                                            <td className="p-3 border-b border-[#D9D9D9]">{invoice.date}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9]">{invoice.glCode}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9]">{invoice.type}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9]">{invoice.invoiceTotal}</td>
+                                                            <td className="p-3 border-b border-[#D9D9D9]">
                                                                 <a className="text-[#C01824] font-bold cursor-pointer" onClick={handleInvoiceList}>View</a>
                                                             </td>
-                                                            <td className="p-3 border-b border-gray-200">
+                                                            <td className="p-3 border-b border-[#D9D9D9]">
                                                                 <button className="text-red-500" aria-label="Delete">
                                                                     <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
                                                                 </button>
@@ -1325,56 +1329,56 @@ const Accounting = () => {
                                                 {/* Top Cards */}
                                                 <div className="grid grid-cols-2 gap-4 mb-6">
                                                     {/* Terminal Selection Card */}
-                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
+                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
                                                         <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                                                             <img src={busIcon} />
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Select Terminal</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Select Terminal</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">Terminal 1</span>
-                                                                <FaChevronDown className="ml-1 text-gray-500" size={12} />
+                                                                <span className="font-medium text-[#141516] text-[24px]">Terminal 1</span>
+                                                                <FaChevronDown className="ml-1 text-[#141516]" size={12} />
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     {/* Income Card */}
-                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
+                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
                                                         <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                                                             <img src={moneyWallet} />
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Income</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Income</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">$41,210</span>
+                                                                <span className="font-medium text-[#141516] text-[24px]">$41,210</span>
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     {/* Expenses Card */}
-                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
+                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
                                                         <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                                                             <img src={marketIcon} />
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Expenses</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Expenses</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">$41,210</span>
+                                                                <span className="font-medium text-[#141516] text-[24px]">$41,210</span>
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     {/* Savings Card */}
-                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
+                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
                                                         <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                                                             <div className="bg-white rounded-full p-1 shadow-md flex items-center justify-center">
                                                                 <BiDollar size={18} color='#C01824' />
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Savings</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Savings</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">$41,210</span>
+                                                                <span className="font-medium text-[#141516] text-[24px]">$41,210</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1383,18 +1387,18 @@ const Accounting = () => {
                                                 {/* Sales Section */}
                                                 <div className="mb-6 border border-gray-100 rounded-lg p-4">
                                                     <div className="flex justify-between items-center mb-2">
-                                                        <h2 className="text-lg font-semibold text-[#475569]">Sales</h2>
+                                                        <h2 className="text-[26px] font-bold text-[#475569]">Sales</h2>
                                                         <div className="text-sm text-gray-500 flex items-center">
                                                             Current month
                                                             <FaChevronDown className="ml-1" size={10} />
                                                         </div>
                                                     </div>
-                                                    <div className="text-2xl font-bold mb-4 text-[#475569]">$15,940.65</div>
+                                                    <div className="text-[26px] font-bold mb-4 text-[#475569]">$15,940.65</div>
 
                                                     {/* Sales Chart */}
                                                     <div className="relative h-32">
                                                         {/* Y-axis labels */}
-                                                        <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500">
+                                                        <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-[#475569]">
                                                             <div>$15k</div>
                                                             <div>$10k</div>
                                                             <div>$5k</div>
@@ -1475,15 +1479,15 @@ const Accounting = () => {
                                                 {/* Top Cards */}
                                                 <div className="grid grid-cols-2 gap-4 mb-6">
                                                     {/* Terminal Selection Card */}
-                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
+                                                    <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center ">
                                                         <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                                                             <img src={busIcon} />
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Select Terminal</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Select Terminal</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">Terminal 1</span>
-                                                                <FaChevronDown className="ml-1 text-gray-500" size={12} />
+                                                                <span className="font-bold text-[#141516] text-[24px]">Terminal 1</span>
+                                                                <FaChevronDown className="ml-1 text-[#141516]" size={12} />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1494,9 +1498,9 @@ const Accounting = () => {
                                                             <img src={moneyWallet} />
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Income</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Income</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">$41,210</span>
+                                                                <span className="font-bold text-[#141516] text-[24px]">$41,210</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1507,9 +1511,9 @@ const Accounting = () => {
                                                             <img src={marketIcon} />
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Expenses</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Expenses</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">$41,210</span>
+                                                                <span className="font-bold text-[#141516] text-[24px]">$41,210</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1522,9 +1526,9 @@ const Accounting = () => {
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs text-gray-400">Savings</div>
+                                                            <div className="text-xs text-[#9E9E9E] font-normal">Savings</div>
                                                             <div className="flex items-center">
-                                                                <span className="font-medium text-black">$41,210</span>
+                                                                <span className="font-bold text-[#141516] text-[24px]">$41,210</span>
                                                             </div>
                                                         </div>
                                                     </div>

@@ -12,10 +12,13 @@ const DashboardSubcription = () => {
   const navigation = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const fromPath = queryParams.get('from');
+  const fromPath = queryParams.get("from");
+
   const handleSubmit = () => {
     if (selectedCard) {
-      navigation("/subscription_page", { state: { selectedCard, from: fromPath } });
+      navigation("/subscription_page", {
+        state: { selectedCard, from: fromPath },
+      });
     }
   };
 
@@ -30,7 +33,10 @@ const DashboardSubcription = () => {
       newPrice: "$30/month",
       description: "Pay monthly without missing out on any feature.",
       borderColor: selectedCard?.id === 1 ? colors?.timecountColor : "none",
-      background: colors?.backgroundGradient,
+      background:
+        selectedCard?.id === 1
+          ? colors?.backgroundGradient1
+          : colors?.backgroundGradient,
     },
     {
       id: 2,
@@ -38,9 +44,13 @@ const DashboardSubcription = () => {
       newPrice: "$300/year",
       description: "Pay for a full year upfront and get 2 months for free.",
       borderColor: selectedCard?.id === 2 ? colors?.timecountColor : "none",
-      background: colors?.backgroundGradient,
+      background:
+        selectedCard?.id === 2
+          ? colors?.backgroundGradient1
+          : colors?.backgroundGradient,
     },
   ];
+
   return (
     <div className="MainContainerAuth">
       <Container
@@ -71,7 +81,7 @@ const DashboardSubcription = () => {
               color: colors?.blackColor,
               fontFamily: "Nunito Sans",
               fontWeight: 800,
-              fontSize: "2.75rem",
+              fontSize: "44px",
             }}
           >
             Your Subscription
@@ -83,13 +93,14 @@ const DashboardSubcription = () => {
               color: colors?.blackColor,
               fontFamily: "Nunito Sans",
               fontWeight: 400,
-              fontSize: "0.87rem",
+              fontSize: "16px",
             }}
           >
             Each subscription goes towards improving our product, featuring
             market intelligence, ad-free news, live pricing and more.
           </Typography>
         </Box>
+
         <Box
           display="flex"
           justifyContent="center"
@@ -103,8 +114,8 @@ const DashboardSubcription = () => {
               elevation={3}
               sx={{
                 background: card.background,
-                width: 250,
-                padding: 2,
+                width: 350,
+                padding: 4,
                 borderRadius: 2,
                 border: `4px solid ${card.borderColor}`,
                 boxSizing: "border-box",
@@ -138,19 +149,19 @@ const DashboardSubcription = () => {
                   </Typography>
                 </Box>
               ) : null}
+
               <Box textAlign="center" color={colors?.whiteColor} mt={4}>
-                {card.id === 1 ? (
-                  <img src={dollarless} />
-                ) : (
-                  <img src={dollar} />
-                )}
+                <Box display="flex" justifyContent="center" alignItems="center">
+                  <img src={card.id === 1 ? dollarless : dollar} alt="price" />
+                </Box>
+
                 <Grid
                   sx={{
                     display: "flex",
                     flexDirection: "row",
                     justifyContent: "center",
                     alignItems: "center",
-                    padding: 4,
+                    padding: 5,
                   }}
                 >
                   <Typography
@@ -166,6 +177,7 @@ const DashboardSubcription = () => {
                   >
                     {card.oldPrice}
                   </Typography>
+                  &nbsp;&nbsp;
                   <Typography
                     variant="body1"
                     component="div"
@@ -178,6 +190,7 @@ const DashboardSubcription = () => {
                     {card.newPrice}
                   </Typography>
                 </Grid>
+
                 <Typography
                   variant="body2"
                   component="div"
@@ -186,13 +199,13 @@ const DashboardSubcription = () => {
                     marginTop: 2,
                     fontWeight: 400,
                     fontSize: "1rem",
-                    color: colors?.lightGrey,
+                    color: colors?.whiteColor,
                   }}
                 >
                   {card?.description.includes("2 months for free") ? (
-                    <span style={{ color: colors?.lightGrey }}>
+                    <span style={{ color: colors?.whiteColor }}>
                       Pay for a full year upfront and get{" "}
-                      <span style={{ color: colors?.whiteColor }}>
+                      <span style={{ color: colors?.whiteColor, fontWeight: 900,}}>
                         2 months for free.
                       </span>
                     </span>
@@ -204,6 +217,7 @@ const DashboardSubcription = () => {
             </Paper>
           ))}
         </Box>
+
         <Grid container spacing={2} mt={2} ml={2}>
           <Grid item xs={12}>
             <ButtonComponent

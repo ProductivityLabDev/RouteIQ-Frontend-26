@@ -49,13 +49,13 @@ const SubscriptionPage = () => {
           flexDirection: "column",
         }}
       >
-        <img src={logo} className='w-full max-w-[180px] md:max-w-[200px] mb-12 justify-center self-center' />
+        <img src={logo} className='w-[60%] mb-12 justify-center self-center' />
         <Paper
           elevation={3}
           className="paper"
           sx={{
             background: colors?.whiteColor,
-            padding: 5,
+            padding: 2,
           }}
         >
           <Typography
@@ -66,8 +66,8 @@ const SubscriptionPage = () => {
               fontFamily: "Nunito Sans",
               fontWeight: 700,
               textAlign: "start",
-              paddingInline: 7,
-              fontSize: "2rem",
+              paddingInline: 5,
+              fontSize: "32px",
               marginTop: 1,
               marginBottom: 5,
             }}
@@ -93,7 +93,9 @@ const SubscriptionPage = () => {
                 color: colors?.blackColor,
                 fontFamily: "Nunito Sans",
                 fontWeight: 800,
-                fontSize: "1.313rem",
+                textAlign: "start",
+                marginLeft: -5,
+                fontSize: "21px",
               }}
             >
               Business Subscription
@@ -140,7 +142,8 @@ const SubscriptionPage = () => {
                 color: colors?.blackColor,
                 fontFamily: "Nunito Sans",
                 fontWeight: 800,
-                fontSize: "1.313rem",
+                fontSize: "21px",
+                marginLeft: -9
               }}
             >
               Total Due Amount

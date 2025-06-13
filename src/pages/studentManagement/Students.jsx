@@ -7,6 +7,7 @@ import { NoteIcon } from '@/assets';
 import MenuComponent from '@/components/MenuComponent';
 import { StudentManagementModal } from './StudentManagementModal';
 import StudentNoticeModal from './StudentNoticeModal';
+import { useNavigate } from 'react-router-dom';
 
 const Students = () => {
     const [anchorEl1, setAnchorEl1] = useState(null);
@@ -15,6 +16,8 @@ const Students = () => {
     const [editStudentModal, setStudentModal] = useState(false)
     const [noticeState, setNoticeState] = useState(false)
     const [studentEditData, setStudentEditData] = useState(null)
+    const navigate = useNavigate();
+    
     const openInfraction = Boolean(anchorEl1);
     const handleClick = (event, student) => {
         setAnchorEl1(event.currentTarget);
@@ -53,9 +56,12 @@ const Students = () => {
     return (
         <MainLayout>
             <section className='w-full h-full'>
-                <div className="flex w-[96%] justify-between flex-row h-[65px] mb-3 items-center">
+                <div className="flex w-[100%] justify-between flex-row h-[65px] mb-3 items-center">
                     <Typography className="text-[23px] md:text-[32px] font-[700] text-[#000] mt-5 ps-2" sx={{ fontSize: { xs: '23px', md: '38px' }, fontWeight: 800 }}>Students</Typography>
-                    <div className='flex justify-end gap-12 flex-row'>
+                    <div className='flex justify-end gap-3 flex-row'>
+                        <Button className="mt-8 px-8 py-2.5 bg-[#C01824] text-[14px] capitalize rounded-[6px]" variant='filled' size='lg' onClick={()=>navigate('/SchoolManagement')}>
+                          School Management
+                        </Button>
                         <Button className="mt-8 px-8 py-2.5 bg-[#C01824] text-[14px] capitalize rounded-[6px]" variant='filled' size='lg' onClick={handleStudentModal}>
                             Add Student
                         </Button>
@@ -65,7 +71,7 @@ const Students = () => {
                     </div>
                 </div>
                 {/* -------------------------------------------------- Students Table ----------------------------------------------- */}
-                <div className="w-full p-4 bg-white rounded-[4px] border shadow-sm h-[80vh]">
+                <div className="w-full mt-5 p-4 bg-white rounded-[4px] border shadow-sm h-[80vh]">
                     <div className="overflow-x-auto mt-3 border border-gray-200 rounded h-[75vh]">
                         <table className="min-w-full">
                             <thead className="bg-[#EEEEEE] items-center self-center">

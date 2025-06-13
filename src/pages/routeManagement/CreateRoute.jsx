@@ -159,19 +159,19 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             {/* Buttons */}
                             <div className="col-span-2 flex mt-20 space-x-4">
                                 <Button
-                                    className="border border-[#C01824] bg-white text-[#C01824] px-12 py-2 rounded-[4px]"
+                                    className="border border-[#C01824] bg-white text-[#C01824] px-12 py-4 rounded-[4px]"
                                     variant="outlined"
                                     onClick={handleBackTrip}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
-                                    className="bg-[#B8B9BC] text-white px-12 py-2 rounded-[4px]"
+                                    className="bg-[#C01824] text-white px-12 py-2 rounded-[4px]"
                                     variant="filled"
                                     type="submit"
                                     onClick={handleBackTrip}
                                 >
-                                    Submit
+                                    Update
                                 </Button>
                             </div>
                         </form>
@@ -220,7 +220,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                     <img src={calendericonred} alt="not found" className="h-5 w-5" />
                                 </div>
                             </div>
-                            {editRoute && (
+                            {/* {editRoute && ( */}
                                 <div className="flex flex-col">
                                     <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                         Time
@@ -234,7 +234,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         {/* <img src={calendericonred} alt="not found" className="h-5 w-5" /> */}
                                     </div>
                                 </div>
-                            )}
+                            {/* )} */}
                             <div className="flex flex-col">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Driver

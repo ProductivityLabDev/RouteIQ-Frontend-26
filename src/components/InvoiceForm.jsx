@@ -59,11 +59,11 @@ const InvoiceForm = ({ handleback, schoolInvoice, setEditInvoice, editInvoice, h
                                     <img src={TranspportVan} alt="Transport Vendor" className="mr-4 h-[80px] w-[100px]" />
                                     <div>
                                         <Typography variant="h4">Transportation Vendor</Typography>
-                                        <Typography variant="h6">John Brandon</Typography>
-                                        <Typography variant="body2">789/1 Sector-2c, 38200 Gandhinagar, France</Typography>
-                                        <Typography variant="body2">848172194 | contact@beta.se</Typography>
-                                        <Typography variant="body2" className='font-normal'>SIRET: 362 521 879 00034</Typography>
-                                        <Typography variant="body2" className='font-normal'>VAT: 842-484021</Typography>
+                                        <Typography variant="h6" className='text-[#667085] text-[12px] font-normal'>John Brandon</Typography>
+                                        <Typography variant="body2" className='text-[#667085] text-[12px] font-normal'>789/1 Sector-2c, 38200 Gandhinagar, France</Typography>
+                                        <Typography variant="body2" className='text-[#667085] text-[12px] font-normal'>848172194 | contact@beta.se</Typography>
+                                        <Typography variant="body2" className='text-[#667085] text-[12px] font-semibold'>SIRET: 362 521 879 00034</Typography>
+                                        <Typography variant="body2" className='text-[#667085] text-[12px] font-semibold'>VAT: 842-484021</Typography>
                                     </div>
                                 </div>
                                 <div className='w-[100%] flex flex-row justify-end gap-20'>
@@ -73,7 +73,7 @@ const InvoiceForm = ({ handleback, schoolInvoice, setEditInvoice, editInvoice, h
                                         </div>
                                         <div className='flex flex-col items-end'>
                                             <Typography variant="h6" className='text-[#667085] weight-[500] text-[13px]'>Total Amount</Typography>
-                                            <Typography variant="h5">€250,000.00</Typography>
+                                            <Typography variant="h5" className='text-[#333843] weight-[700] text-[19px]'>$250,000.00</Typography>
                                         </div>
                                     </div>
                                     <div className='flex flex-col gap-3 w-[30%]'>
@@ -113,11 +113,11 @@ const InvoiceForm = ({ handleback, schoolInvoice, setEditInvoice, editInvoice, h
                                         }
                                         <div className="bg-white rounded-lg shadow-md w-[100%] max-w-[400px]">
                                             <div className="mt-2">
-                                                <h3 className="text-gray-800 text-lg ps-4 font-bold mb-4 border-b border-grey p-3">
+                                                <h3 className="text-gray-800 text-lg ps-4 font-bold mb-4  border-grey p-3">
                                                     Summary
                                                 </h3>
                                                 <div className="space-y-2">
-                                                    <div className="flex justify-between p-3">
+                                                    <div className="flex justify-between p-3 bg-[#FAFAFA]">
                                                         <span className="text-black-600 text-md font-bold">Total</span>
                                                         <span className="text-gray-800 text-md font-medium">€250,000 Incl. VAT</span>
                                                     </div>
@@ -148,36 +148,36 @@ const InvoiceForm = ({ handleback, schoolInvoice, setEditInvoice, editInvoice, h
                             </div>
                         </Box>
                         <Box className="mb-4 gap-7 flex flex-row">
-                            <div className='bg-[#FAFAFA] rounded-lg shadow-md p-4 w-[16%] h-[25vh] flex flex-col'>
+                            <div className='bg-[#FAFAFA] rounded-lg shadow-md p-5 w-[16%] h-[25vh] flex flex-col'>
                                 <Typography variant="h6" className='text-[#667085] font-normal'>Bill Date</Typography>
+                                <Typography variant="body2" className='font-semibold'>03/05/2020</Typography>
+                                <Typography variant="body2" className='text-[#667085] font-semibold'>Delivery Date</Typography>
                                 <Typography variant="body2" className='font-normal'>03/05/2020</Typography>
-                                <Typography variant="body2" className='text-[#667085] font-normal'>Delivery Date</Typography>
-                                <Typography variant="body2" className='font-normal'>03/05/2020</Typography>
-                                <Typography variant="body2" className='text-[#667085] font-normal'>Terms of Payment</Typography>
+                                <Typography variant="body2" className='text-[#667085] font-semibold'>Terms of Payment</Typography>
                                 <Typography variant="body2" className='font-normal'>Within 15 days</Typography>
-                                <Typography variant="body2" className='text-[#667085] font-normal'>Payment Deadline</Typography>
-                                <Typography variant="body2" className='font-normal'>05/18/2020</Typography>
+                                <Typography variant="body2" className='text-[#667085] font-semibold'>Payment Deadline</Typography>
+                                <Typography variant="body2" className='font-semibold'>05/18/2020</Typography>
                             </div>
                             <Box className="mb-4 m-3">
-                                <Typography variant="h6" className='text-[#667085]'>Billing Address</Typography>
-                                <Typography variant="h6">Maplebrook Country Day School</Typography>
-                                <Typography variant="body2">1445 West Norwood Avenue, Itasca, Illinois, USA</Typography>
-                                <Typography variant="body2">97223041054 | om@om.com</Typography>
-                                <Typography variant="body2" className='font-normal'>SIRET: 362 521 879 00034</Typography>
-                                <Typography variant="body2" className='font-normal'>VAT: 842-484021</Typography>
-                                <Typography variant="body2">Note</Typography>
-                                <Typography variant="body2" className='font-bold break-words max-w-xl'>This is a custom message that might be relevant to the customer. It can span up to three or four rows. It can span up to three or four rows.</Typography>
+                                <Typography variant="h6" className='text-[#667085] text-[12px] font-normal'>Billing Address</Typography>
+                                <Typography variant="h6" className='text-[#333843] text-[14px] font-semibold'>Maplebrook Country Day School</Typography>
+                                <Typography variant="body2" className='text-[#667085] text-[14px] font-normal'>1445 West Norwood Avenue, Itasca, Illinois, USA</Typography>
+                                <Typography variant="body2" className='text-[#667085] text-[14px] font-normal'>97223041054 | om@om.com</Typography>
+                                <Typography variant="body2" className='font-semibold text-[#667085] text-[14]'>SIRET: 362 521 879 00034</Typography>
+                                <Typography variant="body2" className='font-semibold text-[#667085] text-[14]'>VAT: 842-484021</Typography>
+                                <Typography variant="body2" className='text-[#667085] text-[12px]'>Note</Typography>
+                                <Typography variant="body2" className='font-medium text-[#333843] text-[12px] break-words w-[500px]'>This is a custom message that might be relevant to the customer. It can span up to three or four rows. It can span up to three or four rows.</Typography>
                             </Box>
                         </Box>
                         <div className="overflow-x-auto">
                             <table className={`${schoolInvoice ? 'min-w-[70%]' : 'min-w-full'}`}>
-                                <thead className="bg-white">
+                                <thead className="bg-[#FAFAFA]">
                                     <tr>
-                                        <th className="px-6 py-3 border-b text-left text-sm font-medium text-gray-700">NO.</th>
-                                        <th className="px-6 py-3 border-b text-left text-sm font-medium text-gray-700">BUSES</th>
-                                        <th className="px-6 py-3 border-b text-left text-sm font-medium text-gray-700">UNIT PRICE</th>
-                                        <th className="px-6 py-3 border-b text-left text-sm font-medium text-gray-700">MILEAGE</th>
-                                        <th className="px-6 py-3 border-b text-left text-sm font-medium text-gray-700">TOTAL AMOUNT</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">NO.</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">BUSES</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">UNIT PRICE</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">MILEAGE</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">TOTAL AMOUNT</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -197,7 +197,7 @@ const InvoiceForm = ({ handleback, schoolInvoice, setEditInvoice, editInvoice, h
                                     <p className="text-sm font-medium text-gray-700">
                                         Terms & Conditions
                                     </p>
-                                    <p className="text-sm font-medium text-gray-700">
+                                    <p className="text-sm font-medium text-[#333843]">
                                         Please pay within 15 days of receiving this invoice.
                                     </p>
                                 </div>

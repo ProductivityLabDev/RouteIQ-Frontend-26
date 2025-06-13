@@ -4,17 +4,19 @@ import { contactDetails, DriverProfile, studentsData, tripDetails, tripStages } 
 import { darksearchicon, mapImage, VendorMap2 } from '@/assets'
 import { ButtonGroup, Tab, Tabs, TabsBody, TabsHeader, Button } from '@material-tailwind/react';
 import { schoolData } from '@/data/school-data';
+
 const tabsData = [
     { label: "All Students", value: "allstudents" },
     { label: "On Board", value: "onboard" },
 ];
+
 const RealTimeTracking = () => {
     const [selectedTab, setSelectedTab] = useState('A');
-    const [selectedInfo, setSelectedInfo] = useState('Track Drivers');
+    const [selectedInfo, setSelectedInfo] = useState('Track School'); 
     const [activeTab, setActiveTab] = useState("allstudents");
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedSchool, setSelectedSchool] = useState(null);
-    const [selectedSchoolTab, setSelectedSchoolTab] = useState(null);
+    const [selectedSchoolTab, setSelectedSchoolTab] = useState(true); 
 
     const toggleStudentPanel = (student) => {
         setSelectedStudent(student);
@@ -46,62 +48,37 @@ const RealTimeTracking = () => {
             setSelectedSchoolTab(true)
         } else {
             setSelectedSchoolTab(false)
-
         }
     }
+
     return (
         <MainLayout>
             <section className='w-full h-full'>
                 <div className='mt-7 md:h-[750px] h-full relative overflow-hidden'>
-                    {selectedInfo === 'Track Drivers' &&
-                        <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0 w-[18%]" variant="text" size='lg'>
-                            {['Track School', 'Track Drivers'].map(tab => (
-                                <Button
-                                    key={tab}
-                                    className={selectedInfo === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-3 lg:text-[14px] capitalize font-bold' : 'bg-white px-6 py-3 capitalize font-bold'}
-                                    onClick={() => handleSelectedTabInfo(tab)}
-                                >
-                                    {tab}
-                                </Button>
-                            ))}
-                        </ButtonGroup>
-                    }
-                    {selectedSchoolTab &&
-                        (
-                            <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0 w-[18%]" variant="text" size='lg'>
-                                {['Track School', 'Track Drivers'].map(tab => (
-                                    <Button
-                                        key={tab}
-                                        className={selectedInfo === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-3 lg:text-[14px] capitalize font-bold' : 'bg-white px-6 py-3 capitalize font-bold'}
-                                        onClick={() => handleSelectedTabInfo(tab)}
-                                    >
-                                        {tab}
-                                    </Button>
-                                ))}
-                            </ButtonGroup>
-                        )
-                    }
-                    {selectedTab === "Track School" || selectedSchoolTab === false && (
-                        <div className='flex flex-row justify-between'>
+                    
+                    <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0 w-[18%]" variant="text" size='lg'>
+                        {['Track School', 'Track Drivers'].map(tab => (
+                            <Button
+                                key={tab}
+                                className={selectedInfo === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-3 lg:text-[14px] capitalize font-bold' : 'bg-white px-6 py-3 capitalize font-bold'}
+                                onClick={() => handleSelectedTabInfo(tab)}
+                            >
+                                {tab}
+                            </Button>
+                        ))}
+                    </ButtonGroup>
+
+                    {/* Show Bus selection buttons only when Track Drivers is selected OR when Track School is selected but selectedSchoolTab is false */}
+                    {(selectedInfo === "Track School") && (
+                        <div className='flex flex-row justify-between mt-4'>
                             <ButtonGroup className="border-0 rounded-[4px] outline-none p-0" variant="text">
-                                {['A', 'B', 'C', 'D'].map(bus => (
+                                {['1', '2', '3', '4'].map(bus => (
                                     <Button
                                         key={bus}
                                         className={selectedTab === bus ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white text-xs md:text-[14px] capitalize font-medium' : 'bg-white text-xs md:text-[14px] text-[#141516] capitalize font-medium'}
                                         onClick={() => setSelectedTab(bus)}
                                     >
-                                        Bus {bus}
-                                    </Button>
-                                ))}
-                            </ButtonGroup>
-                            <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0 w-[18%]" variant="text" size='lg'>
-                                {['Track School', 'Track Drivers'].map(tab => (
-                                    <Button
-                                        key={tab}
-                                        className={selectedInfo === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-3 lg:text-[14px] capitalize font-bold' : 'bg-white px-6 py-3 capitalize font-bold'}
-                                        onClick={() => handleSelectedTabInfo(tab)}
-                                    >
-                                        {tab}
+                                        Terminal {bus}
                                     </Button>
                                 ))}
                             </ButtonGroup>
@@ -111,7 +88,8 @@ const RealTimeTracking = () => {
                     <div className='flex md:flex-row flex-col md:space-y-0 space-y-5 h-full mt-6 border shadow-sm rounded-md space-x-1 relative'>
                         <div className='bg-white w-full md:max-w-[280px] pt-2 overflow-y-auto'>
                             <Tabs value={activeTab}>
-                                {selectedTab === "Track School" || selectedSchoolTab === false  &&(
+                                {/* Show tabs header only when showing students (Track Drivers OR Track School with selectedSchoolTab false) */}
+                                {(selectedInfo === "Track Drivers" || (selectedInfo === "Track School" && selectedSchoolTab === false)) && (
                                     <TabsHeader
                                         className="rounded-none border-b border-blue-gray-50 bg-transparent p-0"
                                         indicatorProps={{
@@ -129,20 +107,11 @@ const RealTimeTracking = () => {
                                             </Tab>
                                         ))}
                                     </TabsHeader>
-                                )
-                                }
-                                {/* {selectedInfo === 'Track Drivers' ? null :
-                                    <div className="relative flex items-center">
-                                        <img src={darksearchicon} alt='' className="absolute left-3 h-4 w-4" />
-                                        <input
-                                            className="bg-[#D2D2D2]/30 w-full pl-10 p-3 outline-none border-0"
-                                            type="search"
-                                            placeholder="Search"
-                                        />
-                                    </div>
-                                } */}
+                                )}
+
                                 <TabsBody className='pt-2'>
                                     {selectedInfo === 'Track Drivers' ?
+                                        // Show drivers
                                         DriverProfile.map(({ name, busNo, imgSrc, role }, index) => (
                                             <div key={index}>
                                                 <Button
@@ -162,6 +131,7 @@ const RealTimeTracking = () => {
                                             </div>
                                         ))
                                         : selectedSchoolTab ?
+                                            // Show schools
                                             schoolData.map(({ schoolName, type, imgSrc }, index) => (
                                                 <div key={index}>
                                                     <Button
@@ -169,7 +139,7 @@ const RealTimeTracking = () => {
                                                         onClick={() => toggleSchoolPanel({ schoolName })}
                                                     >
                                                         <img src={imgSrc} className="rounded-full w-[43px] h-[43px]" />
-                                                        <div className={`text-start text-base ${selectedSchool?.name === schoolName ? 'text-white' : 'text-[#2C2F32] group-hover:text-white'
+                                                        <div className={`text-start text-base ${selectedSchool?.schoolName === schoolName ? 'text-white' : 'text-[#2C2F32] group-hover:text-white'
                                                             }`}>
                                                             <h6 className="font-bold text-[16px] capitalize">{schoolName}</h6>
                                                             <p className="font-bold text-[14px]">{type}</p>
@@ -178,6 +148,7 @@ const RealTimeTracking = () => {
                                                     <hr className="h-px bg-gray-200 border-1 dark:bg-gray-800" />
                                                 </div>
                                             )) :
+                                            // Show students
                                             filterStudents().map(({ name, busNo, imgSrc }, index) => (
                                                 <div key={index}>
                                                     <Button
@@ -196,11 +167,10 @@ const RealTimeTracking = () => {
                                                 </div>
                                             ))
                                     }
-
-
                                 </TabsBody>
                             </Tabs>
                         </div>
+
                         {selectedStudent && (
                             <div className='absolute md:left-[18rem] left-0  w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-3 overflow-y-auto z-[500]'>
                                 {selectedStudent?.role === "driver" ?
@@ -253,7 +223,6 @@ const RealTimeTracking = () => {
                                             <p className='text-[14px] font-bold'>Champs-Élysées 246</p>
                                         </div>
                                     </>
-
                                 }
                                 <div className='rounded-lg border border-black/25 mt-3 h-full max-h-[570px] overflow-y-auto'>
                                     {tripDetails.map((trip, index) => (
@@ -303,7 +272,6 @@ const RealTimeTracking = () => {
                             </div>
                         )}
                         <div className='relative h-screen md:h-full md:w-full w-auto overflow-hidden'>
-                            {/* <Map /> */}
                             {selectedInfo === "Track Drivers" ?
                                 <img src={VendorMap2} />
                                 :

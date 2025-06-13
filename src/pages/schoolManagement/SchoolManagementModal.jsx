@@ -30,7 +30,7 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
                                     className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                                 />
                                 <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Area
+                                    Terminal
                                 </Typography>
                                 <input
                                     type='text'
