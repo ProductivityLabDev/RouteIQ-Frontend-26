@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { IoMdArrowDropdown } from "react-icons/io";
 import { IoEyeSharp } from "react-icons/io5";
@@ -12,6 +12,18 @@ const data = [
 ];
 
 export default function PayrollSummary() {
+  const [selectedRange, setSelectedRange] = useState("Last 30 days");
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const ranges = [
+    "Today",
+    "Yesterday",
+    "Last 7 days",
+    "Last 30 days",
+    "This Month",
+    "Last Month",
+  ];
+
   return (
     <>
       <div className="flex justify-between items-center mt-5 mb-4">
@@ -22,9 +34,35 @@ export default function PayrollSummary() {
           </span>
         </h2>
 
-        <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-1">
-          <span className="text-sm text-gray-700">Last 30 days</span>
-          <IoMdArrowDropdown className="ml-1 text-gray-600" />
+        <div className="relative">
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-1 hover:shadow-sm"
+          >
+            <span className="text-sm text-gray-700">{selectedRange}</span>
+            <IoMdArrowDropdown className="ml-1 text-gray-600" />
+          </button>
+
+          {showDropdown && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+              {ranges.map((range) => (
+                <button
+                  key={range}
+                  onClick={() => {
+                    setSelectedRange(range);
+                    setShowDropdown(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                    selectedRange === range
+                      ? "bg-gray-100 text-red-600"
+                      : "text-gray-700"
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -32,7 +70,6 @@ export default function PayrollSummary() {
         <div className="relative w-80 h-80 mx-auto">
           <div className="absolute inset-6 bg-[#EBF3FE] rounded-full z-0" />
 
-          {/* Donut Chart */}
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -51,7 +88,6 @@ export default function PayrollSummary() {
             </PieChart>
           </ResponsiveContainer>
 
-          {/* Center Button */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
             <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full shadow-sm text-sm font-medium hover:bg-gray-50">
               <IoEyeSharp className="w-4 h-4" />
@@ -59,13 +95,11 @@ export default function PayrollSummary() {
             </button>
           </div>
 
-          {/* Percentage Bubble */}
           <div className="absolute w-[60px] h-[60px] top-[40px] right-16 bg-white border border-gray-100 shadow text-[23px] rounded-full font-medium text-[#0A112F] flex items-center justify-center z-10">
             54<span className="text-gray-400 text-xs">%</span>
           </div>
         </div>
 
-        {/* Second Column: Financial Details in Two Groups */}
         <div className="flex flex-col justify-around">
           <div className="grid grid-cols-2 gap-1">
             <div className="flex items-center">
@@ -94,7 +128,6 @@ export default function PayrollSummary() {
             </div>
           </div>
 
-          {/* Group 2 */}
           <div className="grid grid-cols-2 gap-6">
             <div className="flex items-center">
               <div className="w-2 h-[80px] bg-[#C01824] mr-3 rounded-lg" />
@@ -123,7 +156,6 @@ export default function PayrollSummary() {
           </div>
         </div>
 
-        {/* Third Column: Payroll Status */}
         <div className="flex flex-col justify-around space-y-6">
           <div className="border rounded-lg p-4 shadow-sm">
             <div className="flex items-center text-sm text-[#70707A] font-medium">

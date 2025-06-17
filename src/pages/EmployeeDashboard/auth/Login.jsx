@@ -1,7 +1,7 @@
 import React from 'react'
 import { EmployeeManagementLoginScreen } from '@/assets'
 import { Button } from '@material-tailwind/react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const Login = () => {
     const navigate = useNavigate()
@@ -12,11 +12,11 @@ const Login = () => {
         <div className="flex flex-row w-full h-screen">
             <div className="p-8 bg-[#fff] w-[82%] flex flex-col justify-center">
                 <div className="p-8 w-[65%] flex flex-col justify-center self-center">
-                    <h1 className="text-2xl font-normal text-gray-900 mb-2">Login</h1>
 
+                    <h1 className="text-2xl font-normal text-gray-900 mb-2">Login as Employee</h1>
                     <div className="mb-4">
                         <h2 className="text-sm font-normal text-gray-900 mb-0.5">Welcome Back</h2>
-                        <p className="text-xs text-gray-700">Please enter your Attendance credentials.</p>
+                        <p className="text-xs text-gray-700">Please enter your login credentials.</p>
                     </div>
 
                     <form>
@@ -52,12 +52,11 @@ const Login = () => {
                                 </label>
                             </div>
                             <div>
-                                <a href="#" className="text-xs text-[#C01824] hover:underline">
+                                <Link to="/account/forgot-password" className="text-xs text-[#C01824] hover:underline">
                                     Forgot Password?
-                                </a>
+                                </Link>
                             </div>
                         </div>
-
                         <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-2 opacity-100" fullWidth type='button' onClick={handleLogin}>
                             LOGIN
                         </Button>
@@ -70,7 +69,6 @@ const Login = () => {
                     alt="Route IQ Management System"
                     className="w-full h-full object-contain"
                 />
-
             </div>
         </div>
     )
