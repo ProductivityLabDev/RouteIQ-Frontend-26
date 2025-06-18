@@ -49,6 +49,15 @@ const ProfileInformation = () => {
                                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none"
                             />
                         </div>
+                        <div className="mb-3">
+                            <label htmlFor="bankAccountNo" className="block text-xs text-gray-700 mb-1">Routing Number</label>
+                            <input
+                                type="text"
+                                id="routingNumber"
+                                placeholder="Routing Number"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none"
+                            />
+                        </div>
                         <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-2 opacity-100" fullWidth type="button" onClick={handleSubmit}>
                             submit
                         </Button>

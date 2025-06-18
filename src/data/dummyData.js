@@ -1234,38 +1234,52 @@ export const payrollData = [
 
 export const timeEntries = [
     {
-        date: '6/19/14',
-        punchIn: '01:11',
-        punchedOut: '00:36',
-        workHours: '15h 40m',
+        datesubmitted: '6/19/14',
+        datesrequested: '6/19/14 - 6/19/18',	
+        approvedBy: 'Admin',	
+        attachments: 'Download',
+        reason: 'sick leave', 
         status: 'Approved'
     },
     {
-        date: '10/28/12',
-        punchIn: '08:00',
-        punchedOut: '12:34',
-        workHours: '11h 45m',
-        status: 'Rejected'
-    },
-    {
-        date: '2/11/12',
-        punchIn: '02:45',
-        punchedOut: '05:12',
-        workHours: '10h 25m',
+        datesubmitted: '6/19/14',
+        datesrequested: '6/19/14 - 6/19/18',	
+        approvedBy: 'Admin',	
+        attachments: 'Download',
+        reason: 'sick leave', 
         status: 'Approved'
     },
     {
-        date: '8/2/19',
-        punchIn: '03:44',
-        punchedOut: '08:00',
-        workHours: '15h 45m',
+        datesubmitted: '6/19/14',
+        datesrequested: '6/19/14 - 6/19/18',	
+        approvedBy: 'Admin',	
+        attachments: 'Download',
+        reason: 'sick leave', 
         status: 'Approved'
     },
     {
-        date: '5/30/14',
-        punchIn: '12:34',
-        punchedOut: '02:45',
-        workHours: '10h 45m',
-        status: 'Pending'
-    }
+        datesubmitted: '6/19/14',
+        datesrequested: '6/19/14 - 6/19/18',	
+        approvedBy: 'Admin',	
+        attachments: 'Download',
+        reason: 'sick leave', 
+        status: 'Approved'
+    },
+    {
+        datesubmitted: '6/19/14',
+        datesrequested: '6/19/14 - 6/19/18',	
+        approvedBy: 'Admin',	
+        attachments: 'Download',
+        reason: 'sick leave', 
+        status: 'Approved'
+    },
+    {
+        datesubmitted: '6/19/14',
+        datesrequested: '6/19/14 - 6/19/18',	
+        approvedBy: 'Admin',	
+        attachments: 'Download',
+        reason: 'sick leave', 
+        status: 'Approved'
+    },
+    
 ];

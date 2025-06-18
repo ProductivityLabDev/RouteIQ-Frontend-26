@@ -5,7 +5,7 @@ import TimeOffRequestModal from '@/components/TimeOffRequestModal'
 import { Button, Typography } from '@material-tailwind/react'
 
 const TimeOffRequest = () => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);  
     const openModal = () => setIsModalOpen(true);
     const closeModal = () => setIsModalOpen(false);
     return (

@@ -23,17 +23,21 @@ const TimeOffRequestTable = () => {
                     <thead className="bg-gray-100">
                         <tr>
                             <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
-                            Date 
+                            Date submitted
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
-                            Punch In
+                            Dates requested
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
-                            Punched Out
+                            Approved by
                             </th>
                             <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
-                            Work Hours
+                            Attachments    
                             </th>
+                            <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800 border-r border-gray-400">
+                            Reason    
+                            </th>
+                            
                             <th scope="col" className="px-6 py-3 text-left text-sm font-bold text-black-800">
                             Status
                             </th>
@@ -43,16 +47,19 @@ const TimeOffRequestTable = () => {
                         {timeEntries.map((entry, index) => (
                             <tr key={index}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
-                                    {entry.date}
+                                    {entry.datesubmitted}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
-                                    {entry.punchIn}
+                                    {entry.datesrequested}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
-                                    {entry.punchedOut}
+                                    {entry.approvedBy}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
-                                    {entry.workHours}
+                                    {entry.attachments}
+                                </td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black-700">
+                                    {entry.reason}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-medium rounded-md ${getStatusColor(entry.status)}`}>
