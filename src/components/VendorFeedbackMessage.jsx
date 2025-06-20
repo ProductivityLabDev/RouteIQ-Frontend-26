@@ -7,7 +7,7 @@ export function VendorFeedbackChatMessage({ isOwnMessage, message, avatarUrl, ti
             {!isOwnMessage && (
                 <img src={venderfeedbackData} alt="Profile" className="w-10 h-10 rounded-full mr-3 flex-shrink-0" />
             )}
-            <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} max-w-[70%]`}>
+            <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} max-w-[80%]`}>
                 <div className={`px-4 py-3 rounded-2xl ${isOwnMessage
                     ? 'bg-[#C01824] text-white rounded-br-none'
                     : 'bg-[#F5F5F5] text-[#202224] rounded-bl-none'

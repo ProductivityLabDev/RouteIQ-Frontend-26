@@ -65,7 +65,7 @@ const EmployeeSidebar = () => {
     return (
         <Box
             sx={{
-                width: isSmallScreen ? "100%" : 350,
+                width: isSmallScreen ? "100%" : 260,
                 padding: 2,
                 position: "fixed",
                 height: "100%",

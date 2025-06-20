@@ -54,7 +54,7 @@ export default function TimeTrackingCard() {
       <h1 className="text-xl font-semibold text-gray-800 ml-5">Attendance</h1>
       <div className="flex flex-row w-full gap-4 p-4 mt-[-20px]">
         {/* Calendar */}
-        <div className="max-w-md shadow-sm w-[400px]">
+        <div className="max-w-md shadow-sm ">
           <div className="bg-white rounded-xl shadow-sm p-6 h-[450px]">
             <div className="flex justify-between items-center mb-4 text-red-600 font-medium text-xl">
               <button onClick={handlePrevMonth}><FaChevronLeft /></button>
@@ -106,46 +106,42 @@ export default function TimeTrackingCard() {
             <div className="flex flex-col justify-between">
               <div className="border border-gray-200 rounded-lg p-4 mb-4 shadow-md">
                 <div className="text-[#1F4062] font-medium text-sm mb-1">Working Hours</div>
-                <div className="text-[#141516] font-bold">0 Hr 00 Mins 00 Secs</div>
+                <div className="text-[#141516] font-bold xl:text-[14px]">0 Hr 00 Mins 00 Secs</div>
               </div>
 
               <div className="border border-gray-200 rounded-lg p-4 shadow-md">
                 <div className="text-[#1F4062] font-medium text-sm mb-1">Break Hours</div>
-                <div className="text-[#141516] font-bold">00 Hr 00 Mins 55 Secs</div>
+                <div className="text-[#141516] font-bold xl:text-[14px]">00 Hr 00 Mins 55 Secs</div>
               </div>
 
-              <div className="mt-[50px] border w-[530px] pl-3 rounded-md h-[120px] shadow-md">
-                <div className="mt-2 flex space-x-4">
-                  <div className="flex items-center text-[#C01824]">
-                    <img src={punch} />
-                  </div>
-                  <div className="flex-1">
-                    <button
-                      onClick={handlePunchInClick}
-                      className="w-[470px] mt-1 mr-[10px] bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md"
-                    >
-                      Punch In
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex space-x-4">
-                  <div className="flex items-center text-[#C01824]">
-                    <img src={clock} />
-                  </div>
-                  <div className="flex-1">
-                    <button className="w-[470px] mr-[10px] bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
-                      Time Card
-                    </button>
-                  </div>
-                </div>
-              </div>
+            <div className="mt-[60px] border rounded-md p-4 shadow-md w-[400px] xl:w-[300px]">
+            {/* Punch In */}
+            <div className="mt-2 flex items-center gap-3">
+              <img src={punch} className="w-5 h-5" />
+              <button
+                onClick={handlePunchInClick}
+                className="flex-1 bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md"
+              >
+                Punch In
+              </button>
             </div>
+
+            {/* Time Card */}
+            <div className="mt-4 flex items-center gap-3">
+              <img src={clock} className="w-5 h-5" />
+              <button
+                className="flex-1 bg-[#C01824] hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md"
+              >
+                Time Card
+              </button>
+            </div>
+          </div>
+              </div>
 
             {/* Image Box */}
             <div className="flex flex-col items-center justify-center w-100 h-[220px] border border-gray-200 rounded-lg bg-white shadow-md">
               <img src={employeeTimeTracking} className="w-[180px] mx-3" />
-              <p className="mt-2 text-sm text-[#C01824] text-center italic">
+              <p className="mt-2 text-[#C01824] text-center italic lg:text-[14px] lg:mb-5">
                 Punctuality is the virtue of the bored.
               </p>
             </div>

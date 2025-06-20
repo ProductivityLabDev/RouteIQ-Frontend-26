@@ -7,7 +7,7 @@ import React from 'react'
 const Home = () => {
     return (
         <DashboardLayout>
-            <div className='w-100 flex flex-col gap-4'>
+            <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col gap-4">
                 <EmployeeInsights />
                 <TimeTrackingCard />
                 <AttendanceReport />

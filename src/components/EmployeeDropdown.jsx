@@ -59,7 +59,7 @@ function EmployeeDropdown() {
               ) : (
                 <IoRadioButtonOffOutline className="w-5 h-5 text-gray-400" />
               )}
-              <span className="text-gray-800">{role}</span>
+              <span className="text-gray-800 text-[14px] lg:text-[11px]">{role}</span>
               <input
                 type="radio"
                 name="role"

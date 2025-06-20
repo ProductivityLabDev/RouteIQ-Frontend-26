@@ -56,7 +56,7 @@ const RealTimeTracking = () => {
             <section className='w-full h-full'>
                 <div className='mt-7 md:h-[750px] h-full relative overflow-hidden'>
                     
-                    <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0 w-[18%]" variant="text" size='lg'>
+                    <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0 w-[30%]" variant="text" size='lg'>
                         {['Track School', 'Track Drivers'].map(tab => (
                             <Button
                                 key={tab}

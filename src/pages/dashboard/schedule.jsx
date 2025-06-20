@@ -46,8 +46,12 @@ export function Schedule() {
             </Button>
           ))}
         </ButtonGroup>
-        <div className='flex md:flex-row flex-col md:space-y-0 space-y-5 h-full mt-6 border shadow-sm rounded-md space-x-1 relative'>
-          <div className='bg-white w-full md:max-w-[280px] pt-2 overflow-y-auto'>
+
+        {/* Responsive Main Layout */}
+        <div className='flex flex-col lg:flex-row h-full mt-6 border shadow-sm rounded-md gap-1 relative'>
+
+          {/* Student List */}
+          <div className='bg-white w-full lg:w-[280px] pt-2 max-h-[650px] overflow-y-auto'>
             <Tabs value={activeTab}>
               <TabsHeader
                 className="rounded-none border-b border-blue-gray-50 bg-transparent p-0"
@@ -96,8 +100,10 @@ export function Schedule() {
               </TabsBody>
             </Tabs>
           </div>
+
+          {/* Side Panel - Student Info */}
           {selectedStudent && (
-            <div className='absolute md:left-[18rem] left-0  w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-3 overflow-y-auto z-[500]'>
+            <div className='absolute left-0 lg:left-[300px] w-full lg:max-w-[370px] bg-white shadow-lg rounded-lg p-3 overflow-y-auto z-[500] max-h-[650px]'>
               <div className='flex justify-between items-center'>
                 <div className="flex items-center gap-3 w-full bg-none">
                   <img src={selectedStudent.imgSrc} alt={selectedStudent.name} className="rounded-full w-[60px] h-[60px]" />
@@ -123,7 +129,7 @@ export function Schedule() {
                 <p className='text-[13.5px]'>Address</p>
                 <p className='text-[14px] font-bold'>Champs-Élysées 246</p>
               </div>
-              <div className='rounded-lg border border-black/25 mt-3 h-full max-h-[570px] overflow-y-auto'>
+              <div className='rounded-lg border border-black/25 mt-3 h-full max-h-[400px] overflow-y-auto'>
                 {tripDetails.map((trip, index) => (
                   <div key={index} className='bg-black rounded-lg p-3 text-white leading-tight'>
                     <div className='flex justify-between items-center'>
@@ -170,9 +176,11 @@ export function Schedule() {
               </button>
             </div>
           )}
-          <div className='relative h-screen md:h-full md:w-full w-auto overflow-hidden'>
+
+          {/* Map Area */}
+          <div className='relative w-full h-[300px] lg:h-full lg:w-auto overflow-hidden'>
             {/* <Map /> */}
-            <img src={mapImage} />
+            <img src={mapImage} className="w-full h-full object-cover" />
           </div>
         </div>
       </div>

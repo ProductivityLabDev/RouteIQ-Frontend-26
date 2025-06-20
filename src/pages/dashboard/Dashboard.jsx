@@ -44,7 +44,7 @@ const SchoolDashboard = () => {
           <div className="flex w-[98.3%] justify-between flex-row h-[65px] mb-3 items-center">
             <Typography
               className="text-[23px] md:text-[38px] mt-5 ps-2"
-              sx={{ fontSize: { xs: '23px', md: '38px' }, fontWeight: 700 }}
+              sx={{ fontSize: { xs: '23px', md: '20px'}, fontWeight: 700 }}
             >
               Good Morning, Moni Roy
             </Typography>

@@ -198,7 +198,7 @@ const VehicleManagement = () => {
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 {/* Left side buttons */}
                                 <div className="flex w-[35%] ps-4 space-x-4">
-                                    <Button className="bg-[#C01824] w-[35%] text-white hover:bg-[#A01520] px-6">
+                                    <Button className="bg-[#C01824] w-[50%] text-white hover:bg-[#A01520] px-6">
                                         Add Bus
                                     </Button>
                                     <Button className="bg-[#FDE6E6] w-[35%] text-[#C01824] hover:bg-[#FAD5D5] px-6">
@@ -207,9 +207,9 @@ const VehicleManagement = () => {
                                 </div>
 
                                 {/* Right side filters and views */}
-                                <div className="flex items-center w-[40%] space-x-4">
+                                <div className="flex items-center  space-x-2">
                                     <div className="flex items-center space-x-2">
-                                        <span className="text-gray-700">Sort By</span>
+                                        <span className="text-gray-700 text-[14px]">Sort By</span>
                                         <Button variant="outline" className="bg-[#D2D2D2] border-gray-200 flex items-center space-x-1" onClick={(e) => handleClick(e)}>
                                             <span>{selectedTerminal}</span>
                                             <FaChevronDown size={16} />

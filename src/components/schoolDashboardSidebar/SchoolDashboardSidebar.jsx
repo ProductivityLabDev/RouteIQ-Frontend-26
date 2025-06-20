@@ -113,7 +113,7 @@ const DashboardSidebar = () => {
     return (
         <Box
             sx={{
-                width: isSmallScreen ? "100%" : 350,
+                width: isSmallScreen ? "100%" : 300,
                 padding: 2,
                 position: "fixed",
                 height: "100%",

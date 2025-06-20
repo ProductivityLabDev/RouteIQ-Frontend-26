@@ -20,7 +20,7 @@ const Documents = () => {
     return (
         <MainLayout>
             <section className='w-full h-full'>
-                <div className='flex w-[45%] mt-4'>
+                <div className='flex w-[100%] mt-4'>
                     <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='md'>
                         {documentTab?.map(tab => (
                             <Button
