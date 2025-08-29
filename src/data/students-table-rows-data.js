@@ -10,7 +10,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Orchard Road 44",
       enrollment: "600375",
       contact: "(907) 555-0101",
-      grade: "11th Grade"
+      grade: "11th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 2,
@@ -22,7 +27,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Royal Mile 8",
       enrollment: "600842",
       contact: "(907) 555-0101",
-      grade: "9th Grade"
+      grade: "9th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 3,
@@ -34,7 +44,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Jump Street 21",
       enrollment: "600693",
       contact: "(907) 555-0101",
-      grade: "2nd Grade"
+      grade: "2nd Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 4,
@@ -46,7 +61,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Royal Mile 8",
       enrollment: "600375",
       contact: "(907) 555-0101",
-      grade: "4th Grade"
+      grade: "4th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 5,
@@ -58,7 +78,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Orchard Road 44",
       enrollment: "600842",
       contact: "(907) 555-0101",
-      grade: "3rd Grade"
+      grade: "3rd Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 6,
@@ -70,7 +95,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Royal Mile 8",
       enrollment: "600693",
       contact: "(907) 555-0101",
-      grade: "11th Grade"
+      grade: "11th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 7,
@@ -82,7 +112,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Jump Street 21",
       enrollment: "600693",
       contact: "(907) 555-0101",
-      grade: "11th Grade"
+      grade: "11th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 8,
@@ -94,7 +129,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Royal Mile 8",
       enrollment: "600375",
       contact: "(907) 555-0101",
-      grade: "11th Grade"
+      grade: "11th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 9,
@@ -106,7 +146,12 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Jump Street 21",
       enrollment: "600842",
       contact: "(907) 555-0101",
-      grade: "11th Grade"
+      grade: "11th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
     {
       id: 10,
@@ -118,6 +163,11 @@ export const STUDENTS_TABLE_ROWS = [
       address: "Royal Mile 11",
       enrollment: "600440",
       contact: "(907) 555-0221",
-      grade: "8th Grade"
+      grade: "8th Grade",
+      busanimalam: 'Bus-12, AnimalVan-05',
+      busnoam: '0123AM',
+      busanimalpm: 'Bus-14, AnimalVan-07',
+      busnopm: '0321PM',
+      drivername: 'John Michael'
     },
   ];

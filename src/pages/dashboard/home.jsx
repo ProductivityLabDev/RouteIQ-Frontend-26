@@ -45,7 +45,7 @@ export function Home() {
           </div>
           <div className="bg-white w-full rounded-[4px] shadow-md xl:h-[180px] px-2 md:px-5 py-2 xl:py-2 overflow-hidden">
             <div className="flex items-center justify-between">
-              <Typography className="text-[#202224] text-[18px] md:text-[24px] font-extrabold">Reports</Typography>
+              <Typography className="text-[#202224] text-[18px] md:text-[24px] font-extrabold">Communication</Typography>
               <Link to={`/dashboard/feedback-and-support`}>
                 <Button variant="text" className="bg-transparent shadow-none text-[#C01824] font-extrabold text-[12px] capitalize">View All</Button>
               </Link>
@@ -64,11 +64,11 @@ export function Home() {
               className="flex flex-col justify-between gap-4 rounded-none md:flex-row md:items-center border-b border-[#E4E5E7] pb-2"
             >
               <div className="flex md:flex-row flex-col md:space-x-8 md:items-center">
-                <Typography variant="h4" className="text-[20px] font-extrabold text-[#141516]">
-                  Attendance
+                <Typography variant="h4" className="text-[20px] font-extrabold text-[#141516] w-[300px]">
+                  Total Trips Costs
                 </Typography>
-                <ButtonGroup className="border border-[#E5E5E9] md:w-full w-[180px] rounded-md outline-none !p-0" variant="text" size='lg'>
-                  {['Students', 'Drivers',].map(attendance => (
+                <ButtonGroup className="border border-[#E5E5E9]  rounded-md outline-none !p-0" variant="text" size='lg'>
+                  {['Students', '# of trips / teacher',].map(attendance => (
                     <Button
                       key={attendance}
                       className={selectedAttendance === attendance ? 'bg-[#C01824] hover:bg-[#C01824]/80 px-6 py-2.5 text-white capitalize font-medium text-[12px]' : 'bg-white px-6 py-2.5 text-[12px] capitalize font-medium'}

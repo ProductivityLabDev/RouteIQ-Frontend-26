@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { calendericonred, locationicon, studentfive, addIcon } from '@/assets';
 import {
     Button,
@@ -9,29 +9,191 @@ import {
     MenuItem,
 } from '@material-tailwind/react';
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
+import { FaArrowLeft } from "react-icons/fa6";
+
+
 
 const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip }) => {
     const [showSeats, setShowSeats] = useState(false);
+    
 
     const handleFieldClick = () => {
         setShowSeats(true);
     };
     const drivers = ["Driver A", "Driver B", "Driver C"];
+   
+      const [selectedTime, setSelectedTime] = useState("");
     const timeSlots = [
-        "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-        "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"
+        "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
+        "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
+        "05:00 PM", "06:00 PM"
     ];
+
+    const menuRef = useRef(null);
+    const selectedItemRef = useRef(null);
+
+    // Scroll to selected item when dropdown opens
+    useEffect(() => {
+        if (menuRef.current && selectedItemRef.current) {
+            const menu = menuRef.current;
+            const item = selectedItemRef.current;
+            // Scroll the menu so the selected item is in view
+            menu.scrollTop = item.offsetTop - menu.offsetTop;
+        }
+    }, [selectedTime]);
+
     return (
         <section className='w-full h-full'>
-            <Typography fontWeight={700} className="text-[#202224] font-[Nunito Sans] font-bold py-3 ps-2 text-[32px]" marginInline={1}>
-                {editRoute ? "Edit Route" : isEditable ? 'Edit Trip' : 'Create Route'}
-            </Typography>
+         <Typography
+  fontWeight={700}
+  className="text-[#202224] font-[Nunito Sans] font-bold py-3 ps-2 text-[32px] flex items-center gap-2"
+  marginInline={1}
+>
+  <FaArrowLeft
+        className="cursor-pointer"
+        onClick={handleBackTrip} // yaha form band ho jayega
+      />
+  {editRoute ? "Edit Route" : isEditable ? "Edit Trip" : "Create Route"}
+</Typography>
             {
                 isEditable ?
-                    <div className="w-full p-4 bg-white h-[75vh] rounded-[4px] border shadow-sm">
+                    <div className="w-full p-4 bg-white h-[155vh] rounded-[4px] border shadow-sm">
                         <form className="grid grid-cols-2 gap-x-6 gap-y-4 py-16 ps-5 w-[50%]">
                             {/* Pickup field */}
+                            
+                             <div className="col-span-1">
+                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                        Select Cueernt Trip
+                                    </Typography>
+                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                        <select
+                                            className="bg-[#F5F6FA] outline-none w-full"
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>Select</option>
+                                            <option value="trip1">Motorcoach (56 Passenger)</option>
+                                            <option value="trip2">Motorcoach (47 Passenger)</option>
+                                            <option value="trip3">Motorcoach (22 Passenger)</option>
+                                             <option value="trip3">School Bus (50 Passenger 2/seat)</option>
+                                             <option value="trip3">School Bus (15-29 Passenger 3/seat)</option>
+                                            {/* Add more options as needed */}
+                                        </select>
+                                        
+                                    </div>
+                                </div>
+
+                                <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Company/Group Name
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Name"
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                    />
+                                  
+                                </div>
+                            </div>
+
+                             <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Phone Number
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="number"
+                                        placeholder="Enter Number"
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                    />
+                                  
+                                </div>
+                            </div>
+
+                             <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Email Address
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="email"
+                                        placeholder="Enter Email"
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                    />
+                                  
+                                </div>
+                            </div>
+
+                             <div className="col-span-1">
+                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                        Round Trip
+                                    </Typography>
+                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                        <select
+                                            className="bg-[#F5F6FA] outline-none w-full"
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>Select </option>
+                                            <option value="trip1">One Way</option>
+                                            <option value="trip2">Shuttle</option>
+                                           
+                                            {/* Add more options as needed */}
+                                        </select>
+                                        
+                                    </div>
+                                </div>
+
+                                  <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Number Of Passengers
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Location"
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                    />
+                                  
+                                </div>
+                            </div>
+
                             <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Is Wheelchair Lift Required
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Location"
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                    />
+                                  
+                                </div>
+                            </div>
+
+                             <div className="col-span-1">
+                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                        Bus Type
+                                    </Typography>
+                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                        <select
+                                            className="bg-[#F5F6FA] outline-none w-full"
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>Select</option>
+                                            <option value="trip1">a. Motorcoach (56 Passenger)</option>
+                                            <option value="trip2">b. Motorcoach (47 Passenger)</option>
+                                            <option value="trip3">c. Motorcoach (22 Passenger)</option>
+                                             <option value="trip3">d. School Bus (50 Passenger 2/seat)</option>
+                                             <option value="trip3">e. School Bus (15-29 Passenger 3/seat)</option>
+                                              <option value="trip3">f. Mini Van (4 Passengers)</option>
+                                            {/* Add more options as needed */}
+                                        </select>
+                                        
+                                    </div>
+                                </div>
+                            
+                            {/* <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Pickup
                                 </Typography>
@@ -46,10 +208,10 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         <img src={locationicon} alt="location" className="h-5 w-5" />
                                     </div>
                                 </div>
-                            </div>
+                            </div> */}
 
                             {/* Dropoff field */}
-                            <div className="col-span-1">
+                            {/* <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Dropoff
                                 </Typography>
@@ -64,54 +226,110 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         <img src={locationicon} alt="location" className="h-5 w-5" />
                                     </div>
                                 </div>
-                            </div>
+                            </div> */}
 
                             {/* Date and Time fields */}
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Date
+                                    Pickup Date
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
-                                        type="text"
+                                        type="date"
                                         placeholder="Select date"
                                         className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
                                     />
-                                    <img src={calendericonred} alt="calendar" className="h-5 w-5" />
+                                    {/* <img src={calendericonred} alt="calendar" className="h-5 w-5" /> */}
                                 </div>
                             </div>
 
-                            <div className="col-span-1">
+                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Time
+                                    Pickup Time
                                 </Typography>
                                 <Menu>
                                     <MenuHandler>
-                                        <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                        <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between cursor-pointer">
                                             <input
+                                                value={selectedTime}
                                                 placeholder="Select time"
-                                                className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
+                                                className="bg-[#F5F6FA] rounded-[6px] outline-none w-full cursor-pointer"
                                                 readOnly
                                             />
                                         </div>
                                     </MenuHandler>
-                                    <MenuList>
+
+                                    <MenuList className="max-h-60 overflow-auto" ref={menuRef}>
                                         {timeSlots.map((slot) => (
-                                            <MenuItem key={slot}>{slot}</MenuItem>
+                                            <MenuItem
+                                                key={slot}
+                                                onClick={() => setSelectedTime(slot)}
+                                                ref={slot === selectedTime ? selectedItemRef : null}
+                                                className={slot === selectedTime ? "bg-blue-100 font-semibold" : ""}
+                                            >
+                                                {slot}
+                                            </MenuItem>
                                         ))}
                                     </MenuList>
                                 </Menu>
                             </div>
 
-                            {/* Number of Persons field */}
-                            <div className="col-span-2 w-[47%]">
+                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    No. of Persons
+                                    Return Date
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
-                                        type="number"
-                                        placeholder="Enter no of persons"
+                                        type="date"
+                                        placeholder="Select date"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
+                                    />
+                                    {/* <img src={calendericonred} alt="calendar" className="h-5 w-5" /> */}
+                                </div>
+                            </div>
+
+
+                             <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Return Time
+                                </Typography>
+                                <Menu>
+                                    <MenuHandler>
+                                        <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between cursor-pointer">
+                                            <input
+                                                value={selectedTime}
+                                                placeholder="Select time"
+                                                className="bg-[#F5F6FA] rounded-[6px] outline-none w-full cursor-pointer"
+                                                readOnly
+                                            />
+                                        </div>
+                                    </MenuHandler>
+
+                                    <MenuList className="max-h-60 overflow-auto" ref={menuRef}>
+                                        {timeSlots.map((slot) => (
+                                            <MenuItem
+                                                key={slot}
+                                                onClick={() => setSelectedTime(slot)}
+                                                ref={slot === selectedTime ? selectedItemRef : null}
+                                                className={slot === selectedTime ? "bg-blue-100 font-semibold" : ""}
+                                            >
+                                                {slot}
+                                            </MenuItem>
+                                        ))}
+                                    </MenuList>
+                                </Menu>
+                            </div>
+
+
+                            {/* Number of Persons field */}
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                Type Of Group
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Instruction"
                                         className="bg-[#F5F6FA] rounded-[6px] w-full outline-none"
                                     />
                                 </div>
@@ -120,14 +338,14 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             {/* Driver field */}
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Driver
+                                    Pickup Location
                                 </Typography>
                                 <Menu>
                                     <MenuHandler>
                                         <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                             <input
                                                 type="text"
-                                                placeholder="Select driver"
+                                                placeholder="Enter Location"
                                                 className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
                                                 readOnly
                                             />
@@ -145,16 +363,169 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             {/* Bus No field */}
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Bus No (Total Seats)
+                                Name
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
                                         type="text"
-                                        placeholder="Enter bus no"
+                                        placeholder="Enter Name"
                                         className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
                                     />
                                 </div>
                             </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                 Pickup Address
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Address"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                 Pickup City
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter City"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                 Pickup State
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter State"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                 Pickup Zip
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Zip"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                  Add Additional Destinations
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Destination"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                  Destination Location
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Destination Location"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                             <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                  Destination Address
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Destination Address"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                             <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                  Destination City
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Destination City"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                  Destination State
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Destination State"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                  Destination Zip
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Destination Zip"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
+                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                      How Were You Referred To Us?
+                                    </Typography>
+                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                        <select
+                                            className="bg-[#F5F6FA] outline-none w-full"
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>Select</option>
+                                            <option value="trip1">Google</option>
+                                            <option value="trip2">Facebook</option>
+                                            <option value="trip3">Linkedin</option>
+                                             <option value="trip3">Youtube</option>
+                                            
+                                            {/* Add more options as needed */}
+                                        </select>
+                                        
+                                    </div>
+                                </div>
+
+
 
                             {/* Buttons */}
                             <div className="col-span-2 flex mt-20 space-x-4">

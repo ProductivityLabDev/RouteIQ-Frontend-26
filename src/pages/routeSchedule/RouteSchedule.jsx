@@ -49,6 +49,7 @@ const RouteSchedule = () => {
   const [modalPosition, setModalPosition] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
+   const [addtrip, setAddTrip] = useState(false);
   
 
   const handleSort = (column) => {
@@ -113,6 +114,8 @@ const RouteSchedule = () => {
         
     }
 
+    const handleCancel = () => setIsCreateTrip(false);
+
 
   const handleRouteMap = () => {
     setIsRouteMap(true);
@@ -140,7 +143,7 @@ const RouteSchedule = () => {
           showCard={showCard}
         />
       ) : isCreateTrip  ? (
-         <CreateTripForm />
+         <CreateTripForm handleCancel={handleCancel}/>
       ) : (
         <section className="w-full h-full">
           <div className="flex w-[100%] justify-between flex-row h-[65px] mb-3 items-center">
@@ -307,9 +310,9 @@ const RouteSchedule = () => {
                           </div>
 
                           {/* Assign button */}
-                          <button className="px-4 py-2 bg-[#C01824] text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors duration-200">
+                          {/* <button className="px-4 py-2 bg-[#C01824] text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors duration-200">
                             Assign
-                          </button>
+                          </button> */}
                         </div>
                       </div>
 
@@ -407,11 +410,11 @@ const RouteSchedule = () => {
                                   <td className="px-6 py-4 text-sm text-[#141516]">
                                     <div
                                       className={`w-[100px] text-center justify-center items-center flex h-[35px] rounded 
-          ${
-            trip.status === "Approved"
-              ? "bg-[#CCFAEB] text-[#0BA071]"
-              : "bg-[#F6DCDE] text-[#C01824]"
-          }`}
+                                      ${
+                                      trip.status === "Approved"
+                                        ? "bg-[#CCFAEB] text-[#0BA071]"
+                                        : "bg-[#F6DCDE] text-[#C01824]"
+                                    }`}
                                     >
                                       {trip.status}
                                     </div>
@@ -504,7 +507,7 @@ const RouteSchedule = () => {
                     </div>
                   ) : (
                     <div className="w-full bg-white border-t border-gray-200 shadow-sm">
-                      <SchoolRouteTable />
+                      <SchoolRouteTable handleMapScreenClick={handleMapScreenClick}/>
                     </div>
                   ))}
               </div>

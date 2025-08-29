@@ -8,33 +8,58 @@ export const schoolInoviceData = [
 
 export const TranportInvoicedata = [
     {
+      routeNumber: 'R001',
+      tripNumber: 'T001',
+      routeDescription: 'North Route Morning Trip',
+      tripDescription: 'North Route Afternoon Trip',
       buses: 'Saf-T-Liner® C2',
       unitPrice: '€200/Km',
       mileage: '250 Km',
       totalAmount: '€50,000',
+      status: "Open"
     },
     {
+      routeNumber: 'R002',
+      tripNumber: 'T002',
+      routeDescription: 'North Route Morning Trip',
+      tripDescription: 'North Route Afternoon Trip',
       buses: 'Saf-T-Liner® C2.',
       unitPrice: '€200/Km',
       mileage: '250 Km',
       totalAmount: '€50,000',
+      status: "Invoice Sent",
     },
     {
+      routeNumber: 'R003',
+      tripNumber: 'T003',
+      routeDescription: 'North Route Morning Trip',
+      tripDescription: 'North Route Afternoon Trip',
       buses: 'Minotour® School Bus',
       unitPrice: '€200/Km',
       mileage: '250 Km',
       totalAmount: '€50,000',
+      status: "Pending Payment",
     },
     {
+      routeNumber: 'R004',
+      tripNumber: 'T004',
+      routeDescription: 'North Route Morning Trip',
+      tripDescription: 'North Route Afternoon Trip',
       buses: 'Saf-T-Liner® EFX',
       unitPrice: '€200/Km',
       mileage: '250 Km',
       totalAmount: '€50,000',
+      status: "Open"
     },
     {
+      routeNumber: 'R005',
+      tripNumber: 'T005',
+      routeDescription: 'North Route Morning Trip',
+      tripDescription: 'North Route Afternoon Trip',
       buses: 'Saf-T-Liner® C2.',
       unitPrice: '€200/Km',
       mileage: '250 Km',
       totalAmount: '€50,000',
+      status: "Pending Payment",
     },
   ];

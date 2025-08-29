@@ -95,59 +95,59 @@ export default function SchoolList({ handleMapScreenClick, handleEditRoute }) {
                                     </button>
                                 </div>
                                 <div className='flex items-center gap-5'>
-                                    <div className="md:w-[250px]">
-                                        <Popover placement="bottom">
-                                            <PopoverHandler>
-                                                <div className="relative">
-                                                    <Input
-                                                        label="Select a Date"
-                                                        onChange={() => null}
-                                                        value={date ? format(date, "PPP") : ""}
+                                        {/* <div className="md:w-[250px]">
+                                            <Popover placement="bottom">
+                                                <PopoverHandler>
+                                                    <div className="relative">
+                                                        <Input
+                                                            label="Select a Date"
+                                                            onChange={() => null}
+                                                            value={date ? format(date, "PPP") : ""}
+                                                        />
+                                                        <img src={calendar} alt='' className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                                                    </div>
+                                                </PopoverHandler>
+                                                <PopoverContent>
+                                                    <DayPicker
+                                                        mode="single"
+                                                        selected={date}
+                                                        onSelect={setDate}
+                                                        showOutsideDays
+                                                        className="border-0"
+                                                        classNames={{
+                                                            caption: "flex justify-center py-1 relative items-center",
+                                                            caption_label: "text-sm font-medium text-gray-900",
+                                                            nav: "flex items-center",
+                                                            nav_button: "h-6 w-6 bg-transparent hover:bg-blue-gray-50 p-1 rounded-md transition-colors duration-300",
+                                                            nav_button_previous: "absolute left-1.5",
+                                                            nav_button_next: "absolute right-1.5",
+                                                            table: "w-full border-collapse",
+                                                            head_row: "flex font-medium text-gray-900",
+                                                            head_cell: "m-0.5 w-9 font-normal text-sm",
+                                                            row: "flex w-full mt-2",
+                                                            cell: "text-gray-600 rounded-md h-9 w-9 text-center text-sm p-0 m-0.5 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-gray-900/20 [&:has([aria-selected].day-outside)]:text-white [&:has([aria-selected])]:bg-gray-900/50 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                                                            day: "h-9 w-9 p-0 font-normal",
+                                                            day_range_end: "day-range-end",
+                                                            day_selected: "rounded-md bg-[#C01824] text-white hover:bg-[#C01824]/90 hover:text-white focus:bg-[#C01824] focus:text-white",
+                                                            day_today: "rounded-md bg-gray-200 text-gray-900",
+                                                            day_outside: "day-outside text-gray-500 opacity-50 aria-selected:bg-gray-500 aria-selected:text-gray-900 aria-selected:bg-opacity-10",
+                                                            day_disabled: "text-gray-500 opacity-50",
+                                                            day_hidden: "invisible",
+                                                        }}
+                                                        components={{
+                                                            IconLeft: ({ ...props }) => (
+                                                                <ChevronLeftIcon {...props} className="h-4 w-4 stroke-2" />
+                                                            ),
+                                                            IconRight: ({ ...props }) => (
+                                                                <ChevronRightIcon {...props} className="h-4 w-4 stroke-2" />
+                                                            ),
+                                                        }}
                                                     />
-                                                    <img src={calendar} alt='' className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
-                                                </div>
-                                            </PopoverHandler>
-                                            <PopoverContent>
-                                                <DayPicker
-                                                    mode="single"
-                                                    selected={date}
-                                                    onSelect={setDate}
-                                                    showOutsideDays
-                                                    className="border-0"
-                                                    classNames={{
-                                                        caption: "flex justify-center py-1 relative items-center",
-                                                        caption_label: "text-sm font-medium text-gray-900",
-                                                        nav: "flex items-center",
-                                                        nav_button: "h-6 w-6 bg-transparent hover:bg-blue-gray-50 p-1 rounded-md transition-colors duration-300",
-                                                        nav_button_previous: "absolute left-1.5",
-                                                        nav_button_next: "absolute right-1.5",
-                                                        table: "w-full border-collapse",
-                                                        head_row: "flex font-medium text-gray-900",
-                                                        head_cell: "m-0.5 w-9 font-normal text-sm",
-                                                        row: "flex w-full mt-2",
-                                                        cell: "text-gray-600 rounded-md h-9 w-9 text-center text-sm p-0 m-0.5 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-gray-900/20 [&:has([aria-selected].day-outside)]:text-white [&:has([aria-selected])]:bg-gray-900/50 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                                                        day: "h-9 w-9 p-0 font-normal",
-                                                        day_range_end: "day-range-end",
-                                                        day_selected: "rounded-md bg-[#C01824] text-white hover:bg-[#C01824]/90 hover:text-white focus:bg-[#C01824] focus:text-white",
-                                                        day_today: "rounded-md bg-gray-200 text-gray-900",
-                                                        day_outside: "day-outside text-gray-500 opacity-50 aria-selected:bg-gray-500 aria-selected:text-gray-900 aria-selected:bg-opacity-10",
-                                                        day_disabled: "text-gray-500 opacity-50",
-                                                        day_hidden: "invisible",
-                                                    }}
-                                                    components={{
-                                                        IconLeft: ({ ...props }) => (
-                                                            <ChevronLeftIcon {...props} className="h-4 w-4 stroke-2" />
-                                                        ),
-                                                        IconRight: ({ ...props }) => (
-                                                            <ChevronRightIcon {...props} className="h-4 w-4 stroke-2" />
-                                                        ),
-                                                    }}
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                                </PopoverContent>
+                                            </Popover>
 
-                                    </div>
-                                    <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='sm'>
+                                        </div> */}
+                                    {/* <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='sm'>
                                         {['AM', 'PM'].map(tab => (
                                             <Button
                                                 key={tab}
@@ -157,7 +157,7 @@ export default function SchoolList({ handleMapScreenClick, handleEditRoute }) {
                                                 {tab}
                                             </Button>
                                         ))}
-                                    </ButtonGroup>
+                                    </ButtonGroup> */}
                                     <button onClick={() => toggleRoute('route1')}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${expandedRoutes.route1 ? 'rotate-180' : ''}`}>
                                             <polyline points="6 9 12 15 18 9"></polyline>
@@ -220,6 +220,7 @@ export default function SchoolList({ handleMapScreenClick, handleEditRoute }) {
 
                                                     Edit
                                                 </button>
+                                                
                                             </div>
                                         </div>
                                     </div>

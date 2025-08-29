@@ -10,7 +10,7 @@ const tabsData = [
 ];
 
 export function Schedule() {
-  const [selectedTab, setSelectedTab] = useState('A');
+ const [selectedTab, setSelectedTab] = useState('A AM');
   const [activeTab, setActiveTab] = useState("allstudents");
   const [selectedStudent, setSelectedStudent] = useState(null);
 
@@ -36,7 +36,7 @@ export function Schedule() {
     <>
       <div className='mt-7 md:h-[750px] h-full relative overflow-hidden'>
         <ButtonGroup className="border-0 rounded-[4px] outline-none p-0" variant="text">
-          {['A', 'B', 'C', 'D'].map(bus => (
+          {['A AM', 'A PM', 'B AM', 'B PM', 'C AM', 'C PM', 'D AM', 'D PM'].map(bus => (
             <Button
               key={bus}
               className={selectedTab === bus ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white text-xs md:text-[14px] capitalize font-medium' : 'bg-white text-xs md:text-[14px] text-[#141516] capitalize font-medium'}
@@ -179,8 +179,15 @@ export function Schedule() {
 
           {/* Map Area */}
           <div className='relative w-full h-[300px] lg:h-full lg:w-auto overflow-hidden'>
-            {/* <Map /> */}
-            <img src={mapImage} className="w-full h-full object-cover" />
+          <img src={mapImage} className="w-full h-full object-cover" />
+            <div className="absolute bottom-40 left-4 bg-white shadow-lg rounded-lg px-4 py-6 w-fit border border-gray-300">
+              <p className="text-[16px] font-medium text-gray-800">
+                Boarding status: <span className="text-red-600 font-bold">On Route</span>
+              </p>
+              <p className="text-[14px] font-medium text-gray-800">
+                ETA: <span className="text-red-600 font-bold">15 min</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -170,24 +170,51 @@ const InvoiceForm = ({ handleback, schoolInvoice, setEditInvoice, editInvoice, h
                             </Box>
                         </Box>
                         <div className="overflow-x-auto">
-                            <table className={`${schoolInvoice ? 'min-w-[70%]' : 'min-w-full'}`}>
+                            <table className={`${schoolInvoice ? 'min-w-[70%]' : 'min-w-full'} mt-[100px]`}>
                                 <thead className="bg-[#FAFAFA]">
                                     <tr>
                                         <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">NO.</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">Route Number</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">Trip Number</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">Route Description</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">Trip Description</th>
                                         <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">BUSES</th>
                                         <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">UNIT PRICE</th>
                                         <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">MILEAGE</th>
                                         <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">TOTAL AMOUNT</th>
+                                        <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">STATUS  </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {TranportInvoicedata.map((item, index) => (
                                         <tr key={index} className={'bg-[tranparent]'}>
                                             <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{index + 1}</td>
+                                            <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.routeNumber}</td>
+                                            <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.tripNumber}</td>
+                                            <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.routeDescription}</td>
+                                            <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.tripDescription}</td>
                                             <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.buses}</td>
                                             <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.unitPrice}</td>
                                             <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.mileage}</td>
                                             <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{item.totalAmount}</td>
+                                            <td className="px-6 py-4 border-b border-gray-300">
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap
+                                                ${
+                                                    item.status === "Open"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : item.status === "Invoice Sent"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : item.status === "Pending Payment"
+                                                    ? "bg-orange-100 text-orange-800"
+                                                    : item.status === "Paid"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                            >
+                                                {item.status}
+                                            </span>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

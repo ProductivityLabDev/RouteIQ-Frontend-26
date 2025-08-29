@@ -79,17 +79,17 @@ export const bottomRoutes = [
       },
     ],
   },
-  {
-    layout: "account",
-    pages: [
-      {
-        icon: <img src={logouticon} alt="Route Schedules" className="w-5 h-5" />,
-        name: "logout",
-        path: "/sign-in",
-        element: <SignIn />,
-      },
-    ],
-  },
+{
+  layout: "account",
+  pages: [
+    {
+      icon: <img src={logouticon} alt="Logout" className="w-5 h-5" />,
+      name: "logout",
+      path: "/logout",
+      element: <SignIn/>,
+    },
+  ],
+}
 ];
 
 export const routes = [

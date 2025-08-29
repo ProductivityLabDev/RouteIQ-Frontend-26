@@ -153,10 +153,10 @@ const renderPageNumbers = () => {
               <thead className="bg-gray-100">
                 <tr>
                   {[
-                    "Title", "Name", "Address", "City", "Date of Birth", "State", "Zip", "Terminal", "Email",
+                    "Title", "Name", "Address", "City", "Phone", "Date of Birth", "State", "Zip", "Terminal", "Email",
                     "Emergency Contact Name", "Emergency Contact", "Pay Grade", "Trip Rate", "Route Rate", "Pay Cycle", "Pay Type",
-                    "W2", "1099", "YTD", "Pay Stub", "Terminal Assigned To", "Fuel Card Code", "App User Name", "Direct Deposit",
-                    "App Password Reset", "App Status", "Availability", "Action"
+                    "W2", "1099", "YTD", "Pay Stub", "Terminal Assigned To", "Fuel Card Code", "User Name", "Direct Deposit", "Routing No", "Social Security No",
+                    "Password Reset", "Status", "Availability", "Action"
                   ].map((head) => (
                     <th key={head} className="px-10 py-1 border whitespace-nowrap">{head}</th>
                   ))}
@@ -176,6 +176,7 @@ const renderPageNumbers = () => {
                       </td>
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.address}</h2></td>
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.city}</h2></td>
+                      <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.phone}</h2></td>
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.dob}</h2></td>
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.state}</h2></td>
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.zip}</h2></td>
@@ -196,6 +197,9 @@ const renderPageNumbers = () => {
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.fuelCardCode}</h2></td>
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.appUserName}</h2></td>
                       <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{employee.directDeposit}</h2></td>
+                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.routingno}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.socialsecurityno}</h2></td>
+                      
                       <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{employee.appPasswordReset}</h2></td>
                       <td className="px-10 py-1 border text-center">
                         <div className={`flex w-[98px] h-8 items-center gap-1 justify-center rounded-full ${status[employeeIndex] ? 'bg-green-500' : 'bg-[#C01824]'}`}>

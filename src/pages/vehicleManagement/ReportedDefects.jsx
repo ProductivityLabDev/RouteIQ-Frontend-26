@@ -1,16 +1,36 @@
-import React from 'react'
+import React, { useState } from 'react'
 import VendorDashboardHeader from '@/components/VendorDashboardHeader';
 import { Typography } from '@material-tailwind/react';
 import ButtonComponent from '@/components/buttons/CustomButton';
 
 const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleScheduleRepair }) => {
+
+    const [isOpen, setIsOpen] = useState(false); // state for popup
+    const [chatInput, setChatInput] = useState("");
+    const [chatMessages, setChatMessages] = useState([
+        { sender: "Driver", text: "Engine making noise" },
+        { sender: "Mechanic", text: "Checking it today" },
+    ]);
+
+    const reportedDefects = [
+        "Brake issue reported",
+        "Low tire pressure",
+        "Oil leakage",
+    ];
+
+    const handleSend = () => {
+        if (!chatInput.trim()) return;
+        setChatMessages([...chatMessages, { sender: "You", text: chatInput }]);
+        setChatInput("");
+    };
+
     return (
         <section className='w-full h-full'>
             <div className='bg-white w-full rounded-[4px] border shadow-sm h-full'>
                 <VendorDashboardHeader title='Reported Defects' icon={true} TextClassName='md:text-[22px]' className='ms-12' handleNavigate={onBack} />
-                <div className='flex flex-row w-[97%] h-[23vh] justify-between h-[33vh] m-5 border-b-2 border-[#d3d3d3]'>
-                    <div className='flex flex-row w-[60%] h-[23vh] gap-[59px]'>
-                        <img src={vehicle?.vehiclImg} />
+                <div className='flex flex-row w-[97%] justify-between h-[33vh] m-5 border-b-2 border-[#d3d3d3]'>
+                    <div className='flex flex-row w-[60%] gap-[59px]'>
+                        <img src={vehicle?.vehiclImg} alt="vehicle" />
                         <div className='flex flex-col h-full w-[65%] gap-[13px]'>
                             <Typography className="mb-2 text-start font-extrabold text-[19px] text-black">
                                 {vehicle?.vehicleName}
@@ -43,6 +63,7 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
                         </div>
                     </div>
                 </div>
+
                 {/* ------------------------------- Reported Defect Content ------------------------- */}
                 <div className='flex flex-col h-[34vh] w-[65%] gap-[16px] px-12'>
                     <Typography className="mb-2 text-start font-extrabold text-[19px] text-black">
@@ -73,18 +94,88 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
                         </Typography>
                     </div>
                     <div className='flex flex-row gap-3'>
-                        <ButtonComponent sx={{ width: '185px', height: '42px', fontSize: '11px' }} label='Request a Photo/Video' Icon={false} />
                         <ButtonComponent sx={{ width: '175px', height: '42px', fontSize: '13px' }} label='Schedule Repair' Icon={false} onClick={handleScheduleRepair} />
-                        <ButtonComponent sx={{
-                            width: '175px', height: '42px', fontSize: '13px', backgroundColor: '#28A745', "&:hover": {
+
+                        <ButtonComponent
+                            sx={{
+                                width: '175px',
+                                height: '42px',
+                                fontSize: '13px',
                                 backgroundColor: '#28A745',
-                            },
-                        }} label='Keep Running' Icon={false} />
+                                "&:hover": { backgroundColor: '#28A745' },
+                            }}
+                            label='Keep Running'
+                            Icon={false}
+                            onClick={() => setIsOpen(true)} // ✅ Popup open yahan hoga
+                        />
                     </div>
                 </div>
             </div>
+
+            {/* ---------------- POPUP ---------------- */}
+            {isOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-3xl p-6 relative">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+                        >
+                            ✖
+                        </button>
+
+                        <h2 className="text-xl font-bold mb-4">Communication Hub</h2>
+
+                        {/* Notify Driver */}
+                        <div className="mb-4">
+                            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                Notify Driver
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Reported Defects */}
+                            <div>
+                                <h3 className="font-semibold mb-2">Reported Defects</h3>
+                                <ul className="list-disc list-inside text-gray-700 space-y-1 bg-gray-100 p-3 rounded-lg">
+                                    {reportedDefects.map((defect, idx) => (
+                                        <li key={idx}>{defect}</li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Chat Window */}
+                            <div>
+                                <h3 className="font-semibold mb-2">Chat (Driver & Mechanic)</h3>
+                                <div className="border rounded-lg h-48 p-3 overflow-y-auto mb-3 bg-gray-50">
+                                    {chatMessages.map((msg, idx) => (
+                                        <p key={idx} className="mb-1">
+                                            <span className="font-bold">{msg.sender}:</span> {msg.text}
+                                        </p>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Type message..."
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        className="border rounded-lg p-2 flex-1"
+                                    />
+                                    <button
+                                        onClick={handleSend}
+                                        className="bg-green-600 text-white px-4 rounded-lg hover:bg-green-700"
+                                    >
+                                        Send
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     )
 }
 
-export default ReportedDefects
+export default ReportedDefects;

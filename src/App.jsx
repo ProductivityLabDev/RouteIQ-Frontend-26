@@ -32,6 +32,11 @@ import Accounting from "./pages/accounting/Accounting";
 import AccessManagement from "./pages/accessManagement/AccessManagement";
 import Documents from "./pages/auth/document/Documents";
 import EmployeeManagementRoutes from "./layouts/EmployeeDashboard";
+
+
+
+
+
 function App() {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);

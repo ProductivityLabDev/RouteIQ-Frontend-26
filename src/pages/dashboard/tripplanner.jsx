@@ -4,9 +4,82 @@ import { Approved, Pending, Rejected, Header } from '@/components/TripPlanner';
 import { nexticon, previcon } from '@/assets';
 import { tripsData } from '@/data';
 
+import { burgerBar, calendar, leftArrow, rightArrow, routeTableIcon, ViewMap } from '@/assets';
+import MapComponent from '@/components/MapComponent';
+import VendorApprovedCard from '@/components/vendorRoutesCard/VendorApprovedCard';
+
+import { busTrips } from '@/data/dummyData';
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Button, ButtonGroup, Input, Popover, PopoverContent, PopoverHandler } from '@material-tailwind/react';
+import { format } from "date-fns";
+import { DayPicker } from "react-day-picker";
+import { FaArrowDown, FaArrowUp, FaPlus } from 'react-icons/fa';
+import { FaEllipsisVertical } from "react-icons/fa6";
+import CreateTripForm from '../../components/CreateTripForm';
+
 export function TripPlanner() {
   const [selectedTrip, setSelectedTrip] = useState('All');
+
+  const [selectedTab, setSelectedTab] = useState('Route Schedules');
+ const [currentPage, setCurrentPage] = useState(1);
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [humburgerBar, setHamburgerBar] = useState(false);
+
+   const [isModalOpen, setIsModalOpen] = useState(false);
+
+   const [isCreateTrip, setIsCreateTrip] = useState(false);
+
+   const [date, setDate] = useState();
+    const hanldeEditModal = () => {
+
+        setIsEditable(true)
+        setOpen(!open)
+    }
+      const handleCancel = () => setIsCreateTrip(false);
+
+     const handleEditRoute = () => {
+        setIsEditRoute(true)
+        setIsCreateRoute(true)
+    }
+
+    const handleMapScreenClick = () => {
+        setOpenMapScreen(true);
+    };
+
+   const handleOpenRoute = () => {
+        setIsCreateTrip(true)
+        
+    }
+
+    //  const handleEditRoute = () => {
+    //     setIsEditRoute(true)
+    //     setIsCreateRoute(true)
+    // }
+
+     const handleRouteMap = () => {
+        setIsRouteMap(true)
+        setOpenMapScreen(true)
+    }
+
   const [active, setActive] = useState(1);
+
+  const formatTextWithLineBreaks = (text) => {
+          return text.split("\n").map((line, index) => (
+              <React.Fragment key={index}>
+                  {line}
+                  {index < text.split("\n").length - 1 && <br />}
+              </React.Fragment>
+          ));
+      };
+
+       const handleEllipsisClick = (event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setModalPosition({ top: rect.top + window.scrollY + 30, left: rect.left + window.scrollX - 140 });
+        setIsModalOpen(true);
+    };
+
   const next = () => {
     if (active === 10) return;
     setActive(active + 1);
@@ -22,8 +95,8 @@ export function TripPlanner() {
 
   return (
     <section className='mt-7'>
-      <Header setSelectedTrip={setSelectedTrip} selectedTrip={selectedTrip} />
-      <div className='bg-white rounded-md py-3 px-4 mt-5'>
+      {/* <Header setSelectedTrip={setSelectedTrip} selectedTrip={selectedTrip} /> */}
+      {/* <div className='bg-white rounded-md py-3 px-4 mt-5'>
         <div className='grid xl:grid-cols-2 grid-cols-1 place-items-center lg:place-items-start gap-5'>
           {selectedTrip === 'Approved' && <Approved trips={filteredTrips} />}
           {selectedTrip === 'Pending' && <Pending trips={filteredTrips} />}
@@ -47,7 +120,387 @@ export function TripPlanner() {
               disabled={active === 10} src={nexticon} alt='' strokeWidth={2} className="h-[24px] w-[24px] cursor-pointer" />
           </div>
         </div>
-      </div>
+      </div> */}
+
+        <div className="flex w-[100%] justify-between flex-row h-[65px] mb-3 items-center">
+                              {/* <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='lg'>
+                                  {['Route Schedules', 'Trip Planner'].map(tab => (
+                                      <Button
+                                          key={tab}
+                                          className={selectedTab === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-3 lg:text-[14px] capitalize font-bold' : 'bg-white px-6 py-3 capitalize font-bold'}
+                                          onClick={() => setSelectedTab(tab)}
+                                      >
+                                          {tab}
+                                      </Button>
+                                  ))}
+                              </ButtonGroup> */}
+                              {/* {selectedTab === "Trip Planner" ?
+                                  null
+                                  // <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center'
+                                  //     variant='filled' size='lg' onClick={handleOpen}>
+                                  //     <span>
+                                  //         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                  //             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                  //         </svg>
+                                  //     </span>
+                                  //     Create Trip
+                                  // </Button>
+                                  :
+                                  <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center'
+                                      variant='filled' size='lg' onClick={handleOpenRoute}>
+                                      <span>
+                                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                          </svg>
+                                      </span>
+                                      Create Route
+                                  </Button>
+      
+                              } */}
+
+                             
+
+                              <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center'
+                                      variant='filled' size='lg' onClick={handleOpenRoute}>
+                                      <span>
+                                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                          </svg>
+                                      </span>
+                                      Create Route
+                                  </Button>
+                          </div>
+
+                           {isCreateTrip ?(
+                                <CreateTripForm handleCancel={handleCancel}/>
+                              ):(
+
+                                    <div className="w-full space-y-4">
+                              {[...Array(4)].map((_, index) => (
+                                  <div className="w-full bg-white border-b border-gray-200 shadow-sm">
+                                      <div className="flex items-center justify-between px-4 py-2">
+                                          <div className="flex items-center space-x-3">
+                                              <button className="text-gray-600 hover:text-gray-800">
+                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                                  </svg>
+                                              </button>
+                                              <h2 className="font-medium text-gray-800 text-lg">Terminal 1</h2>
+                                              <button className="text-gray-600 hover:text-gray-800"  onClick={() => setIsOpen(index === isOpen ? null : index)}>
+                                                 <svg width="20" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                 <path d="M3.27702 20.6328C3.01105 20.6328 2.78653 20.5278 2.60348 20.318C2.42056 20.1079 2.3291 19.8503 2.3291 19.5451V17.1006C2.3291 16.8114 2.3766 16.535 2.4716 16.2714C2.56646 16.0079 2.70195 15.7753 2.87806 15.5733L13.3191 3.61121C13.4924 3.42443 13.6848 3.28132 13.8962 3.18188C14.1074 3.08244 14.3292 3.03271 14.5614 3.03271C14.7903 3.03271 15.0139 3.08244 15.2322 3.18188C15.4504 3.28132 15.6426 3.43049 15.8087 3.62938L17.1687 5.19657C17.342 5.38334 17.4694 5.60295 17.5508 5.85538C17.6322 6.10765 17.6729 6.36096 17.6729 6.61531C17.6729 6.88177 17.6322 7.13715 17.5508 7.38145C17.4694 7.62592 17.342 7.8476 17.1687 8.04648L6.74848 20.0029C6.5725 20.205 6.36966 20.3604 6.13994 20.4693C5.91035 20.5783 5.66952 20.6328 5.41744 20.6328H3.27702ZM14.5556 7.94823L15.7222 6.61531L14.5506 5.26517L13.3789 6.60384L14.5556 7.94823Z" fill="#1C1B1F"/>
+                                                 </svg>
+      
+                                              </button>
+      
+                                          </div>
+      
+                                          <div className="flex items-center space-x-4">
+      
+                                              <button
+                                                  onClick={() => setIsOpen(index === isOpen ? null : index)}
+                                                  className="text-black hover:text-gray-800"
+                                              >
+                                                  <svg
+                                                      xmlns="http://www.w3.org/2000/svg"
+                                                      className={`h-6 w-6 transition-transform duration-200 `}
+                                                      fill="none"
+                                                      viewBox="0 0 24 24"
+                                                      stroke="currentColor"
+                                                  >
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                                  </svg>
+                                              </button>
+                                          </div>
+                                      </div>
+                                      {isOpen === index && (
+                                          
+                                              <div className="w-full">
+                                                  {humburgerBar ?
+                                                      <div className="flex justify-end items-center pt-3 mb-0 px-7 py-1  border-t border-[#D5D5D5]">
+                                                          <div className="w-[30px] h-[30px] border border-[#D5D5D5] rounded-sm" onClick={() => setHamburgerBar(!humburgerBar)}>
+                                                              <img src={routeTableIcon} />
+                                                          </div>
+                                                      </div>
+                                                      :
+                                                      <div className="flex justify-end items-center mt-4 mb-2 px-7 py-3 gap-4 border-t border-[#D5D5D5]">
+                                                          <div style={{ width: "40px", height: "40px", borderColor: '#D2D1D1', borderWidth: '1px', borderRadius: '7px', }} className="flex items-center justify-center" onClick={() => setHamburgerBar(!humburgerBar)}>
+                                                              <img src={burgerBar} />
+                                                          </div>
+                                                          <div className="md:w-[250px]">
+                                                              <Popover placement="bottom">
+                                                                  <PopoverHandler>
+                                                                      <div className="relative">
+                                                                          <Input
+                                                                              label="Select a Date"
+                                                                              onChange={() => null}
+                                                                              value={date ? format(date, "PPP") : ""}
+                                                                          />
+                                                                          <img src={calendar} alt='' className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                                                                      </div>
+                                                                  </PopoverHandler>
+                                                                  <PopoverContent>
+                                                                      <DayPicker
+                                                                          mode="single"
+                                                                          selected={date}
+                                                                          onSelect={setDate}
+                                                                          showOutsideDays
+                                                                          className="border-0"
+                                                                          classNames={{
+                                                                              caption: "flex justify-center py-1 relative items-center",
+                                                                              caption_label: "text-sm font-medium text-gray-900",
+                                                                              nav: "flex items-center",
+                                                                              nav_button: "h-6 w-6 bg-transparent hover:bg-blue-gray-50 p-1 rounded-md transition-colors duration-300",
+                                                                              nav_button_previous: "absolute left-1.5",
+                                                                              nav_button_next: "absolute right-1.5",
+                                                                              table: "w-full border-collapse",
+                                                                              head_row: "flex font-medium text-gray-900",
+                                                                              head_cell: "m-0.5 w-9 font-normal text-sm",
+                                                                              row: "flex w-full mt-2",
+                                                                              cell: "text-gray-600 rounded-md h-9 w-9 text-center text-sm p-0 m-0.5 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-gray-900/20 [&:has([aria-selected].day-outside)]:text-white [&:has([aria-selected])]:bg-gray-900/50 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                                                                              day: "h-9 w-9 p-0 font-normal",
+                                                                              day_range_end: "day-range-end",
+                                                                              day_selected: "rounded-md bg-[#C01824] text-white hover:bg-[#C01824]/90 hover:text-white focus:bg-[#C01824] focus:text-white",
+                                                                              day_today: "rounded-md bg-gray-200 text-gray-900",
+                                                                              day_outside: "day-outside text-gray-500 opacity-50 aria-selected:bg-gray-500 aria-selected:text-gray-900 aria-selected:bg-opacity-10",
+                                                                              day_disabled: "text-gray-500 opacity-50",
+                                                                              day_hidden: "invisible",
+                                                                          }}
+                                                                          components={{
+                                                                              IconLeft: ({ ...props }) => (
+                                                                                  <ChevronLeftIcon {...props} className="h-4 w-4 stroke-2" />
+                                                                              ),
+                                                                              IconRight: ({ ...props }) => (
+                                                                                  <ChevronRightIcon {...props} className="h-4 w-4 stroke-2" />
+                                                                              ),
+                                                                          }}
+                                                                      />
+                                                                  </PopoverContent>
+                                                              </Popover>
+      
+                                                          </div>
+                                                      </div>
+                                                  }
+                                                  {humburgerBar ?
+                                                      <div className="w-full p-4 overflow-hidden rounded-sm">
+                                                          <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+                                                              <table className="w-full border-collapse">
+                                                                  <thead>
+                                                                      <tr className="bg-gray-100">
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("tripNo")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  TripNo
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("busNo")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  Bus no
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("date")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  Date
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("time")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  Time
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("driverName")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  Driver Name
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("pickup")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  Pickup
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("dropoff")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  Dropoff
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("numberOfPersons")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  No. of Person
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th
+                                                                              className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                              onClick={() => handleSort("glCode")}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                  GL Code
+                                                                                  <FaArrowUp size={13} className="ml-1" />
+                                                                                  <FaArrowDown size={13} className="ml-1" />
+                                                                              </div>
+                                                                          </th>
+                                                                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-800">Status</th>
+                                                                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-800">View Map</th>
+                                                                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-800">Action</th>
+                                                                      </tr>
+                                                                  </thead>
+                                                                  <tbody>
+                                                                      {busTrips?.map((trip) => (
+                                                                          <tr key={trip.id} className="border-t border-gray-200 hover:bg-gray-50">
+                                                                              <td className="px-4 py-3.5 text-sm text-gray-800">{trip.tripNo}</td>
+                                                                              <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line">
+                                                                                  {formatTextWithLineBreaks(trip.busNo)}
+                                                                              </td>
+                                                                              <td className="px-4 py-3.5 text-sm text-gray-800">{trip.time}</td>
+                                                                              <td className="px-4 py-3.5 text-sm text-gray-800">{trip.date}</td>
+                                                                              <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line">
+                                                                                  {formatTextWithLineBreaks(trip.driverName)}
+                                                                              </td>
+                                                                              <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                                  {trip.pickup && formatTextWithLineBreaks(trip.pickup)}
+                                                                                  {trip.hasAction && (
+                                                                                      <button
+                                                                                          className="absolute top-3.5 right-3.5 flex items-center justify-center bg-gray-200 rounded-full w-6 h-6"
+                                                                                      >
+                                                                                          <FaPlus size={13} />
+                                                                                      </button>
+                                                                                  )}
+                                                                              </td>
+                                                                              <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                                  {trip.pickupAddress && formatTextWithLineBreaks(trip.dropoff)}
+                                                                                  {trip.dropoffAddress && formatTextWithLineBreaks(trip.dropoffAddress)}
+                                                                                  {trip.hasAction && (
+                                                                                      <button
+                                                                                          className="absolute top-3.5 right-3.5 flex items-center justify-center bg-gray-200 rounded-full w-6 h-6"
+                                                                                      >
+                                                                                          <FaPlus size={13} />
+                                                                                      </button>
+                                                                                  )}
+                                                                              </td>
+                                                                              <td className="px-4 py-3.5 text-sm  text-gray-800">{trip.numberOfPersons}</td>
+                                                                              <td className="px-4 py-3.5 text-sm  text-gray-800">{trip.glCode}</td>
+                                                                              <td className={`px-4 py-3.5 text-sm  text-gray-800`}>
+                                                                                  <div className={`w-[100px] text-center justify-center items-center flex h-[35px] rounded  ${trip.status === "Approved" ? "bg-[#CCFAEB] text-[#0BA071]" : "bg-[#F6DCDE] text-[#C01824]"}`}>
+                                                                                      {trip.status}
+                                                                                  </div>
+                                                                              </td>
+                                                                              <td className="px-4 py-3.5 text-sm  text-gray-800 cursor-pointer" onClick={handleMapScreenClick}><img src={ViewMap} /></td>
+                                                                              <td className="px-4 py-3.5 text-sm  text-gray-800 cursor-pointer" onClick={handleEllipsisClick}><FaEllipsisVertical /></td>
+                                                                          </tr>
+                                                                      ))}
+                                                                  </tbody>
+                                                                  {isModalOpen && (
+                                                                      <div id="custom-modal" className="fixed w-40 bg-white border rounded shadow-lg z-50 text-left" style={{ top: modalPosition.top, left: modalPosition.left }}>
+                                                                          <ul className="py-2">
+                                                                              <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={hanldeEditModal}>Edit</li>
+                                                                          </ul>
+                                                                      </div>
+                                                                  )}
+                                                              </table>
+                                                          </div>
+                                                      </div>
+                                                      :
+                                                      <div className="flex flex-wrap gap-4 justify-evenly">
+                                                          {[...Array(4)].map((_, index) => (
+                                                              tripsData
+                                                                  .filter(card => card.status === 'Approved')
+                                                                  .map((trip, idx) => (
+                                                                      <VendorApprovedCard
+                                                                          key={idx}
+                                                                          trip={trip}
+                                                                          trips={tripsData}
+                                                                          onEditClick={hanldeEditModal}
+                                                                          selectedTab={selectedTab}
+                                                                          handleMapScreenClick={handleMapScreenClick}
+                                                                          handleEditRoute={handleEditRoute}
+                                                                          handleRouteMap={handleRouteMap}
+                                                                      />
+                                                                  ))
+      
+                                                          ))}
+                                                      </div>
+                                                      
+                                                  }
+                                                  <div className="flex justify-center mt-4 mb-2">
+                                                      <button className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md bg-[#919EAB]">
+                                                          <img src={leftArrow} />
+                                                      </button>
+      
+                                                      <button className={`w-10 h-10 flex items-center justify-center border border-[#C01824] mx-1 ${currentPage === 1 ? 'text-[#C01824]' : ''}`}>
+                                                          1
+                                                      </button>
+      
+                                                      <button className={`w-10 h-10 flex items-center justify-center border border-gray-300 mx-1 ${currentPage === 2 ? 'bg-red-600 text-white' : ''}`}>
+                                                          2
+                                                      </button>
+      
+                                                      <button className={`w-10 h-10 flex items-center justify-center border border-gray-300 mx-1 ${currentPage === 3 ? 'bg-red-600 text-white' : ''}`}>
+                                                          3
+                                                      </button>
+                                                      <p className='mx-3 text-[#000] text-[20px]'>......</p>
+                                                      <button className={`w-10 h-10 flex items-center justify-center border border-gray-300 mx-1 ${currentPage === 3 ? 'bg-red-600 text-white' : ''}`}>
+                                                          12
+                                                      </button>
+                                                      <button className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md bg-[#919EAB]">
+                                                          <img src={rightArrow} />
+                                                      </button>
+                                                  </div>
+                                              </div>
+                                              
+                                             
+                                             
+      
+      
+                                      )}
+                                  </div>
+                              ))}
+                          </div>
+
+                              )
+                              }
+                          
+                      
+
+
+
     </section>
   );
 }

@@ -6,7 +6,7 @@ import { editicon } from '@/assets'
 const VehicleInfoComponent = ({ vehicle, onBack }) => {
     return (
         <section className='w-full h-full'>
-            <div className='bg-white w-full rounded-[4px] border shadow-sm h-[97vh]'>
+            <div className='bg-white w-full rounded-[4px] border shadow-sm h-[105vh]'>
                 <VendorDashboardHeader title='Bus Information' TextClassName='md:text-[22px]' className='ms-12' icon={true} handleNavigate={onBack} />
                 <div className='flex flex-row w-[100%] h-[23vh] justify-between h-[33vh] ps-5 border-b-2 border-[#d3d3d3]'>
                     <div className='flex flex-row w-[60%] h-[23vh] gap-[59px]'>
@@ -138,6 +138,9 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                                 Fuel date
                             </Typography>
                         </div>
+                         <button className="bg-[#C01824] py-4 w-[50%] ml-5 rounded text-white hover:bg-[#A01520] px-1" onClick={onBack}> 
+                            See Less
+                        </button>
                     </div>
                 </div>
 

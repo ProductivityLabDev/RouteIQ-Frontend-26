@@ -6,8 +6,13 @@ export function Approved({ trips }) {
     <div className='w-full max-w-[530px]'>
       {trips.map((trip) => (
         <div key={trip.id} className='border-4 border-[#28A745] rounded-md p-3 md:p-4 mb-4'>
+           <div className='flex justify-between items-center md:flex-row flex-col'>
+           <p className='text-black text-md md:text-[22px] font-semibold'>Trip Name: {trip.tripname}</p>
+            <p className='text-black text-md md:text-[22px] font-semibold'>Trip No: {trip.tripno}</p>
+         </div>
+         &nbsp;
           <div className='flex justify-between items-center md:flex-row flex-col'>
-            <div className='flex space-x-4 items-center'>
+            <div className='flex space-x-4 items-center'> 
               <img src={redbusicon} alt="not found" />
               <p className='text-black text-md md:text-[22px] font-semibold'>{trip.busNumber}</p>
               <p className='text-xs md:text-[12px] text-white font-medium bg-[#28A745] px-2 py-1 rounded-[4px]'>{trip.status}</p>

@@ -3,8 +3,12 @@ import { driver } from "@/assets";
 export const tripsData = [
     {
       id: 1,
+      tripno: '#1234',
+      tripname: 'Bowling',
       busNumber: 'SDD 104',
       status: 'Approved',
+      startTime: '8:30 AM',
+      endTime: '9 PM',
       time: '8:30 AM 28/MAR/24',
       pickup: {
         location: 'Hoover Elementary School',
@@ -22,8 +26,12 @@ export const tripsData = [
     },
     {
       id: 2,
+      tripno: '#1234',
+      tripname: 'Bowling',
       busNumber: 'SDD 105',
       status: 'Pending',
+      startTime: '8:30 AM',
+      endTime: '9 PM',
       time: '9:00 AM 28/MAR/24',
       pickup: {
         location: 'Lincoln Middle School',
@@ -41,8 +49,12 @@ export const tripsData = [
     },
     {
       id: 3,
+      tripno: '#1234',
+      tripname: 'Bowling',
       busNumber: 'SDD 106',
       status: 'Rejected',
+      startTime: '8:30 AM',
+      endTime: '9 PM',
       time: '10:00 AM 28/MAR/24',
       pickup: {
         location: 'Roosevelt High School',

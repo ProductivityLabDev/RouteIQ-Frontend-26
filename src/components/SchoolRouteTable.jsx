@@ -11,7 +11,7 @@ import EditModal from './EditModal';
 
 
 
-export default function SchoolList({ handleMapScreenClick, handleEditRoute }) {
+export default function SchoolList({ handleMapScreenClick }) {
 
       const [active, setActive] = useState("All");
      
@@ -19,7 +19,7 @@ export default function SchoolList({ handleMapScreenClick, handleEditRoute }) {
       const [isEditOpen, setIsEditOpen] = useState(false);
 
 
-      const handleModal = () =>{
+      const handleModal = () => {
         setIsEditOpen(false)
         setOpenMenuIndex(false)
       }
@@ -456,8 +456,8 @@ const handleMenuToggle = (index) => {
                             <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                         </svg>
                         Map
-                    </button>
-
+                    </button>   
+                
                     <button>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} onClick={() => setIsOpen(!isOpen)}>
                             <polyline points="6 9 12 15 18 9"></polyline>

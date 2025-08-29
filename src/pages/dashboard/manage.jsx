@@ -255,6 +255,7 @@ export function Manage() {
                           {row.grade}
                         </Typography>
                       </td>
+                     
                       <td className={classes}>
                         <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
                           {row.contact}
@@ -280,6 +281,35 @@ export function Manage() {
                           />
                         </Tooltip>
                       </td>
+                      <td className={classes}>
+                        <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
+                          {row.drivername}
+                        </Typography>
+                      </td>
+                  
+                  <td className={classes}>
+                        <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
+                          {row.busanimalam}
+                        </Typography>
+                       </td>
+                       <td className={classes}>
+                        <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
+                          {row.busnoam}
+                        </Typography>
+                      </td>
+                      <td className={classes}>
+                        <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
+                          {row.busanimalpm}
+                        </Typography>
+                      </td>
+                        <td className={classes}>
+                        <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
+                          {row.busnopm}
+                        </Typography>
+                      </td>
+                       
+                    
+                      
                     </>
                   ) : (
                     <>
@@ -319,14 +349,21 @@ export function Manage() {
                         }
                         value={row.present ? "Present" : "Absent"}
                       />
+                       
 
                       {/* {selectedRows[index] && ( */}
                       {/* <img src={editicon} onClick={handleOpenEditStudent} className="cursor-pointer" alt="Edit Icon" /> */}
                       {/* )} */}
                     </div>
                   </td>
+                  
+              
                   <td className={classes}>
                     {selectedTab === "Students" ? (
+
+                     <>
+
+
                       <div className="flex items-center gap-3">
                         <img
                           src={editicon}
@@ -340,6 +377,7 @@ export function Manage() {
                            onClick={handleOpenDelete}
                         />
                       </div>
+                      </> 
                     ) : (
                       <div className="flex items-center gap-3">
                         <img

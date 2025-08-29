@@ -27,7 +27,7 @@ export function TripPlannerModal({ open, handleOpen, isEditable, isEditableTrip 
                 }
                 <Button className='p-1' variant="text" onClick={handleOpen}>
                     <img src={closeicon} className='w-[17px] h-[17px]' alt="" />
-                </Button>
+                </Button> 
             </div>
             <DialogBody className="p-0">
                 <form className="grid grid-cols-2 gap-x-6 gap-y-4">

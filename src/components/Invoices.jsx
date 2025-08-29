@@ -15,7 +15,7 @@ const Invoices = () => {
             <div className="flex justify-between items-center pb-2">
                 <h2 className="text-[22px] lg:text-[26px] xl:text-[14px] font-bold text-black">Invoices</h2>
                 <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" >
-                    {['Subscription', 'School Invoices', 'Driver invoices'].map(tab => (
+                    {['School Invoices'].map(tab => (
                         <Button
                             key={tab}
                             className={

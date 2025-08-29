@@ -16,7 +16,8 @@ const Feedback = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [venderfeedbackData, setVenderfeedbackData] = useState(null);
 
-  const tabNames = ["School Feedback", "Driver Feedback", "Parent Feedback"];
+  const tabNames = ["School Feedback", "Driver Feedback", "Parent Feedback", "Retail Feedback"];
+
   const chats = [
     { name: "NYU STERN", logo: feedbackChatUser5, message: "Thanks, I can't wait to see you tomorrow for coffee!", time: "12:01pm", count: 0 },
     { name: "Taft Public School", logo: feedbackChatUser4, message: "No", time: "11:22pm", count: 0 },
@@ -38,6 +39,17 @@ const Feedback = () => {
     { name: "Darrell Steward", logo: Parent4, message: "I know! Where is the time going?!", time: "11:22pm", count: 0 },
     { name: "Devon Lane", logo: Parent5, message: "sounds good", time: "11:22pm", count: 0 },
   ];
+
+  const chatsRetail = [
+  { name: "Retail One", logo: feedbackChatUser1, message: "Great service!", time: "10:45am", count: 0 },
+  { name: "Retail Two", logo: feedbackChatUser2, message: "Need more stock.", time: "11:00am", count: 1 },
+  { name: "Retail Three", logo: feedbackChatUser3, message: "Can we schedule a meeting?", time: "1:15pm", count: 0 },
+  { name: "Retail Four", logo: feedbackChatUser4, message: "Thank you!", time: "2:30pm", count: 0 },
+  { name: "Retail Five", logo: feedbackChatUser5, message: "Received the items.", time: "4:10pm", count: 0 },
+];
+
+  
+
   const messages = [
     {
       isOwnMessage: false,
@@ -60,9 +72,10 @@ const Feedback = () => {
   ];
 
   const conditionTab =
-    activeTab === 0 ? chats :
-    activeTab === 1 ? chatsDriver :
-    chatsParent;
+  activeTab === 0 ? chats :
+  activeTab === 1 ? chatsDriver :
+  activeTab === 2 ? chatsParent :
+  chatsRetail;
 
   const handleData = (logo) => setVenderfeedbackData(logo);
 

@@ -67,10 +67,10 @@ const EditInvoiceForm = ({ batchInvoice, }) => {
 
                 {/* Top Form Fields */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div>
+                    {/* <div>
                         <label className="block text-[14] mb-1 text-[#333843] font-bold">GL Code</label>
                         <input type="text" className="w-full outline-none border border-[#C1C1C1] rounded p-2" />
-                    </div>
+                    </div> */}
 
                     <div>
                         <label className="block text-[14] text-[#333843] font-bold mb-1">Bill From</label>
@@ -106,7 +106,7 @@ const EditInvoiceForm = ({ batchInvoice, }) => {
                     <div className="w-full bg-white rounded border border-gray-200 overflow-hidden">
                         {/* Header Row */}
                         <div className="grid grid-cols-6 gap-2 bg-[#EEEEEE] p-4">
-                            <div className="font-bold text-[#141516] text-[14]">S. No</div>
+                            <div className="font-bold text-[#141516] text-[14]">Item Number</div>
                             <div className="font-bold text-[#141516] text-[14]">GL Code</div>
                             <div className="font-bold text-[#141516] text-[14]">Unit Price</div>
                             <div className="font-bold text-[#141516] text-[14]">Mileage</div>

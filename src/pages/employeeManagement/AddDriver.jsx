@@ -22,7 +22,7 @@ const AddDriver = ({ handleCancel }) => {
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Date</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">Start Date</label>
                         <input
                             type="date"
                             className="outline-none border border-[#D5D5D5] rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA]"
@@ -49,7 +49,15 @@ const AddDriver = ({ handleCancel }) => {
                                 <option>Monthly</option>
                             </select>
                         </div>
+                         <label className="block text-sm font-medium text-black mt-4 mb-1">Add Social Security #</label>
+                        <input
+                            type="number"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                        />
+                        
+                        
                     </div>
+                    
 
                     {/* Second column */}
                     <div className="mb-4 w-full">
@@ -64,13 +72,6 @@ const AddDriver = ({ handleCancel }) => {
                             type="text"
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Status</label>
-                        <input
-                            type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        />
-
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Grade</label>
                         <input
                             type="text"
@@ -78,20 +79,24 @@ const AddDriver = ({ handleCancel }) => {
                         />
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Terminal Assigned To</label>
+                        <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
+                                <option>Select Terminal</option>
+                                <option>Terminal 1</option>
+                                <option>Terminal 2</option>
+                                <option>Terminal 3</option>
+                            </select>
+
+                        
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">Employee Account #</label>
                         <input
-                            type="text"
+                            type="number"
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Type</label>
-                        <div className="relative">
-                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
-                                <option>Select</option>
-                                <option>Hourly</option>
-                                <option>Salary</option>
-                                <option>Commission</option>
-                            </select>
-                        </div>
+                          <label className="block text-sm font-medium text-black mt-4 mb-1">Routing #</label>
+                        <input
+                            type="number"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                        />
                     </div>
 
                     {/* Third column */}
@@ -108,11 +113,22 @@ const AddDriver = ({ handleCancel }) => {
                             className="outline-none border border-[#D5D5D5] w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Type</label>
+                        {/* <label className="block text-sm font-medium text-black mt-4 mb-1">Type</label>
                         <input
                             type="text"
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        />
+                        /> */}
+
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Type</label>
+                        <div className="relative">
+                            <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
+                                <option>Select</option>
+                                <option>Hourly</option>
+                                <option>Salary</option>
+                                <option>Commission</option>
+                                 <option>Other</option>
+                            </select>
+                        </div>
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Rate</label>
                         <input
@@ -125,6 +141,12 @@ const AddDriver = ({ handleCancel }) => {
                             type="text"
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
+                      <label className="block text-sm font-medium text-black mt-4 mb-1">Phone #</label>
+                        <input
+                            type="number"
+                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                        />
+                        
                     </div>
                 </div>
 

@@ -98,9 +98,9 @@ export default function DriverTable({ handleEdit }) {
           <thead className="bg-gray-100">
             <tr>
               {[
-                "Title", "Name", "Requests", "Work Hours", "No", "Pay Cycle", "Pay Type", "Job", "Fedral Tax",
-                "State Tax", "Local Tax", "SSN", "Pay Status", "YTD", "Current Pay Period", "Pay Stub",
-                "Action"
+                "Title", "Name", "Requests", "Work Hours", "Terminal assigned", "Pay Cycle", "Pay Type", "Job", "Fedral Tax",
+                "State Tax", "Local Tax", "SSN", "Pay Status", "YTD", "Current Pay Period", "Pay Stub", "401K", "Company Match", 
+                "Health Insurance", "Savings Account", "Reimbursement", "Action"
               ].map((head) => (
                 <th key={head} className="px-10 py-1 border whitespace-nowrap">{head}</th>
               ))}
@@ -140,6 +140,22 @@ export default function DriverTable({ handleEdit }) {
                 <td className="px-10 py-1 border text-center text-[#141516]">
                   <span className="text-[#C01824] font-bold cursor-pointer" onClick={() => setPaySlip(true)}>{driver.payStub}</span>
                 </td>
+                <td className="px-10 py-1 border text-center text-[#141516]">
+                 {driver.fourZeroOne}
+                </td>
+                <td className="px-10 py-1 border text-center text-[#141516]">
+                 {driver.companyMatch}
+                </td>
+                <td className="px-10 py-1 border text-center text-[#141516]">
+                  {driver.healthInsurance}
+                </td>
+                <td className="px-10 py-1 border text-center text-[#141516]">
+                  {driver.savingsAccount}
+                </td>
+                <td className="px-10 py-1 border text-center text-[#141516]">
+                 Training Fee: $100
+                </td>
+
                 <td className="px-10 py-1 border text-center relative">
                   <button className="text-[#141516]"
                     onClick={(e) => {

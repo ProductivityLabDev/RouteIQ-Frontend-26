@@ -7,6 +7,11 @@ export function Pending({ trips }) {
     <div className='w-full max-w-[530px]'>
       {trips.map((trip) => (
         <div key={trip.id} className='border-4 border-[#FEB700] rounded-md p-4 mb-4'>
+           <div className='flex justify-between items-center md:flex-row flex-col'>
+           <p className='text-black text-md md:text-[22px] font-semibold'>Trip Name: {trip.tripname}</p>
+            <p className='text-black text-md md:text-[22px] font-semibold'>Trip No: {trip.tripno}</p>
+         </div>
+         &nbsp;
           <div className='flex justify-between items-center md:flex-row flex-col'>
             <div className='flex space-x-4 items-center'>
               <img src={redbusicon} alt="not found" />

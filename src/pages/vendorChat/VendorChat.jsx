@@ -94,6 +94,7 @@ export function VendorChat() {
                 <div className='my-4 md:my-7 flex flex-col md:flex-row justify-between items-start space-y-4 md:space-y-0'>
                     <h1 className='font-bold text-[24px] md:text-[32px] text-[#202224]'>Chat Monitoring</h1>
                 </div>
+                
                 <div className="w-full space-y-4">
                     <div className="w-full bg-white rounded shadow-sm mb-4">
                         <div className="flex items-center justify-between border border-[#D6D6D6] rounded px-4 py-4 cursor-pointer" onClick={() => toggleAccordion('parent')}>

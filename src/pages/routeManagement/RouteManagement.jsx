@@ -143,6 +143,7 @@ const RouteManagement = () => {
 
                         }
                     </div>
+                    
                     <div className="w-full space-y-4">
                         {[...Array(4)].map((_, index) => (
                             <div className="w-full bg-white border-b border-gray-200 shadow-sm">
@@ -267,6 +268,114 @@ const RouteManagement = () => {
                                                                     </th>
                                                                     <th
                                                                         className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Current Trip
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                    <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Company/Group Name
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Phone Number
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Email Adress
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+                                                                    <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Round Trip
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+                                                                    
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Is a Wheelchair Lift Required
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Bus Type
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Return Date
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+                                                                    <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Return Time
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                    <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("tripNo")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Type Of Group
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+
+
+                                                                    <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
                                                                         onClick={() => handleSort("busNo")}
                                                                     >
                                                                         <div className="flex items-center">
@@ -280,7 +389,7 @@ const RouteManagement = () => {
                                                                         onClick={() => handleSort("date")}
                                                                     >
                                                                         <div className="flex items-center">
-                                                                            Date
+                                                                            Pickup Date
                                                                             <FaArrowUp size={13} className="ml-1" />
                                                                             <FaArrowDown size={13} className="ml-1" />
                                                                         </div>
@@ -290,7 +399,7 @@ const RouteManagement = () => {
                                                                         onClick={() => handleSort("time")}
                                                                     >
                                                                         <div className="flex items-center">
-                                                                            Time
+                                                                            Pickup Time
                                                                             <FaArrowUp size={13} className="ml-1" />
                                                                             <FaArrowDown size={13} className="ml-1" />
                                                                         </div>
@@ -310,11 +419,114 @@ const RouteManagement = () => {
                                                                         onClick={() => handleSort("pickup")}
                                                                     >
                                                                         <div className="flex items-center">
-                                                                            Pickup
+                                                                            Pickup Address
                                                                             <FaArrowUp size={13} className="ml-1" />
                                                                             <FaArrowDown size={13} className="ml-1" />
                                                                         </div>
                                                                     </th>
+                                                                    <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Pickup City
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Pickup State
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Pickup Zip
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Additional Destination
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Destination Address
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Destination City
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Destination State
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            Destination Zip
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                     <th
+                                                                        className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
+                                                                        onClick={() => handleSort("pickup")}
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            How Were You Referred To Us
+                                                                            <FaArrowUp size={13} className="ml-1" />
+                                                                            <FaArrowDown size={13} className="ml-1" />
+                                                                        </div>
+                                                                    </th>
+
+                                                                    
+
+
+
                                                                     <th
                                                                         className="px-4 py-3 text-left text-sm font-medium text-gray-800 cursor-pointer"
                                                                         onClick={() => handleSort("dropoff")}
@@ -354,11 +566,25 @@ const RouteManagement = () => {
                                                                 {busTrips?.map((trip) => (
                                                                     <tr key={trip.id} className="border-t border-gray-200 hover:bg-gray-50">
                                                                         <td className="px-4 py-3.5 text-sm text-gray-800">{trip.tripNo}</td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800">{trip.currenttrip}</td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800">{trip.companyname}</td>
+                                                                         <td className="px-4 py-3.5 text-sm text-gray-800">{trip.phonenuber}</td>
+                                                                          <td className="px-4 py-3.5 text-sm text-gray-800">{trip.email}</td>
+                                                                           <td className="px-4 py-3.5 text-sm text-gray-800">{trip.roundtrip}</td>
+                                                                           <td className="px-4 py-3.5 text-sm text-gray-800">{trip.iswheelchairliftrequired}</td>
+                                                                           <td className="px-4 py-3.5 text-sm text-gray-800">{trip.bustype}</td>
+                                                                           <td className="px-4 py-3.5 text-sm text-gray-800">{trip.returndate}</td>
+                                                                           <td className="px-4 py-3.5 text-sm text-gray-800">{trip.returntime}</td>
+                                                                           <td className="px-4 py-3.5 text-sm text-gray-800">{trip.typeofgroup}</td>
+
+
+
+                                                                        
                                                                         <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line">
-                                                                            {formatTextWithLineBreaks(trip.busNo)}
+                                                                            {formatTextWithLineBreaks(trip.busNo)} 
                                                                         </td>
-                                                                        <td className="px-4 py-3.5 text-sm text-gray-800">{trip.time}</td>
                                                                         <td className="px-4 py-3.5 text-sm text-gray-800">{trip.date}</td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800">{trip.time}</td>
                                                                         <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line">
                                                                             {formatTextWithLineBreaks(trip.driverName)}
                                                                         </td>
@@ -372,6 +598,38 @@ const RouteManagement = () => {
                                                                                 </button>
                                                                             )}
                                                                         </td>
+
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.pickupcity}
+                                                                        </td>
+
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.pickupstate}
+                                                                        </td>
+
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.pickupzip}
+                                                                        </td>
+
+                                                                         <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.additionaldestination}
+                                                                        </td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.destinationaddress}
+                                                                        </td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.destinationcity}
+                                                                        </td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.destinationstate}
+                                                                        </td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.destinationzip}
+                                                                        </td>
+                                                                        <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
+                                                                            {trip.howwereyoureferredtous}
+                                                                        </td>
+
                                                                         <td className="px-4 py-3.5 text-sm text-gray-800 whitespace-pre-line relative">
                                                                             {trip.pickupAddress && formatTextWithLineBreaks(trip.dropoff)}
                                                                             {trip.dropoffAddress && formatTextWithLineBreaks(trip.dropoffAddress)}
@@ -399,6 +657,7 @@ const RouteManagement = () => {
                                                                 <div id="custom-modal" className="fixed w-40 bg-white border rounded shadow-lg z-50 text-left" style={{ top: modalPosition.top, left: modalPosition.left }}>
                                                                     <ul className="py-2">
                                                                         <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer" onClick={hanldeEditModal}>Edit</li>
+                                                                        <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Send Message</li>
                                                                     </ul>
                                                                 </div>
                                                             )}

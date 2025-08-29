@@ -53,6 +53,16 @@ export function Profile() {
                   className="p-3 outline-none rounded-[6px] border border-[#D5D5D5] bg-[#F5F6FA]"
                 />
                 <Typography variant="paragraph" className="-mb-3 text-[14px] text-[#2C2F32] font-semibold">
+                  {/* Office Phone No */}
+                  Contact Name
+                </Typography>
+                <input
+                  type='tel'
+                  required
+                  placeholder="Enter your phone number"
+                  className="p-3 outline-none rounded-[6px] border border-[#D5D5D5] bg-[#F5F6FA]"
+                />
+                  <Typography variant="paragraph" className="-mb-3 text-[14px] text-[#2C2F32] font-semibold">
                   Office Phone No
                 </Typography>
                 <input

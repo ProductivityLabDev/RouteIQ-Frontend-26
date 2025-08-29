@@ -44,11 +44,11 @@ const GLCodesTable = ({ expandedVendor, toggleExpand, setAddExpense, setPayModal
                 <tbody>
                     {vendors.map((vendor, index) => (
                         <React.Fragment key={vendor.name}>
-                            <tr className={vendor.name === "Ronald Richards" ? "bg-[#F9E8E9]" : "border-t border-gray-200"}>
+                            <tr className={vendor.name === "Ronald Richards" ? "bg-[#fff]" : "border-t border-gray-200"}>
                                 <td className="py-3 px-4 flex items-center">
                                     {vendor.name === "Ronald Richards" && (
                                         <button onClick={() => toggleExpand(vendor.name)} className="mr-1">
-                                            {expandedVendor === vendor.name ? <FaCaretDown size={18} /> : <FaCaretUp size={18} />}
+                                            
                                         </button>
                                     )}
                                     <span>{vendor.name}</span>
@@ -77,7 +77,7 @@ const GLCodesTable = ({ expandedVendor, toggleExpand, setAddExpense, setPayModal
                                     </div>
                                 )}
                             </tr>
-                            {expandedVendor === vendor.name && (
+                            {/* {expandedVendor === vendor.name && (
                                 <tr className="bg-[#F9E8E9]">
                                     <td colSpan={8} className="p-0">
                                         <div className="px-4 py-2">
@@ -128,7 +128,7 @@ const GLCodesTable = ({ expandedVendor, toggleExpand, setAddExpense, setPayModal
                                         </div>
                                     </td>
                                 </tr>
-                            )}
+                            )} */}
                         </React.Fragment>
                     ))}
                 </tbody>

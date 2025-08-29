@@ -6,6 +6,11 @@ export const STUDENTS_TABLE_HEAD = [
     { id: 5, label: "Enrollment" },
     { id: 6, label: "Address" },
     { id: 7, label: "Note" },
-    { id: 8, label: "Attendance Status" },
-    { id: 9, label: "Action" }
+    { id: 8, label: "Driver Name" },
+    {id: 9, label: "Bus Animal AM"},
+    {id: 10, label: "Bus # AM"},
+    {id: 11, label: "Bus Animal PM"},  
+    {id: 12, label: "Bus # PM"},
+    {id: 13, label: "Attendance Status"},
+    { id: 14, label: "Action" }
   ];

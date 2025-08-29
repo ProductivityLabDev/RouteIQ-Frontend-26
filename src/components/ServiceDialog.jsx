@@ -1,23 +1,42 @@
 import * as React from "react";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import { menuItems } from "@/data/serviceFilterModalData";
 import { Typography } from "@material-tailwind/react";
 
 export default function PositionedMenu({ anchorEl, open, handleClose }) {
-  const [checkedItems, setCheckedItems] = React.useState([0, 3]);
+  const [checkedItems, setCheckedItems] = React.useState([]);
 
-  const handleSelectItem = (index) => {
-    if (checkedItems.includes(index)) {
-      setCheckedItems(checkedItems.filter((item) => item !== index));
+  const serviceOptions = ["Type A", "Type B (Full)"];
+  const repairOptions = ["Engine", "Brakes", "Axle", "Body", "Interior"];
+
+  const handleSelectItem = (id) => {
+    if (checkedItems.includes(id)) {
+      setCheckedItems(checkedItems.filter((item) => item !== id));
     } else {
-      setCheckedItems([...checkedItems, index]);
+      setCheckedItems([...checkedItems, id]);
     }
   };
+
+  const renderOptions = (options, startIndex) => {
+    return options.map((option, i) => {
+      const id = startIndex + i;
+      return (
+        <label key={id} className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            className="w-5 h-5 text-red-600 accent-red-600 align-middle"
+            checked={checkedItems.includes(id)}
+            onChange={() => handleSelectItem(id)}
+          />
+          <span>{option}</span>
+        </label>
+      );
+    });
+  };
+
   return (
     <Menu
-      id="demo-positioned-menu"
-      aria-labelledby="demo-positioned-button"
+      id="service-repair-menu"
       anchorEl={anchorEl}
       open={open}
       onClose={handleClose}
@@ -36,48 +55,37 @@ export default function PositionedMenu({ anchorEl, open, handleClose }) {
         },
       }}
     >
+      {/* SERVICE */}
       <Typography className="text-start pt-2 ps-4 bg-[#efefef] font-bold text-[16px] text-black">
-        Type of Service
+        Service
       </Typography>
-      {menuItems.map((item, index) => (
-        <div key={index}>
-          <MenuItem
-            sx={{
-              "&:hover": {
-                backgroundColor: "#efefef",
-              },
-              backgroundColor: "#efefef",
-              paddingTop: "0 !important",
-              paddingBottom: "0 !important",
-              "& .MuiMenu-list": {
-                paddingTop: 0,
-                paddingBottom: 0,
-              },
-            }}
-          >
-            <div className="flex flex-col space-y-4 pt-2 w-[220px]">
-              <span className="font-extrabold text-[16px] text-black">
-                {item.title}
-              </span>
-              {item.options.map((option, i) => (
-                <label key={i} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 text-red-600 accent-red-600 align-middle"
-                    checked={checkedItems.includes(
-                      index * item.options.length + i
-                    )}
-                    onChange={() =>
-                      handleSelectItem(index * item.options.length + i)
-                    }
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </div>
-          </MenuItem>
+      <MenuItem
+        sx={{
+          backgroundColor: "#efefef",
+          paddingTop: "0 !important",
+          paddingBottom: "0 !important",
+        }}
+      >
+        <div className="flex flex-col space-y-2 pt-2 w-[220px]">
+          {renderOptions(serviceOptions, 0)}
         </div>
-      ))}
+      </MenuItem>
+
+      {/* REPAIR */}
+      <Typography className="text-start pt-2 ps-4 bg-[#efefef] font-bold text-[16px] text-black">
+        Repair
+      </Typography>
+      <MenuItem
+        sx={{
+          backgroundColor: "#efefef",
+          paddingTop: "0 !important",
+          paddingBottom: "0 !important",
+        }}
+      >
+        <div className="flex flex-col space-y-2 pt-2 w-[220px]">
+          {renderOptions(repairOptions, serviceOptions.length)}
+        </div>
+      </MenuItem>
     </Menu>
   );
 }

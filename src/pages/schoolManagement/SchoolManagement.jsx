@@ -62,32 +62,36 @@ const handleNavigate = () => {
     setOpenSchools(openSchools.map((_, i) => i === index ? !openSchools[i] : false))
   }
 
-  const schools = [
-    {
-      name: 'Skyline High School',
-      logo: SkylineSchoolLogo,
-      totalStudents: 459,
-      totalBuses: 10,
-    },
-    {
-      name: 'Lakeview High School',
-      logo: LakeviewSchoolLogo,
-      totalStudents: 459,
-      totalBuses: 10,
-    },
-    {
-      name: 'Springdale Elementary School',
-      logo: SpringdaleSchoolLogo,
-      totalStudents: 459,
-      totalBuses: 10,
-    },
-    {
-      name: 'Rosewood Elementary School',
-      logo: RosewoodSchoolLogo,
-      totalStudents: 459,
-      totalBuses: 10,
-    },
-  ]
+const schools = [
+  {
+    name: 'Skyline High School',
+    logo: SkylineSchoolLogo,
+    totalStudents: 459,
+    totalBuses: 10,
+    address: '123 Skyline Ave, City Center'
+  },
+  {
+    name: 'Lakeview High School',
+    logo: LakeviewSchoolLogo,
+    totalStudents: 459,
+    totalBuses: 10,
+    address: '456 Lakeview Rd, Riverside'
+  },
+  {
+    name: 'Springdale Elementary School',
+    logo: SpringdaleSchoolLogo,
+    totalStudents: 459,
+    totalBuses: 10,
+    address: '789 Spring St, Downtown'
+  },
+  {
+    name: 'Rosewood Elementary School',
+    logo: RosewoodSchoolLogo,
+    totalStudents: 459,
+    totalBuses: 10,
+    address: '321 Rosewood Blvd, Suburbia'
+  },
+]
 
   return (
     <MainLayout>
@@ -117,7 +121,10 @@ const handleNavigate = () => {
                  <div className="flex items-center gap-3 flex-1">
                       <FaBars className="text-gray-600 cursor-move" />
                       <img src={school.logo} alt={school.name} className="w-10 h-10 rounded" />
+                      <div className="flex flex-col">
                       <p className="text-black font-semibold whitespace-nowrap">{school.name}</p>
+                      <p className="text-gray-500 text-xs whitespace-nowrap">{school.address}</p>
+                      </div>
                       <FaPen
                         className="text-gray-600 cursor-pointer ml-2"
                         onClick={() =>
@@ -125,7 +132,7 @@ const handleNavigate = () => {
                         }
                       />
                     </div>
-
+                    
                {/* Middle */}
                     <div className="flex justify-center flex-1">
                       <button
@@ -135,6 +142,24 @@ const handleNavigate = () => {
                         Student Management
                       </button>
                     </div>
+
+                     {/* <div className="flex justify-center flex-1">
+                      <button
+                        className="bg-[#C01824] text-white font-semibold text-sm px-4 py-2 rounded"
+                        onClick={handleNavigate}
+                      >
+                        Add Contact
+                      </button>
+                    </div> */}
+
+                     {/* <div className="flex justify-center flex-1">
+                      <button
+                        className="bg-[#C01824] text-white font-semibold text-sm px-4 py-2 rounded"
+                        onClick={handleNavigate}
+                      >
+                        Cancel Contact
+                      </button>
+                    </div> */}
 
                     {/* Right: Stats + Chevron */}
                     <div className="flex items-center gap-6">
@@ -167,6 +192,7 @@ const handleNavigate = () => {
                     <SchoolManagementUserTable />
                     )}
                 </div>
+                
                 ))}
             </DropdownItem>
             ))}

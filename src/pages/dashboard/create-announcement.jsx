@@ -85,9 +85,20 @@ export function CreateAnnouncement() {
                         />
                     </div>
                 </div>
-                <Button type='submit' className="mt-6 bg-[#C01824] capitalize font-medium text-[18px] w-[180px] rounded-lg opacity-100 py-3">
-                    Create
+                 <Button
+                    onClick={() => navigate('/dashboard/announcements')}
+                    type="button"
+                    className="mt-6 bg-[#C01824] capitalize font-medium text-[18px] w-[180px] rounded-lg opacity-100 py-3"
+                    >
+                    Cancel
                 </Button>
+                &nbsp;
+                <Button
+                  type="submit"
+                   className="mt-6 bg-[#C01824] capitalize font-medium text-[18px] w-[180px] rounded-lg opacity-100 py-3"
+                >
+                 Create
+              </Button>
             </form>
         </section>
     );

@@ -37,7 +37,7 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
                                     className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                                 />
                                 <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    School
+                                    School Name
                                 </Typography>
                                 <input
                                     type="text"
@@ -50,10 +50,25 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
                                     type="text"
                                     className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                                 />
+                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
+                                    School Address 
+                                </Typography>
+                                <input
+                                    type='text'
+                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                                />
+                                 <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
+                                    Email 
+                                </Typography>
+                                <input
+                                    type='email'
+                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                                />
+
                             </div>
                             <div className="mb-1 flex flex-col gap-5 w-full">
                                 <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    President
+                                    Superintendent
                                 </Typography>
                                 <input
                                     type='text'
@@ -80,6 +95,15 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
                                     type='number'
                                     className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                                 />
+
+                                 <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
+                                    Phone No
+                                </Typography>
+                                <input
+                                    type='number'
+                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                                />
+                                
                             </div>
 
                         </div>

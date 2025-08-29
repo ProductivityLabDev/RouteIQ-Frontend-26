@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MapPin } from 'lucide-react';
 
-export default function TripBookingForm() {
+ const TripBookingForm = ({ handleCancel }) => {
   
   
     const [formData, setFormData] = useState({
@@ -47,10 +47,7 @@ export default function TripBookingForm() {
     console.log('Form submitted:', formData);
   };
 
-  const handleCancel = () => {
-    setIsCreateTrip(flase)
-    
-  };
+ 
 
   return (
     <div className="p-6 w-[100%]">
@@ -58,7 +55,7 @@ export default function TripBookingForm() {
         <div className="flex justify-between items-center  border-b border-gray-200">
           <h1 className="text-[32px] font-bold text-[#202224]">Create Trip</h1>
           <select className="bg-[#F5F6FA] w-[25%] border border-[#ABABAB] rounded px-3 py-3 text-sm">
-            <option>Copy Current Trip</option>
+            <option>Copy Trip #</option>
           </select>
         </div>
         <div className="bg-white rounded-lg shadow-sm mt-8">
@@ -67,7 +64,7 @@ export default function TripBookingForm() {
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Company/Group Name
               </label>
               <input
@@ -80,7 +77,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Phone Number
               </label>
               <input
@@ -93,7 +90,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Email Address
               </label>
               <input
@@ -110,7 +107,7 @@ export default function TripBookingForm() {
           {/* Row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Trip Type
               </label>
               <select
@@ -126,7 +123,7 @@ export default function TripBookingForm() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 No. Of Buses
               </label>
               <input
@@ -139,7 +136,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 No. of Passenger
               </label>
               <input
@@ -156,7 +153,7 @@ export default function TripBookingForm() {
           {/* Row 3 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Is a Wheelchair lift required?
               </label>
               <input
@@ -169,7 +166,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Bus Type
               </label>
               <select
@@ -185,7 +182,7 @@ export default function TripBookingForm() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Pickup Date
               </label>
               <input
@@ -202,7 +199,7 @@ export default function TripBookingForm() {
           {/* Row 4 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Pickup Time
               </label>
               <input
@@ -215,7 +212,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Return Date
               </label>
               <input
@@ -228,7 +225,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Return Time
               </label>
               <input
@@ -245,7 +242,7 @@ export default function TripBookingForm() {
           {/* Row 5 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Type of Group
               </label>
               <select
@@ -262,7 +259,7 @@ export default function TripBookingForm() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Pickup Location
               </label>
               <div className="relative">
@@ -278,7 +275,7 @@ export default function TripBookingForm() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Name
               </label>
               <input
@@ -295,7 +292,7 @@ export default function TripBookingForm() {
           {/* Row 6 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Pickup Address
               </label>
               <input
@@ -308,7 +305,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Pickup City
               </label>
               <input
@@ -321,7 +318,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Pickup State
               </label>
               <input
@@ -338,7 +335,7 @@ export default function TripBookingForm() {
           {/* Row 7 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Pickup Zip
               </label>
               <input
@@ -351,7 +348,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Destination Location
               </label>
               <div className="relative">
@@ -367,7 +364,7 @@ export default function TripBookingForm() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Destination Address
               </label>
               <input
@@ -384,7 +381,7 @@ export default function TripBookingForm() {
           {/* Row 8 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Destination City
               </label>
               <input
@@ -397,7 +394,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Destination State
               </label>
               <input
@@ -410,7 +407,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Destination Zip
               </label>
               <input
@@ -427,7 +424,7 @@ export default function TripBookingForm() {
           {/* Row 9 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Note/Special instruction
               </label>
               <textarea
@@ -440,7 +437,7 @@ export default function TripBookingForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 How were you referred to us?
               </label>
               <select
@@ -475,14 +472,15 @@ export default function TripBookingForm() {
           <div className="flex gap-4 pt-4">
             <button
               type="button"
-             
-              className="px-6 py-2 border border-gray-300 rounded text-gray-700 font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              onClick={handleCancel}
+              className="px-6 py-2 border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-red-600 text-white font-medium rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+               onClick={handleCancel}
+              className="px-6 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
             >
               Submit
             </button>
@@ -492,3 +490,5 @@ export default function TripBookingForm() {
     </div>
   );
 }
+
+export default TripBookingForm;
