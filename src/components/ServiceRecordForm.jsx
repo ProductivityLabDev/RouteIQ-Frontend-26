@@ -41,8 +41,14 @@ const ServiceRecordForm = ({ handleCancel }) => {
             <label className="block text-sm font-bold text-black mt-4 mb-1">Qty</label>
            <input type="number" className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" placeholder='Qty'/>
 
-            <label className="block text-sm font-bold text-black mt-4 mb-1">Vendor</label>
-           <input type="text" className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" placeholder='Vendor'/>
+          <label className="block text-sm font-bold text-black mt-4 mb-1">Vendor</label>
+          <input type="text" className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" placeholder='Vendor'/>
+
+          <label className="block text-sm font-bold text-black mt-4 mb-1">Repair Type</label>
+          <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]">
+            <option value="repair">Repair</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
           </div>
 
           {/* Column 2 */}
@@ -61,9 +67,9 @@ const ServiceRecordForm = ({ handleCancel }) => {
              <label className="block text-sm font-bold text-black mt-4 mb-1">Terminal</label>
             <input type="text" className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" placeholder='Terminal'/>
 
-             <label className="block text-sm font-bold text-black mt-4 mb-1">Notes</label>
+            <label className="block text-sm font-bold text-black mt-4 mb-1">Notes</label>
             <input type="text" className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" placeholder='Notes'/>
-
+           
         
           </div>
         </div>

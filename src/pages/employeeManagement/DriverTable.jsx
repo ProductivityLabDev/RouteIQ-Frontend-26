@@ -99,7 +99,7 @@ export default function DriverTable({ handleEdit }) {
             <tr>
               {[
                 "Title", "Name", "Requests", "Work Hours", "Terminal assigned", "Pay Cycle", "Pay Type", "Job", "Fedral Tax",
-                "State Tax", "Local Tax", "SSN", "Pay Status", "YTD", "Current Pay Period", "Pay Stub", "401K", "Company Match", 
+                "State Tax", "Local Tax", "SSN", "Pay Status", "YTD", "Current Pay Period", "Current Pay Period Time", "Pay Stub", "401K", "Company Match", 
                 "Health Insurance", "Savings Account", "Reimbursement", "Action"
               ].map((head) => (
                 <th key={head} className="px-10 py-1 border whitespace-nowrap">{head}</th>
@@ -137,6 +137,7 @@ export default function DriverTable({ handleEdit }) {
                 </td>
                 <td className="px-10 py-1 border text-center text-[#141516]">{driver.ytd}</td>
                 <td className="px-10 py-1 border text-center text-[#141516]">{driver.currentPayPeriod}</td>
+                <td className="px-10 py-1 border text-center text-[#141516]">{driver.currentPayPeriodTime}</td>                
                 <td className="px-10 py-1 border text-center text-[#141516]">
                   <span className="text-[#C01824] font-bold cursor-pointer" onClick={() => setPaySlip(true)}>{driver.payStub}</span>
                 </td>

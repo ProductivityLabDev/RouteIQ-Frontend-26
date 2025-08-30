@@ -34,7 +34,7 @@ const VehicleManagement = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [anchorEl, setAnchorEl] = useState(null);
     const openSortBy = Boolean(anchorEl);
-    const [selectedTerminal, setSelectedTerminal] = useState('Terminal');
+    const [selectedTerminal, setSelectedTerminal] = useState('Terminal 1');
     const [open, setOpen] = useState(false);
     const itemsPerPage = 9;
     const totalPages = Math.ceil(vehicleManagement.length / itemsPerPage);
@@ -184,12 +184,32 @@ const VehicleManagement = () => {
                     <div className="w-full bg-white p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex w-[35%] ps-4 space-x-4">
+                                <p className='p-4 font-medium'><strong>Total Vehicles: 10</strong></p>
                                 <Button className="bg-[#C01824] w-[50%] text-white hover:bg-[#A01520] px-6" onClick={handleAddBusClick}>
                                     Add Bus
                                 </Button>
                             </div>
                             <div className="flex items-center space-x-2">
-                                <span className="text-gray-700 text-[14px]">Sort By</span>
+                                <span className="text-gray-700 text-[14px]">Sort By Terminal</span>
+                                <Button variant="outline" className="bg-[#D2D2D2] border-gray-200 flex items-center space-x-1" onClick={handleClick}>
+                                    <span>{selectedTerminal}</span>
+                                    <FaChevronDown size={16} />
+                                </Button>
+                                <Menu
+                                    anchorEl={anchorEl}
+                                    open={openSortBy}
+                                    onClose={handleClose}
+                                    PaperProps={{
+                                        className: "w-[150px] rounded-md shadow-lg bg-[#D2D2D2]",
+                                    }}
+                                >
+                                    {["Terminal 1", "Terminal 2", "Terminal 3", "Terminal 4"].map((option) => (
+                                        <MenuItem key={option} onClick={handleClose} className="px-4 py-2 text-black bg-[#E0E0E0] hover:bg-[#BDBDBD]">
+                                            {option}
+                                        </MenuItem>
+                                    ))}
+                                </Menu>
+                                {/* <span className="text-gray-700 text-[14px]">Sort By</span>
                                 <Button variant="outline" className="bg-[#D2D2D2] border-gray-200 flex items-center space-x-1" onClick={handleClick}>
                                     <span>{selectedTerminal}</span>
                                     <FaChevronDown size={16} />
@@ -207,7 +227,7 @@ const VehicleManagement = () => {
                                             {option}
                                         </MenuItem>
                                     ))}
-                                </Menu>
+                                </Menu> */}
                                 <div className="text-black bg-transparent flex items-center space-x-1 cursor-pointer" onClick={() => setToogle(!toogle)}>
                                     {toogle ? (
                                         <>

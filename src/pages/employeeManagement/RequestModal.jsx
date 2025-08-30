@@ -66,7 +66,7 @@ const RequestModal = ({ closeModal }) => {
                 </div>
 
                 {/* Attendance Request */}
-                <h2 className="text-2xl font-bold my-6">Attendance Request</h2>
+                <h2 className="text-2xl font-bold my-6">Approval History</h2>
 
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">

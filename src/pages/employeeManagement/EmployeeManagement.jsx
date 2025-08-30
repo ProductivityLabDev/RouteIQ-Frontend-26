@@ -155,7 +155,7 @@ const renderPageNumbers = () => {
                   {[
                     "Title", "Name", "Address", "City", "Phone", "Date of Birth", "State", "Zip", "Terminal", "Email",
                     "Emergency Contact Name", "Emergency Contact", "Pay Grade", "Trip Rate", "Route Rate", "Pay Cycle", "Pay Type",
-                    "W2", "1099", "YTD", "Pay Stub", "Terminal Assigned To", "Fuel Card Code", "User Name", "Direct Deposit", "Routing No", "Social Security No",
+                    "W2", "1099", "YTD", "Pay Stub", "Terminal Assigned To", "Fuel Card Code", "User Name", "Direct Deposit", "Account Number", "Routing No", "Social Security No",
                     "Password Reset", "Status", "Availability", "Action"
                   ].map((head) => (
                     <th key={head} className="px-10 py-1 border whitespace-nowrap">{head}</th>
@@ -197,6 +197,7 @@ const renderPageNumbers = () => {
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.fuelCardCode}</h2></td>
                       <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.appUserName}</h2></td>
                       <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{employee.directDeposit}</h2></td>
+                      <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{employee.accountNumber}</h2></td>
                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.routingno}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{employee.socialsecurityno}</h2></td>
                       
