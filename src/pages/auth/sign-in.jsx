@@ -70,10 +70,13 @@ export function SignIn() {
     navigate("/EmployeeDashboard");
   };
 
-  const handleVendorLogin = () => {
-    navigate("/dashboard");
+  // const handleVendorLogin = () => {
+  //   navigate("/dashboard");
+  // };
+ const handleVendorLogin = () => {
+    navigate("/LoginAsVendor");
   };
-
+  
   return (
     <>
       {loading && <Loader />}
