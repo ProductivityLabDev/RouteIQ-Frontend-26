@@ -319,22 +319,22 @@ const VehicleManagement = () => {
                                                                 Repair Schedule
                                                             </button>
                                                         </td>
-                                                       <td className="p-4">
-  <div className="relative">
-    <IoEllipsisHorizontal size={25} className="cursor-pointer" onClick={handleMenuOpen} />
-    <Menu
-      anchorEl={menuAnchorEl}
-      open={Boolean(menuAnchorEl)}
-      onClose={handleMenuClose}
-      PaperProps={{
-        className: "bg-white border rounded-md p-2 shadow-none",
-        elevation: 0,
-      }}
-    >
-      <MenuItem onClick={handleEditClickFromMenu}>Edit</MenuItem>
-    </Menu>
-  </div>
-</td>
+                                                        <td className="p-4">
+                                                            <div className="relative">
+                                                                <IoEllipsisHorizontal size={25} className="cursor-pointer" onClick={handleMenuOpen} />
+                                                                <Menu
+                                                                    anchorEl={menuAnchorEl}
+                                                                    open={Boolean(menuAnchorEl)}
+                                                                    onClose={handleMenuClose}
+                                                                    PaperProps={{
+                                                                        className: "bg-white border rounded-md p-2 shadow-none",
+                                                                        elevation: 0,
+                                                                    }}
+                                                                >
+                                                                    <MenuItem onClick={handleEditClickFromMenu}>Edit</MenuItem>
+                                                                </Menu>
+                                                            </div>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </React.Fragment>
