@@ -14,7 +14,7 @@ const CreateAccessCard = ({ setCreateAccess }) => {
             {/* Form Header */}
             <div className="grid grid-cols-3 gap-4 mb-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Role</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Role2</label>
                     <div className="relative">
                         <select className="rounded-md p-3 w-full outline-none appearance-none text-gray border border-[#D5D5D5] bg-[#F5F6FA]">
                             <option value="">Fleet manager</option>
