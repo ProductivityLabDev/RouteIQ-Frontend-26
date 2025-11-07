@@ -4,7 +4,7 @@ import { FaArrowLeft } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const AddBusInfoForm = ({ handleCancel }) => {
+const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 	const [storageOption, setStorageOption] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [Drivers, setDrivers] = useState([]);
@@ -54,6 +54,9 @@ const AddBusInfoForm = ({ handleCancel }) => {
 			});
 			console.log("Bus Added:", res.data);
 			alert("Bus added successfully!");
+			if (refreshBuses) {
+      await refreshBuses();
+    }
 			handleCancel();
 		} catch (err) {
 			console.error("Error adding Bus:", err);

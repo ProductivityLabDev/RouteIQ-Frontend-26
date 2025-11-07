@@ -1,7 +1,7 @@
 import { pickFileIcon } from '@/assets';
 import React, { useState, useEffect } from 'react'
 import axios from 'axios';
-const AddDriver = ({ }) => {
+const AddDriver = ({ handleCancel }) => {
 
     const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
     const token = localStorage.getItem("token");
@@ -11,6 +11,7 @@ const AddDriver = ({ }) => {
     const [terminals, setTerminals] = useState([]);
     const [payCycle, setpayCycle] = useState([])
     const [submitting, setSubmitting] = useState(false);
+    const [cities, setCity] = useState([])
     const [formData, setFormData] = useState({
         name: "",
         adress: "",
@@ -33,56 +34,56 @@ const AddDriver = ({ }) => {
 
 
     // ---------- CREATE EMPLOYEE ----------
-    
+
     const handleSubmitEmployee = async (e) => {
-  e.preventDefault();
-  setSubmitting(true);
-  try {
-    // Prepare data exactly how backend expects
-    const employeeData = {
-      name: formData.name,
-      adress: formData.adress,
-      city: formData.city,
-      state: formData.state,
-      zipCode: formData.zipCode,
-      dop: formData.dop,
-      joiningDate: formData.joiningDate,
-      positionType: formData.positionType,
-      email: formData.email,
-      payGrade: formData.payGrade,
-      routeRate: formData.routeRate,
-      payCycle: formData.payCycle,
-      payType: formData.payTypeId, 
-      fuelCardCode: Number(formData.fuelCardCode) || null, 
-      terminalAssigmed: formData.terminalAssigmed,
-      status: "Active",
-      filePath: null,
-      
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            // Prepare data exactly how backend expects
+            const employeeData = {
+                name: formData.name,
+                adress: formData.adress,
+                city: formData.city,
+                state: formData.state,
+                zipCode: formData.zipCode,
+                dop: formData.dop,
+                joiningDate: formData.joiningDate,
+                positionType: formData.positionType,
+                email: formData.email,
+                payGrade: formData.payGrade,
+                routeRate: formData.routeRate,
+                payCycle: formData.payCycle,
+                payType: formData.payTypeId,
+                fuelCardCode: Number(formData.fuelCardCode) || null,
+                terminalAssigmed: formData.terminalAssigmed,
+                status: "Active",
+                filePath: null,
+
+            };
+
+            console.log("Submitting payload:", employeeData);
+
+            const res = await axios.post(
+                `${BASE_URL}/institute/createEmployeeInfo`,
+                employeeData,
+                {
+                    withCredentials: true,
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            console.log(res.data?.message || "Employee created successfully!");
+            alert(res.data?.message || "Employee created successfully!");
+        } catch (err) {
+            console.error("Error creating employee:", err.response?.data || err.message);
+            alert(err.response?.data?.message || "Failed to create employee");
+        } finally {
+            setSubmitting(false);
+        }
     };
-
-    console.log("Submitting payload:", employeeData);
-
-    const res = await axios.post(
-      `${BASE_URL}/institute/createEmployeeInfo`,
-      employeeData,
-      {
-        withCredentials: true,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    console.log(res.data?.message || "Employee created successfully!");
-    alert(res.data?.message || "Employee created successfully!");
-  } catch (err) {
-    console.error("Error creating employee:", err.response?.data || err.message);
-    alert(err.response?.data?.message || "Failed to create employee");
-  } finally {
-    setSubmitting(false);
-  }
-};
 
 
     const handleChange = (e) => {
@@ -159,6 +160,30 @@ const AddDriver = ({ }) => {
             setLoading(false);
         }
     };
+    const getCity = async () => {
+        try {
+            const res = await axios.get(`${BASE_URL}/institute/GetStates`, {
+                withCredentials: true,
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            console.log("Fetched City:", res.data);
+
+            // ✅ Works for both cases: direct array or wrapped in `data`
+            const CityArray = Array.isArray(res.data)
+                ? res.data
+                : Array.isArray(res.data.data)
+                    ? res.data.data
+                    : [];
+
+            setCity(CityArray);
+        } catch (err) {
+            console.error("Error fetching terminals:", err);
+            setCity([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
 
@@ -166,6 +191,7 @@ const AddDriver = ({ }) => {
         if (token) getPayTypes();
         getPaycycles();
         getTerminals()
+        getCity()
     }, [token]);
 
     return (
@@ -219,7 +245,7 @@ const AddDriver = ({ }) => {
                         </label>
                         <input
                             type="text"
-                            name="routeRate" // ✅ must match the key in formData
+                            name="routeRate"
                             value={formData.routeRate}
                             onChange={handleChange}
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
@@ -277,9 +303,9 @@ const AddDriver = ({ }) => {
                         <label className="block text-sm font-medium text-black mt-4 mb-1">State</label>
                         <input
                             type="text"
-                            name="state"  
+                            name="state"
                             value={formData.state}
-                            onChange={handleChange}  
+                            onChange={handleChange}
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Grade</label>
@@ -293,9 +319,9 @@ const AddDriver = ({ }) => {
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Terminal Assigned To</label>
                         <select
-                            name="terminalAssigmed"  
-                            value={formData.terminalAssigmed}  
-                            onChange={handleChange}  
+                            name="terminalAssigmed"
+                            value={formData.terminalAssigmed}
+                            onChange={handleChange}
                             className="outline-none border border-[#D5D5D5] text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
                         >
                             <option value="">Select</option>
@@ -328,13 +354,38 @@ const AddDriver = ({ }) => {
                     {/* Third column */}
                     <div className="mb-4 w-full">
                         <label className="block text-sm font-medium text-black mb-1">City</label>
-                        <input
+                        {/* <input
                             type="text"
                             name='city'
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                             value={formData.city}
                             onChange={handleChange}
-                        />
+                        /> */}
+
+                        <div className="relative">
+                            <select
+                                name="city"
+                                value={formData.city}
+                                onChange={(e) => {
+                                    const selectedId = e.target.value;
+                                    setFormData((prev) => ({ ...prev, city: selectedId }));
+                                }}
+                                className="outline-none border border-[#D5D5D5] text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
+                            >
+                                <option value="">Select</option>
+                                {loading ? (
+                                    <option className="text-gray-500">Loading...</option>
+                                ) : cities.length > 0 ? (
+                                    payCycle.map((cycle) => (
+                                        <option key={cycle.Id} value={cycle.Id} className="text-black">
+                                            {cycle.StateName}
+                                        </option>
+                                    ))
+                                ) : (
+                                    <option>No city found</option>
+                                )}
+                            </select>
+                        </div>
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Date of Birth</label>
                         <input
@@ -430,18 +481,26 @@ const AddDriver = ({ }) => {
                 <div className="mt-6 flex justify-start space-x-4 p-6">
                     <button
                         type="button"
-                        // onClick={handleCancel}
+                        onClick={handleCancel}
                         className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded"
                     >
                         Cancel
                     </button>
-                    <div
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        onSubmit={handleSubmitEmployee}
+                        className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded"
+                    >
+                        Submit
+                    </button>
+                    {/* <div
                         type="submit"
                         onClick={handleSubmitEmployee}
                         style={{ height: 40, width: 40, backgroundColor: 'black' }}
                     >
                         {submitting ? 'Submitting…' : 'Submit'}
-                    </div>
+                    </div> */}
 
                 </div>
             </form>

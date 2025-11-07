@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { announcementcardimg, filterIcon, vechileWhite } from '@/assets'
 import MainLayout from '@/layouts/SchoolLayout'
 import { Button, Card, CardBody, CardFooter, Typography } from '@material-tailwind/react'
@@ -18,9 +18,13 @@ import { IoEllipsisHorizontal } from "react-icons/io5";
 import { BsThreeDots } from 'react-icons/bs'
 import { IoIosList } from "react-icons/io";
 import AddBusInfoForm from '@/components/AddBusInfoForm'
-
+import axios from 'axios'
 
 const VehicleManagement = () => {
+
+    const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+    const token = localStorage.getItem("token");
+
     const [isNavigate, setIsNavigate] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
     const [isSeeMoreInfo, setIsSeeMoreInfo] = useState(false);
@@ -39,7 +43,9 @@ const VehicleManagement = () => {
     const itemsPerPage = 9;
     const totalPages = Math.ceil(vehicleManagement.length / itemsPerPage);
     const [addbusinfo, setAddBusInfo] = useState(false);
-
+    const [buses, setBuses] = useState([])
+    const [loading, setLoading] = useState(true);
+    const [busId, setBusId] = useState([])
     // Menu anchor for action dots
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
@@ -163,6 +169,36 @@ const VehicleManagement = () => {
         return acc;
     }, {});
 
+    const getBuses = async () => {
+        try {
+            const res = await axios.get(`${BASE_URL}/institute/GetBusInfo`, {
+                withCredentials: true,
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            console.log("Buses :", res.data);
+
+            // ✅ Works for both cases: direct array or wrapped in `data`
+            const BusesArray = Array.isArray(res.data)
+                ? res.data
+                : Array.isArray(res.data.data)
+                    ? res.data.data
+                    : [];
+            console.log("🚍 All Bus IDs:", BusesArray.map(b => b.BusId));
+            setBusId (busId)
+            setBuses(BusesArray);
+            console.log(BusesArray,"bus array")
+        } catch (err) {
+            console.error("Error fetching terminals:", err);
+            setBuses([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+    useEffect(() => {
+        if (token) getBuses();
+
+    }, [token]);
     return (
         <MainLayout>
             {isNavigate ? (
@@ -178,7 +214,7 @@ const VehicleManagement = () => {
             ) : showScheduleManagement ? (
                 <SehcudleManagement onBack={handleBackClick} />
             ) : addbusinfo ? (
-                <AddBusInfoForm handleCancel={handleCancel} />
+                <AddBusInfoForm handleCancel={handleCancel} refreshBuses={getBuses} />
             ) : (
                 <section className="w-full h-full">
                     <div className="w-full bg-white p-4">
@@ -247,12 +283,12 @@ const VehicleManagement = () => {
 
                     <div className="bg-white w-full rounded-[4px] border shadow-sm p-4 flex flex-wrap justify-center gap-6">
                         {toogle ? (
-                            <div className={`flex flex-wrap justify-center gap-6 px-2 ${currentVehicles.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
-                                {Object.keys(groupedVehicles).map((terminal) => (
+                            <div className={`flex flex-wrap justify-center gap-6 px-2 ${buses.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
+                                {Object.keys(buses).map((terminal) => (
                                     <div key={terminal} className="mb-6">
                                         <Typography className="text-[16px] font-extrabold text-black mb-2">{terminal}</Typography>
                                         <div className="flex flex-wrap justify-center gap-6">
-                                            {groupedVehicles[terminal].map((vehicle) => (
+                                            {buses[terminal].map((vehicle) => (
                                                 <Card key={vehicle.id} className="w-[330px] h-[330px] shadow-2xl rounded-[16px] mt-4 overflow-hidden p-2 flex flex-col">
                                                     <div className="flex justify-end items-end px-3 py-2">
                                                         <div className="relative">
@@ -300,46 +336,71 @@ const VehicleManagement = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {Object.keys(groupedVehicles).map((terminal) => (
-                                            <React.Fragment key={terminal}>
-                                                {groupedVehicles[terminal].map((vehicle) => (
-                                                    <tr key={vehicle.id} className="border-b">
-                                                        <td className="p-4">
-                                                            <img src={vehicle.vehiclImg} alt={vehicle.vehicleName} className="w-24 h-16 object-cover" />
-                                                        </td>
-                                                        <td className="p-4 font-medium">{vehicle.vehicleName}</td>
-                                                        <td className="p-4">{vehicle.title}</td>
-                                                        <td className="p-4">
-                                                            <button className="bg-[#C01824] py-2 rounded text-white hover:bg-[#A01520] px-6" onClick={() => handleReportedDefect(vehicle)}>
-                                                                See Info
-                                                            </button>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <button className="bg-[#FDE6E6] text-red-600 py-2 px-6 rounded hover:bg-red-100 transition-colors" onClick={() => handleRepairScheduleClick(vehicle)}>
-                                                                Repair Schedule
-                                                            </button>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <div className="relative">
-                                                                <IoEllipsisHorizontal size={25} className="cursor-pointer" onClick={handleMenuOpen} />
-                                                                <Menu
-                                                                    anchorEl={menuAnchorEl}
-                                                                    open={Boolean(menuAnchorEl)}
-                                                                    onClose={handleMenuClose}
-                                                                    PaperProps={{
-                                                                        className: "bg-white border rounded-md p-2 shadow-none",
-                                                                        elevation: 0,
-                                                                    }}
-                                                                >
-                                                                    <MenuItem onClick={handleEditClickFromMenu}>Edit</MenuItem>
-                                                                </Menu>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
+                                        {buses && buses.length > 0 ? (
+                                            buses.map((vehicle) => (
+                                                <tr key={vehicle.BusId} className="border-b">
+                                                    <td className="p-4">
+                                                        <img
+                                                            src={vehicle.vehiclImg || '/src/assets/vechicelSvg.svg'}
+                                                            alt={vehicle.VehicleName || "Bus"}
+                                                            className="w-24 h-16 object-cover"
+                                                        />
+                                                    </td>
+
+                                                    <td className="p-4 font-medium">{vehicle.VehicleName || "N/A"}</td>
+
+                                                    <td className="p-4">{vehicle.AssignedTerminal || "N/A"}</td>
+
+                                                    <td className="p-4">
+                                                        <button
+                                                            className="bg-[#C01824] py-2 rounded text-white hover:bg-[#A01520] px-6"
+                                                            onClick={() => handleReportedDefect(vehicle)}
+                                                        >
+                                                            See Info
+                                                        </button>
+                                                    </td>
+
+                                                    <td className="p-4">
+                                                        <button
+                                                            className="bg-[#FDE6E6] text-red-600 py-2 px-6 rounded hover:bg-red-100 transition-colors"
+                                                            onClick={() => handleRepairScheduleClick(vehicle)}
+                                                        >
+                                                            Repair Schedule
+                                                        </button>
+                                                    </td>
+
+                                                    <td className="p-4">
+                                                        <div className="relative">
+                                                            <IoEllipsisHorizontal
+                                                                size={25}
+                                                                className="cursor-pointer"
+                                                                onClick={handleMenuOpen}
+                                                            />
+                                                            <Menu
+                                                                anchorEl={menuAnchorEl}
+                                                                open={Boolean(menuAnchorEl)}
+                                                                onClose={handleMenuClose}
+                                                                PaperProps={{
+                                                                    className: "bg-white border rounded-md p-2 shadow-none",
+                                                                    elevation: 0,
+                                                                }}
+                                                            >
+                                                                <MenuItem onClick={handleEditClickFromMenu}>Edit</MenuItem>
+                                                            </Menu>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="6" className="text-center p-4 text-gray-500">
+                                                    No vehicles found
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
+
+
                                 </table>
                             </div>
                         )}
