@@ -8,8 +8,8 @@ const AddBusInfoForm = ({ handleCancel }) => {
 	const [storageOption, setStorageOption] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [Drivers, setDrivers] = useState([]);
-	const [FuelTypes, setFuelTypes] = useState([]);
-	const [Terminals, setTerminals] = useState([]);
+	const [fuelTypes, setFuelTypes] = useState([]);
+	const [terminals, setTerminals] = useState([]);
 	const [formData, setFormData] = useState({
 		vehicleName: "",
 		busType: "",
@@ -17,14 +17,14 @@ const AddBusInfoForm = ({ handleCancel }) => {
 		modelYear: "",
 		serviceInterval: "",
 		fuelTankSize: "",
-		assignedTerminal: 0,
+		assignedTerminal: "",
 		expiredDate: "",
 		vehicleMake: "",
 		noOfPassenger: "",
 		vinNo: "",
 		mileage: "",
-		driver: 0,
-		fuelType: 0,
+		driver: "",
+		fuelType: "",
 		insuranceExpiration: "",
 		undercarriageStorage: ""
 	});
@@ -108,10 +108,8 @@ const AddBusInfoForm = ({ handleCancel }) => {
 				withCredentials: true,
 				headers: { Authorization: `Bearer ${token}` },
 			});
-
 			console.log("Fetched terminals:", res.data);
 
-			// ✅ Works for both cases: direct array or wrapped in `data`
 			const terminalsArray = Array.isArray(res.data)
 				? res.data
 				: Array.isArray(res.data.data)
@@ -127,17 +125,11 @@ const AddBusInfoForm = ({ handleCancel }) => {
 		}
 	};
 	useEffect(() => {
-		if (token) getdriver();
-		if (token) getFuelTypes();
-		if (token) getTerminals();
+		getdriver();
+		getFuelTypes();
+		getTerminals();
 		// getPaycycles();
 	}, [token]);
-
-
-
-
-	const navigate = useNavigate();
-
 	return (
 		<div className="grid grid-cols-1 bg-white w-full rounded-lg">
 			<form className="w-full" onSubmit={handleSubmit}>
@@ -266,34 +258,40 @@ const AddBusInfoForm = ({ handleCancel }) => {
 
 						<select
 							name="driver"
+							value={formData.driver || ""}
+							onChange={handleChange}
 							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
 						>
 							<option value="">Select</option>
 							{loading ? (
 								<option className="text-gray-500">Loading...</option>
 							) : Drivers.length > 0 ? (
-								Drivers.map((type) => (
-									<option key={type.EmpId} value={type.Name} className="text-black">
-										{type.Name}
+								Drivers.map((d) => (
+									<option key={d.EmpId} value={d.EmpId} className="text-black">
+										{d.Name} ({d.DesignationName})
 									</option>
 								))
 							) : (
-								<option>No pay Driver found</option>
+								<option>No drivers found</option>
 							)}
 						</select>
+
+
 
 						<label className="block text-sm font-bold text-black mt-4 mb-1">Fuel type (gas, diesel)</label>
 
 						<select
 							name="fuelType"
+							value={formData.fuelType || ""}
+							onChange={handleChange}
 							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
 						>
 							<option value="">Select</option>
 							{loading ? (
 								<option className="text-gray-500">Loading...</option>
-							) : FuelTypes.length > 0 ? (
-								FuelTypes.map((type) => (
-									<option key={type.Id} value={type.Name} className="text-black">
+							) : fuelTypes.length > 0 ? (
+								fuelTypes.map((type) => (
+									<option key={type.Id} value={type.Id} className="text-black">
 										{type.Name}
 									</option>
 								))
@@ -301,6 +299,7 @@ const AddBusInfoForm = ({ handleCancel }) => {
 								<option>No fuel types found</option>
 							)}
 						</select>
+
 					</div>
 				</div>
 
@@ -315,24 +314,27 @@ const AddBusInfoForm = ({ handleCancel }) => {
 							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
 						>
 							<option value="">Select</option>
-						</select> */}	
+						</select> */}
 						<select
 							name="assignedTerminal"
+							value={formData.assignedTerminal || ""}
+							onChange={handleChange}
 							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
 						>
 							<option value="">Select</option>
 							{loading ? (
 								<option className="text-gray-500">Loading...</option>
-							) : Terminals.length > 0 ? (
-								Terminals.map((type) => (
-									<option key={type.Id} value={type.Name} className="text-black">
-										{type.Name}
+							) : terminals.length > 0 ? (
+								terminals.map((t) => (
+									<option key={t.id} value={t.id} className="text-black">
+										{t.name} ({t.code})
 									</option>
 								))
 							) : (
 								<option>No terminals found</option>
 							)}
 						</select>
+
 
 						<label className="block text-sm font-bold text-black mt-4 mb-1">Expiration Date</label>
 						<input

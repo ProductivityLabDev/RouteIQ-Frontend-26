@@ -41,7 +41,7 @@ const EmployeeManagement = () => {
     setSelectedTab(tab);
     setShowPayroll(tab === 'Payroll');
   };
-  const handleCancel = () => setAddEmployee(false);
+ // const handleCancel = () => setAddEmployee(false);
   const handleEditCancel = () => setEditEmployee(false);
 
   const handleEllipsisClick = (event) => {
@@ -143,7 +143,7 @@ const renderPageNumbers = () => {
       {showPayroll ? (
         <ToggleBar />
       ) : addEmployee ? (
-        <AddDriver handleCancel={handleCancel} />
+        <AddDriver  />
       ) : editEmployee ? (
         <EditDriver handleCancel={handleEditCancel} />
       ) : (
