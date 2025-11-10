@@ -24,7 +24,7 @@ import {
 } from "@/context";
 import { Chat, chevroncircleicon, GrNotification, notificationicon, PiChatCircleTextBold, profileavatar } from '@/assets';
 import { FiSearch } from 'react-icons/fi'
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "@/redux/slices/userSlice";
 import Cookies from "js-cookie";
 
@@ -51,27 +51,29 @@ export function DashboardNavbar({ user }) {
 
   };
 
-const dispatchr = useDispatch();
+  const dispatchr = useDispatch();
+  const { user: loggedInUser } = useSelector((state) => state.user);
 
-const handleLogout = async () => {
-  try {
-    dispatchr(logoutUser());
-    Cookies.remove("token");
-    localStorage.removeItem("token");
-    localStorage.removeItem("vendor");
-  
-    sessionStorage.clear();
+  console.log("this is user",loggedInUser)
+  const handleLogout = async () => {
+    try {
+      dispatchr(logoutUser());
+      Cookies.remove("token");
+      localStorage.removeItem("token");
+      localStorage.removeItem("vendor");
 
-    if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
+      sessionStorage.clear();
+
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+
+      window.location.replace("/LoginAsVendor");
+    } catch (err) {
+      console.error("Error during logout:", err);
     }
-
-    window.location.replace("/LoginAsVendor");
-  } catch (err) {
-    console.error("Error during logout:", err);
-  }
-};
+  };
 
   return (
     <Navbar
@@ -206,24 +208,31 @@ const handleLogout = async () => {
               <div className="flex justify-end items-center w-full md:max-w-[170px] sm:max-w-[60px] max-w-[40px] cursor-pointer">
                 <Avatar
                   src={profileavatar}
-                  alt="Avatar"
+                  alt={loggedInUser?.username || "User"}
                   variant="circular"
-                  className='w-10 md:w-12 border h-10 md:h-12'
+                  className="w-10 md:w-12 border h-10 md:h-12"
                 />
+
                 <div className="ml-4 text-left md:block hidden">
                   <Typography variant="h6" className="font-bold text-[14px] text-black">
-                    Moni Roy
+                    {loggedInUser?.username || "Guest User"}
                   </Typography>
                   <Typography
                     variant="small"
                     className="flex items-center gap-1 text-[12px] font-semibold text-[#565656]"
                   >
-                    Admin
+                    {loggedInUser?.role || "No Role"}
                   </Typography>
                 </div>
-                <img src={chevroncircleicon} className='w-[24px] h-[24px] ml-5 md:block hidden' alt="not found" />
+
+                <img
+                  src={chevroncircleicon}
+                  className="w-[24px] h-[24px] ml-5 md:block hidden"
+                  alt="chevron"
+                />
               </div>
             </MenuHandler>
+
             <MenuList>
               <Link to="#">
                 <MenuItem className="flex items-center gap-2">
