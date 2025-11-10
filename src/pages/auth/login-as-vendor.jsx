@@ -3,7 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { EmployeeManagementLoginScreen } from '@/assets';
 import { Button } from '@material-tailwind/react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch ,useSelector} from 'react-redux';
+import { setUser } from '@/redux/slices/userSlice';
 import axios from 'axios';
+import Cookies from "js-cookie";
 
 const LoginAsVendor = () => {
   const navigate = useNavigate();
@@ -12,62 +15,134 @@ const LoginAsVendor = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
- 
+ //const { user, token, permission, modules } = useSelector((state) => state.user);
   const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3000';
   
   const API_PREFIX = import.meta.env.VITE_API_PREFIX || ''; 
 
  
-  const handleLogin = async (e) => {
-  e.preventDefault();
-  setError('');
+const dispatch = useDispatch();
 
- 
-  const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3000';
+// const handleLogin = async (e) => {
+//   e.preventDefault();
+//   setError("");
+
+//   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+//   const url = `${BASE_URL}/auth/login`;
+
+//   try {
+//     const res = await axios.post(
+//       url,
+//       { userName, password },
+//       {
+//         headers: { "Content-Type": "application/json" },
+//         withCredentials: true,
+//       }
+//     );
+
+//     console.log("Login response:", res.status, res.data);
+
+//     const {
+//       token,
+//       access_token,
+//       accessToken,
+//       data,
+//       user,
+//       vendor,
+//     } = res.data || {};
+
+//     const foundToken =
+//       token ||
+//       access_token ||
+//       accessToken ||
+//       (data && (data.token || data.access_token || data.accessToken));
+
+//     const foundUser = vendor || user || (data && (data.vendor || data.user));
+
+//     if (foundToken) {
+//       dispatch(setUser({ user: foundUser, token: foundToken }));
+
+//       localStorage.setItem("token", foundToken);
+//       localStorage.setItem("vendor", JSON.stringify(foundUser || {}));
+
+//       Cookies.set("token", foundToken, { expires: 7, secure: true });
+
+//       navigate("/dashboard");
+//     } else {
+//       setError("Token not found in response. Check response shape in console.");
+//     }
+//   } catch (err) {
+//     console.error("Login error:", err);
+//     if (err.code === "ERR_NETWORK" && !err.response) {
+//       setError("Cannot reach backend — check server URL, CORS, or dev proxy.");
+//     } else if (err.response) {
+//       setError(err.response.data?.message || "Invalid credentials.");
+//     } else {
+//       setError("Unexpected error. Please try again.");
+//     }
+//   }
+// };
+
+
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setError("");
+
+  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
   const url = `${BASE_URL}/auth/login`;
 
   try {
     const res = await axios.post(
       url,
-      { userName, password },                    
+      { userName, password },
       {
-        headers: { 'Content-Type': 'application/json' },
-        withCredentials: true,                    
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
       }
     );
 
-    console.log('Login response:', res.status, res.data);
+    console.log("Login response:", res.data);
+    const token =
+      res.data?.token ||
+      res.data?.access_token ||
+      res.data?.accessToken ||
+      res.data?.data?.token;
 
-    const {
-      token,
-      access_token,
-      accessToken,
-      data,
-    } = res.data || {};
-    const foundToken =
-      token ||
-      access_token ||
-      accessToken ||
-      (data && (data.token || data.access_token || data.accessToken));
-
-    if (foundToken) {
-      localStorage.setItem('token', foundToken);
-      localStorage.setItem('vendor', JSON.stringify(res.data.vendor ?? res.data.user ?? {}));
-      navigate('/dashboard');
-    } else {
-      setError('Token not found in response. Check response shape in console.');
+    if (!token) {
+      setError("Token not found in response");
+      return;
     }
+    Cookies.set("token", token, { expires: 7, secure: true });
+    localStorage.setItem("token", token);
+
+    const fakeUser = {
+      username: userName,
+      role: "ADMIN", 
+      permission: "READ_WRITE", 
+      modules: ["VEHICLE", "EMPLOYEE", "SCHOOL"], 
+    };
+    dispatch(
+      setUser({
+        user: fakeUser,
+        token,
+        permission: fakeUser.permission,
+        modules: fakeUser.modules,
+      })
+    );
+
+    localStorage.setItem("vendor", JSON.stringify(fakeUser));
+
+    navigate("/dashboard");
   } catch (err) {
-    console.error('Login error:', err);
-    if (err.code === 'ERR_NETWORK' && !err.response) {
-      setError('Cannot reach backend — check server URL, CORS, or dev proxy.');
-    } else if (err.response) {
-      setError(err.response.data?.message || 'Invalid credentials.');
+    console.error("Login error:", err);
+    if (err.response) {
+      setError(err.response.data?.message || "Invalid credentials.");
     } else {
-      setError('Unexpected error. Please try again.');
+      setError("Unexpected error. Please try again.");
     }
   }
 };
+
  useEffect(() => {
     if (import.meta.env.DEV) {
       console.log('Base URL:', BASE_URL, 'API_PREFIX:', API_PREFIX);

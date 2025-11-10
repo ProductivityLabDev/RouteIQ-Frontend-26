@@ -24,6 +24,9 @@ import {
 } from "@/context";
 import { Chat, chevroncircleicon, GrNotification, notificationicon, PiChatCircleTextBold, profileavatar } from '@/assets';
 import { FiSearch } from 'react-icons/fi'
+import { useDispatch } from "react-redux";
+import { logoutUser } from "@/redux/slices/userSlice";
+import Cookies from "js-cookie";
 
 export function DashboardNavbar({ user }) {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -47,18 +50,28 @@ export function DashboardNavbar({ user }) {
     navigate('/vendorChat', { state: { activeTab: 'allUsers' } });
 
   };
-  const handleLogout = async () => {
+
+const dispatchr = useDispatch();
+
+const handleLogout = async () => {
+  try {
+    dispatchr(logoutUser());
+    Cookies.remove("token");
     localStorage.removeItem("token");
     localStorage.removeItem("vendor");
+  
     sessionStorage.clear();
+
     if ("caches" in window) {
       const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
+      await Promise.all(keys.map((k) => caches.delete(k)));
     }
+
     window.location.replace("/LoginAsVendor");
-  };
-
-
+  } catch (err) {
+    console.error("Error during logout:", err);
+  }
+};
 
   return (
     <Navbar

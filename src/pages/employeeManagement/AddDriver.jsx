@@ -11,12 +11,13 @@ const AddDriver = ({ handleCancel }) => {
     const [terminals, setTerminals] = useState([]);
     const [payCycle, setpayCycle] = useState([])
     const [submitting, setSubmitting] = useState(false);
-    const [cities, setCity] = useState([])
+    const [searchTerm, setSearchTerm] = useState("");
+    const [state, setState] = useState([])
     const [formData, setFormData] = useState({
         name: "",
         adress: "",
         city: "",
-        state: "",
+        state: 0,
         zipCode: "",
         dop: "",
         joiningDate: "",
@@ -35,55 +36,70 @@ const AddDriver = ({ handleCancel }) => {
 
     // ---------- CREATE EMPLOYEE ----------
 
-    const handleSubmitEmployee = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            // Prepare data exactly how backend expects
-            const employeeData = {
-                name: formData.name,
-                adress: formData.adress,
-                city: formData.city,
-                state: formData.state,
-                zipCode: formData.zipCode,
-                dop: formData.dop,
-                joiningDate: formData.joiningDate,
-                positionType: formData.positionType,
-                email: formData.email,
-                payGrade: formData.payGrade,
-                routeRate: formData.routeRate,
-                payCycle: formData.payCycle,
-                payType: formData.payTypeId,
-                fuelCardCode: Number(formData.fuelCardCode) || null,
-                terminalAssigmed: formData.terminalAssigmed,
-                status: "Active",
-                filePath: null,
+  const handleSubmitEmployee = async (e) => {
+  e.preventDefault();
+  setSubmitting(true);
 
-            };
-
-            console.log("Submitting payload:", employeeData);
-
-            const res = await axios.post(
-                `${BASE_URL}/institute/createEmployeeInfo`,
-                employeeData,
-                {
-                    withCredentials: true,
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            console.log(res.data?.message || "Employee created successfully!");
-            alert(res.data?.message || "Employee created successfully!");
-        } catch (err) {
-            console.error("Error creating employee:", err.response?.data || err.message);
-            alert(err.response?.data?.message || "Failed to create employee");
-        } finally {
-            setSubmitting(false);
-        }
+  try {
+    const employeeData = {
+      name: formData.name,
+      adress: formData.adress,
+      city: formData.city,
+      state: formData.state,
+      zipCode: formData.zipCode,
+      dop: formData.dop,
+      joiningDate: formData.joiningDate,
+      positionType: formData.positionType,
+      email: formData.email,
+      payGrade: formData.payGrade,
+      routeRate: formData.routeRate,
+      payCycle: formData.payCycle,
+      payType: formData.payTypeId,
+      fuelCardCode: Number(formData.fuelCardCode) || null,
+      terminalAssigmed: formData.terminalAssigmed,
+      status: "Active",
+      filePath: null,
     };
+
+    console.log("Submitting payload:", employeeData);
+
+    const res = await axios.post(`${BASE_URL}/institute/createEmployeeInfo`, employeeData, {
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log(res.data?.message || "Employee created successfully!");
+    alert(res.data?.message || "Employee created successfully!");
+    setFormData({
+      name: "",
+      adress: "",
+      city: "",
+      state: 0,
+      zipCode: "",
+      dop: "",
+      joiningDate: "",
+      positionType: "",
+      email: "",
+      payGrade: "",
+      routeRate: "",
+      payCycle: "",
+      payType: "",
+      fuelCardCode: "",
+      terminalAssigmed: "",
+      phone: "",
+      payTypeId: "",
+    });
+
+  } catch (err) {
+    console.error("Error creating employee:", err.response?.data || err.message);
+    alert(err.response?.data?.message || "Failed to create employee");
+  } finally {
+    setSubmitting(false);
+  }
+};
 
 
     const handleChange = (e) => {
@@ -167,19 +183,19 @@ const AddDriver = ({ handleCancel }) => {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            console.log("Fetched City:", res.data);
+            console.log("Fetched StateArray:", res.data);
 
             // ✅ Works for both cases: direct array or wrapped in `data`
-            const CityArray = Array.isArray(res.data)
+            const StateArray = Array.isArray(res.data)
                 ? res.data
                 : Array.isArray(res.data.data)
                     ? res.data.data
                     : [];
 
-            setCity(CityArray);
+            setState(StateArray);
         } catch (err) {
             console.error("Error fetching terminals:", err);
-            setCity([]);
+            setState([]);
         } finally {
             setLoading(false);
         }
@@ -300,11 +316,11 @@ const AddDriver = ({ handleCancel }) => {
                         />
 
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">State</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">City</label>
                         <input
                             type="text"
-                            name="state"
-                            value={formData.state}
+                            name="city"
+                            value={formData.city}
                             onChange={handleChange}
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         />
@@ -353,37 +369,31 @@ const AddDriver = ({ handleCancel }) => {
 
                     {/* Third column */}
                     <div className="mb-4 w-full">
-                        <label className="block text-sm font-medium text-black mb-1">City</label>
-                        {/* <input
-                            type="text"
-                            name='city'
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                            value={formData.city}
-                            onChange={handleChange}
-                        /> */}
-
+                        <label className="block text-sm font-medium text-black mb-1">State</label>
+                        
                         <div className="relative">
                             <select
-                                name="city"
-                                value={formData.city}
+                                name="state"
+                                value={formData.state}
                                 onChange={(e) => {
-                                    const selectedId = e.target.value;
-                                    setFormData((prev) => ({ ...prev, city: selectedId }));
+                                    const selectedId = Number(e.target.value);
+                                    setFormData((prev) => ({ ...prev, state: selectedId }));
                                 }}
                                 className="outline-none border border-[#D5D5D5] text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
                             >
                                 <option value="">Select</option>
                                 {loading ? (
                                     <option className="text-gray-500">Loading...</option>
-                                ) : cities.length > 0 ? (
-                                    payCycle.map((cycle) => (
-                                        <option key={cycle.Id} value={cycle.Id} className="text-black">
-                                            {cycle.StateName}
+                                ) : state.length > 0 ? (
+                                    state.map((state) => (
+                                        <option key={state.Id} value={state.Id} className="text-black">
+                                            {state.StateName}
                                         </option>
                                     ))
                                 ) : (
-                                    <option>No city found</option>
+                                    <option>No state found</option>
                                 )}
+
                             </select>
                         </div>
 
@@ -486,21 +496,22 @@ const AddDriver = ({ handleCancel }) => {
                     >
                         Cancel
                     </button>
-                    <button
+                    {/* <button
                         type="button"
-                        onClick={handleCancel}
                         onSubmit={handleSubmitEmployee}
                         className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded"
                     >
-                        Submit
-                    </button>
-                    {/* <div
+                        {submitting ? 'Submitting…' : 'Submit'}
+                    </button> */}
+
+
+                    <button
                         type="submit"
                         onClick={handleSubmitEmployee}
-                        style={{ height: 40, width: 40, backgroundColor: 'black' }}
+                        className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded"
                     >
                         {submitting ? 'Submitting…' : 'Submit'}
-                    </div> */}
+                    </button>
 
                 </div>
             </form>

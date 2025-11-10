@@ -18,6 +18,8 @@ const CreateAccessCard = ({ setCreateAccess }) => {
         control: "READ_ONLY",
         modules: [],
         terminalCodes: [],
+        department: "",
+        permission: ""
     });
 
     const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
@@ -32,9 +34,9 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                 roleCode: formData.roleCode,
                 email: formData.email,
                 phoneNumber: formData.phoneNumber,
-                control: formData.control || "READ_WRITE", // default if not selected
-                modules: formData.modules || ["SCHOOL", "ROUTE"], // departments
-                terminalCodes: formData.terminalCodes || ["T1"], // from terminal selection
+                control: formData.control || "",
+                modules: formData.modules || "",
+                terminalCodes: formData.terminalCodes || "",
             };
 
             console.log("📤 Sending payload:", payload);
@@ -107,6 +109,13 @@ const CreateAccessCard = ({ setCreateAccess }) => {
             getTerminals()
         }
     }, [token]);
+
+    console.log("department", formData.department)
+
+    console.log(formData.permission);
+
+
+    console.log(formData.roleCode);
 
     const handleAddForm = () => {
         setForms((prev) => [...prev, Date.now()]);
@@ -196,23 +205,45 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-black mb-3">Select Department</label>
                             <div className="grid grid-cols-4 gap-4">
-                                {["Vehicle", "Employee", "School", "Route", "Tracking", "Scheduling", "Chats", "Accounting"].map(
-                                    (dept) => (
-                                        <div key={dept} className="flex items-center">
-                                            <input
-                                                type="radio"
-                                                id={`dept-${formId}-${dept}`}
-                                                name={`department-${formId}`}
-                                                className="w-4 h-4 accent-red-600 border-gray-300"
-                                            />
-                                            <label htmlFor={`dept-${formId}-${dept}`} className="ml-2 text-sm text-black">
-                                                {dept}
-                                            </label>
-                                        </div>
-                                    )
-                                )}
+                                {[
+                                    "Vehicle",
+                                    "Employee",
+                                    "School",
+                                    "Route",
+                                    "Tracking",
+                                    "Scheduling",
+                                    "Chats",
+                                    "Accounting",
+                                ].map((dept) => (
+                                    <div key={dept} className="flex items-center">
+                                        <input
+                                            type="checkbox" // ✅ changed to checkbox (so you can select multiple)
+                                            id={`dept-${formId}-${dept}`}
+                                            name={`department-${formId}`}
+                                            value={dept.toUpperCase()} // ✅ API expects uppercase like SCHOOL, ROUTE
+                                            checked={formData.modules.includes(dept.toUpperCase())}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                setFormData((prev) => {
+                                                    const modules = prev.modules.includes(value)
+                                                        ? prev.modules.filter((mod) => mod !== value) // uncheck → remove
+                                                        : [...prev.modules, value]; // check → add
+                                                    return { ...prev, modules };
+                                                });
+                                            }}
+                                            className="w-4 h-4 accent-red-600 border-gray-300"
+                                        />
+                                        <label
+                                            htmlFor={`dept-${formId}-${dept}`}
+                                            className="ml-2 text-sm text-black"
+                                        >
+                                            {dept}
+                                        </label>
+                                    </div>
+                                ))}
                             </div>
                         </div>
+
 
                         {/* Terminal Selection */}
                         <div className="mb-6">
@@ -254,30 +285,33 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                         <div>
                             <label className="block text-sm font-medium text-black mb-3">Control</label>
                             <div className="flex gap-6">
-                                <div className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        id={`read-only-${formId}`}
-                                        name={`control-${formId}`}
-                                        className="w-4 h-4 accent-red-600 border-gray-300"
-                                    />
-                                    <label htmlFor={`read-only-${formId}`} className="ml-2 text-sm text-black">
-                                        Read Only
-                                    </label>
-                                </div>
-                                <div className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        id={`read-write-${formId}`}
-                                        name={`control-${formId}`}
-                                        className="w-4 h-4 accent-red-600 border-gray-300"
-                                    />
-                                    <label htmlFor={`read-write-${formId}`} className="ml-2 text-sm text-black">
-                                        Read & Write
-                                    </label>
-                                </div>
+                                {["Read Only", "Read & Write"].map((control) => (
+                                    <div key={control} className="flex items-center">
+                                        <input
+                                            type="radio"
+                                            id={`control-${formId}-${control}`}
+                                            name={`control-${formId}`}
+                                            value={control}
+                                            checked={formData.permission === control}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    permission: e.target.value, // ✅ store permission
+                                                }))
+                                            }
+                                            className="w-4 h-4 accent-red-600 border-gray-300"
+                                        />
+                                        <label
+                                            htmlFor={`control-${formId}-${control}`}
+                                            className="ml-2 text-sm text-black"
+                                        >
+                                            {control}
+                                        </label>
+                                    </div>
+                                ))}
                             </div>
                         </div>
+
                     </div>
                 ))}
 
@@ -297,10 +331,14 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                     >
                         Cancel
                     </button>
-                    <Button className='bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center'
-                        variant='filled' onClick={() => setCreateAccess(false)}>
+                    <Button
+                        className='bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center'
+                        variant='filled'
+                        onClick={CreateVendorUsers} // ✅ no parentheses
+                    >
                         Save
                     </Button>
+
                 </div>
             </div>
         </>
