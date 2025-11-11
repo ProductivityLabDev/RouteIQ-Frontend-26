@@ -1,19 +1,33 @@
 import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { logoutUser } from "@/redux/slices/userSlice";
+import { persistor } from "@/redux/store";
+import Cookies from "js-cookie";
 
 export default function Logout() {
-    useEffect(() => {
-        try {
-            localStorage.removeItem("token");
-            localStorage.removeItem("vendor");
-            sessionStorage.clear();
-            if ("caches" in window) {
-                caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
-            }
-        } finally {
+    const dispatch = useDispatch();
 
-            window.location.replace("/LoginAsVendor");
-        }
-    }, []);
+    useEffect(() => {
+        (async () => {
+            try {
+                dispatch(logoutUser());
+                await persistor.purge();
+                localStorage.removeItem("token");
+                localStorage.removeItem("vendor");
+                sessionStorage.clear();
+                Cookies.remove("token");
+
+
+                if ("caches" in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                }
+            } finally {
+
+                window.location.replace("/LoginAsVendor");
+            }
+        })();
+    }, [dispatch]);
 
     return null;
 }

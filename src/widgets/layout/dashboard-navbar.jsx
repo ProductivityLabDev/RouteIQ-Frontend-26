@@ -51,29 +51,36 @@ export function DashboardNavbar({ user }) {
 
   };
 
-  const dispatchr = useDispatch();
+  const dispatchUser = useDispatch();
   const { user: loggedInUser } = useSelector((state) => state.user);
 
   console.log("this is user",loggedInUser)
-  const handleLogout = async () => {
-    try {
-      dispatchr(logoutUser());
-      Cookies.remove("token");
-      localStorage.removeItem("token");
-      localStorage.removeItem("vendor");
+  
+ const handleLogout = async () => {
+  const dispatch = useDispatch();
 
-      sessionStorage.clear();
+  try {
+   
+    dispatch(logoutUser());
+    await persistor.purge(); 
 
-      if ("caches" in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k)));
-      }
+    
+    Cookies.remove("token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("vendor");
+    sessionStorage.clear();
 
-      window.location.replace("/LoginAsVendor");
-    } catch (err) {
-      console.error("Error during logout:", err);
+   
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
     }
-  };
+
+    window.location.replace("/LoginAsVendor");
+  } catch (err) {
+    console.error("Error during logout:", err);
+  }
+};
 
   return (
     <Navbar
