@@ -10,7 +10,7 @@ export const LoadingProvider = ({ children }) => {
 
   return (
     <LoadingContext.Provider value={{ loading, showLoader, hideLoader }}>
-      {children}
+      ello
     </LoadingContext.Provider>
   );
 };
