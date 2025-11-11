@@ -59,7 +59,7 @@ function App() {
       <Route path="/LoginAsVendor" element={<LoginAsVendor />} />
       <Route path="/account/*" element={<Auth />} />
       <Route path="/account/logout" element={<Logout />} />
-      <Route path="/" element={<Navigate to="/LoginAsVendor" replace />} />
+      <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
 
       {/* ---------- PRIVATE (GUARDED) ---------- */}
       <Route element={<ProtectedRoute />}>
