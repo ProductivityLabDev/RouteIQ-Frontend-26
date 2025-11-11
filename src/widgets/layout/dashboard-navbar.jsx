@@ -176,7 +176,7 @@ export function DashboardNavbar({ user }) {
                     color="blue-gray"
                     className="mb-1 font-normal"
                   >
-                    <strong>New album</strong> by Travis Scott
+                    <strong>New album</strong> by Travis Scott99999999999
                   </Typography>
                   <Typography
                     variant="small"
