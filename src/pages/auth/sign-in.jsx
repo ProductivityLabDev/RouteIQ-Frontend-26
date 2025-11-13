@@ -4,6 +4,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { EyeIcon, EyeSlashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { logo } from '@/assets';
 import Loader from '@/components/Loader';
+import { useDispatch } from 'react-redux';
+import { setUser } from '@/redux/slices/userSlice';
+import axios from 'axios';
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
 
 export function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,8 +17,11 @@ export function SignIn() {
   const [password, setPassword] = useState('');
   const [securityCode, setSecurityCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -32,37 +40,100 @@ export function SignIn() {
     return result;
   }
 
-  // const handleSubmit = (event) => {
-  //   event.preventDefault();
-  //   if (username && password && securityCode === securityText) {
-  //     setLoading(true);
-  //     setTimeout(() => {
-  //       setLoading(false);
-  //       navigate('/dashboard/home');
-  //     }, 1000);
-  //   } else {
-  //     alert('Please fill in all fields correctly.');
-  //   }
-  // };
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username);
-    console.log("Username:", username);
-    console.log("Is Email:", isEmail);
+    setError('');
 
-    if (username && password && securityCode === securityText) {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        if (isEmail) {
-          navigate('/dashboard_subscription');
-        } else {
-          console.log("Navigating to /dashboard/home");
-          navigate('/dashboard/home');
+    // Validate security code
+    if (securityCode !== securityText) {
+      setError('Security code does not match. Please try again.');
+      setSecurityText(generateSecurityText());
+      setSecurityCode('');
+      return;
+    }
+
+    if (!username || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const url = `${BASE_URL}/auth/login`;
+
+      const res = await axios.post(
+        url,
+        { username, password },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
         }
-      }, 1000);
-    } else {
-      alert('Please fill in all fields correctly.');
+      );
+
+      console.log("Login response:", res.data);
+      
+      const token =
+        res.data?.token ||
+        res.data?.access_token ||
+        res.data?.accessToken ||
+        res.data?.data?.token;
+
+      if (!token) {
+        setError("Token not found in response");
+        setLoading(false);
+        return;
+      }
+
+      // Store token in cookies and localStorage
+      Cookies.set("token", token, { expires: 7, secure: true });
+      localStorage.setItem("token", token);
+
+      // Decode JWT token to get user info
+      const decoded = jwtDecode(token);
+      
+      // Create modules map from decoded token
+      const modulesMap = (decoded.modules || []).reduce((acc, mod) => {
+        acc[mod.module] = { canRead: mod.canRead, canWrite: mod.canWrite };
+        return acc;
+      }, {});
+
+      // Determine permission level
+      const permission = Object.values(modulesMap).some(m => m.canWrite)
+        ? "READ_WRITE"
+        : "READ_ONLY";
+
+      // Create user object
+      const realUser = {
+        username: decoded.username,
+        role: decoded.role || "USER",
+        modules: modulesMap,
+        control: permission,
+      };
+
+      // Store user in localStorage
+      localStorage.setItem("user", JSON.stringify(realUser));
+      
+      // Dispatch to Redux
+      dispatch(setUser({ user: realUser, token }));
+
+      console.log("User logged in:", realUser);
+
+      // Navigate to schools dashboard
+      navigate("/dashboard/home");
+
+    } catch (err) {
+      console.error("Login error:", err);
+      if (err.response) {
+        setError(err.response.data?.message || "Invalid credentials. Please try again.");
+      } else {
+        setError("Network error. Please check your connection and try again.");
+      }
+      // Reset security code on error
+      setSecurityText(generateSecurityText());
+      setSecurityCode('');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -150,6 +221,11 @@ export function SignIn() {
                 </div>
               </div>
             </div>
+            {error && (
+              <div className="mt-2">
+                <Typography className="text-red-500 text-sm">{error}</Typography>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 mt-2">
               <Checkbox
                 required
@@ -172,8 +248,13 @@ export function SignIn() {
               </Typography>
             </div>
 
-            <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="submit">
-              LOG IN
+            <Button 
+              className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" 
+              fullWidth 
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? 'Logging in...' : 'LOG IN'}
             </Button>
             <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleEmployeeLogin}            >
               LOGIN AS A EMPLOYEE
