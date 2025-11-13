@@ -31,8 +31,12 @@ import {
 } from "@/data";
 import { EditDriver } from "@/components/Modals/EditDriverModal";
 import { RiDeleteBin6Line } from "react-icons/ri";
+import axios from "axios";
 
 export function Manage() {
+  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+  const token = localStorage.getItem("token");
+
   const [selectedTab, setSelectedTab] = useState("Students");
   const [selectedOption, setSelectedOption] = useState("");
   const [openNote, setOpenNote] = useState(false);
@@ -42,6 +46,8 @@ export function Manage() {
   const [openEditDriver, setOpenEditDriver] = useState(false);
   const [active, setActive] = useState(1);
   const [openLicense, setOpenLicense] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const handleOpenNote = () => setOpenNote(!openNote);
   const handleOpenAddStudent = () => setOpenAddStudent(!openAddStudent);
@@ -54,20 +60,80 @@ export function Manage() {
   const next = () => setActive((prev) => Math.min(prev + 1, 10));
 
   const [selectedAll, setSelectedAll] = useState(false);
-  const [selectedRows, setSelectedRows] = useState(
-    STUDENTS_TABLE_ROWS.map(() => false)
-  );
+  const [selectedRows, setSelectedRows] = useState([]);
   const [rowsToDelete, setRowsToDelete] = useState([]);
+
+  const getStudents = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/institute/GetStudents`, {
+        withCredentials: true,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("✅ Students fetched:", res.data);
+      console.log("📋 Raw API response structure:", JSON.stringify(res.data, null, 2));
+
+      // Handle different response formats
+      const studentsArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.data)
+          ? res.data.data
+          : [];
+
+      console.log("📊 Students array:", studentsArray);
+      if (studentsArray.length > 0) {
+        console.log("🔍 First student object:", studentsArray[0]);
+        console.log("🔍 First student keys:", Object.keys(studentsArray[0]));
+      }
+
+      // Map API response to table format
+      const mappedStudents = studentsArray.map((student, index) => ({
+        id: student.id || student.studentId || student.Id || index + 1,
+        name: student.firstName || student.FirstName || student.name || student.Name || "",
+        lastname: student.lastName || student.LastName || student.lastname || student.Lastname || "",
+        grade: student.grade || student.Grade || "",
+        contact: student.emergencyContact || student.EmergencyContact || student.contact || student.Contact || "",
+        enrollment: student.enrollmentNo || student.EnrollmentNo || student.enrollment || student.Enrollment || "",
+        address: student.address || student.Address || "",
+        present: student.present !== undefined ? student.present : (student.attendanceStatus === "Present" || student.AttendanceStatus === "Present") || false,
+        pickupLocation: student.pickupLocation || student.PickupLocation || "",
+        dropLocation: student.dropLocation || student.DropLocation || "",
+        guardian1: student.guardian1 || student.Guardian1 || "",
+        guardian2: student.guardian2 || student.Guardian2 || "",
+        busNo: student.busNo || student.BusNo || "",
+        // Default values for fields that might not be in API
+        drivername: student.drivername || student.driverName || student.DriverName || "N/A",
+        busanimalam: student.busanimalam || student.busAnimalAM || student.BusAnimalAM || "N/A",
+        busnoam: student.busnoam || student.busNoAM || student.BusNoAM || "N/A",
+        busanimalpm: student.busanimalpm || student.busAnimalPM || student.BusAnimalPM || "N/A",
+        busnopm: student.busnopm || student.busNoPM || student.BusNoPM || "N/A",
+      }));
+
+      console.log("✅ Mapped students:", mappedStudents);
+      if (mappedStudents.length > 0) {
+        console.log("🔍 First mapped student:", mappedStudents[0]);
+      }
+
+      setStudents(mappedStudents);
+      setSelectedRows(mappedStudents.map(() => false));
+    } catch (err) {
+      console.error("❌ Error fetching students:", err);
+      setStudents([]);
+      setSelectedRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSelectAll = () => {
     const newSelectedAll = !selectedAll;
     setSelectedAll(newSelectedAll);
-    const newSelectedRows = selectedRows.map(() => newSelectedAll);
+    const newSelectedRows = students.map(() => newSelectedAll);
     setSelectedRows(newSelectedRows);
     setRowsToDelete(
       newSelectedRows
         .map((selected, index) =>
-          selected ? STUDENTS_TABLE_ROWS[index] : null
+          selected ? students[index] : null
         )
         .filter((row) => row !== null)
     );
@@ -80,7 +146,7 @@ export function Manage() {
     setSelectedAll(newSelectedRows.every(Boolean));
     setRowsToDelete(
       newSelectedRows
-        .map((selected, idx) => (selected ? STUDENTS_TABLE_ROWS[idx] : null))
+        .map((selected, idx) => (selected ? students[idx] : null))
         .filter((row) => row !== null)
     );
   };
@@ -100,6 +166,16 @@ export function Manage() {
       setSelectedTab(location.state.tab);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (token && selectedTab === "Students") {
+        await getStudents();
+      }
+    };
+    fetchStudents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, selectedTab]);
   return (
     <section className="rounded-md mt-5 h-full bg-white p-3">
       <CardHeader
@@ -215,17 +291,33 @@ export function Manage() {
             </tr>
           </thead>
           <tbody>
-            {(selectedTab === "Students"
-              ? STUDENTS_TABLE_ROWS
+            {loading && selectedTab === "Students" ? (
+              <tr>
+                <td colSpan={STUDENTS_TABLE_HEAD.length + 1} className="px-4 py-8 text-center">
+                  <Typography className="text-gray-500">Loading students...</Typography>
+                </td>
+              </tr>
+            ) : (selectedTab === "Students"
+              ? students
               : DRIVERS_TABLE_ROWS
-            ).map((row, index) => {
-              const isLast =
-                index ===
-                (selectedTab === "Students"
-                  ? STUDENTS_TABLE_ROWS
-                  : DRIVERS_TABLE_ROWS
-                ).length -
-                  1;
+            ).length === 0 && selectedTab === "Students" ? (
+              <tr>
+                <td colSpan={STUDENTS_TABLE_HEAD.length + 1} className="px-4 py-8 text-center">
+                  <Typography className="text-gray-500">No students found.</Typography>
+                </td>
+              </tr>
+            ) : (
+              (selectedTab === "Students"
+                ? students
+                : DRIVERS_TABLE_ROWS
+              ).map((row, index) => {
+                const isLast =
+                  index ===
+                  (selectedTab === "Students"
+                    ? students
+                    : DRIVERS_TABLE_ROWS
+                  ).length -
+                    1;
               const classes = isLast
                 ? "px-4 py-1"
                 : "px-4 py-1 border-b border-[#D9D9D9]";
@@ -396,7 +488,8 @@ export function Manage() {
                   </td>
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
         <div className="flex justify-between items-center mt-6 mb-4 px-7 py-3">
@@ -433,7 +526,7 @@ export function Manage() {
         rowsToDelete={rowsToDelete}
       />
       <Note open={openNote} handleOpen={handleOpenNote} />
-      <AddStudent open={openAddStudent} handleOpen={handleOpenAddStudent} />
+      <AddStudent open={openAddStudent} handleOpen={handleOpenAddStudent} refreshStudents={getStudents} />
       <EditDriver open={openEditDriver} handleOpen={handleOpenEditDriver} />
       <EditStudent open={openEditStudent} handleOpen={handleOpenEditStudent} />
       <DrivingLicense open={openLicense} handleOpen={handleOpenLicense} />

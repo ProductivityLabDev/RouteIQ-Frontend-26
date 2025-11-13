@@ -3,7 +3,7 @@ import { Button, Card, Dialog, Typography } from '@material-tailwind/react'
 import { closeicon } from '@/assets'
 import axios from 'axios'
 
-export function AddStudent({ open, handleOpen }) {
+export function AddStudent({ open, handleOpen, refreshStudents }) {
     const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
     const token = localStorage.getItem("token");
 
@@ -77,6 +77,11 @@ export function AddStudent({ open, handleOpen }) {
                 guardian2: "",
                 busNo: ""
             });
+
+            // Refresh students list if callback provided
+            if (refreshStudents) {
+                await refreshStudents();
+            }
 
             // Close modal
             handleOpen();
