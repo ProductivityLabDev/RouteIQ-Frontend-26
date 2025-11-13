@@ -36,6 +36,7 @@ import EmployeeManagement from "./pages/employeeManagement/EmployeeManagement";
 import Accounting from "./pages/accounting/Accounting";
 import AccessManagement from "./pages/accessManagement/AccessManagement";
 import Documents from "./pages/auth/document/Documents";
+import Unauthorized from "./pages/unauthorized/Unauthorized";
 
 import ProtectedRoute from "./protectedRoutes";
 
@@ -63,6 +64,9 @@ function App() {
 
       {/* ---------- PRIVATE (GUARDED) ---------- */}
       <Route element={<ProtectedRoute />}>
+        {/* Unauthorized route - accessible to authenticated users without specific permissions */}
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        
         <Route path="/dashboard/*" element={<Dashboard />} />
         <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
 
