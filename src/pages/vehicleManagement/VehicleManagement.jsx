@@ -94,6 +94,7 @@ const VehicleManagement = () => {
     };
 
     const handleReportedDefect = (item) => {
+        console.log("🚌 Sending vehicle to ReportedDefects:", item);
         setReportedDefects(true)
         setSelectedVehicle(item);
     }

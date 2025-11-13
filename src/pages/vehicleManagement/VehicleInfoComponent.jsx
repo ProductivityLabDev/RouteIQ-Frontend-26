@@ -4,23 +4,45 @@ import { Typography } from '@material-tailwind/react'
 import { editicon } from '@/assets'
 
 const VehicleInfoComponent = ({ vehicle, onBack }) => {
+    // Debug: Log the vehicle data being passed
+    console.log("🚌 Vehicle data received in VehicleInfoComponent:", vehicle);
+
+    if (!vehicle) {
+        return (
+            <section className='w-full h-full'>
+                <div className='bg-white w-full rounded-[4px] border shadow-sm h-[105vh]'>
+                    <VendorDashboardHeader title='Bus Information' TextClassName='md:text-[22px]' className='ms-12' icon={true} handleNavigate={onBack} />
+                    <div className='flex items-center justify-center h-[50vh]'>
+                        <Typography className="text-center font-bold text-[16px] text-gray-500">
+                            No vehicle data available. Please go back and select a vehicle.
+                        </Typography>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
     return (
         <section className='w-full h-full'>
             <div className='bg-white w-full rounded-[4px] border shadow-sm h-[105vh]'>
                 <VendorDashboardHeader title='Bus Information' TextClassName='md:text-[22px]' className='ms-12' icon={true} handleNavigate={onBack} />
                 <div className='flex flex-row w-[100%] h-[23vh] justify-between h-[33vh] ps-5 border-b-2 border-[#d3d3d3]'>
                     <div className='flex flex-row w-[60%] h-[23vh] gap-[59px]'>
-                        <img src={vehicle?.vehiclImg} />
+                        <img 
+                            src={vehicle?.vehiclImg || vehicle?.VehicleImage || '/src/assets/vechicelSvg.svg'} 
+                            alt={vehicle?.VehicleName || vehicle?.vehicleName || "vehicle"}
+                            className="w-48 h-32 object-cover rounded"
+                        />
                         <div className='flex flex-col h-full w-[65%] gap-[13px]'>
                             <Typography className="mb-2 text-start font-extrabold text-[19px] text-black">
-                                {vehicle?.vehicleName}
+                                {vehicle?.VehicleName || vehicle?.vehicleName || "N/A"}
                             </Typography>
                             <div className='flex flex-row gap-[85px]'>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
                                     Bus type
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    School Bus
+                                    {vehicle?.BusType || vehicle?.busType || "School Bus"}
                                 </Typography>
                             </div>
                             <div className='flex flex-row gap-[50px]'>
@@ -28,7 +50,7 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                                     Vehicle Make
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    Minotour
+                                    {vehicle?.VehicleMake || vehicle?.vehicleMake || "N/A"}
                                 </Typography>
                             </div>
                             <div className='flex flex-row gap-[45px]'>
@@ -36,7 +58,7 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                                     Number Plate
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    112200
+                                    {vehicle?.NumberPlate || vehicle?.numberPlate || vehicle?.LicensePlate || "N/A"}
                                 </Typography>
                             </div>
                         </div>
@@ -95,47 +117,110 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
 
                         <div className='flex flex-col w-[100%] h-[52vh] ps-12 pt-10'>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                Minotour® School Bus.
+                                {vehicle?.VehicleName || vehicle?.vehicleName || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                Minotour
+                                {vehicle?.VehicleMake || vehicle?.vehicleMake || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                School Bus
+                                {vehicle?.BusType || vehicle?.busType || "School Bus"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                Up to 30
+                                {vehicle?.NoOfPassenger || vehicle?.noOfPassenger || vehicle?.NumberOfPassengers || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                112200
+                                {vehicle?.NumberPlate || vehicle?.numberPlate || vehicle?.LicensePlate || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                11220
+                                {vehicle?.VinNo || vehicle?.vinNo || vehicle?.VIN || vehicle?.VINNumber || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                2016
+                                {vehicle?.ModelYear || vehicle?.modelYear || vehicle?.Year || vehicle?.year || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                50 Km/Ltr
+                                {vehicle?.Mileage || vehicle?.mileage ? `${vehicle.Mileage || vehicle.mileage} Km/Ltr` : "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black flex flex-row gap-3">
-                                Last: 7/18/2024 | <span className="text-red-500">Next: 9/18/2024</span><img src={editicon} />
+                                {(() => {
+                                    const serviceInterval = vehicle?.ServiceInterval || vehicle?.serviceInterval;
+                                    const nextServiceDate = vehicle?.NextServiceDate || vehicle?.nextServiceDate;
+                                    
+                                    if (!serviceInterval) return "N/A";
+                                    
+                                    try {
+                                        const lastDate = new Date(serviceInterval);
+                                        const lastFormatted = isNaN(lastDate.getTime()) ? serviceInterval : lastDate.toLocaleDateString();
+                                        const nextFormatted = nextServiceDate 
+                                            ? (() => {
+                                                try {
+                                                    const nextDate = new Date(nextServiceDate);
+                                                    return isNaN(nextDate.getTime()) ? nextServiceDate : nextDate.toLocaleDateString();
+                                                } catch {
+                                                    return nextServiceDate;
+                                                }
+                                            })()
+                                            : "N/A";
+                                        
+                                        return (
+                                            <>
+                                                Last: {lastFormatted} | 
+                                                <span className="text-red-500">Next: {nextFormatted}</span>
+                                                <img src={editicon} alt="edit" />
+                                            </>
+                                        );
+                                    } catch {
+                                        return serviceInterval;
+                                    }
+                                })()}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                10:00 A.M - 10:00 P.M
+                                {vehicle?.GPS || vehicle?.gps || vehicle?.GPSTracking || "N/A"}
                             </Typography>
-                            <Typography className="mb-2 text-left font-bold text-[16px] flex flex-row gap-3">
-                                <span className="text-red-500 underline">Jake,</span><span className="text-red-500 underline">John,</span><span className="text-red-500 underline">Dave</span>
-                                <img src={editicon} />
+                            <Typography className="mb-2 text-left font-bold text-[16px] flex flex-row gap-3 items-center flex-wrap">
+                                {(() => {
+                                    const drivers = vehicle?.Driver || vehicle?.driver || vehicle?.Drivers || vehicle?.drivers;
+                                    if (!drivers) return "N/A";
+                                    
+                                    let driverNames = [];
+                                    if (Array.isArray(drivers)) {
+                                        driverNames = drivers.map(d => d?.Name || d?.name || d || "Unknown");
+                                    } else if (typeof drivers === 'string') {
+                                        driverNames = drivers.split(",").map(d => d.trim());
+                                    } else if (drivers?.Name || drivers?.name) {
+                                        driverNames = [drivers.Name || drivers.name];
+                                    } else {
+                                        driverNames = ["N/A"];
+                                    }
+                                    
+                                    return (
+                                        <>
+                                            {driverNames.map((name, idx) => (
+                                                <span key={idx} className="text-red-500 underline">
+                                                    {name}{idx < driverNames.length - 1 ? "," : ""}
+                                                </span>
+                                            ))}
+                                            <img src={editicon} alt="edit" className="ml-1" />
+                                        </>
+                                    );
+                                })()}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                Fuel 4.3 L
+                                {vehicle?.FuelTankSize || vehicle?.fuelTankSize ? `${vehicle.FuelTankSize || vehicle.fuelTankSize} L` : "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                Gas
+                                {vehicle?.FuelType || vehicle?.fuelType || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                Fuel date
+                                {(() => {
+                                    const fuelDate = vehicle?.FuelDate || vehicle?.fuelDate;
+                                    if (!fuelDate) return "N/A";
+                                    try {
+                                        const date = new Date(fuelDate);
+                                        return isNaN(date.getTime()) ? fuelDate : date.toLocaleDateString();
+                                    } catch {
+                                        return fuelDate;
+                                    }
+                                })()}
                             </Typography>
                         </div>
                          <button className="bg-[#C01824] py-4 w-[50%] ml-5 rounded text-white hover:bg-[#A01520] px-1" onClick={onBack}> 

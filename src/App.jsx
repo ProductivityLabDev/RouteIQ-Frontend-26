@@ -61,12 +61,9 @@ function App() {
       <Route path="/account/*" element={<Auth />} />
       <Route path="/account/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
-
+ <Route path="/dashboard" element={<SchoolDashboard />} />
       {/* ---------- PRIVATE (GUARDED) ---------- */}
-      <Route element={<ProtectedRoute />}>
-        {/* Unauthorized route - accessible to authenticated users without specific permissions */}
-        <Route path="/unauthorized" element={<Unauthorized />} />
-        
+      {/* <Route element={<ProtectedRoute />}> */}
         <Route path="/dashboard/*" element={<Dashboard />} />
         <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
 
@@ -96,7 +93,7 @@ function App() {
         <Route path="/reported-defects" element={<ReportedDefects />} />
         <Route path="/notes" element={<Notes />} />
         <Route path="/schedule-management" element={<SehcudleManagement />} />
-      </Route>
+      {/* </Route> */}
 
       {/* ---------- 404 ---------- */}
       <Route path="*" element={<Navigate to="/LoginAsVendor" replace />} />

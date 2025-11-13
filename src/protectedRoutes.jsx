@@ -8,23 +8,23 @@ export default function ProtectedRoute() {
   const location = useLocation();
 
   // 🔒 Check authentication
-  if (!token || !user) {
-    return <Navigate to="/LoginAsVendor" replace />;
-  }
+  // if (!token || !user) {
+  //   return <Navigate to="/LoginAsVendor" replace />;
+  // }
 
   // 🔒 Validate token expiration
-  try {
-    const decoded = jwtDecode(token);
-    const currentTime = Date.now() / 1000;
+  // try {
+  //   const decoded = jwtDecode(token);
+  //   const currentTime = Date.now() / 1000;
 
-    if (decoded.exp && decoded.exp < currentTime) {
-      console.warn("Token expired");
-      return <Navigate to="/LoginAsVendor" replace />;
-    }
-  } catch (error) {
-    console.error("Invalid token:", error);
-    return <Navigate to="/LoginAsVendor" replace />;
-  }
+  //   if (decoded.exp && decoded.exp < currentTime) {
+  //     console.warn("Token expired");
+  //     return <Navigate to="/LoginAsVendor" replace />;
+  //   }
+  // } catch (error) {
+  //   console.error("Invalid token:", error);
+  //   return <Navigate to="/LoginAsVendor" replace />;
+  // }
 
   // Extract path segments
   const pathSegments = location.pathname.split("/").filter(Boolean);

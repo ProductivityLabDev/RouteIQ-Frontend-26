@@ -4,6 +4,8 @@ import { Typography } from '@material-tailwind/react';
 import ButtonComponent from '@/components/buttons/CustomButton';
 
 const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleScheduleRepair }) => {
+    // Debug: Log the vehicle data being passed
+    console.log("🚌 Vehicle data received in ReportedDefects:", vehicle);
 
     const [isOpen, setIsOpen] = useState(false); // state for popup
     const [chatInput, setChatInput] = useState("");
@@ -24,23 +26,42 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
         setChatInput("");
     };
 
+    if (!vehicle) {
+        return (
+            <section className='w-full h-full'>
+                <div className='bg-white w-full rounded-[4px] border shadow-sm h-full'>
+                    <VendorDashboardHeader title='Reported Defects' icon={true} TextClassName='md:text-[22px]' className='ms-12' handleNavigate={onBack} />
+                    <div className='flex items-center justify-center h-[50vh]'>
+                        <Typography className="text-center font-bold text-[16px] text-gray-500">
+                            No vehicle data available. Please go back and select a vehicle.
+                        </Typography>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
     return (
         <section className='w-full h-full'>
             <div className='bg-white w-full rounded-[4px] border shadow-sm h-full'>
                 <VendorDashboardHeader title='Reported Defects' icon={true} TextClassName='md:text-[22px]' className='ms-12' handleNavigate={onBack} />
                 <div className='flex flex-row w-[97%] justify-between h-[33vh] m-5 border-b-2 border-[#d3d3d3]'>
                     <div className='flex flex-row w-[60%] gap-[59px]'>
-                        <img src={vehicle?.vehiclImg} alt="vehicle" />
+                        <img 
+                            src={vehicle?.vehiclImg || vehicle?.VehicleImage || '/src/assets/vechicelSvg.svg'} 
+                            alt={vehicle?.VehicleName || vehicle?.vehicleName || "vehicle"} 
+                            className="w-48 h-32 object-cover rounded"
+                        />
                         <div className='flex flex-col h-full w-[65%] gap-[13px]'>
                             <Typography className="mb-2 text-start font-extrabold text-[19px] text-black">
-                                {vehicle?.vehicleName}
+                                {vehicle?.VehicleName || vehicle?.vehicleName || "N/A"}
                             </Typography>
                             <div className='flex flex-row gap-[85px]'>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
                                     Bus type
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    School Bus
+                                    {vehicle?.BusType || vehicle?.busType || "School Bus"}
                                 </Typography>
                             </div>
                             <div className='flex flex-row gap-[50px]'>
@@ -48,7 +69,7 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
                                     Vehicle Make
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    Minotour
+                                    {vehicle?.VehicleMake || vehicle?.vehicleMake || "N/A"}
                                 </Typography>
                             </div>
                             <div className='flex flex-row gap-[45px]'>
@@ -56,7 +77,15 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
                                     Number Plate
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    112200
+                                    {vehicle?.NumberPlate || vehicle?.numberPlate || vehicle?.LicensePlate || "N/A"}
+                                </Typography>
+                            </div>
+                            <div className='flex flex-row gap-[45px]'>
+                                <Typography className="mb-2 text-center font-bold text-[16px] text-black">
+                                    Terminal
+                                </Typography>
+                                <Typography className="mb-2 text-center font-bold text-[16px] text-black">
+                                    {vehicle?.AssignedTerminal || vehicle?.assignedTerminal || "N/A"}
                                 </Typography>
                             </div>
                             <ButtonComponent sx={{ width: '145px', height: '42px', fontSize: '13px' }} label='See more Info' Icon={false} onClick={() => handleSeeMoreInfoClick(vehicle)} />
