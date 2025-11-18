@@ -2,10 +2,15 @@ import React, { useState, useEffect } from "react";
 import {
     Button,
 } from "@material-tailwind/react";
+import { useDispatch, useSelector } from "react-redux";
+import { createUser, updateUser } from "@/redux/slices/usersSlice";
+import { toast } from 'react-hot-toast';
 import axios from "axios";
 import { BASE_URL, getAxiosConfig } from "@/configs/api";
 
-const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
+const CreateAccessCard = ({ setCreateAccess, editUser }) => {
+    const dispatch = useDispatch();
+    const { creating, updating, error } = useSelector((state) => state.users);
     const isEditMode = !!editUser;
     const [data, setData] = useState([]);
     const [vendorUsers, setVendorUsers] = useState([]);
@@ -28,76 +33,141 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
     const token = localStorage.getItem("token");
     const [forms, setForms] = useState([Date.now()]);
 
+    // Validation function
+    const validateForm = () => {
+        const errors = [];
+
+        // Required fields validation
+        if (!formData.roleCode || formData.roleCode.trim() === "") {
+            errors.push("Select Role is required");
+        }
+
+        if (!formData.username || formData.username.trim() === "") {
+            errors.push("Username is required");
+        } else if (formData.username.trim().length < 3) {
+            errors.push("Username must be at least 3 characters");
+        }
+
+        // Password is required only in create mode
+        if (!isEditMode && (!formData.password || formData.password.trim() === "")) {
+            errors.push("Password is required");
+        } else if (!isEditMode && formData.password && formData.password.length < 6) {
+            errors.push("Password must be at least 6 characters");
+        }
+
+        if (!formData.phoneNumber || formData.phoneNumber.trim() === "") {
+            errors.push("Contact Number is required");
+        } else {
+            // Validate phone number format
+            const cleanPhone = formData.phoneNumber.replace(/[\s\-\(\)]/g, '');
+            if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+                errors.push("Contact Number must be between 10-15 digits");
+            }
+        }
+
+        if (!formData.email || formData.email.trim() === "") {
+            errors.push("Email is required");
+        } else {
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email.trim())) {
+                errors.push("Please enter a valid email address");
+            }
+        }
+
+        // Validate modules (departments)
+        if (!formData.modules || formData.modules.length === 0) {
+            errors.push("Please select at least one Department");
+        }
+
+        // Validate terminal
+        if (!formData.terminalCodes || formData.terminalCodes.length === 0) {
+            errors.push("Please select a Terminal");
+        }
+
+        // Validate control/permission
+        if (!formData.permission || formData.permission.trim() === "") {
+            errors.push("Please select Control (Read Only or Read & Write)");
+        }
+
+        return errors;
+    };
+
     const handleSave = async () => {
+        // Validate form before submitting
+        const validationErrors = validateForm();
+        if (validationErrors.length > 0) {
+            // Show first error as toast, or show all errors
+            validationErrors.forEach(error => {
+                toast.error(error);
+            });
+            return;
+        }
+
         try {
-            // Map permission to control
-            const control = formData.permission === "Read & Write" ? "READ_WRITE" : "READ_ONLY";
-            
-            const payload = {
-                username: formData.username,
-                password: formData.password,
-                roleCode: formData.roleCode,
-                email: formData.email,
-                phoneNumber: formData.phoneNumber,
-                control: control,
-                modules: formData.modules || [],
-                terminalCodes: formData.terminalCodes || [],
-            };
-
-            console.log("📤 Sending payload:", payload);
-            console.log("🔄 Mode:", isEditMode ? "UPDATE" : "CREATE");
-
-            let res;
             if (isEditMode) {
                 // Update existing user
                 const userId = editUser.Id || editUser.id || editUser.UserId || editUser.userId || editUser.ID || editUser._id;
-                console.log("🔄 Updating user with ID:", userId);
+                console.log("🔄 [Redux] Updating user with ID:", userId);
                 
-                res = await axios.patch(
-                    `${BASE_URL}/vendor/users/${userId}`,
-                    payload,
-                    getAxiosConfig()
-                );
+                const result = await dispatch(updateUser({ userId, userData: formData }));
                 
-                console.log("✅ Vendor user updated:", res.data);
-                alert("User updated successfully!");
+                if (updateUser.fulfilled.match(result)) {
+                    toast.success("User updated successfully!");
+                    // Reset form
+                    setFormData({
+                        username: "",
+                        password: "",
+                        email: "",
+                        phoneNumber: "",
+                        roleCode: "",
+                        control: "READ_ONLY",
+                        modules: [],
+                        terminalCodes: [],
+                        department: "",
+                        permission: ""
+                    });
+                    setForms([Date.now()]);
+                    // Close form after a short delay to allow toast to show
+                    setTimeout(() => {
+                        setCreateAccess(false);
+                    }, 500);
+                } else {
+                    toast.error(result.payload || "Failed to update user");
+                }
             } else {
                 // Create new user
-                res = await axios.post(
-                    `${BASE_URL}/vendor/users`,
-                    payload,
-                    getAxiosConfig()
-                );
+                console.log("🔄 [Redux] Creating new user...");
                 
-                console.log("✅ Vendor user created:", res.data);
-                alert("User created successfully!");
+                const result = await dispatch(createUser(formData));
+                
+                if (createUser.fulfilled.match(result)) {
+                    toast.success("User created successfully!");
+                    // Reset form
+                    setFormData({
+                        username: "",
+                        password: "",
+                        email: "",
+                        phoneNumber: "",
+                        roleCode: "",
+                        control: "READ_ONLY",
+                        modules: [],
+                        terminalCodes: [],
+                        department: "",
+                        permission: ""
+                    });
+                    setForms([Date.now()]);
+                    // Close form after a short delay to allow toast to show
+                    setTimeout(() => {
+                        setCreateAccess(false);
+                    }, 500);
+                } else {
+                    toast.error(result.payload || "Failed to create user");
+                }
             }
-
-            // Reset form and close
-            setFormData({
-                username: "",
-                password: "",
-                email: "",
-                phoneNumber: "",
-                roleCode: "",
-                control: "READ_ONLY",
-                modules: [],
-                terminalCodes: [],
-                department: "",
-                permission: ""
-            });
-            setForms([Date.now()]);
-            
-            // Refresh user list if callback provided
-            if (refreshUsers) {
-                refreshUsers();
-            }
-            
-            // Close form
-            setCreateAccess(false);
         } catch (err) {
-            console.error(`❌ Error ${isEditMode ? 'updating' : 'creating'} vendor user:`, err.response?.data || err);
-            alert(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} user`);
+            console.error(`❌ Error ${isEditMode ? 'updating' : 'creating'} user:`, err);
+            toast.error(err.message || `Failed to ${isEditMode ? 'update' : 'create'} user`);
         }
     };
     const getTerminals = async () => {
@@ -211,7 +281,9 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
                 {/* Form Header */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Role</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Select Role <span className="text-red-500">*</span>
+                        </label>
                         <div className="relative">
                             <select
                                 name="roleCode"
@@ -242,7 +314,9 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Username <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             name="username"
@@ -253,7 +327,7 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Password
+                            Password {!isEditMode && <span className="text-red-500">*</span>}
                             {isEditMode && <span className="text-gray-500 text-xs ml-2">(Leave blank to keep current)</span>}
                         </label>
                         <input
@@ -266,7 +340,9 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Contact Number <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="number"
                             name="phoneNumber"
@@ -276,7 +352,9 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="email"
                             name="email"
@@ -291,7 +369,9 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
                     <div key={formId} className="bg-[#F5F6FA] border border-[#D5D5D5] rounded-lg p-6 mb-6">
                         {/* Department Selection */}
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-black mb-3">Select Department</label>
+                            <label className="block text-sm font-medium text-black mb-3">
+                                Select Department <span className="text-red-500">*</span>
+                            </label>
                             <div className="grid grid-cols-4 gap-4">
                                 {[
                                     "Vehicle",
@@ -335,7 +415,9 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
 
                         {/* Terminal Selection */}
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-black mb-3">Select Terminal</label>
+                            <label className="block text-sm font-medium text-black mb-3">
+                                Select Terminal <span className="text-red-500">*</span>
+                            </label>
                             <div className="grid grid-cols-4 gap-4">
                                 {terminal.length > 0 ? (
                                     terminal.map((t) => (
@@ -371,7 +453,9 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
 
                         {/* Control Selection */}
                         <div>
-                            <label className="block text-sm font-medium text-black mb-3">Control</label>
+                            <label className="block text-sm font-medium text-black mb-3">
+                                Control <span className="text-red-500">*</span>
+                            </label>
                             <div className="flex gap-6">
                                 {["Read Only", "Read & Write"].map((control) => (
                                     <div key={control} className="flex items-center">
@@ -420,11 +504,12 @@ const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
                         Cancel
                     </button>
                     <Button
-                        className='bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center'
+                        className='bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center disabled:opacity-50'
                         variant='filled'
                         onClick={handleSave}
+                        disabled={isEditMode ? updating : creating}
                     >
-                        {isEditMode ? "Update" : "Save"}
+                        {isEditMode ? (updating ? "Updating..." : "Update") : (creating ? "Creating..." : "Save")}
                     </Button>
 
                 </div>

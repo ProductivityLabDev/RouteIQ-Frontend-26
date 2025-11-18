@@ -5,6 +5,7 @@ import { employees } from '@/data/dummyData';
 import { ActiveTick, licencesPic, unactiveCross } from '@/assets';
 import { FaEllipsisVertical } from 'react-icons/fa6';
 import { Button, ButtonGroup } from '@material-tailwind/react';
+import { Toaster } from 'react-hot-toast';
 import AddDriver from './AddDriver';
 import EditDriver from './EditDriver';
 import ToggleBar from './ToggleBar';
@@ -141,6 +142,14 @@ const EmployeeManagement = () => {
 
   return (
     <MainLayout>
+      <Toaster position="top-right" reverseOrder={false} toastOptions={{
+        style: {
+          fontSize: "18px",
+          padding: "16px 22px",
+          minHeight: "60px",
+          borderRadius: "40px",
+        },
+      }} />
       <div className="flex flex-row items-center justify-between w-full mt-3 mb-4">
         {!addEmployee && !editEmployee ? (
           <>

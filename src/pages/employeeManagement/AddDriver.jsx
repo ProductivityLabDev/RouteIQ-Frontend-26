@@ -1,9 +1,11 @@
 import { pickFileIcon } from '@/assets';
 import React, { useState, useEffect } from 'react'
 import axios from 'axios';
-const AddDriver = ({ handleCancel }) => {
+import { toast } from 'react-hot-toast';
+import { getAxiosConfig, BASE_URL as API_BASE_URL } from '@/configs/api';
 
-    const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+const AddDriver = ({ handleCancel }) => {
+    const BASE_URL = API_BASE_URL || import.meta.env.VITE_BASE_URL || "http://localhost:3000";
     const token = localStorage.getItem("token");
 
     const [payTypes, setPayTypes] = useState([]);
@@ -12,7 +14,9 @@ const AddDriver = ({ handleCancel }) => {
     const [payCycle, setpayCycle] = useState([])
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [state, setState] = useState([])
+    const [state, setState] = useState([]);
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
     const [formData, setFormData] = useState({
         name: "",
         adress: "",
@@ -34,10 +38,137 @@ const AddDriver = ({ handleCancel }) => {
     });
 
 
+    // Validation function
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Required fields validation
+        if (!formData.name || formData.name.trim() === "") {
+            newErrors.name = "Name is required";
+        } else if (formData.name.trim().length < 2) {
+            newErrors.name = "Name must be at least 2 characters";
+        }
+
+        if (!formData.adress || formData.adress.trim() === "") {
+            newErrors.adress = "Address is required";
+        }
+
+        if (!formData.city || formData.city.trim() === "") {
+            newErrors.city = "City is required";
+        }
+
+        if (!formData.state || formData.state === 0 || formData.state === "") {
+            newErrors.state = "State is required";
+        }
+
+        if (!formData.zipCode || formData.zipCode.trim() === "") {
+            newErrors.zipCode = "Zip Code is required";
+        } else {
+            const zipRegex = /^\d{5}(-\d{4})?$/;
+            if (!zipRegex.test(formData.zipCode.trim())) {
+                newErrors.zipCode = "Please enter a valid zip code (e.g., 12345 or 12345-6789)";
+            }
+        }
+
+        if (!formData.dop || formData.dop.trim() === "") {
+            newErrors.dop = "Date of Birth is required";
+        } else {
+            const dob = new Date(formData.dop);
+            const today = new Date();
+            const age = today.getFullYear() - dob.getFullYear();
+            if (age < 18 || age > 100) {
+                newErrors.dop = "Date of Birth must be valid (age 18-100)";
+            }
+        }
+
+        if (!formData.joiningDate || formData.joiningDate.trim() === "") {
+            newErrors.joiningDate = "Start Date is required";
+        } else {
+            const joinDate = new Date(formData.joiningDate);
+            const today = new Date();
+            if (joinDate > today) {
+                newErrors.joiningDate = "Start Date cannot be in the future";
+            }
+        }
+
+        if (!formData.email || formData.email.trim() === "") {
+            newErrors.email = "Email is required";
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email.trim())) {
+                newErrors.email = "Please enter a valid email address";
+            }
+        }
+
+        // Phone validation (if phone field exists in formData)
+        if (formData.phone) {
+            const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
+            if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+                newErrors.phone = "Phone number must be between 10-15 digits";
+            }
+        }
+
+        // Position Type validation (if field exists in form)
+        // Note: If positionType field is not in the form, remove this validation
+        // if (!formData.positionType || formData.positionType.trim() === "") {
+        //     newErrors.positionType = "Position Type is required";
+        // }
+
+        if (!formData.payCycle || formData.payCycle.trim() === "") {
+            newErrors.payCycle = "Pay Cycle is required";
+        }
+
+        if (!formData.payTypeId || formData.payTypeId === "" || formData.payTypeId === 0) {
+            newErrors.payTypeId = "Pay Type is required";
+        }
+
+        if (!formData.terminalAssigmed || formData.terminalAssigmed === "" || formData.terminalAssigmed === 0) {
+            newErrors.terminalAssigmed = "Terminal Assigned is required";
+        }
+
+        // Validate routeRate if provided (should be a number)
+        if (formData.routeRate && formData.routeRate.trim() !== "") {
+            if (isNaN(parseFloat(formData.routeRate)) || parseFloat(formData.routeRate) < 0) {
+                newErrors.routeRate = "Route Rate must be a positive number";
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleBlur = (fieldName) => {
+        setTouched(prev => ({ ...prev, [fieldName]: true }));
+        // Validate single field on blur
+        validateForm();
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+        // Clear error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: "" }));
+        }
+    };
+
     // ---------- CREATE EMPLOYEE ----------
 
   const handleSubmitEmployee = async (e) => {
   e.preventDefault();
+  
+  // Validate form before submitting
+  if (!validateForm()) {
+      const errorMessages = Object.values(errors).filter(msg => msg);
+      errorMessages.forEach(error => {
+          toast.error(error);
+      });
+      return;
+  }
+
   setSubmitting(true);
 
   try {
@@ -63,16 +194,10 @@ const AddDriver = ({ handleCancel }) => {
 
     console.log("Submitting payload:", employeeData);
 
-    const res = await axios.post(`${BASE_URL}/institute/createEmployeeInfo`, employeeData, {
-      withCredentials: true,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const res = await axios.post(`${BASE_URL}/institute/createEmployeeInfo`, employeeData, getAxiosConfig());
 
     console.log(res.data?.message || "Employee created successfully!");
-    alert(res.data?.message || "Employee created successfully!");
+    toast.success(res.data?.message || "Employee created successfully!");
     setFormData({
       name: "",
       adress: "",
@@ -95,27 +220,17 @@ const AddDriver = ({ handleCancel }) => {
 
   } catch (err) {
     console.error("Error creating employee:", err.response?.data || err.message);
-    alert(err.response?.data?.message || "Failed to create employee");
+    toast.error(err.response?.data?.message || "Failed to create employee");
   } finally {
     setSubmitting(false);
   }
 };
 
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
 
     const getPayTypes = async () => {
         try {
-            const res = await axios.get(`${BASE_URL}/institute/paytypes`, {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await axios.get(`${BASE_URL}/institute/paytypes`, getAxiosConfig());
 
             console.log("Fetched pay types:", res.data);
             // ✅ API gives { ok:true, data:[...] }
@@ -133,10 +248,7 @@ const AddDriver = ({ handleCancel }) => {
     };
     const getPaycycles = async () => {
         try {
-            const res = await axios.get(`${BASE_URL}/institute/paycycles`, {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await axios.get(`${BASE_URL}/institute/paycycles`, getAxiosConfig());
 
             console.log("Fetched pay cycles:", res.data);
             // ✅ API gives { ok:true, data:[...] }
@@ -154,10 +266,7 @@ const AddDriver = ({ handleCancel }) => {
     };
     const getTerminals = async () => {
         try {
-            const res = await axios.get(`${BASE_URL}/terminals`, {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await axios.get(`${BASE_URL}/terminals`, getAxiosConfig());
 
             console.log("Fetched terminals:", res.data);
 
@@ -178,10 +287,7 @@ const AddDriver = ({ handleCancel }) => {
     };
     const getCity = async () => {
         try {
-            const res = await axios.get(`${BASE_URL}/institute/GetStates`, {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await axios.get(`${BASE_URL}/institute/GetStates`, getAxiosConfig());
 
             console.log("Fetched StateArray:", res.data);
 
@@ -216,44 +322,74 @@ const AddDriver = ({ handleCancel }) => {
                 <div className="flex flex-row w-full gap-6 p-6">
                     {/* First column */}
                     <div className="mb-4 w-full">
-                        <label className="block text-sm font-medium text-black mb-1">Name</label>
+                        <label className="block text-sm font-medium text-black mb-1">
+                            Name <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                            onBlur={() => handleBlur('name')}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+                                errors.name && touched.name ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                         />
+                        {errors.name && touched.name && (
+                            <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+                        )}
 
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Zip</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
+                            Zip <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             name='zipCode'
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+                                errors.zipCode && touched.zipCode ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                             value={formData.zipCode}
                             onChange={handleChange}
+                            onBlur={() => handleBlur('zipCode')}
                         />
+                        {errors.zipCode && touched.zipCode && (
+                            <p className="text-red-500 text-xs mt-1">{errors.zipCode}</p>
+                        )}
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Start Date</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
+                            Start Date <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="date"
                             name="joiningDate"
                             value={formData.joiningDate}
                             onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA] text-gray-900"
+                            onBlur={() => handleBlur('joiningDate')}
+                            className={`outline-none border rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA] text-gray-900 ${
+                                errors.joiningDate && touched.joiningDate ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                         />
+                        {errors.joiningDate && touched.joiningDate && (
+                            <p className="text-red-500 text-xs mt-1">{errors.joiningDate}</p>
+                        )}
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Email
+                            Email <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="email"
                             name="email"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+                                errors.email && touched.email ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                             value={formData.email}
                             onChange={handleChange}
+                            onBlur={() => handleBlur('email')}
                         />
+                        {errors.email && touched.email && (
+                            <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                        )}
 
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">
@@ -269,7 +405,7 @@ const AddDriver = ({ handleCancel }) => {
 
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Pay Cycle
+                            Pay Cycle <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                             <select
@@ -278,8 +414,14 @@ const AddDriver = ({ handleCancel }) => {
                                 onChange={(e) => {
                                     const selectedId = e.target.value;
                                     setFormData((prev) => ({ ...prev, payCycle: selectedId }));
+                                    if (errors.payCycle) {
+                                        setErrors(prev => ({ ...prev, payCycle: "" }));
+                                    }
                                 }}
-                                className="outline-none border border-[#D5D5D5] text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
+                                onBlur={() => handleBlur('payCycle')}
+                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
+                                    errors.payCycle && touched.payCycle ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                             >
                                 <option value="">Select</option>
                                 {loading ? (
@@ -295,6 +437,9 @@ const AddDriver = ({ handleCancel }) => {
                                 )}
                             </select>
                         </div>
+                        {errors.payCycle && touched.payCycle && (
+                            <p className="text-red-500 text-xs mt-1">{errors.payCycle}</p>
+                        )}
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Add Social Security #</label>
                         <input
@@ -306,24 +451,40 @@ const AddDriver = ({ handleCancel }) => {
 
                     {/* Second column */}
                     <div className="mb-4 w-full">
-                        <label className="block text-sm font-medium text-black mb-1">Address</label>
+                        <label className="block text-sm font-medium text-black mb-1">
+                            Address <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             name="adress"
                             value={formData.adress}
                             onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                            onBlur={() => handleBlur('adress')}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+                                errors.adress && touched.adress ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                         />
+                        {errors.adress && touched.adress && (
+                            <p className="text-red-500 text-xs mt-1">{errors.adress}</p>
+                        )}
 
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">City</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
+                            City <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             name="city"
                             value={formData.city}
                             onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                            onBlur={() => handleBlur('city')}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+                                errors.city && touched.city ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                         />
+                        {errors.city && touched.city && (
+                            <p className="text-red-500 text-xs mt-1">{errors.city}</p>
+                        )}
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Grade</label>
                         <input
                             type="text"
@@ -333,12 +494,17 @@ const AddDriver = ({ handleCancel }) => {
                             onChange={handleChange}
                         />
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Terminal Assigned To</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
+                            Terminal Assigned To <span className="text-red-500">*</span>
+                        </label>
                         <select
                             name="terminalAssigmed"
                             value={formData.terminalAssigmed}
                             onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
+                            onBlur={() => handleBlur('terminalAssigmed')}
+                            className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
+                                errors.terminalAssigmed && touched.terminalAssigmed ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                         >
                             <option value="">Select</option>
                             {loading ? (
@@ -353,6 +519,9 @@ const AddDriver = ({ handleCancel }) => {
                                 <option>No terminals found</option>
                             )}
                         </select>
+                        {errors.terminalAssigmed && touched.terminalAssigmed && (
+                            <p className="text-red-500 text-xs mt-1">{errors.terminalAssigmed}</p>
+                        )}
 
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Employee Account #</label>
@@ -369,7 +538,9 @@ const AddDriver = ({ handleCancel }) => {
 
                     {/* Third column */}
                     <div className="mb-4 w-full">
-                        <label className="block text-sm font-medium text-black mb-1">State</label>
+                        <label className="block text-sm font-medium text-black mb-1">
+                            State <span className="text-red-500">*</span>
+                        </label>
                         
                         <div className="relative">
                             <select
@@ -378,8 +549,14 @@ const AddDriver = ({ handleCancel }) => {
                                 onChange={(e) => {
                                     const selectedId = Number(e.target.value);
                                     setFormData((prev) => ({ ...prev, state: selectedId }));
+                                    if (errors.state) {
+                                        setErrors(prev => ({ ...prev, state: "" }));
+                                    }
                                 }}
-                                className="outline-none border border-[#D5D5D5] text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
+                                onBlur={() => handleBlur('state')}
+                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
+                                    errors.state && touched.state ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                             >
                                 <option value="">Select</option>
                                 {loading ? (
@@ -396,15 +573,26 @@ const AddDriver = ({ handleCancel }) => {
 
                             </select>
                         </div>
+                        {errors.state && touched.state && (
+                            <p className="text-red-500 text-xs mt-1">{errors.state}</p>
+                        )}
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Date of Birth</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
+                            Date of Birth <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="date"
                             name="dop"
                             value={formData.dop || ""}
                             onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                            onBlur={() => handleBlur('dop')}
+                            className={`outline-none border w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+                                errors.dop && touched.dop ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                         />
+                        {errors.dop && touched.dop && (
+                            <p className="text-red-500 text-xs mt-1">{errors.dop}</p>
+                        )}
 
                         {/* <label className="block text-sm font-medium text-black mt-4 mb-1">Type</label>
                         <input
@@ -412,16 +600,10 @@ const AddDriver = ({ handleCancel }) => {
                             className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
                         /> */}
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Type</label>
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
+                            Pay Type <span className="text-red-500">*</span>
+                        </label>
                         <div className="relative">
-                            {/* <select className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full">
-                                <option>Select</option>
-                                <option>Hourly</option>
-                                <option>Salary</option>
-                                <option>Commission</option>
-                                 <option>Other</option>
-                            </select> */}
-
                             <select
                                 name="payTypeId"
                                 value={formData.payTypeId || ""}
@@ -433,8 +615,14 @@ const AddDriver = ({ handleCancel }) => {
                                         payTypeId: selected?.Id || "",
                                         payTypeName: selected?.Name || "",
                                     }));
+                                    if (errors.payTypeId) {
+                                        setErrors(prev => ({ ...prev, payTypeId: "" }));
+                                    }
                                 }}
-                                className="outline-none border border-[#D5D5D5] text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
+                                onBlur={() => handleBlur('payTypeId')}
+                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
+                                    errors.payTypeId && touched.payTypeId ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                             >
                                 <option value="">Select</option>
                                 {loading ? (
@@ -449,8 +637,10 @@ const AddDriver = ({ handleCancel }) => {
                                     <option>No pay types found</option>
                                 )}
                             </select>
-
                         </div>
+                        {errors.payTypeId && touched.payTypeId && (
+                            <p className="text-red-500 text-xs mt-1">{errors.payTypeId}</p>
+                        )}
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Rate</label>
                         <input
@@ -473,8 +663,17 @@ const AddDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mt-4 mb-1">Phone #</label>
                         <input
                             type="number"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+                            name="phone"
+                            value={formData.phone || ""}
+                            onChange={handleChange}
+                            onBlur={() => handleBlur('phone')}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+                                errors.phone && touched.phone ? 'border-red-500' : 'border-[#D5D5D5]'
+                            }`}
                         />
+                        {errors.phone && touched.phone && (
+                            <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+                        )}
 
                     </div>
                 </div>
