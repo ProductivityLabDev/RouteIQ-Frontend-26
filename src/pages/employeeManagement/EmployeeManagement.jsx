@@ -114,8 +114,8 @@ const EmployeeManagement = () => {
         <button
           key={i}
           className={`flex items-center justify-center bg-white h-8 w-8 rounded mx-1 ${currentPage === i
-              ? 'text-[#C01824] border border-[#C01824]'
-              : 'border border-[#C4C6C9] text-black'
+            ? 'text-[#C01824] border border-[#C01824]'
+            : 'border border-[#C4C6C9] text-black'
             }`}
           onClick={() => setCurrentPage(i)}
         >
@@ -194,105 +194,103 @@ const EmployeeManagement = () => {
                   ))}
                 </tr>
               </thead>
-             <tbody>
-  {employee.length > 0 ? (
-    employee.slice(startIndex, startIndex + itemsPerPage).map((emp, index) => {
-      const employeeIndex = startIndex + index;
-      return (
-        <tr key={emp.EmpId || index} className={employeeIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-          <td className="px-10 py-1 border text-center">
-            <h2 className="w-40">{emp.Title || "Driver"}</h2>
-          </td>
+              <tbody>
+                {employee.length > 0 ? (
+                  employee.slice(startIndex, startIndex + itemsPerPage).map((emp, index) => {
+                    const employeeIndex = startIndex + index;
+                    return (
+                      <tr key={emp.EmpId || index} className={employeeIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                        <td className="px-10 py-1 border text-center">
+                          <h2 className="w-40">{emp.Title || "Driver"}</h2>
+                        </td>
 
-          <td className="px-10 py-1 border text-center">
-            <div className="flex items-center gap-1">
-              {/* <img
+                        <td className="px-10 py-1 border text-center">
+                          <div className="flex items-center gap-1">
+                            {/* <img
                 src={emp.AvatarUrl || "/placeholder-avatar.png"}
                 alt="avatar"
                 className="w-10 h-10 rounded-full object-cover border"
               /> */}
-              <h2 className="w-40">{emp.Name || "N/A"}</h2>
-            </div>
-          </td>
+                            <h2 className="w-40">{emp.Name || "N/A"}</h2>
+                          </div>
+                        </td>
 
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Adress || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.City || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Phone || "11111111"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.DOP
-    ? new Date(emp.DOP).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      })
-    : "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.StateName || "Kabul"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.ZipCode || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TerminalName || "T1"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Email || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.EmergencyContactName || "10"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.EmergencyContactPhone || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayGrade || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TripRate || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.RouteRate || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayCycleName || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayTypeName || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.W2 || "—"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp._1099 || "—"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.YTD || "—"}</h2></td>
-          <td className="px-10 py-1 border text-[#C01824] font-bold cursor-pointer">View</td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TerminalAssigned || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.FuelCardCode || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.AppUserName || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{emp.DirectDeposit || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{emp.AccountNumber || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.RoutingNo || "N/A"}</h2></td>
-          <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.SocialSecurityNo || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Adress || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.City || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Phone || "11111111"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.DOP
+                          ? new Date(emp.DOP).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                          })
+                          : "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.StateName || "Kabul"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.ZipCode || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TerminalName || "T1"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Email || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.EmergencyContactName || "10"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.EmergencyContactPhone || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayGrade || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TripRate || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.RouteRate || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayCycleName || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayTypeName || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.W2 || "—"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp._1099 || "—"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.YTD || "—"}</h2></td>
+                        <td className="px-10 py-1 border text-[#C01824] font-bold cursor-pointer">View</td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TerminalAssigned || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.FuelCardCode || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.AppUserName || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{emp.DirectDeposit || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{emp.AccountNumber || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.RoutingNo || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.SocialSecurityNo || "N/A"}</h2></td>
 
-          <td className="px-10 py-1 border text-[#C01824] font-bold text-center">
-            <h2 className="w-40">{emp.AppPasswordReset || "—"}</h2>
-          </td>
+                        <td className="px-10 py-1 border text-[#C01824] font-bold text-center">
+                          <h2 className="w-40">{emp.AppPasswordReset || "—"}</h2>
+                        </td>
 
-          <td className="px-10 py-1 border text-center">
-            <div
-              className={`flex w-[98px] h-8 items-center gap-1 justify-center rounded-full ${
-                emp.Status === "Active" ? "bg-green-500" : "bg-[#C01824]"
-              }`}
-            >
-              {emp.Status === "Active" && <img src={ActiveTick} className="ms-2" />}
-              <span className="text-white">{emp.Status || "Inactive"}</span>
-              {emp.Status !== "Active" && <img src={unactiveCross} />}
-            </div>
-          </td>
+                        <td className="px-10 py-1 border text-center">
+                          <div
+                            className={`flex w-[98px] h-8 items-center gap-1 justify-center rounded-full ${emp.Status === "Active" ? "bg-green-500" : "bg-[#C01824]"
+                              }`}
+                          >
+                            {emp.Status === "Active" && <img src={ActiveTick} className="ms-2" />}
+                            <span className="text-white">{emp.Status || "Inactive"}</span>
+                            {emp.Status !== "Active" && <img src={unactiveCross} />}
+                          </div>
+                        </td>
 
-          <td className="px-10 py-1 border ">
-            <div
-              className={`w-[100px] h-[35px] flex items-center justify-center rounded ${
-                emp.Availability === "Present"
-                  ? "bg-[#CCFAEB] text-[#0BA071]"
-                  : "bg-[#F6DCDE] text-[#C01824]"
-              }`}
-            >
-              {emp.Availability || "N/A"}
-            </div>
-          </td>
+                        <td className="px-10 py-1 border ">
+                          <div
+                            className={`w-[100px] h-[35px] flex items-center justify-center rounded ${emp.Availability === "Present"
+                                ? "bg-[#CCFAEB] text-[#0BA071]"
+                                : "bg-[#F6DCDE] text-[#C01824]"
+                              }`}
+                          >
+                            {emp.Availability || "N/A"}
+                          </div>
+                        </td>
 
-          <td
-            className="px-10 py-1 border cursor-pointer"
-            onClick={handleEllipsisClick}
-          >
-            <FaEllipsisVertical />
-          </td>
-        </tr>
-      );
-    })
-  ) : (
-    <tr>
-      <td colSpan="30" className="text-center p-4 text-gray-500">
-        No employees found.
-      </td>
-    </tr>
-  )}
-</tbody>
+                        <td
+                          className="px-10 py-1 border cursor-pointer"
+                          onClick={handleEllipsisClick}
+                        >
+                          <FaEllipsisVertical />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="30" className="text-center p-4 text-gray-500">
+                      No employees found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
 
             </table>
           </div>
