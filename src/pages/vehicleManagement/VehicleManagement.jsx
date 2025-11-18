@@ -45,7 +45,6 @@ const VehicleManagement = () => {
     const [addbusinfo, setAddBusInfo] = useState(false);
     const [buses, setBuses] = useState([])
     const [loading, setLoading] = useState(true);
-    const [busId, setBusId] = useState([])
     // Menu anchor for action dots
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
@@ -164,11 +163,11 @@ const VehicleManagement = () => {
     const endIndex = startIndex + itemsPerPage;
     const currentVehicles = vehicleManagement.slice(startIndex, endIndex);
 
-    const groupedVehicles = currentVehicles.reduce((acc, vehicle) => {
-        if (!acc[vehicle.title]) acc[vehicle.title] = [];
-        acc[vehicle.title].push(vehicle);
-        return acc;
-    }, {});
+    // const groupedVehicles = currentVehicles.reduce((acc, vehicle) => {
+    //     if (!acc[vehicle.title]) acc[vehicle.title] = [];
+    //     acc[vehicle.title].push(vehicle);
+    //     return acc;
+    // }, {});
 
     const getBuses = async () => {
         try {
@@ -186,7 +185,7 @@ const VehicleManagement = () => {
                     ? res.data.data
                     : [];
             console.log("🚍 All Bus IDs:", BusesArray.map(b => b.BusId));
-            setBusId (busId)
+            
             setBuses(BusesArray);
             console.log(BusesArray,"bus array")
         } catch (err) {

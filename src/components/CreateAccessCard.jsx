@@ -3,7 +3,10 @@ import {
     Button,
 } from "@material-tailwind/react";
 import axios from "axios";
-const CreateAccessCard = ({ setCreateAccess }) => {
+import { BASE_URL, getAxiosConfig } from "@/configs/api";
+
+const CreateAccessCard = ({ setCreateAccess, refreshUsers, editUser }) => {
+    const isEditMode = !!editUser;
     const [data, setData] = useState([]);
     const [vendorUsers, setVendorUsers] = useState([]);
     const [roles, setRoles] = useState([])
@@ -22,46 +25,84 @@ const CreateAccessCard = ({ setCreateAccess }) => {
         permission: ""
     });
 
-    const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
     const token = localStorage.getItem("token");
     const [forms, setForms] = useState([Date.now()]);
 
-    const CreateVendorUsers = async () => {
+    const handleSave = async () => {
         try {
+            // Map permission to control
+            const control = formData.permission === "Read & Write" ? "READ_WRITE" : "READ_ONLY";
+            
             const payload = {
                 username: formData.username,
                 password: formData.password,
                 roleCode: formData.roleCode,
                 email: formData.email,
                 phoneNumber: formData.phoneNumber,
-                control: formData.control || "",
-                modules: formData.modules || "",
-                terminalCodes: formData.terminalCodes || "",
+                control: control,
+                modules: formData.modules || [],
+                terminalCodes: formData.terminalCodes || [],
             };
 
             console.log("📤 Sending payload:", payload);
+            console.log("🔄 Mode:", isEditMode ? "UPDATE" : "CREATE");
 
-            const res = await axios.post(`${BASE_URL}/vendor/users`, payload, {
-                withCredentials: true,
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
+            let res;
+            if (isEditMode) {
+                // Update existing user
+                const userId = editUser.Id || editUser.id || editUser.UserId || editUser.userId || editUser.ID || editUser._id;
+                console.log("🔄 Updating user with ID:", userId);
+                
+                res = await axios.patch(
+                    `${BASE_URL}/vendor/users/${userId}`,
+                    payload,
+                    getAxiosConfig()
+                );
+                
+                console.log("✅ Vendor user updated:", res.data);
+                alert("User updated successfully!");
+            } else {
+                // Create new user
+                res = await axios.post(
+                    `${BASE_URL}/vendor/users`,
+                    payload,
+                    getAxiosConfig()
+                );
+                
+                console.log("✅ Vendor user created:", res.data);
+                alert("User created successfully!");
+            }
+
+            // Reset form and close
+            setFormData({
+                username: "",
+                password: "",
+                email: "",
+                phoneNumber: "",
+                roleCode: "",
+                control: "READ_ONLY",
+                modules: [],
+                terminalCodes: [],
+                department: "",
+                permission: ""
             });
-
-            console.log("✅ Vendor user created:", res.data);
-            alert("Vendor user created successfully!");
+            setForms([Date.now()]);
+            
+            // Refresh user list if callback provided
+            if (refreshUsers) {
+                refreshUsers();
+            }
+            
+            // Close form
+            setCreateAccess(false);
         } catch (err) {
-            console.error("❌ Error creating vendor user:", err.response?.data || err);
-            alert(err.response?.data?.message || "Failed to create vendor user");
+            console.error(`❌ Error ${isEditMode ? 'updating' : 'creating'} vendor user:`, err.response?.data || err);
+            alert(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} user`);
         }
     };
     const getTerminals = async () => {
         try {
-            const res = await axios.get(`${BASE_URL}/terminals`, {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await axios.get(`${BASE_URL}/terminals`, getAxiosConfig());
 
             console.log("Fetched terminals:", res.data);
 
@@ -82,10 +123,7 @@ const CreateAccessCard = ({ setCreateAccess }) => {
     };
     const getRoles = async () => {
         try {
-            const res = await axios.get(`${BASE_URL}/roles`, {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await axios.get(`${BASE_URL}/roles`, getAxiosConfig());
 
             console.log("Fetched Roles:", res.data);
 
@@ -110,6 +148,50 @@ const CreateAccessCard = ({ setCreateAccess }) => {
         }
     }, [token]);
 
+    // Populate form when editUser is provided
+    useEffect(() => {
+        if (editUser) {
+            console.log("📝 Populating form with user data:", editUser);
+            
+            // Map user data to form fields
+            // Note: You may need to fetch full user details via API if editUser doesn't have all fields
+            setFormData({
+                username: editUser.Username || editUser.username || "",
+                password: "", // Don't populate password for security
+                email: editUser.Email || editUser.email || "",
+                phoneNumber: editUser.PhoneNumber || editUser.phoneNumber || editUser.Phone || editUser.phone || "",
+                roleCode: editUser.RoleCode || editUser.roleCode || editUser.Role?.code || "",
+                control: editUser.Control || editUser.control || "READ_ONLY",
+                modules: Array.isArray(editUser.Modules) 
+                    ? editUser.Modules 
+                    : Array.isArray(editUser.modules) 
+                        ? editUser.modules 
+                        : editUser.Modules?.split?.(",") || editUser.modules?.split?.(",") || [],
+                terminalCodes: Array.isArray(editUser.TerminalCodes) 
+                    ? editUser.TerminalCodes 
+                    : Array.isArray(editUser.terminalCodes) 
+                        ? editUser.terminalCodes 
+                        : editUser.TerminalCodes?.split?.(",") || editUser.terminalCodes?.split?.(",") || [],
+                department: "",
+                permission: editUser.Control === "READ_WRITE" ? "Read & Write" : "Read Only"
+            });
+        } else {
+            // Reset form for create mode
+            setFormData({
+                username: "",
+                password: "",
+                email: "",
+                phoneNumber: "",
+                roleCode: "",
+                control: "READ_ONLY",
+                modules: [],
+                terminalCodes: [],
+                department: "",
+                permission: ""
+            });
+        }
+    }, [editUser]);
+
     console.log("department", formData.department)
 
     console.log(formData.permission);
@@ -122,7 +204,9 @@ const CreateAccessCard = ({ setCreateAccess }) => {
     };
     return (
         <>
-            <h2 className="text=[#202224] text-[32px] font-bold mt-4 mb-4 font-[Nunito Sans]">Create Access</h2>
+            <h2 className="text=[#202224] text-[32px] font-bold mt-4 mb-4 font-[Nunito Sans]">
+                {isEditMode ? "Edit Access" : "Create Access"}
+            </h2>
             <div className="bg-white rounded-lg shadow-sm p-6 w-full h-full max-h-[700px] overflow-y-auto">
                 {/* Form Header */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
@@ -168,12 +252,16 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Password
+                            {isEditMode && <span className="text-gray-500 text-xs ml-2">(Leave blank to keep current)</span>}
+                        </label>
                         <input
                             type="password"
                             name="password"
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            placeholder={isEditMode ? "Leave blank to keep current password" : ""}
                             className="outline-none border w-full border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                         />
                     </div>
@@ -334,9 +422,9 @@ const CreateAccessCard = ({ setCreateAccess }) => {
                     <Button
                         className='bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center'
                         variant='filled'
-                        onClick={CreateVendorUsers} // ✅ no parentheses
+                        onClick={handleSave}
                     >
-                        Save
+                        {isEditMode ? "Update" : "Save"}
                     </Button>
 
                 </div>

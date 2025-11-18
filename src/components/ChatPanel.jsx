@@ -3,7 +3,7 @@ import {
     darksearchicon,
     sendicon
 } from '@/assets';
-import { driversData, parentsData } from '@/data';
+import { driversData } from '@/data';
 import { Button, Tab, Tabs, TabsBody, TabsHeader } from '@material-tailwind/react';
 import { useState } from 'react';
 const ChatPanel = ({ nestedOpen }) => {
@@ -23,7 +23,7 @@ const ChatPanel = ({ nestedOpen }) => {
         { label: 'School', value: 'allstudents' },
         { label: 'Driver', value: 'drivers' },
     ];
-    const currentData = activeTab === 'allstudents' ? parentsData[selectedBus] : driversData[selectedBus];
+    const currentData = activeTab === 'allstudents' ? Data[selectedBus] : driversData[selectedBus];
     const renderTabs = () => {
         if (nestedOpen === "School") {
             return tabs.map(({ label, value }) => (

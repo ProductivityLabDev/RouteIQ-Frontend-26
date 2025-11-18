@@ -8,6 +8,7 @@ import { setUser } from '@/redux/slices/userSlice';
 import axios from 'axios';
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { Toaster, toast } from 'react-hot-toast';
 const LoginAsVendor = () => {
     const navigate = useNavigate();
     const [username, setusername] = useState('');
@@ -117,7 +118,7 @@ const LoginAsVendor = () => {
             localStorage.setItem("token", token);
 
             const decoded = jwtDecode(token);
-            
+
             const modulesMap = (decoded.modules || []).reduce((acc, mod) => {
                 acc[mod.module] = { canRead: mod.canRead, canWrite: mod.canWrite };
                 return acc;
@@ -134,15 +135,21 @@ const LoginAsVendor = () => {
             };
             localStorage.setItem("vendor", JSON.stringify(realUser));
             dispatch(setUser({ user: realUser, token }));
-            console.log("real user", realUser)
-            navigate("/dashboard");
+            toast.success("Logged in successfully!")
+            setTimeout(() => {
+                navigate("/dashboard");
+            }, 500);
 
         } catch (err) {
             console.error("Login error:", err);
             if (err.response) {
-                setError(err.response.data?.message || "Invalid credentials.");
+                toast.error(err.response.data?.message || "Invalid credentials.")
             } else {
-                setError("Unexpected error. Please try again.");
+
+                const message = "Unexpected error. Please try again.";
+                setError(message);
+                toast.error(message);
+
             }
         }
     };
@@ -155,84 +162,94 @@ const LoginAsVendor = () => {
     }, [BASE_URL, API_PREFIX]);
 
     return (
-        <div className="flex flex-row w-full h-screen">
-            <div className="p-8 bg-[#fff] w-[82%] flex flex-col justify-center">
-                <div className="p-8 w-[65%] flex flex-col justify-center self-center">
-                    <h1 className="text-2xl font-normal text-gray-900 mb-2">Login as Vendor</h1>
-                    <div className="mb-4">
-                        <h2 className="text-sm font-normal text-gray-900 mb-0.5">Welcome Back</h2>
-                        <p className="text-xs text-gray-700">Please enter your login credentials.</p>
-                    </div>
-
-                    <form onSubmit={handleLogin}>
-                        <div className="mb-3">
-                            <label htmlFor="username" className="block text-xs text-gray-700 mb-1">
-                                User Name
-                            </label>
-                            <input
-                                type="text"
-                                id="username"
-                                placeholder="Enter username"
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none"
-                                value={username}
-                                onChange={(e) => setusername(e.target.value)}
-                                required
-                                autoComplete="username"
-                            />
+        <>
+            <Toaster position="top-right" reverseOrder={false} toastOptions={{
+                style: {
+                    fontSize: "18px",
+                    padding: "16px 22px",
+                    minHeight: "60px",
+                    borderRadius: "40px",
+                },
+            }} />
+            <div className="flex flex-row w-full h-screen">
+                <div className="p-8 bg-[#fff] w-[82%] flex flex-col justify-center">
+                    <div className="p-8 w-[65%] flex flex-col justify-center self-center">
+                        <h1 className="text-2xl font-normal text-gray-900 mb-2">Login as Vendor</h1>
+                        <div className="mb-4">
+                            <h2 className="text-sm font-normal text-gray-900 mb-0.5">Welcome Back</h2>
+                            <p className="text-xs text-gray-700">Please enter your login credentials.</p>
                         </div>
 
-                        <div className="mb-3">
-                            <label htmlFor="password" className="block text-xs text-gray-700 mb-1">
-                                Password
-                            </label>
-                            <input
-                                type="password"
-                                id="password"
-                                placeholder="Password"
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                autoComplete="current-password"
-                            />
-                        </div>
-
-                        {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
-
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center">
-                                <input type="checkbox" id="remember" className="h-3 w-3 text-blue-600 border-gray-300 rounded" />
-                                <label htmlFor="remember" className="ml-2 text-xs text-gray-700">
-                                    Remember me
+                        <form onSubmit={handleLogin}>
+                            <div className="mb-3">
+                                <label htmlFor="username" className="block text-xs text-gray-700 mb-1">
+                                    User Name
                                 </label>
+                                <input
+                                    type="text"
+                                    id="username"
+                                    placeholder="Enter username"
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none"
+                                    value={username}
+                                    onChange={(e) => setusername(e.target.value)}
+                                    required
+                                    autoComplete="username"
+                                />
                             </div>
-                            <div>
-                                <Link to="/account/forgot-password" className="text-xs text-[#C01824] hover:underline">
-                                    Forgot Password?
-                                </Link>
-                            </div>
-                        </div>
 
-                        <Button
-                            className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-2 opacity-100"
-                            fullWidth
-                            type="submit"
-                            disabled={loading}
-                        >
-                            {loading ? 'Logging in…' : 'LOGIN'}
-                        </Button>
-                    </form>
+                            <div className="mb-3">
+                                <label htmlFor="password" className="block text-xs text-gray-700 mb-1">
+                                    Password
+                                </label>
+                                <input
+                                    type="password"
+                                    id="password"
+                                    placeholder="Password"
+                                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    autoComplete="current-password"
+                                />
+                            </div>
+
+                            {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
+
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center">
+                                    <input type="checkbox" id="remember" className="h-3 w-3 text-blue-600 border-gray-300 rounded" />
+                                    <label htmlFor="remember" className="ml-2 text-xs text-gray-700">
+                                        Remember me
+                                    </label>
+                                </div>
+                                <div>
+                                    <Link to="/account/forgot-password" className="text-xs text-[#C01824] hover:underline">
+                                        Forgot Password?
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <Button
+                                className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-2 opacity-100"
+                                fullWidth
+                                type="submit"
+                                disabled={loading}
+                            >
+                                {loading ? 'Logging in…' : 'LOGIN'}
+                            </Button>
+                        </form>
+                    </div>
+                </div>
+
+                <div className="w-[60%] h-full">
+                    <img
+                        src={EmployeeManagementLoginScreen}
+                        alt="Route IQ Management System"
+                        className="w-full h-full object-contain"
+                    />
                 </div>
             </div>
-
-            <div className="w-[60%] h-full">
-                <img
-                    src={EmployeeManagementLoginScreen}
-                    alt="Route IQ Management System"
-                    className="w-full h-full object-contain"
-                />
-            </div>
-        </div>
+        </>
     );
 };
 

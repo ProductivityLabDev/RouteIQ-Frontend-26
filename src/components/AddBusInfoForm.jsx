@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { FaArrowLeft } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { BASE_URL, getAuthToken, getAxiosConfig } from "@/configs/api";
 
 const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 	const [storageOption, setStorageOption] = useState('');
@@ -28,35 +29,226 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 		insuranceExpiration: "",
 		undercarriageStorage: ""
 	});
+	const [errors, setErrors] = useState({});
+	const [touched, setTouched] = useState({});
 
-	const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-	const token = localStorage.getItem("token");
+	const token = getAuthToken();
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
 		setFormData((prev) => ({ ...prev, [name]: value }));
+		// Clear error when user starts typing
+		if (errors[name]) {
+			setErrors((prev) => ({ ...prev, [name]: "" }));
+		}
+	};
+
+	const handleBlur = (e) => {
+		const { name } = e.target;
+		setTouched((prev) => ({ ...prev, [name]: true }));
+		validateField(name, formData[name]);
+	};
+
+	const validateField = (name, value) => {
+		let error = "";
+
+		switch (name) {
+			case "vehicleName":
+				if (!value.trim()) {
+					error = "Vehicle name/number is required";
+				} else if (value.trim().length < 2) {
+					error = "Vehicle name must be at least 2 characters";
+				}
+				break;
+
+			case "busType":
+				if (!value.trim()) {
+					error = "Bus type is required";
+				}
+				break;
+
+			case "numberPlate":
+				if (!value.trim()) {
+					error = "Number plate is required";
+				} else if (value.trim().length < 3) {
+					error = "Number plate must be at least 3 characters";
+				}
+				break;
+
+			case "modelYear":
+				if (!value.trim()) {
+					error = "Year is required";
+				} else {
+					const year = parseInt(value);
+					const currentYear = new Date().getFullYear();
+					if (isNaN(year) || year < 1900 || year > currentYear + 1) {
+						error = `Year must be between 1900 and ${currentYear + 1}`;
+					}
+				}
+				break;
+
+			case "serviceInterval":
+				if (!value) {
+					error = "Service interval date is required";
+				} else {
+					const selectedDate = new Date(value);
+					if (selectedDate < new Date()) {
+						error = "Service interval date cannot be in the past";
+					}
+				}
+				break;
+
+			case "fuelTankSize":
+				if (!value.trim()) {
+					error = "Fuel tank size is required";
+				} else {
+					const size = parseFloat(value);
+					if (isNaN(size) || size <= 0 || size > 1000) {
+						error = "Fuel tank size must be a number between 1 and 1000 liters";
+					}
+				}
+				break;
+
+			case "vehicleMake":
+				if (!value.trim()) {
+					error = "Vehicle make is required";
+				}
+				break;
+
+			case "noOfPassenger":
+				if (!value.trim()) {
+					error = "Number of passengers is required";
+				} else {
+					const passengers = parseInt(value);
+					if (isNaN(passengers) || passengers < 1 || passengers > 100) {
+						error = "Number of passengers must be between 1 and 100";
+					}
+				}
+				break;
+
+			case "vinNo":
+				if (!value.trim()) {
+					error = "VIN number is required";
+				} else if (value.trim().length !== 17) {
+					error = "VIN number must be exactly 17 characters";
+				} else if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(value.trim())) {
+					error = "Invalid VIN format (must be 17 alphanumeric characters, excluding I, O, Q)";
+				}
+				break;
+
+			case "mileage":
+				if (value.trim() && (isNaN(parseFloat(value)) || parseFloat(value) < 0)) {
+					error = "Mileage must be a positive number";
+				}
+				break;
+
+			case "driver":
+				if (!value) {
+					error = "Please select a driver";
+				}
+				break;
+
+			case "fuelType":
+				if (!value) {
+					error = "Please select a fuel type";
+				}
+				break;
+
+			case "assignedTerminal":
+				if (!value) {
+					error = "Please select an assigned terminal";
+				}
+				break;
+
+			case "expiredDate":
+				if (!value) {
+					error = "Expiration date is required";
+				} else {
+					const expDate = new Date(value);
+					if (expDate <= new Date()) {
+						error = "Expiration date must be in the future";
+					}
+				}
+				break;
+
+			case "insuranceExpiration":
+				// Optional field, but if provided should be valid date
+				if (value.trim()) {
+					const insDate = new Date(value);
+					if (isNaN(insDate.getTime())) {
+						error = "Invalid date format";
+					}
+				}
+				break;
+
+			default:
+				break;
+		}
+
+		setErrors((prev) => ({ ...prev, [name]: error }));
+		return !error;
+	};
+
+	const validateForm = () => {
+		let isValid = true;
+		const newErrors = {};
+
+		// Validate all fields
+		Object.keys(formData).forEach((key) => {
+			if (key !== "insuranceExpiration" && key !== "mileage") {
+				if (!validateField(key, formData[key])) {
+					isValid = false;
+				}
+			}
+		});
+
+		// Validate undercarriage storage
+		if (!storageOption) {
+			newErrors.undercarriageStorage = "Please select undercarriage storage option";
+			isValid = false;
+		}
+
+		// Validate optional fields
+		if (formData.mileage && !validateField("mileage", formData.mileage)) {
+			isValid = false;
+		}
+		if (formData.insuranceExpiration && !validateField("insuranceExpiration", formData.insuranceExpiration)) {
+			isValid = false;
+		}
+
+		setErrors((prev) => ({ ...prev, ...newErrors }));
+		return isValid;
 	};
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
+		
+		// Mark all fields as touched
+		const allFields = Object.keys(formData);
+		const touchedFields = {};
+		allFields.forEach((field) => {
+			touchedFields[field] = true;
+		});
+		setTouched(touchedFields);
+
+		// Validate form
+		if (!validateForm()) {
+			alert("Please fix all validation errors before submitting");
+			return;
+		}
+
 		try {
 			// Include undercarriageStorage in the submission
 			const submissionData = {
 				...formData,
 				undercarriageStorage: storageOption,
 			};
-			const res = await axios.post(`${BASE_URL}/institute/createbuses`, submissionData, {
-				withCredentials: true,
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`,
-				},
-			});
+			const res = await axios.post(`${BASE_URL}/institute/createbuses`, submissionData, getAxiosConfig());
 			console.log("Bus Added:", res.data);
 			alert("Bus added successfully!");
 			if (refreshBuses) {
-      await refreshBuses();
-    }
+				await refreshBuses();
+			}
 			handleCancel();
 		} catch (err) {
 			console.error("Error adding Bus:", err);
@@ -66,10 +258,7 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 
 	const getdriver = async () => {
 		try {
-			const res = await axios.get(`${BASE_URL}/institute/drivers`, {
-				withCredentials: true,
-				headers: { Authorization: `Bearer ${token}` },
-			});
+			const res = await axios.get(`${BASE_URL}/institute/drivers`, getAxiosConfig());
 
 			console.log("Fetched pay Drivers:", res.data);
 			// ✅ API gives { ok:true, data:[...] }
@@ -87,10 +276,7 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 	};
 	const getFuelTypes = async () => {
 		try {
-			const res = await axios.get(`${BASE_URL}/institute/fueltypes`, {
-				withCredentials: true,
-				headers: { Authorization: `Bearer ${token}` },
-			});
+			const res = await axios.get(`${BASE_URL}/institute/fueltypes`, getAxiosConfig());
 			console.log("Fetched Fuel Types:", res.data);
 			if (res.data?.data && Array.isArray(res.data.data)) {
 				setFuelTypes(res.data.data);
@@ -107,10 +293,7 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 
 	const getTerminals = async () => {
 		try {
-			const res = await axios.get(`${BASE_URL}/terminals`, {
-				withCredentials: true,
-				headers: { Authorization: `Bearer ${token}` },
-			});
+			const res = await axios.get(`${BASE_URL}/terminals`, getAxiosConfig());
 			console.log("Fetched terminals:", res.data);
 
 			const terminalsArray = Array.isArray(res.data)
@@ -128,11 +311,14 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 		}
 	};
 	useEffect(() => {
-		getdriver();
-		getFuelTypes();
-		getTerminals();
+		const token = getAuthToken();
+		if (token) {
+			getdriver();
+			getFuelTypes();
+			getTerminals();
+		}
 		// getPaycycles();
-	}, [token]);
+	}, []);
 	return (
 		<div className="grid grid-cols-1 bg-white w-full rounded-lg">
 			<form className="w-full" onSubmit={handleSubmit}>
@@ -154,117 +340,181 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-6">
 					{/* Column 1 */}
 					<div className="mb-4 w-full">
-						<label className="block text-sm font-bold text-black mb-1">Vehicle name/number</label>
-						<input
-							type="text"
-							name="vehicleName"
-							value={formData.vehicleName}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Vehicle name/number'
-						/>
+					<label className="block text-sm font-bold text-black mb-1">Vehicle name/number <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="vehicleName"
+						value={formData.vehicleName}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.vehicleName && touched.vehicleName ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Vehicle name/number'
+					/>
+					{errors.vehicleName && touched.vehicleName && (
+						<p className="text-red-500 text-xs mt-1">{errors.vehicleName}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Bus type</label>
-						<input
-							type="text"
-							name="busType"
-							value={formData.busType}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Bus type'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Bus type <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="busType"
+						value={formData.busType}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.busType && touched.busType ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Bus type'
+					/>
+					{errors.busType && touched.busType && (
+						<p className="text-red-500 text-xs mt-1">{errors.busType}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Number Plate</label>
-						<input
-							type="text"
-							name="numberPlate"
-							value={formData.numberPlate}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Number Plate'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Number Plate <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="numberPlate"
+						value={formData.numberPlate}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.numberPlate && touched.numberPlate ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Number Plate'
+					/>
+					{errors.numberPlate && touched.numberPlate && (
+						<p className="text-red-500 text-xs mt-1">{errors.numberPlate}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Year</label>
-						<input
-							type="text"
-							name="modelYear"
-							value={formData.modelYear}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Year'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Year <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="modelYear"
+						value={formData.modelYear}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.modelYear && touched.modelYear ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Year'
+					/>
+					{errors.modelYear && touched.modelYear && (
+						<p className="text-red-500 text-xs mt-1">{errors.modelYear}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Service intervals</label>
-						<input
-							type="date"
-							name="serviceInterval"
-							value={formData.serviceInterval}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Service intervals'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Service intervals <span className="text-red-500">*</span></label>
+					<input
+						type="date"
+						name="serviceInterval"
+						value={formData.serviceInterval}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.serviceInterval && touched.serviceInterval ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Service intervals'
+					/>
+					{errors.serviceInterval && touched.serviceInterval && (
+						<p className="text-red-500 text-xs mt-1">{errors.serviceInterval}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Fuel tank size</label>
-						<input
-							type="text"
-							name="fuelTankSize"
-							value={formData.fuelTankSize}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Fuel tank size'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Fuel tank size <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="fuelTankSize"
+						value={formData.fuelTankSize}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.fuelTankSize && touched.fuelTankSize ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Fuel tank size (liters)'
+					/>
+					{errors.fuelTankSize && touched.fuelTankSize && (
+						<p className="text-red-500 text-xs mt-1">{errors.fuelTankSize}</p>
+					)}
 					</div>
 
 					{/* Column 2 */}
 					<div className="mb-4 w-full">
-						<label className="block text-sm font-bold text-black mb-1">Vehicle Make</label>
-						<input
-							type="text"
-							name="vehicleMake"
-							value={formData.vehicleMake}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Vehicle Make'
-						/>
+					<label className="block text-sm font-bold text-black mb-1">Vehicle Make <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="vehicleMake"
+						value={formData.vehicleMake}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.vehicleMake && touched.vehicleMake ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Vehicle Make'
+					/>
+					{errors.vehicleMake && touched.vehicleMake && (
+						<p className="text-red-500 text-xs mt-1">{errors.vehicleMake}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">No of passengers</label>
-						<input
-							type="text"
-							name="noOfPassenger"
-							value={formData.noOfPassenger}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='No of passengers'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">No of passengers <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="noOfPassenger"
+						value={formData.noOfPassenger}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.noOfPassenger && touched.noOfPassenger ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='No of passengers'
+					/>
+					{errors.noOfPassenger && touched.noOfPassenger && (
+						<p className="text-red-500 text-xs mt-1">{errors.noOfPassenger}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Vin No</label>
-						<input
-							type="text"
-							name="vinNo"
-							value={formData.vinNo}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Vin No'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Vin No <span className="text-red-500">*</span></label>
+					<input
+						type="text"
+						name="vinNo"
+						value={formData.vinNo}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						maxLength={17}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] uppercase ${
+							errors.vinNo && touched.vinNo ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='VIN No (17 characters)'
+					/>
+					{errors.vinNo && touched.vinNo && (
+						<p className="text-red-500 text-xs mt-1">{errors.vinNo}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Mileage</label>
-						<input
-							type="text"
-							name="mileage"
-							value={formData.mileage}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Mileage'
-						/>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Mileage</label>
+					<input
+						type="text"
+						name="mileage"
+						value={formData.mileage}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.mileage && touched.mileage ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+						placeholder='Mileage (optional)'
+					/>
+					{errors.mileage && touched.mileage && (
+						<p className="text-red-500 text-xs mt-1">{errors.mileage}</p>
+					)}
 
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Drivers</label>
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Drivers <span className="text-red-500">*</span></label>
 
-						<select
-							name="driver"
-							value={formData.driver || ""}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-						>
+					<select
+						name="driver"
+						value={formData.driver || ""}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.driver && touched.driver ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+					>
 							<option value="">Select</option>
 							{loading ? (
 								<option className="text-gray-500">Loading...</option>
@@ -276,19 +526,23 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 								))
 							) : (
 								<option>No drivers found</option>
-							)}
-						</select>
+						)}
+					</select>
+					{errors.driver && touched.driver && (
+						<p className="text-red-500 text-xs mt-1">{errors.driver}</p>
+					)}
 
+					<label className="block text-sm font-bold text-black mt-4 mb-1">Fuel type (gas, diesel) <span className="text-red-500">*</span></label>
 
-
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Fuel type (gas, diesel)</label>
-
-						<select
-							name="fuelType"
-							value={formData.fuelType || ""}
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-						>
+					<select
+						name="fuelType"
+						value={formData.fuelType || ""}
+						onChange={handleChange}
+						onBlur={handleBlur}
+						className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+							errors.fuelType && touched.fuelType ? "border-red-500" : "border-[#D5D5D5]"
+						}`}
+					>
 							<option value="">Select</option>
 							{loading ? (
 								<option className="text-gray-500">Loading...</option>
@@ -302,6 +556,9 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 								<option>No fuel types found</option>
 							)}
 						</select>
+						{errors.fuelType && touched.fuelType && (
+							<p className="text-red-500 text-xs mt-1">{errors.fuelType}</p>
+						)}
 
 					</div>
 				</div>
@@ -309,20 +566,15 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 				{/* Additional Fields (Row below 2 columns) */}
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-6">
 					<div className="mb-4 w-full">
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Assigned Terminal</label>
-						{/* <select
-							name="assignedTerminal"
-							value=""
-							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-						>
-							<option value="">Select</option>
-						</select> */}
+						<label className="block text-sm font-bold text-black mt-4 mb-1">Assigned Terminal <span className="text-red-500">*</span></label>
 						<select
 							name="assignedTerminal"
 							value={formData.assignedTerminal || ""}
 							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
+							onBlur={handleBlur}
+							className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+								errors.assignedTerminal && touched.assignedTerminal ? "border-red-500" : "border-[#D5D5D5]"
+							}`}
 						>
 							<option value="">Select</option>
 							{loading ? (
@@ -337,17 +589,25 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 								<option>No terminals found</option>
 							)}
 						</select>
+						{errors.assignedTerminal && touched.assignedTerminal && (
+							<p className="text-red-500 text-xs mt-1">{errors.assignedTerminal}</p>
+						)}
 
-
-						<label className="block text-sm font-bold text-black mt-4 mb-1">Expiration Date</label>
+						<label className="block text-sm font-bold text-black mt-4 mb-1">Expiration Date <span className="text-red-500">*</span></label>
 						<input
 							type="date"
 							name="expiredDate"
 							value={formData.expiredDate}
 							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] w-[70%] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
+							onBlur={handleBlur}
+							className={`outline-none border w-[70%] rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
+								errors.expiredDate && touched.expiredDate ? "border-red-500" : "border-[#D5D5D5]"
+							}`}
 							placeholder='Expiration Date'
 						/>
+						{errors.expiredDate && touched.expiredDate && (
+							<p className="text-red-500 text-xs mt-1">{errors.expiredDate}</p>
+						)}
 					</div>
 
 					<div className="mb-4 w-full">
@@ -357,13 +617,19 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 							name="insuranceExpiration"
 							value={formData.insuranceExpiration}
 							onChange={handleChange}
-							className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
-							placeholder='Insurance & Expiration'
+							onBlur={handleBlur}
+							className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%] ${
+								errors.insuranceExpiration && touched.insuranceExpiration ? "border-red-500" : "border-[#D5D5D5]"
+							}`}
+							placeholder='Insurance & Expiration (optional)'
 						/>
+						{errors.insuranceExpiration && touched.insuranceExpiration && (
+							<p className="text-red-500 text-xs mt-1">{errors.insuranceExpiration}</p>
+						)}
 
 						<div className="mt-6">
 							<label className="block text-lg font-bold text-gray-800 mb-2">
-								Undercarriage Storage
+								Undercarriage Storage <span className="text-red-500">*</span>
 							</label>
 							<div className="flex items-center gap-6">
 								<label className="flex items-center space-x-2">
@@ -389,6 +655,9 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 									<span>No</span>
 								</label>
 							</div>
+							{errors.undercarriageStorage && (
+								<p className="text-red-500 text-xs mt-1">{errors.undercarriageStorage}</p>
+							)}
 						</div>
 					</div>
 				</div>

@@ -61,7 +61,10 @@ function App() {
       <Route path="/account/*" element={<Auth />} />
       <Route path="/account/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
- <Route path="/dashboard" element={<SchoolDashboard />} />
+      
+        <Route path="/unauthorized/*" element={<Unauthorized
+         />} />
+ {/* <Route path="/dashboard" element={<SchoolDashboard />} /> */}
       {/* ---------- PRIVATE (GUARDED) ---------- */}
       {/* <Route element={<ProtectedRoute />}> */}
         <Route path="/dashboard/*" element={<Dashboard />} />

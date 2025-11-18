@@ -4,7 +4,6 @@ import { Typography } from '@material-tailwind/react';
 import ButtonComponent from '@/components/buttons/CustomButton';
 
 const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleScheduleRepair }) => {
-    // Debug: Log the vehicle data being passed
     console.log("🚌 Vehicle data received in ReportedDefects:", vehicle);
 
     const [isOpen, setIsOpen] = useState(false); // state for popup

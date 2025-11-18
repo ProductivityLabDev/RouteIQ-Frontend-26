@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@material-tailwind/react';
-const DeleteUserModal = ({ isOpen, onClose, onDelete }) => {
+
+const DeleteUserModal = ({ isOpen, onClose, onDelete, isDeleting = false }) => {
     if (!isOpen) return null;
 
     return (
@@ -8,7 +9,8 @@ const DeleteUserModal = ({ isOpen, onClose, onDelete }) => {
             <div className="bg-white rounded-lg p-8 w-full max-w-xl relative">
                 <button
                     onClick={onClose}
-                    className="absolute top-8 right-8 text-gray-500"
+                    className="absolute top-8 right-8 text-gray-500 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isDeleting}
                 >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -21,16 +23,27 @@ const DeleteUserModal = ({ isOpen, onClose, onDelete }) => {
                     Are you sure you want to delete?
                 </p>
 
+                {isDeleting && (
+                    <div className="text-center mb-4">
+                        <p className="text-blue-600 font-semibold">Deleting user...</p>
+                    </div>
+                )}
+
                 <div className="flex justify-center space-x-4">
                     <Button
-                        className="border border-[#C01824] bg-white text-[#C01824] px-12 py-2 rounded-[4px]"
+                        className="border border-[#C01824] bg-white text-[#C01824] px-12 py-2 rounded-[4px] disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={onClose}
+                        disabled={isDeleting}
                     >
                         No, Cancel
                     </Button>
-                    <Button className='bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center'
-                        variant='filled' onClick={onClose}>
-                        Yes, Delete
+                    <Button 
+                        className='bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center disabled:opacity-50 disabled:cursor-not-allowed'
+                        variant='filled' 
+                        onClick={onDelete}
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? "Deleting..." : "Yes, Delete"}
                     </Button>
                 </div>
             </div>
