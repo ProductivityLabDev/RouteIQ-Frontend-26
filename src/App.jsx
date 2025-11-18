@@ -8,6 +8,7 @@ import { routeTitles } from "./data";
 import { Dashboard, Auth } from "@/layouts";
 import EmployeeManagementRoutes from "./layouts/EmployeeDashboard";
 import LoginAsVendor from "./pages/auth/login-as-vendor";
+import SignInVendor from "./pages/auth/sign-in-vendor";
 import Logout from "./pages/auth/logout"; 
 
 import SchoolDashboard from "./pages/dashboard/Dashboard";
@@ -57,7 +58,7 @@ function App() {
   return (
     <Routes>
       {/* ---------- PUBLIC ---------- */}
-      <Route path="/LoginAsVendor" element={<LoginAsVendor />} />
+      <Route path="/sign-in-vendor" element={<SignInVendor />} />
       <Route path="/account/*" element={<Auth />} />
       <Route path="/account/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />

@@ -270,7 +270,6 @@ export function SignIn() {
 }
 
 export default SignIn;
-
 {/* <Typography variant="paragraph" className="text-center text-gray-700 font-medium mt-4">
             Not registered?
             <Link to="/account/sign-up" className="text-gray-900 ml-1">Create account</Link>

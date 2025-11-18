@@ -15,7 +15,7 @@ import {
   Settings,
   FeedbackSupport,
 } from "@/pages/dashboard";
-import { ForgotPassword, SignIn, SignUp } from "@/pages/auth";
+import { ForgotPassword, SignIn, SignInVendor, SignUp } from "@/pages/auth";
 import NotFound from "@/components/NotFound";
 import { announcementicon, communicationicon, dashboardicon, logouticon, manageicon, routescheduleicon, settingsicon, tripplannericon } from "./assets";
 
@@ -144,6 +144,12 @@ export const routes = [
         name: "forgot password",
         path: "/forgot-password",
         element: <ForgotPassword />,
+      },
+      {
+        icon: <RectangleStackIcon {...icon} />,
+        name: "vendor sign in",
+        path: "/sign-in-vendor",
+        element: <SignInVendor />,
       },
     ],
   },

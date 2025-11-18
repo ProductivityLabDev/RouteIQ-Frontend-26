@@ -3,7 +3,7 @@ import { Button, Card, Dialog, Typography } from '@material-tailwind/react'
 import { closeicon } from '@/assets'
 import axios from 'axios'
 
-export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
+export function SchoolManagementModal({ open, handleOpen, editInstitute, editSchoolData, refreshSchools }) {
     const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
     const token = localStorage.getItem("token");
 
@@ -57,6 +57,40 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, token]);
 
+    // Populate form when editing
+    useEffect(() => {
+        if (editInstitute && editSchoolData) {
+            setFormData({
+                district: editSchoolData.district || "",
+                president: editSchoolData.president || "",
+                terminal: editSchoolData.terminal || 0,
+                principle: editSchoolData.principle || "",
+                school: editSchoolData.school || editSchoolData.name || "",
+                totalStudent: editSchoolData.totalStudent || editSchoolData.totalStudents || "",
+                totalBuses: editSchoolData.totalBuses || "",
+                contact: editSchoolData.contact || "",
+                Address: editSchoolData.Address || editSchoolData.address || "",
+                Email: editSchoolData.Email || editSchoolData.email || "",
+                PhoneNo: editSchoolData.PhoneNo || editSchoolData.phoneNo || ""
+            });
+        } else {
+            // Reset form when opening for new school
+            setFormData({
+                district: "",
+                president: "",
+                terminal: 0,
+                principle: "",
+                school: "",
+                totalStudent: "",
+                totalBuses: "",
+                contact: "",
+                Address: "",
+                Email: "",
+                PhoneNo: ""
+            });
+        }
+    }, [editInstitute, editSchoolData, open]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
@@ -101,7 +135,7 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
             setFormData({
                 district: "",
                 president: "",
-                terminal: "",
+                terminal: 0,
                 principle: "",
                 school: "",
                 totalStudent: "",
@@ -111,6 +145,11 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute }) {
                 Email: "",
                 PhoneNo: ""
             });
+
+            // Refresh schools list if callback provided
+            if (refreshSchools) {
+                await refreshSchools();
+            }
 
             // Close modal
             handleOpen();
