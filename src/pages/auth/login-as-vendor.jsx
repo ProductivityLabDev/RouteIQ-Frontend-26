@@ -11,7 +11,7 @@ import { jwtDecode } from "jwt-decode";
 import { Toaster, toast } from 'react-hot-toast';
 const LoginAsVendor = () => {
     const navigate = useNavigate();
-    const [username, setusername] = useState('');
+    const [email, setemail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -92,18 +92,22 @@ const LoginAsVendor = () => {
         const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
         const url = `${BASE_URL}/auth/login`;
 
+        // Debug: Log the email and password being sent
+        console.log("🔐 Login attempt - Email:", email, "Password:", password ? "***" : "empty");
+        console.log("📤 Sending request to:", url);
+        console.log("📦 Request payload:", { email, password: password ? "***" : "" });
 
         try {
             const res = await axios.post(
                 url,
-                { username, password },
+                { email, password },
                 {
                     headers: { "Content-Type": "application/json" },
                     withCredentials: true,
                 }
             );
 
-            console.log("Login response:", res.data);
+            console.log("✅ Login response:", res.data);
             const token =
                 res.data?.token ||
                 res.data?.access_token ||
@@ -128,7 +132,7 @@ const LoginAsVendor = () => {
                 : "READ_ONLY";
 
             const realUser = {
-                username: decoded.username,
+                email: decoded.email,
                 role: decoded.role || "USER",
                 modules: modulesMap,
                 control: permission,
@@ -161,6 +165,13 @@ const LoginAsVendor = () => {
         setLoading(false)
     }, [BASE_URL, API_PREFIX]);
 
+    // Debug: Track email state changes
+    useEffect(() => {
+        if (email) {
+            console.log("📧 Email state updated:", email);
+        }
+    }, [email]);
+
     return (
         <>
             <Toaster position="top-right" reverseOrder={false} toastOptions={{
@@ -182,18 +193,23 @@ const LoginAsVendor = () => {
 
                         <form onSubmit={handleLogin}>
                             <div className="mb-3">
-                                <label htmlFor="username" className="block text-xs text-gray-700 mb-1">
-                                    User Name
+                                <label htmlFor="email" className="block text-xs text-gray-700 mb-1">
+                                    Email / Username
                                 </label>
                                 <input
-                                    type="text"
-                                    id="username"
-                                    placeholder="Enter username"
+                                    type="email"
+                                    id="email"
+                                    name="email"
+                                    placeholder="Enter email or username"
                                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none"
-                                    value={username}
-                                    onChange={(e) => setusername(e.target.value)}
+                                    value={email}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        console.log("📝 Email input changed:", value);
+                                        setemail(value);
+                                    }}
                                     required
-                                    autoComplete="username"
+                                    autoComplete="email"
                                 />
                             </div>
 
