@@ -23,8 +23,7 @@ export function SignInVendor() {
 
   // Sign up form states
   const [signUpData, setSignUpData] = useState({
-    name: '',
-    title: '',
+    nameAndTitle: '',
     company: '',
     email: '',
     contactNumber: '',
@@ -83,7 +82,7 @@ export function SignInVendor() {
       );
 
       console.log("Vendor login response:", res.data);
-      
+
       const token =
         res.data?.token ||
         res.data?.access_token ||
@@ -102,7 +101,7 @@ export function SignInVendor() {
 
       // Decode JWT token to get user info
       const decoded = jwtDecode(token);
-      
+
       // Create modules map from decoded token
       const modulesMap = (decoded.modules || []).reduce((acc, mod) => {
         acc[mod.module] = { canRead: mod.canRead, canWrite: mod.canWrite };
@@ -124,7 +123,7 @@ export function SignInVendor() {
 
       // Store user in localStorage
       localStorage.setItem("vendor", JSON.stringify(realUser));
-      
+
       // Dispatch to Redux
       dispatch(setUser({ user: realUser, token }));
 
@@ -157,8 +156,55 @@ export function SignInVendor() {
 
   const handleSignUpSubmit = async (event) => {
     event.preventDefault();
-    // Handle sign up logic here
-    toast.success("Sign up functionality coming soon!");
+    setLoading(true);
+    setError("");
+
+    try {
+      const url = `${BASE_URL}/signup/vendor/step1`;
+
+      // Build API payload exactly as backend expects
+      const payload = {
+        //nameAndTitle: `${signUpData.name} - ${signUpData.title}`,
+        nameAndTitle: signUpData.nameAndTitle,
+        companyName: signUpData.company,
+        email: signUpData.email,
+        contactNumber: signUpData.contactNumber,
+      };
+
+      const res = await axios.post(url, payload, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      console.log("Signup step 1 response:", res.data);
+      toast.success("Signup Step 1 completed! Proceed to next step.");
+
+      // Optionally navigate to step 2
+      // navigate("/vendor/signup-step2");
+      const vendorSignupId = res.data?.vendorSignupId;
+
+      // safety check
+      if (!vendorSignupId) {
+        console.error("Vendor Signup ID missing from response");
+        toast.error("Signup failed: No vendor ID returned.");
+        return;
+      }
+
+      navigate("/dashboard_subscription", {
+        state: { vendorSignupId }
+      });
+
+    } catch (err) {
+      console.error("Signup Error:", err);
+
+      const errorMessage =
+        err.response?.data?.message ||
+        "Signup failed. Please try again.";
+
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignUpChange = (e) => {
@@ -171,9 +217,9 @@ export function SignInVendor() {
 
   return (
     <>
-      <Toaster 
-        position="top-right" 
-        reverseOrder={false} 
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
         toastOptions={{
           style: {
             fontSize: "18px",
@@ -181,12 +227,12 @@ export function SignInVendor() {
             minHeight: "60px",
             borderRadius: "40px",
           },
-        }} 
+        }}
       />
       {loading && <Loader />}
       <section className="h-screen flex items-center justify-center relative overflow-hidden bg-white">
         {/* Blurred Background Image */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: `url(${authBg})`,
@@ -195,7 +241,7 @@ export function SignInVendor() {
             transform: 'scale(1.1)'
           }}
         />
-        
+
         {/* Overlay for better contrast */}
         <div className="absolute inset-0 bg-black/10" />
 
@@ -220,21 +266,19 @@ export function SignInVendor() {
             <div className="flex bg-[#2C2F32] rounded-t-lg overflow-hidden w-[100%]">
               <button
                 onClick={() => setActiveTab('login')}
-                className={`px-8 py-3 text-sm font-medium transition-colors  w-[50%] ${
-                  activeTab === 'login'
-                    ? 'bg-[#2C2F32] text-white'
-                    : 'bg-[#1F2124] text-gray-400 hover:text-white'
-                }`}
+                className={`px-8 py-3 text-sm font-medium transition-colors  w-[50%] ${activeTab === 'login'
+                  ? 'bg-[#2C2F32] text-white'
+                  : 'bg-[#1F2124] text-gray-400 hover:text-white'
+                  }`}
               >
                 Login
               </button>
               <button
                 onClick={() => setActiveTab('signup')}
-                className={`px-8 py-3 text-sm font-medium transition-colors w-[50%] ${
-                  activeTab === 'signup'
-                    ? 'bg-[#2C2F32] text-white'
-                    : 'bg-[#1F2124] text-gray-400 hover:text-white'
-                }`}
+                className={`px-8 py-3 text-sm font-medium transition-colors w-[50%] ${activeTab === 'signup'
+                  ? 'bg-[#2C2F32] text-white'
+                  : 'bg-[#1F2124] text-gray-400 hover:text-white'
+                  }`}
               >
                 Sign up
               </button>
@@ -308,7 +352,7 @@ export function SignInVendor() {
                         className="flex-1 outline-none rounded-md px-4 py-3 bg-white text-gray-900 border border-gray-300 focus:border-[#C01824] focus:ring-1 focus:ring-[#C01824]"
                       />
                       <div className="flex items-center gap-2 bg-black rounded-md px-4 py-3 min-w-[140px] border border-gray-800">
-                        <Typography 
+                        <Typography
                           className="text-white text-xl font-extrabold tracking-wider select-none"
                           style={{
                             letterSpacing: '0.1em',
@@ -370,7 +414,7 @@ export function SignInVendor() {
           {activeTab === 'signup' && (
             <div className="bg-[#2C2F32] rounded-b-lg p-8 shadow-2xl">
               <Typography className="text-white text-4xl font-bold mb-2">
-                Business Information
+                Vendor Information
               </Typography>
               <Typography className="text-gray-400 text-sm mb-6">
                 Please enter your business details
@@ -385,8 +429,8 @@ export function SignInVendor() {
                     </Typography>
                     <input
                       type="text"
-                      name="name"
-                      value={signUpData.name}
+                      name="nameAndTitle"
+                      value={signUpData.nameAndTitle}
                       onChange={handleSignUpChange}
                       className="w-full outline-none rounded-md px-4 py-3 bg-white text-gray-900 border border-gray-300 focus:border-[#C01824] focus:ring-1 focus:ring-[#C01824]"
                       placeholder="Enter name"
@@ -395,7 +439,7 @@ export function SignInVendor() {
                   </div>
 
                   {/* Title Field */}
-                  <div>
+                  {/* <div>
                     <Typography variant="small" className="text-gray-300 text-sm font-medium mb-2">
                       Title*
                     </Typography>
@@ -408,7 +452,7 @@ export function SignInVendor() {
                       placeholder="Enter title"
                       required
                     />
-                  </div>
+                  </div> */}
 
                   {/* Company Field */}
                   <div>
@@ -463,8 +507,9 @@ export function SignInVendor() {
                     type="submit"
                     className="mt-2 bg-[#C01824] hover:bg-[#A0151F] text-white font-semibold text-base py-3 rounded-md transition-colors"
                     fullWidth
+
                   >
-                    PROCEED
+                    {loading ? "Processing..." : "PROCEED"}
                   </Button>
                 </div>
               </form>

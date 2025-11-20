@@ -6,7 +6,8 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { logo, redtick } from '@/assets';
-
+import axios from 'axios';
+import { Toaster } from 'react-hot-toast';
 export function ForgotPassword() {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -16,11 +17,193 @@ export function ForgotPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [userId, setUserId] = useState(null);
+
   const navigate = useNavigate();
 
   const otpRefs = useRef([]);
   otpRefs.current = otpRefs.current.slice(0, otp.length);
 
+
+  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const url = `${BASE_URL}/auth/request-password-reset`;
+
+      const payload = { email };
+
+      const res = await axios.post(url, payload);
+      console.log(res)
+      // toast.success("OTP sent to your email!");
+
+      // Move to OTP step
+      setStep(2);
+      setTimeLeft(120);
+
+    } catch (err) {
+      console.error("Reset request error:", err);
+      //toast.error(err.response?.data?.message || "Failed to send reset code.");
+    }
+  };
+
+  // const handleOtpChange = (index, value) => {
+  //   if (!/^[0-9]*$/.test(value)) return; // Only numbers allowed
+
+  //   const newOtp = [...otp];
+  //   newOtp[index] = value.slice(-1); // Only one digit
+  //   setOtp(newOtp);
+
+  //   // Move forward
+  //   if (value && index < otp.length - 1) {
+  //     otpRefs.current[index + 1].focus();
+  //   }
+
+  //   // Move backward
+  //   if (!value && index > 0) {
+  //     otpRefs.current[index - 1].focus();
+  //   }
+  // };
+  // const handleOtpSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   const otpCode = otp.join("");
+
+  //   if (otpCode.length !== 4) {
+  //     //toast.error("Please enter the 4-digit code.");
+  //     return;
+  //   }
+
+  //   try {
+  //     const url = `${BASE_URL}/auth/verify-otp`;
+
+  //     const payload = {
+  //       email: email,
+  //       otp: otpCode,
+  //       //newPassword: newPassword, // only provide after step 3
+  //     };
+
+  //     console.log("Sending OTP Payload:", payload);
+
+  //     const res = await axios.post(url, payload);
+
+  //     //toast.success("OTP verified successfully!");
+  //     console.log("OTP verified successfully!", res.data)
+  //     // Move to password entry step
+  //     setStep(3);
+
+  //   } catch (err) {
+  //     console.error(err);
+  //     //toast.error(err.response?.data?.message || "Invalid OTP!");
+  //   }
+  // };
+
+  // const handleEmailSubmit = (e) => {
+  //   e.preventDefault();
+  //   setStep(2);
+  // };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+
+    const otpCode = otp.join("");
+
+    if (otpCode.length !== 4) {
+      console.log("Please enter the 4-digit OTP");
+      return;
+    }
+
+    try {
+      const url = `${BASE_URL}/auth/verify-otp`;
+
+      const payload = {
+        email: email,
+        otp: otpCode
+      };
+
+      const res = await axios.post(url, payload);
+
+      console.log("OTP response:", res.data);
+
+
+      const userIdFromApi = res.data?.userId;
+
+      if (!userIdFromApi) {
+        console.error("No userId returned from backend");
+        return;
+      }
+
+      // ⭐ STORE userId in state
+      setUserId(userIdFromApi);
+
+      // Continue to password reset page
+      setStep(3);
+
+    } catch (err) {
+      console.error("OTP Error:", err.response?.data || err.message);
+    }
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (!/^[0-9]*$/.test(value)) return; // Only numbers allowed
+
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1); // Only one digit
+    setOtp(newOtp);
+
+    // Move forward
+    if (value && index < otp.length - 1) {
+      otpRefs.current[index + 1].focus();
+    }
+
+    // Move backward
+    if (!value && index > 0) {
+      otpRefs.current[index - 1].focus();
+    }
+  };
+
+
+  const handleNewPassword = async (e) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      console.error("Passwords do not match");
+      return;
+    }
+
+    const otpCode = otp.join("");
+
+    try {
+      const url = `${BASE_URL}/auth/reset-password`;
+
+      const payload = {
+        userId: userId,
+        //otp: otpCode,
+        newPassword: newPassword,
+        //email: email             
+      };
+
+      console.log("Reset Password Payload:", payload);
+
+      const res = await axios.post(url, payload);
+
+      console.log("Password reset success:", res.data);
+
+      setStep(4); // success
+    } catch (err) {
+      console.error("Password Reset Error:", err.response?.data || err.message);
+    }
+  };
+
+  const handleSubmissionSuccessfully = (e) => {
+    e.preventDefault()
+    setTimeout(() => {
+      navigate("/sign-in-vendor")
+    }, 500)
+
+  }
   useEffect(() => {
     if (step === 2) {
       const timer = setInterval(() => {
@@ -30,32 +213,11 @@ export function ForgotPassword() {
     }
   }, [step]);
 
-  const handleEmailSubmit = (e) => {
-    e.preventDefault();
-    setStep(2);
-  };
 
-
-  const handleOtpChange = (index, value) => {
-    if (value.length <= 1) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
-
-      if (value !== "" && index < otp.length - 1) {
-        otpRefs.current[index + 1].focus();
-      }
-
-      if (value === "" && index > 0) {
-        otpRefs.current[index - 1].focus();
-      }
-    }
-  };
-
-  const handleOtpSubmit = (e) => {
-    e.preventDefault();
-    setStep(3);
-  };
+  // const handleOtpSubmit = (e) => {
+  //   e.preventDefault();
+  //   setStep(3);
+  // };
 
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
@@ -114,6 +276,7 @@ export function ForgotPassword() {
               <Button
                 onClick={() => navigate('/account/sign-in')}
                 className="mt-10 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[4px] py-4 opacity-100 w-full"
+                onClick = {handleSubmissionSuccessfully}
               >
                 Continue
               </Button>
@@ -159,7 +322,9 @@ export function ForgotPassword() {
               <Typography className="text-center text-[16px] font-medium text-[#C01824]">
                 {formatTime(timeLeft)}
               </Typography>
-              <Button type="submit" className="mt-4 bg-[#C01824] font-normal text-[16px] rounded-[5px] py-4 opacity-100" fullWidth>
+              <Button type="submit" className="mt-4 bg-[#C01824] font-normal text-[16px] rounded-[5px] py-4 opacity-100" fullWidth
+                onClick={handleOtpSubmit}
+              >
                 {isOtpComplete ? "Verify" : "Continue"}
               </Button>
               <Typography className="text-center text-[14px] md:text-[16px] text-[#808080] mt-3">
@@ -207,7 +372,9 @@ export function ForgotPassword() {
                   {showConfirmPassword ? <EyeIcon className="h-[20px] w-[20px] text-[#0F1012]" /> : <EyeSlashIcon className="h-[20px] w-[20px] text-[#0F1012]" />}
                 </div>
               </div>
-              <Button type="submit" className="mt-4 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth>
+              <Button type="submit" className="mt-4 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth
+                onClick={handleNewPassword}
+              >
                 Update Password
               </Button>
             </div>

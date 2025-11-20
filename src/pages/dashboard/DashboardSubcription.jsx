@@ -5,30 +5,103 @@ import { Container, Grid, Paper, Typography, Box } from "@mui/material";
 import colors from "@/utlis/Colors";
 import { dollar, dollarless } from "@/assets";
 import ButtonComponent from "@/components/buttons/CustomButton";
+import axios from "axios";
 
 const DashboardSubcription = () => {
   const [selectedCard, setSelectedCard] = useState(null);
 
   const navigation = useNavigate();
   const location = useLocation();
+
   const queryParams = new URLSearchParams(location.search);
   const fromPath = queryParams.get("from");
 
-  const handleSubmit = () => {
-    if (selectedCard) {
+  const vendorSignupId = location?.state?.vendorSignupId || null;
+  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+
+
+  // const handleSubmit = () => {
+  //   if (selectedCard) {
+  //     navigation("/subscription_page", {
+  //       state: { selectedCard, from: fromPath },
+  //     });
+  //   }
+  // };
+
+  const handleSubmit = async () => {
+    if (!selectedCard) {
+      alert("Please select a subscription plan first.");
+      return;
+    }
+
+    try {
+      const payload = {
+        vendorSignupId: selectedCard.vendorSignupId,
+        packageId: selectedCard.packageId,
+        // amount: selectedCard.amount,
+        //paymentMethod: "Credit Card",
+        //transactionId: "txn_" + Date.now(),
+        //status: "PENDING",
+        packageName: "Premium Plan"
+      };
+
+      console.log("Sending payload:", payload);
+
+      const response = await axios.post(`${BASE_URL}/signup/vendor/package`, payload);
+      console.log("API Success:", response.data);
+      const vendorSignupIdFromApi = response.data?.vendorSignupId;
+      console.log(vendorSignupIdFromApi,"here is the api ")
       navigation("/subscription_page", {
-        state: { selectedCard, from: fromPath },
+        state: { selectedCard, from: fromPath, vendorSignupId: vendorSignupIdFromApi },
       });
+    } catch (error) {
+      console.error("API Error:", error);
+      alert("Payment failed. Try again.");
     }
   };
+
+
+  // const handleCardClick = (card) => {
+  //   setSelectedCard(card);
+  // };
 
   const handleCardClick = (card) => {
     setSelectedCard(card);
   };
 
+  // const cardData = [
+  //   {
+  //     packageId: 1,
+  //     oldPrice: "$60",
+  //     newPrice: "$30/month",
+  //      vendorSignupId: vendorSignupId,
+  //     description: "Pay monthly without missing out on any feature.",
+  //     borderColor: selectedCard?.id === 1 ? colors?.timecountColor : "none",
+  //     background:
+  //       selectedCard?.id === 1
+  //         ? colors?.backgroundGradient1
+  //         : colors?.backgroundGradient,
+  //   },
+  //   {
+  //     packageId: 2,
+  //     oldPrice: "$600",
+  //     newPrice: "$300/year",
+  //      vendorSignupId: vendorSignupId,
+  //     description: "Pay for a full year upfront and get 2 months for free.",
+  //     borderColor: selectedCard?.id === 2 ? colors?.timecountColor : "none",
+  //     background:
+  //       selectedCard?.id === 2
+  //         ? colors?.backgroundGradient1
+  //         : colors?.backgroundGradient,
+  //   },
+  // ];
   const cardData = [
     {
       id: 1,
+      packageId: 1,
+      packageName: "Monthly Plan",
+      amount: 30,
+      vendorSignupId: vendorSignupId,
       oldPrice: "$60",
       newPrice: "$30/month",
       description: "Pay monthly without missing out on any feature.",
@@ -40,6 +113,10 @@ const DashboardSubcription = () => {
     },
     {
       id: 2,
+      packageId: 2,
+      packageName: "Premium Plan",
+      amount: 300,
+      vendorSignupId: vendorSignupId,
       oldPrice: "$600",
       newPrice: "$300/year",
       description: "Pay for a full year upfront and get 2 months for free.",
@@ -205,7 +282,7 @@ const DashboardSubcription = () => {
                   {card?.description.includes("2 months for free") ? (
                     <span style={{ color: colors?.whiteColor }}>
                       Pay for a full year upfront and get{" "}
-                      <span style={{ color: colors?.whiteColor, fontWeight: 900,}}>
+                      <span style={{ color: colors?.whiteColor, fontWeight: 900, }}>
                         2 months for free.
                       </span>
                     </span>

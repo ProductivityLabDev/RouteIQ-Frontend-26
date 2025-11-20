@@ -10,7 +10,7 @@ const PaymentSuccess = () => {
   const navigation = useNavigate();
 
   const handleSubmit = () => {
-    navigation("/dashboard");
+    navigation("/sign-in-vendor");
   };
   return (
     <div className="MainContainerAuth">
