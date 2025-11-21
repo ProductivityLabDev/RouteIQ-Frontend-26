@@ -1,4 +1,3 @@
-// src/pages/auth/login-as-vendor.jsx
 import React, { useEffect, useState } from 'react';
 import { EmployeeManagementLoginScreen } from '@/assets';
 import { Button } from '@material-tailwind/react';

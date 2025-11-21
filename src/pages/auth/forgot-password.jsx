@@ -7,7 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { logo, redtick } from '@/assets';
 import axios from 'axios';
-import { Toaster } from 'react-hot-toast';
+import { Toaster,toast } from 'react-hot-toast';
 export function ForgotPassword() {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -37,7 +37,7 @@ export function ForgotPassword() {
 
       const res = await axios.post(url, payload);
       console.log(res)
-      // toast.success("OTP sent to your email!");
+       toast.success("OTP sent to your email!");
 
       // Move to OTP step
       setStep(2);
@@ -45,7 +45,7 @@ export function ForgotPassword() {
 
     } catch (err) {
       console.error("Reset request error:", err);
-      //toast.error(err.response?.data?.message || "Failed to send reset code.");
+      toast.error(err.response?.data?.message || "Failed to send reset code.");
     }
   };
 
@@ -112,6 +112,7 @@ export function ForgotPassword() {
 
     if (otpCode.length !== 4) {
       console.log("Please enter the 4-digit OTP");
+      toast.error("Please enter the 4-digit OTP")
       return;
     }
 
@@ -126,22 +127,23 @@ export function ForgotPassword() {
       const res = await axios.post(url, payload);
 
       console.log("OTP response:", res.data);
-
-
+      
       const userIdFromApi = res.data?.userId;
-
+      
       if (!userIdFromApi) {
         console.error("No userId returned from backend");
         return;
       }
-
+      
       // ⭐ STORE userId in state
       setUserId(userIdFromApi);
-
+      
       // Continue to password reset page
+      toast.success("OTP verified")
       setStep(3);
 
     } catch (err) {
+      toast.error("OTP Error:", err.response?.data || err.message)
       console.error("OTP Error:", err.response?.data || err.message);
     }
   };
@@ -169,7 +171,7 @@ export function ForgotPassword() {
     e.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      console.error("Passwords do not match");
+      toast.error("Passwords do not match!")
       return;
     }
 
@@ -190,16 +192,18 @@ export function ForgotPassword() {
       const res = await axios.post(url, payload);
 
       console.log("Password reset success:", res.data);
-
+      toast.success("Password Changed Sucessfully")
       setStep(4); // success
     } catch (err) {
       console.error("Password Reset Error:", err.response?.data || err.message);
+      toast.error("Password Reset Error:", err.response?.data || err.message)
     }
   };
 
   const handleSubmissionSuccessfully = (e) => {
     e.preventDefault()
     setTimeout(() => {
+      //toast.success('Logged in Sucessfully')
       navigate("/sign-in-vendor")
     }, 500)
 
@@ -222,9 +226,10 @@ export function ForgotPassword() {
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (newPassword === confirmPassword) {
+      toast.success("Password Changed Sucessfully")
       setStep(4);
     } else {
-      alert("Passwords do not match!");
+      toast.error("Passwords do not match!")
     }
   };
 
@@ -237,6 +242,15 @@ export function ForgotPassword() {
   };
 
   return (
+    <>
+     <Toaster position="top-right" reverseOrder={false} toastOptions={{
+                    style: {
+                        fontSize: "18px",
+                        padding: "16px 22px",
+                        minHeight: "60px",
+                        borderRadius: "40px",
+                    },
+                }} />
     <section className="h-screen flex items-center justify-center bg-[url('./assets/auth-bg.png')] bg-cover bg-center bg-no-repeat px-2 md:px-4">
       <div className="w-full max-w-[600px] mx-auto py-7 md:py-16 md:px-7 px-4 rounded-xl bg-white">
         <div className="mx-auto w-full max-w-[500px]">
@@ -382,6 +396,7 @@ export function ForgotPassword() {
         </form>
       </div>
     </section>
+    </>
   );
 }
 
