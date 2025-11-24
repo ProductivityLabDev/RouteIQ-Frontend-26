@@ -54,33 +54,11 @@ export function DashboardNavbar({ user }) {
   const dispatchUser = useDispatch();
   const { user: loggedInUser } = useSelector((state) => state.user);
 
-  console.log("this is user",loggedInUser)
-  
- const handleLogout = async () => {
-  const dispatch = useDispatch();
+  console.log("this is user", loggedInUser)
 
-  try {
-   
-    dispatch(logoutUser());
-    await persistor.purge(); 
-
-    
-    Cookies.remove("token");
-    localStorage.removeItem("token");
-    localStorage.removeItem("vendor");
-    sessionStorage.clear();
-
-   
-    if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
-
-    window.location.replace("/LoginAsVendor");
-  } catch (err) {
-    console.error("Error during logout:", err);
-  }
-};
+  const handleLogout = async () => {
+    navigate("/logout")
+  };
 
   return (
     <Navbar
@@ -252,19 +230,17 @@ export function DashboardNavbar({ user }) {
                   </Typography>
                 </MenuItem>
               </Link>
-              <Link to="/account/sign-in">
-                <MenuItem className="flex items-center gap-2" onClick={handleLogout}>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                  </svg>
-                  <Typography
-                    variant="small"
-                    className="font-normal"
-                  >
-                    Logout
-                  </Typography>
-                </MenuItem>
-              </Link>
+              <MenuItem className="flex items-center gap-2" onClick={handleLogout}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                </svg>
+                <Typography
+                  variant="small"
+                  className="font-normal"
+                >
+                  Logout
+                </Typography>
+              </MenuItem>
 
               {/* <Link to="/dashboard/settings">
                   <MenuItem className="flex items-center gap-2">

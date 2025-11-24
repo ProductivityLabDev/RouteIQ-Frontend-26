@@ -60,7 +60,7 @@ function App() {
       {/* ---------- PUBLIC ---------- */}
       <Route path="/sign-in-vendor" element={<SignInVendor />} />
       <Route path="/account/*" element={<Auth />} />
-      <Route path="/account/logout" element={<Logout />} />
+      <Route path="/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
       <Route path="/LoginAsVendor" element={<LoginAsVendor />} />
       

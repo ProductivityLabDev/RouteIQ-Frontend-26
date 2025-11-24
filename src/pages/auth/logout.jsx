@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 
 export default function Logout() {
     const dispatch = useDispatch();
-
+    console.log("we are here log outttttttttttttttt")
     useEffect(() => {
         (async () => {
             try {
@@ -24,7 +24,7 @@ export default function Logout() {
                 }
             } finally {
 
-                window.location.replace("/LoginAsVendor");
+                window.location.replace("/account/sign-in");
             }
         })();
     }, [dispatch]);

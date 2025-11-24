@@ -8,105 +8,36 @@ import axios from 'axios';
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import { Toaster, toast } from 'react-hot-toast';
+import { BASE_URL, API_PREFIX, getAuthToken, getAxiosConfig, getApiUrl } from '@/configs';
 const LoginAsVendor = () => {
+
     const navigate = useNavigate();
     const [email, setemail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    //const { user, token, permission, modules } = useSelector((state) => state.user);
-    const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3000';
-
-    const API_PREFIX = import.meta.env.VITE_API_PREFIX || '';
-
 
     const dispatch = useDispatch();
-
-    // const handleLogin = async (e) => {
-    //   e.preventDefault();
-    //   setError("");
-
-    //   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-    //   const url = `${BASE_URL}/auth/login`;
-
-    //   try {
-    //     const res = await axios.post(
-    //       url,
-    //       { username, password },
-    //       {
-    //         headers: { "Content-Type": "application/json" },
-    //         withCredentials: true,
-    //       }
-    //     );
-
-    //     console.log("Login response:", res.status, res.data);
-
-    //     const {
-    //       token,
-    //       access_token,
-    //       accessToken,
-    //       data,
-    //       user,
-    //       vendor,
-    //     } = res.data || {};
-
-    //     const foundToken =
-    //       token ||
-    //       access_token ||
-    //       accessToken ||
-    //       (data && (data.token || data.access_token || data.accessToken));
-
-    //     const foundUser = vendor || user || (data && (data.vendor || data.user));
-
-    //     if (foundToken) {
-    //       dispatch(setUser({ user: foundUser, token: foundToken }));
-
-    //       localStorage.setItem("token", foundToken);
-    //       localStorage.setItem("vendor", JSON.stringify(foundUser || {}));
-
-    //       Cookies.set("token", foundToken, { expires: 7, secure: true });
-
-    //       navigate("/dashboard");
-    //     } else {
-    //       setError("Token not found in response. Check response shape in console.");
-    //     }
-    //   } catch (err) {
-    //     console.error("Login error:", err);
-    //     if (err.code === "ERR_NETWORK" && !err.response) {
-    //       setError("Cannot reach backend — check server URL, CORS, or dev proxy.");
-    //     } else if (err.response) {
-    //       setError(err.response.data?.message || "Invalid credentials.");
-    //     } else {
-    //       setError("Unexpected error. Please try again.");
-    //     }
-    //   }
-    // };
-
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setError("");
 
-        const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-        const url = `${BASE_URL}/auth/login`;
+        const url = getApiUrl("auth/login");
 
-        // Debug: Log the email and password being sent
         console.log("🔐 Login attempt - Email:", email, "Password:", password ? "***" : "empty");
         console.log("📤 Sending request to:", url);
-        console.log("📦 Request payload:", { email, password: password ? "***" : "" });
 
         try {
             const res = await axios.post(
                 url,
                 { email, password },
-                {
-                    headers: { "Content-Type": "application/json" },
-                    withCredentials: true,
-                }
+                getAxiosConfig()
             );
 
             console.log("✅ Login response:", res.data);
+
             const token =
                 res.data?.token ||
                 res.data?.access_token ||
@@ -117,8 +48,11 @@ const LoginAsVendor = () => {
                 setError("Token not found in response");
                 return;
             }
+
             Cookies.set("token", token, { expires: 7, secure: true });
-            localStorage.setItem("token", token);
+
+            // Refresh token in config util
+            getAuthToken();
 
             const decoded = jwtDecode(token);
 
@@ -126,6 +60,7 @@ const LoginAsVendor = () => {
                 acc[mod.module] = { canRead: mod.canRead, canWrite: mod.canWrite };
                 return acc;
             }, {});
+
             const permission = Object.values(modulesMap).some(m => m.canWrite)
                 ? "READ_WRITE"
                 : "READ_ONLY";
@@ -136,23 +71,24 @@ const LoginAsVendor = () => {
                 modules: modulesMap,
                 control: permission,
             };
+
             localStorage.setItem("vendor", JSON.stringify(realUser));
+
             dispatch(setUser({ user: realUser, token }));
-            toast.success("Logged in successfully!")
-            setTimeout(() => {
-                navigate("/dashboard");
-            }, 500);
+
+            toast.success("Logged in successfully!");
+
+            setTimeout(() => navigate("/dashboard"), 500);
 
         } catch (err) {
             console.error("Login error:", err);
-            if (err.response) {
-                toast.error(err.response.data?.message || "Invalid credentials.")
-            } else {
 
+            if (err.response) {
+                toast.error(err.response.data?.message || "Invalid credentials.");
+            } else {
                 const message = "Unexpected error. Please try again.";
                 setError(message);
                 toast.error(message);
-
             }
         }
     };
@@ -165,11 +101,11 @@ const LoginAsVendor = () => {
     }, [BASE_URL, API_PREFIX]);
 
     // Debug: Track email state changes
-    useEffect(() => {
-        if (email) {
-            console.log("📧 Email state updated:", email);
-        }
-    }, [email]);
+    // useEffect(() => {
+    //     if (email) {
+    //         console.log("📧 Email state updated:", email);
+    //     }
+    // }, [email]);
 
     return (
         <>
