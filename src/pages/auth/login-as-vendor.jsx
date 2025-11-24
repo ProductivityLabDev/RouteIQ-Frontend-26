@@ -66,7 +66,7 @@ const LoginAsVendor = () => {
                 : "READ_ONLY";
 
             const realUser = {
-                email: decoded.email,
+                username: decoded.username,
                 role: decoded.role || "USER",
                 modules: modulesMap,
                 control: permission,

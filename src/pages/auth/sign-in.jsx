@@ -9,6 +9,7 @@ import { setUser } from '@/redux/slices/userSlice';
 import axios from 'axios';
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { BASE_URL, getApiUrl, getAxiosConfig } from '@/configs';
 
 export function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +22,7 @@ export function SignIn() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+  // const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -58,21 +59,17 @@ export function SignIn() {
     }
 
     setLoading(true);
-
+    const url = getApiUrl('/auth/login')
     try {
-      const url = `${BASE_URL}/auth/login`;
 
       const res = await axios.post(
         url,
         { username, password },
-        {
-          headers: { "Content-Type": "application/json" },
-          withCredentials: true,
-        }
+        getAxiosConfig()
       );
 
       console.log("Login response:", res.data);
-      
+
       const token =
         res.data?.token ||
         res.data?.access_token ||
@@ -91,7 +88,7 @@ export function SignIn() {
 
       // Decode JWT token to get user info
       const decoded = jwtDecode(token);
-      
+
       // Create modules map from decoded token
       const modulesMap = (decoded.modules || []).reduce((acc, mod) => {
         acc[mod.module] = { canRead: mod.canRead, canWrite: mod.canWrite };
@@ -113,7 +110,7 @@ export function SignIn() {
 
       // Store user in localStorage
       localStorage.setItem("user", JSON.stringify(realUser));
-      
+
       // Dispatch to Redux
       dispatch(setUser({ user: realUser, token }));
 
@@ -140,17 +137,17 @@ export function SignIn() {
   const handleEmployeeLogin = () => {
     navigate("/EmployeeDashboard");
   };
-const handleSchoolLogin = () => {
-    navigate("/dashboard");
-  };
+  // const handleSchoolLogin = () => {
+  //     navigate("/dashboard");
+  //   };
 
   // const handleVendorLogin = () => {
   //   navigate("/dashboard");
   // };
- const handleVendorLogin = () => {
+  const handleVendorLogin = () => {
     navigate("/LoginAsVendor");
   };
-  
+
   return (
     <>
       {loading && <Loader />}
@@ -251,19 +248,19 @@ const handleSchoolLogin = () => {
               </Typography>
             </div>
 
-            <Button 
-              className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" 
-              fullWidth 
+            <Button
+              className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100"
+              fullWidth
               type="submit"
               disabled={loading}
-              onClick={handleSchoolLogin}
+            // onClick={handleSchoolLogin}
             >
               {loading ? 'Logging in...' : 'LOG IN'}
             </Button>
             <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleEmployeeLogin}            >
               LOGIN AS A EMPLOYEE
             </Button>
-             <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleVendorLogin}            >
+            <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleVendorLogin}            >
               LOGIN AS A VENDOR
             </Button>
           </form>

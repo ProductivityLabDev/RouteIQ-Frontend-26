@@ -9,7 +9,7 @@ import { Dashboard, Auth } from "@/layouts";
 import EmployeeManagementRoutes from "./layouts/EmployeeDashboard";
 import LoginAsVendor from "./pages/auth/login-as-vendor";
 import SignInVendor from "./pages/auth/sign-in-vendor";
-import Logout from "./pages/auth/logout"; 
+import Logout from "./pages/auth/logout";
 
 import SchoolDashboard from "./pages/dashboard/Dashboard";
 import DashboardSubscription from "./pages/dashboard/DashboardSubcription";
@@ -64,42 +64,42 @@ function App() {
       <Route path="/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
       <Route path="/LoginAsVendor" element={<LoginAsVendor />} />
-      
-        <Route path="/unauthorized/*" element={<Unauthorized
-         />} />
- {/* <Route path="/School-dashboard" element={<SchoolDashboard />} /> */}
+
+      <Route path="/unauthorized/*" element={<Unauthorized
+      />} />
+      {/* <Route path="/School-dashboard" element={<SchoolDashboard />} /> */}
       {/* ---------- PRIVATE (GUARDED) ---------- */}
       {/* <Route element={<ProtectedRoute />}> */}
-        <Route path="/dashboard/*" element={<Dashboard />} />
-        <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
-
-        <Route path="/school_dashboard" element={<SchoolDashboard />} />
-        <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
-        <Route path="/subscription_page" element={<SubscriptionPage />} />
-        <Route path="/merchant" element={<Merchant />} />
-        <Route path="/payment_success" element={<PaymentSuccess />} />
-        <Route path="/notification" element={<Notification />} />
-        <Route path="/vendorChat" element={<VendorChat />} />
-        <Route path="/vehicleManagement" element={<VehicleManagement />} />
-        <Route path="/DriverManagement" element={<DriverManagement />} />
-        <Route path="/EmployeeManagement" element={<EmployeeManagement />} />
-        <Route path="/SchoolManagement" element={<SchoolManagement />} />
-        <Route path="/StudentManagement" element={<Students />} />
-        <Route path="/RouteManagement" element={<RouteManagement />} />
-        <Route path="/RealTimeTracking" element={<RealTimeTracking />} />
-        <Route path="/RouteSchedule" element={<RouteSchedule />} />
-        <Route path="/BillingInvoice" element={<BillingInvoice />} />
-        <Route path="/GlCodes" element={<GLCodes />} />
-        <Route path="/accounting" element={<Accounting />} />
-        <Route path="/accessManagement" element={<AccessManagement />} />
-        <Route path="/documents" element={<Documents />} />
-        <Route path="/feedback" element={<Feedback />} />
-        <Route path="/repair-schedule" element={<RepairSchedule />} />
-        <Route path="/vehicle-info" element={<VehicleInfoComponent />} />
-        <Route path="/edit-scheduled-maintenance" element={<EditScheduledMaintenance />} />
-        <Route path="/reported-defects" element={<ReportedDefects />} />
-        <Route path="/notes" element={<Notes />} />
-        <Route path="/schedule-management" element={<SehcudleManagement />} />
+      <Route path="/dashboard/*" element={<Dashboard />} />
+      <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
+      <Route path="/dashboard" element={<SchoolDashboard />} />
+      {/* <Route path="/school_dashboard" element={<SchoolDashboard />} /> */}
+      <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
+      <Route path="/subscription_page" element={<SubscriptionPage />} />
+      <Route path="/merchant" element={<Merchant />} />
+      <Route path="/payment_success" element={<PaymentSuccess />} />
+      <Route path="/notification" element={<Notification />} />
+      <Route path="/vendorChat" element={<VendorChat />} />
+      <Route path="/vehicleManagement" element={<VehicleManagement />} />
+      <Route path="/DriverManagement" element={<DriverManagement />} />
+      <Route path="/EmployeeManagement" element={<EmployeeManagement />} />
+      <Route path="/SchoolManagement" element={<SchoolManagement />} />
+      <Route path="/StudentManagement" element={<Students />} />
+      <Route path="/RouteManagement" element={<RouteManagement />} />
+      <Route path="/RealTimeTracking" element={<RealTimeTracking />} />
+      <Route path="/RouteSchedule" element={<RouteSchedule />} />
+      <Route path="/BillingInvoice" element={<BillingInvoice />} />
+      <Route path="/GlCodes" element={<GLCodes />} />
+      <Route path="/accounting" element={<Accounting />} />
+      <Route path="/accessManagement" element={<AccessManagement />} />
+      <Route path="/documents" element={<Documents />} />
+      <Route path="/feedback" element={<Feedback />} />
+      <Route path="/repair-schedule" element={<RepairSchedule />} />
+      <Route path="/vehicle-info" element={<VehicleInfoComponent />} />
+      <Route path="/edit-scheduled-maintenance" element={<EditScheduledMaintenance />} />
+      <Route path="/reported-defects" element={<ReportedDefects />} />
+      <Route path="/notes" element={<Notes />} />
+      <Route path="/schedule-management" element={<SehcudleManagement />} />
       {/* </Route> */}
 
       {/* ---------- 404 ---------- */}
