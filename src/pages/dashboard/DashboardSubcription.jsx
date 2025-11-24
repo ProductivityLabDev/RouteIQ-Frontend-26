@@ -14,18 +14,7 @@ const DashboardSubcription = () => {
   const queryParams = new URLSearchParams(location.search);
   const fromPath = queryParams.get("from");
 
-  const handleSubmit = () => {
-    if (selectedCard) {
-      navigation("/subscription_page", {
-        state: { selectedCard, from: fromPath },
-      });
-    }
-  };
-
-  const handleCardClick = (card) => {
-    setSelectedCard(card);
-  };
-
+  // Define cardData before using it in handleSubmit
   const cardData = [
     {
       id: 1,
@@ -50,6 +39,23 @@ const DashboardSubcription = () => {
           : colors?.backgroundGradient,
     },
   ];
+
+  const handleSubmit = (e) => {
+    e?.preventDefault?.();
+    console.log("handleSubmit called, selectedCard:", selectedCard);
+    
+    // Use selected card or default to first card
+    const cardToUse = selectedCard || cardData[0];
+    
+    console.log("Navigating to /merchant with state:", { selectedCard: cardToUse, from: fromPath });
+    navigation("/merchant", {
+      state: { selectedCard: cardToUse, from: fromPath },
+    });
+  };
+
+  const handleCardClick = (card) => {
+    setSelectedCard(card);
+  };
 
   return (
     <div className="MainContainerAuth">

@@ -15,6 +15,7 @@ import SchoolDashboard from "./pages/dashboard/Dashboard";
 import DashboardSubscription from "./pages/dashboard/DashboardSubcription";
 import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
 import PaymentSuccess from "./pages/dashboard/PaymentSuccess";
+import Merchant from "./pages/dashboard/merchant";
 import Notification from "./pages/notification/Notification";
 import { VendorChat } from "./pages/vendorChat/VendorChat";
 import VehicleManagement from "./pages/vehicleManagement/VehicleManagement";
@@ -74,6 +75,7 @@ function App() {
         <Route path="/dashboard" element={<SchoolDashboard />} />
         <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
         <Route path="/subscription_page" element={<SubscriptionPage />} />
+        <Route path="/merchant" element={<Merchant />} />
         <Route path="/payment_success" element={<PaymentSuccess />} />
         <Route path="/notification" element={<Notification />} />
         <Route path="/vendorChat" element={<VendorChat />} />
