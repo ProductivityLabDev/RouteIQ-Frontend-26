@@ -8,6 +8,7 @@ import routes from "@/routes";
 import SubscriptionPage from "../pages/dashboard/SubscriptionPage";
 import PaymentSuccess from "../pages/dashboard/PaymentSuccess";
 import DashboardSubscription from '../pages/dashboard/DashboardSubcription'
+import Merchant from '../pages/dashboard/merchant'
 
 export function Auth() {
   const navbarRoutes = [
@@ -45,6 +46,7 @@ export function Auth() {
         )}
         <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
         <Route path="/subscription_page" element={<SubscriptionPage />} />
+        <Route path="/merchant" element={<Merchant />} />
         <Route path="/payment_success" element={<PaymentSuccess />} />
 
       </Routes>

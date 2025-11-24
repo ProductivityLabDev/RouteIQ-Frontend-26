@@ -128,6 +128,23 @@ const DashboardSubcription = () => {
     },
   ];
 
+  // const handleSubmit = (e) => {
+  //   e?.preventDefault?.();
+  //   console.log("handleSubmit called, selectedCard:", selectedCard);
+    
+  //   // Use selected card or default to first card
+  //   const cardToUse = selectedCard || cardData[0];
+    
+  //   console.log("Navigating to /merchant with state:", { selectedCard: cardToUse, from: fromPath });
+  //   navigation("/merchant", {
+  //     state: { selectedCard: cardToUse, from: fromPath },
+  //   });
+  // };
+
+  // const handleCardClick = (card) => {
+  //   setSelectedCard(card);
+  // };
+
   return (
     <div className="MainContainerAuth">
       <Container
