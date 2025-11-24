@@ -140,6 +140,9 @@ export function SignIn() {
   const handleEmployeeLogin = () => {
     navigate("/EmployeeDashboard");
   };
+const handleSchoolLogin = () => {
+    navigate("/dashboard");
+  };
 
   // const handleVendorLogin = () => {
   //   navigate("/dashboard");
@@ -253,6 +256,7 @@ export function SignIn() {
               fullWidth 
               type="submit"
               disabled={loading}
+              onClick={handleSchoolLogin}
             >
               {loading ? 'Logging in...' : 'LOG IN'}
             </Button>

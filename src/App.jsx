@@ -67,13 +67,13 @@ function App() {
       
         <Route path="/unauthorized/*" element={<Unauthorized
          />} />
- {/* <Route path="/dashboard" element={<SchoolDashboard />} /> */}
+ {/* <Route path="/School-dashboard" element={<SchoolDashboard />} /> */}
       {/* ---------- PRIVATE (GUARDED) ---------- */}
       {/* <Route element={<ProtectedRoute />}> */}
         <Route path="/dashboard/*" element={<Dashboard />} />
         <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
 
-        <Route path="/dashboard" element={<SchoolDashboard />} />
+        <Route path="/school_dashboard" element={<SchoolDashboard />} />
         <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
         <Route path="/subscription_page" element={<SubscriptionPage />} />
         <Route path="/merchant" element={<Merchant />} />
