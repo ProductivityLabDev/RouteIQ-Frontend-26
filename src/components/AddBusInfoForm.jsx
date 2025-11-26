@@ -2,15 +2,15 @@ import { pickFileIcon } from '@/assets';
 import React, { useState, useEffect } from 'react';
 import { FaArrowLeft } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { BASE_URL, getAuthToken, getAxiosConfig } from "@/configs/api";
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchDrivers, fetchFuelTypes, fetchTerminals, createBus } from '@/redux/slices/busesSlice';
+import { toast } from 'react-hot-toast';
 
-const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
+const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
+	const dispatch = useDispatch();
+	const { drivers, fuelTypes, terminals, loading, error } = useSelector((state) => state.buses);
+	
 	const [storageOption, setStorageOption] = useState('');
-	const [loading, setLoading] = useState(true);
-	const [Drivers, setDrivers] = useState([]);
-	const [fuelTypes, setFuelTypes] = useState([]);
-	const [terminals, setTerminals] = useState([]);
 	const [formData, setFormData] = useState({
 		vehicleName: "",
 		busType: "",
@@ -31,8 +31,6 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 	});
 	const [errors, setErrors] = useState({});
 	const [touched, setTouched] = useState({});
-
-	const token = getAuthToken();
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
@@ -143,9 +141,10 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 				break;
 
 			case "driver":
-				if (!value) {
-					error = "Please select a driver";
-				}
+				// Skip validation for now since drivers API is not working
+				// if (!value) {
+				// 	error = "Please select a driver";
+				// }
 				break;
 
 			case "fuelType":
@@ -193,9 +192,9 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 		let isValid = true;
 		const newErrors = {};
 
-		// Validate all fields
+		// Validate all fields (skip driver for now since API is not working)
 		Object.keys(formData).forEach((key) => {
-			if (key !== "insuranceExpiration" && key !== "mileage") {
+			if (key !== "insuranceExpiration" && key !== "mileage" && key !== "driver") {
 				if (!validateField(key, formData[key])) {
 					isValid = false;
 				}
@@ -238,87 +237,37 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 		}
 
 		try {
-			// Include undercarriageStorage in the submission
-			const submissionData = {
+			// Prepare form data with undercarriageStorage
+			// Hardcode driver ID for testing (remove when drivers API is working)
+			const busData = {
 				...formData,
+				driver: formData.driver || "1", // Default to driver ID 1 if not selected
 				undercarriageStorage: storageOption,
 			};
-			const res = await axios.post(`${BASE_URL}/institute/createbuses`, submissionData, getAxiosConfig());
-			console.log("Bus Added:", res.data);
-			alert("Bus added successfully!");
-			if (refreshBuses) {
-				await refreshBuses();
+
+			const result = await dispatch(createBus(busData));
+
+			if (createBus.fulfilled.match(result)) {
+				toast.success("Bus added successfully!");
+				if (refreshBuses) {
+					await refreshBuses();
+				}
+				handleCancel();
+			} else {
+				toast.error(result.payload || "Failed to add bus");
 			}
-			handleCancel();
 		} catch (err) {
 			console.error("Error adding Bus:", err);
-			alert(err.response?.data?.message || "Failed to add bus");
+			toast.error(err.message || "Failed to add bus");
 		}
 	};
 
-	const getdriver = async () => {
-		try {
-			const res = await axios.get(`${BASE_URL}/institute/drivers`, getAxiosConfig());
-
-			console.log("Fetched pay Drivers:", res.data);
-			// ✅ API gives { ok:true, data:[...] }
-			if (res.data?.data && Array.isArray(res.data.data)) {
-				setDrivers(res.data.data);
-			} else {
-				setDrivers([]);
-			}
-		} catch (err) {
-			console.error("Error fetching Drivers:", err);
-			setDrivers([]);
-		} finally {
-			setLoading(false);
-		}
-	};
-	const getFuelTypes = async () => {
-		try {
-			const res = await axios.get(`${BASE_URL}/institute/fueltypes`, getAxiosConfig());
-			console.log("Fetched Fuel Types:", res.data);
-			if (res.data?.data && Array.isArray(res.data.data)) {
-				setFuelTypes(res.data.data);
-			} else {
-				setFuelTypes([]);
-			}
-		} catch (err) {
-			console.error("Error fetching Fuel Types:", err);
-			setFuelTypes([]);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const getTerminals = async () => {
-		try {
-			const res = await axios.get(`${BASE_URL}/terminals`, getAxiosConfig());
-			console.log("Fetched terminals:", res.data);
-
-			const terminalsArray = Array.isArray(res.data)
-				? res.data
-				: Array.isArray(res.data.data)
-					? res.data.data
-					: [];
-
-			setTerminals(terminalsArray);
-		} catch (err) {
-			console.error("Error fetching terminals:", err);
-			setTerminals([]);
-		} finally {
-			setLoading(false);
-		}
-	};
 	useEffect(() => {
-		const token = getAuthToken();
-		if (token) {
-			getdriver();
-			getFuelTypes();
-			getTerminals();
-		}
-		// getPaycycles();
-	}, []);
+		// Fetch all required data on component mount
+		dispatch(fetchDrivers());
+		dispatch(fetchFuelTypes());
+		dispatch(fetchTerminals());
+	}, [dispatch]);
 	return (
 		<div className="grid grid-cols-1 bg-white w-full rounded-lg">
 			<form className="w-full" onSubmit={handleSubmit}>
@@ -516,10 +465,10 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 						}`}
 					>
 							<option value="">Select</option>
-							{loading ? (
+							{loading.drivers ? (
 								<option className="text-gray-500">Loading...</option>
-							) : Drivers.length > 0 ? (
-								Drivers.map((d) => (
+							) : drivers.length > 0 ? (
+								drivers.map((d) => (
 									<option key={d.EmpId} value={d.EmpId} className="text-black">
 										{d.Name} ({d.DesignationName})
 									</option>
@@ -544,12 +493,12 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 						}`}
 					>
 							<option value="">Select</option>
-							{loading ? (
+							{loading.fuelTypes ? (
 								<option className="text-gray-500">Loading...</option>
 							) : fuelTypes.length > 0 ? (
 								fuelTypes.map((type) => (
-									<option key={type.Id} value={type.Id} className="text-black">
-										{type.Name}
+									<option key={type.FuelTypeId} value={type.FuelTypeId} className="text-black">
+										{type.FuelTypeName}
 									</option>
 								))
 							) : (
@@ -577,12 +526,12 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 							}`}
 						>
 							<option value="">Select</option>
-							{loading ? (
+							{loading.terminals ? (
 								<option className="text-gray-500">Loading...</option>
 							) : terminals.length > 0 ? (
 								terminals.map((t) => (
 									<option key={t.id} value={t.id} className="text-black">
-										{t.name} ({t.code})
+										{t.name}
 									</option>
 								))
 							) : (
@@ -667,9 +616,10 @@ const AddBusInfoForm = ({ handleCancel ,refreshBuses}) => {
 					<button
 						type="submit"
 						onClick={handleSubmit}
-						className="px-8 py-4 bg-[#C01824] w-[30%] text-white rounded hover:bg-red-700"
+						disabled={loading.creating}
+						className="px-8 py-4 bg-[#C01824] w-[30%] text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
-						Submit
+						{loading.creating ? "Submitting..." : "Submit"}
 					</button>
 				</div>
 			</form>

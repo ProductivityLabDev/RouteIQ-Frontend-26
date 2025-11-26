@@ -25,7 +25,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
         roleCode: "",
         control: "READ_ONLY",
         modules: [],
-        terminalCodes: [],
+        terminalIds: [],
         department: "",
         permission: ""
     });
@@ -81,7 +81,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
         }
 
         // Validate terminal
-        if (!formData.terminalCodes || formData.terminalCodes.length === 0) {
+        if (!formData.terminalIds || formData.terminalIds.length === 0) {
             errors.push("Please select a Terminal");
         }
 
@@ -109,9 +109,9 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                 // Update existing user
                 const userId = editUser.Id || editUser.id || editUser.UserId || editUser.userId || editUser.ID || editUser._id;
                 console.log("🔄 [Redux] Updating user with ID:", userId);
-                
+
                 const result = await dispatch(updateUser({ userId, userData: formData }));
-                
+
                 if (updateUser.fulfilled.match(result)) {
                     toast.success("User updated successfully!");
                     // Reset form
@@ -123,7 +123,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                         roleCode: "",
                         control: "READ_ONLY",
                         modules: [],
-                        terminalCodes: [],
+                        terminalIds: [],
                         department: "",
                         permission: ""
                     });
@@ -138,9 +138,9 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
             } else {
                 // Create new user
                 console.log("🔄 [Redux] Creating new user...");
-                
+
                 const result = await dispatch(createUser(formData));
-                
+
                 if (createUser.fulfilled.match(result)) {
                     toast.success("User created successfully!");
                     // Reset form
@@ -152,7 +152,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                         roleCode: "",
                         control: "READ_ONLY",
                         modules: [],
-                        terminalCodes: [],
+                        terminalIds: [],
                         department: "",
                         permission: ""
                     });
@@ -222,7 +222,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
     useEffect(() => {
         if (editUser) {
             console.log("📝 Populating form with user data:", editUser);
-            
+
             // Map user data to form fields
             // Note: You may need to fetch full user details via API if editUser doesn't have all fields
             setFormData({
@@ -232,16 +232,30 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                 phoneNumber: editUser.PhoneNumber || editUser.phoneNumber || editUser.Phone || editUser.phone || "",
                 roleCode: editUser.RoleCode || editUser.roleCode || editUser.Role?.code || "",
                 control: editUser.Control || editUser.control || "READ_ONLY",
-                modules: Array.isArray(editUser.Modules) 
-                    ? editUser.Modules 
-                    : Array.isArray(editUser.modules) 
-                        ? editUser.modules 
+                modules: Array.isArray(editUser.Modules)
+                    ? editUser.Modules
+                    : Array.isArray(editUser.modules)
+                        ? editUser.modules
                         : editUser.Modules?.split?.(",") || editUser.modules?.split?.(",") || [],
-                terminalCodes: Array.isArray(editUser.TerminalCodes) 
-                    ? editUser.TerminalCodes 
-                    : Array.isArray(editUser.terminalCodes) 
-                        ? editUser.terminalCodes 
-                        : editUser.TerminalCodes?.split?.(",") || editUser.terminalCodes?.split?.(",") || [],
+                // Convert terminal codes to IDs if needed, or use terminalIds directly
+                terminalIds: Array.isArray(editUser.TerminalIds)
+                    ? editUser.TerminalIds.map(id => Number(id))
+                    : Array.isArray(editUser.terminalIds)
+                        ? editUser.terminalIds.map(id => Number(id))
+                        : Array.isArray(editUser.TerminalCodes) || Array.isArray(editUser.terminalCodes)
+                            ? (editUser.TerminalCodes || editUser.terminalCodes).map(code => {
+                                // Try to find terminal ID by code
+                                const term = terminal.find(t => t.code === code || t.id === code);
+                                return term ? term.id : (typeof code === 'number' ? code : null);
+                            }).filter(id => id !== null)
+                            : (editUser.TerminalCodes || editUser.terminalCodes)
+                                ? (typeof (editUser.TerminalCodes || editUser.terminalCodes) === 'string'
+                                    ? (editUser.TerminalCodes || editUser.terminalCodes).split(',').map(code => {
+                                        const term = terminal.find(t => t.code === code.trim() || t.id === Number(code.trim()));
+                                        return term ? term.id : null;
+                                    }).filter(id => id !== null)
+                                    : [])
+                                : [],
                 department: "",
                 permission: editUser.Control === "READ_WRITE" ? "Read & Write" : "Read Only"
             });
@@ -255,12 +269,12 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                 roleCode: "",
                 control: "READ_ONLY",
                 modules: [],
-                terminalCodes: [],
+                terminalIds: [],
                 department: "",
                 permission: ""
             });
         }
-    }, [editUser]);
+    }, [editUser, terminal]);
 
     console.log("department", formData.department)
 
@@ -295,14 +309,17 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                                 {loading ? (
                                     <option>Loading...</option>
                                 ) : roles.length > 0 ? (
-                                    roles.slice(1).map((role) => (
-                                        <option key={role.id[1]} value={role.code}>
-                                            {role.name}
-                                        </option>
-                                    ))
+                                    roles
+                                        .filter(role => role.code !== "VENDOR") 
+                                        .map(role => (
+                                            <option key={role.id} value={role.code}>
+                                                {role.name}
+                                            </option>
+                                        ))
                                 ) : (
                                     <option>No roles found</option>
                                 )}
+
                             </select>
 
 
@@ -424,14 +441,14 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                                         <div key={t.id} className="flex items-center">
                                             <input
                                                 type="radio"
-                                                id={`terminal-${formId}-${t.code}`}
+                                                id={`terminal-${formId}-${t.id}`}
                                                 name={`terminal-${formId}`}
-                                                value={t.code}
-                                                checked={formData.terminalCodes?.includes(t.code)}
+                                                value={t.id}
+                                                checked={formData.terminalIds?.includes(t.id)}
                                                 onChange={(e) =>
                                                     setFormData((prev) => ({
                                                         ...prev,
-                                                        terminalCodes: [e.target.value], // ✅ Single terminal (radio)
+                                                        terminalIds: [Number(e.target.value)], // ✅ Single terminal (radio) - store ID as number
                                                     }))
                                                 }
                                                 className="w-4 h-4 accent-red-600 border-gray-300"

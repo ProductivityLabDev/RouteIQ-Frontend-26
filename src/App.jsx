@@ -63,7 +63,7 @@ function App() {
       <Route path="/account/*" element={<Auth />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
-      <Route path="/LoginAsVendor" element={<LoginAsVendor />} />
+      {/* <Route path="/LoginAsVendor" element={<LoginAsVendor />} /> */}
 
       <Route path="/unauthorized/*" element={<Unauthorized
       />} />
@@ -103,7 +103,7 @@ function App() {
       {/* </Route> */}
 
       {/* ---------- 404 ---------- */}
-      <Route path="*" element={<Navigate to="/LoginAsVendor" replace />} />
+      <Route path="*" element={<Navigate to="/sign-in-vendor" replace />} />
     </Routes>
   );
 }
