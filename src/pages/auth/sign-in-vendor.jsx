@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Checkbox, Button, Typography } from "@material-tailwind/react";
 import { Link, useNavigate } from "react-router-dom";
 import { EyeIcon, EyeSlashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -33,6 +33,29 @@ export function SignInVendor() {
   const dispatch = useDispatch();
   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
 
+  // Prevent browser back button after logout
+  useEffect(() => {
+    // Check if user is logged out (no token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // Push a new state to prevent back navigation
+      window.history.pushState(null, "", window.location.href);
+      
+      const handlePopState = (event) => {
+        // Prevent going back to previous page
+        window.history.pushState(null, "", window.location.href);
+        // Stay on sign-in page
+        window.location.replace(window.location.pathname);
+      };
+
+      window.addEventListener("popstate", handlePopState);
+
+      return () => {
+        window.removeEventListener("popstate", handlePopState);
+      };
+    }
+  }, []);
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -49,6 +72,7 @@ export function SignInVendor() {
     }
     return result;
   }
+
 
   const handleLoginSubmit = async (event) => {
     event.preventDefault();
@@ -214,7 +238,18 @@ export function SignInVendor() {
       [name]: value
     }));
   };
+ 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecurityText(generateSecurityText());
+      setSecurityCode(''); 
+    }, 60000); 
 
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
   return (
     <>
       <Toaster
