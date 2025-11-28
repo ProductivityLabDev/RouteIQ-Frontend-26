@@ -7,7 +7,7 @@ import { fetchPayTypes, fetchPayCycles, fetchTerminals, fetchStates, createEmplo
 const AddDriver = ({ handleCancel }) => {
     const dispatch = useDispatch();
     const { payTypes, payCycles, terminals, states, loading, error } = useSelector((state) => state.employees);
-    
+
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [errors, setErrors] = useState({});
@@ -152,60 +152,60 @@ const AddDriver = ({ handleCancel }) => {
 
     // ---------- CREATE EMPLOYEE ----------
 
-  const handleSubmitEmployee = async (e) => {
-    e.preventDefault();
-    
-    // Validate form before submitting
-    if (!validateForm()) {
-        const errorMessages = Object.values(errors).filter(msg => msg);
-        errorMessages.forEach(error => {
-            toast.error(error);
-        });
-        return;
-    }
+    const handleSubmitEmployee = async (e) => {
+        e.preventDefault();
 
-    try {
-      const employeeData = {
-        ...formData,
-        status: "Active",
-        filePath: null,
-      };
-
-      const result = await dispatch(createEmployee(employeeData));
-
-      if (createEmployee.fulfilled.match(result)) {
-        toast.success(result.payload?.message || "Employee created successfully!");
-        // Reset form
-        setFormData({
-          name: "",
-          adress: "",
-          city: "",
-          state: 0,
-          zipCode: "",
-          dop: "",
-          joiningDate: "",
-          positionType: "",
-          email: "",
-          payGrade: "",
-          routeRate: "",
-          payCycle: "",
-          payType: "",
-          fuelCardCode: "",
-          terminalAssigmed: "",
-          phone: "",
-          payTypeId: "",
-        });
-        if (handleCancel) {
-          handleCancel();
+        // Validate form before submitting
+        if (!validateForm()) {
+            const errorMessages = Object.values(errors).filter(msg => msg);
+            errorMessages.forEach(error => {
+                toast.error(error);
+            });
+            return;
         }
-      } else {
-        toast.error(result.payload || "Failed to create employee");
-      }
-    } catch (err) {
-      console.error("Error creating employee:", err);
-      toast.error(err.message || "Failed to create employee");
-    }
-  };
+
+        try {
+            const employeeData = {
+                ...formData,
+                status: "Active",
+                filePath: null,
+            };
+
+            const result = await dispatch(createEmployee(employeeData));
+
+            if (createEmployee.fulfilled.match(result)) {
+                toast.success(result.payload?.message || "Employee created successfully!");
+                // Reset form
+                setFormData({
+                    name: "",
+                    adress: "",
+                    city: "",
+                    state: 0,
+                    zipCode: "",
+                    dop: "",
+                    joiningDate: "",
+                    positionType: "",
+                    email: "",
+                    payGrade: "",
+                    routeRate: "",
+                    payCycle: "",
+                    payType: "",
+                    fuelCardCode: "",
+                    terminalAssigmed: "",
+                    phone: "",
+                    payTypeId: "",
+                });
+                if (handleCancel) {
+                    handleCancel();
+                }
+            } else {
+                toast.error(result.payload || "Failed to create employee");
+            }
+        } catch (err) {
+            console.error("Error creating employee:", err);
+            toast.error(err.message || "Failed to create employee");
+        }
+    };
 
 
 
@@ -222,7 +222,7 @@ const AddDriver = ({ handleCancel }) => {
         const handleClickAnywhere = (event) => {
             // Check if click is on a form element (input, select, textarea, button, label)
             const isFormElement = event.target.closest('input, select, textarea, button, label');
-            
+
             // If clicking anywhere except form elements, clear errors
             if (!isFormElement) {
                 setErrors({});
@@ -254,9 +254,8 @@ const AddDriver = ({ handleCancel }) => {
                             value={formData.name}
                             onChange={handleChange}
                             onBlur={() => handleBlur('name')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
-                                errors.name && touched.name ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.name && touched.name ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                         />
                         {errors.name && touched.name && (
                             <p className="text-red-500 text-xs mt-1">{errors.name}</p>
@@ -269,9 +268,8 @@ const AddDriver = ({ handleCancel }) => {
                         <input
                             type="text"
                             name='zipCode'
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
-                                errors.zipCode && touched.zipCode ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.zipCode && touched.zipCode ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                             value={formData.zipCode}
                             onChange={handleChange}
                             onBlur={() => handleBlur('zipCode')}
@@ -289,9 +287,8 @@ const AddDriver = ({ handleCancel }) => {
                             value={formData.joiningDate}
                             onChange={handleChange}
                             onBlur={() => handleBlur('joiningDate')}
-                            className={`outline-none border rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA] text-gray-900 ${
-                                errors.joiningDate && touched.joiningDate ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA] text-gray-900 ${errors.joiningDate && touched.joiningDate ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                         />
                         {errors.joiningDate && touched.joiningDate && (
                             <p className="text-red-500 text-xs mt-1">{errors.joiningDate}</p>
@@ -303,9 +300,8 @@ const AddDriver = ({ handleCancel }) => {
                         <input
                             type="email"
                             name="email"
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
-                                errors.email && touched.email ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.email && touched.email ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                             value={formData.email}
                             onChange={handleChange}
                             onBlur={() => handleBlur('email')}
@@ -342,9 +338,8 @@ const AddDriver = ({ handleCancel }) => {
                                     }
                                 }}
                                 onBlur={() => handleBlur('payCycle')}
-                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
-                                    errors.payCycle && touched.payCycle ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
+                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.payCycle && touched.payCycle ? 'border-red-500' : 'border-[#D5D5D5]'
+                                    }`}
                             >
                                 <option value="">Select</option>
                                 {loading.payCycles ? (
@@ -383,9 +378,8 @@ const AddDriver = ({ handleCancel }) => {
                             value={formData.adress}
                             onChange={handleChange}
                             onBlur={() => handleBlur('adress')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
-                                errors.adress && touched.adress ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.adress && touched.adress ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                         />
                         {errors.adress && touched.adress && (
                             <p className="text-red-500 text-xs mt-1">{errors.adress}</p>
@@ -401,9 +395,8 @@ const AddDriver = ({ handleCancel }) => {
                             value={formData.city}
                             onChange={handleChange}
                             onBlur={() => handleBlur('city')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
-                                errors.city && touched.city ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.city && touched.city ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                         />
                         {errors.city && touched.city && (
                             <p className="text-red-500 text-xs mt-1">{errors.city}</p>
@@ -425,9 +418,8 @@ const AddDriver = ({ handleCancel }) => {
                             value={formData.terminalAssigmed}
                             onChange={handleChange}
                             onBlur={() => handleBlur('terminalAssigmed')}
-                            className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
-                                errors.terminalAssigmed && touched.terminalAssigmed ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.terminalAssigmed && touched.terminalAssigmed ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                         >
                             <option value="">Select</option>
                             {loading.terminals ? (
@@ -435,7 +427,7 @@ const AddDriver = ({ handleCancel }) => {
                             ) : terminals.length > 0 ? (
                                 terminals.map((t) => (
                                     <option key={t.id} value={t.id} className="text-black">
-                                        {t.name} 
+                                        {t.name}
                                     </option>
                                 ))
                             ) : (
@@ -464,7 +456,7 @@ const AddDriver = ({ handleCancel }) => {
                         <label className="block text-sm font-medium text-black mb-1">
                             State <span className="text-red-500">*</span>
                         </label>
-                        
+
                         <div className="relative">
                             <select
                                 name="state"
@@ -477,9 +469,8 @@ const AddDriver = ({ handleCancel }) => {
                                     }
                                 }}
                                 onBlur={() => handleBlur('state')}
-                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
-                                    errors.state && touched.state ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
+                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.state && touched.state ? 'border-red-500' : 'border-[#D5D5D5]'
+                                    }`}
                             >
                                 <option value="">Select</option>
                                 {loading.states ? (
@@ -509,9 +500,8 @@ const AddDriver = ({ handleCancel }) => {
                             value={formData.dop || ""}
                             onChange={handleChange}
                             onBlur={() => handleBlur('dop')}
-                            className={`outline-none border w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
-                                errors.dop && touched.dop ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.dop && touched.dop ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                         />
                         {errors.dop && touched.dop && (
                             <p className="text-red-500 text-xs mt-1">{errors.dop}</p>
@@ -542,9 +532,8 @@ const AddDriver = ({ handleCancel }) => {
                                     }
                                 }}
                                 onBlur={() => handleBlur('payTypeId')}
-                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${
-                                    errors.payTypeId && touched.payTypeId ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
+                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.payTypeId && touched.payTypeId ? 'border-red-500' : 'border-[#D5D5D5]'
+                                    }`}
                             >
                                 <option value="">Select</option>
                                 {loading.payTypes ? (
@@ -589,9 +578,8 @@ const AddDriver = ({ handleCancel }) => {
                             value={formData.phone || ""}
                             onChange={handleChange}
                             onBlur={() => handleBlur('phone')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${
-                                errors.phone && touched.phone ? 'border-red-500' : 'border-[#D5D5D5]'
-                            }`}
+                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.phone && touched.phone ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
                         />
                         {errors.phone && touched.phone && (
                             <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
@@ -601,13 +589,27 @@ const AddDriver = ({ handleCancel }) => {
                 </div>
 
                 {/* File upload section */}
+                <label>lisense</label>
                 <div className="mt-6 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center m-6 w-full h-32 flex flex-row gap-3 items-center justify-center">
                     <div className="flex justify-center">
                         <img src={pickFileIcon} className="w-10 h-10" />
                     </div>
-                    <p className="mt-1 text-sm text-red-600">Drag and Drop Files</p>
+                    <p className="mt-1 text-sm text-red-600">Drag and Drop Files lisense</p>
                 </div>
-
+                 <label>Profile</label>
+                <div className="mt-6 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center m-6 w-full h-32 flex flex-row gap-3 items-center justify-center">
+                    <div className="flex justify-center">
+                        <img src={pickFileIcon} className="w-10 h-10" />
+                    </div>
+                    <p className="mt-1 text-sm text-red-600">Drag and Drop Files profile picture</p>
+                </div>
+                <label>Documents</label>
+                <div className="mt-6 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center m-6 w-full h-32 flex flex-row gap-3 items-center justify-center">
+                    <div className="flex justify-center">
+                        <img src={pickFileIcon} className="w-10 h-10" />
+                    </div>
+                    <p className="mt-1 text-sm text-red-600">Drag and Drop  Documents</p>
+                </div>
                 {/* Buttons */}
                 <div className="mt-6 flex justify-start space-x-4 p-6">
                     <button
