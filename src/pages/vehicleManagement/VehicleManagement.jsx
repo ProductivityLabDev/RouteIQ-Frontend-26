@@ -19,8 +19,10 @@ import { BsThreeDots } from 'react-icons/bs'
 import { IoIosList } from "react-icons/io";
 import AddBusInfoForm from '@/components/AddBusInfoForm'
 import axios from 'axios'
-
+import { useDispatch, useSelector } from 'react-redux'
 const VehicleManagement = () => {
+    const dispatch = useDispatch();
+    const { terminals } = useSelector((state) => state.buses);
 
     const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
     const token = localStorage.getItem("token");
@@ -45,7 +47,7 @@ const VehicleManagement = () => {
     const [addbusinfo, setAddBusInfo] = useState(false);
     const [buses, setBuses] = useState([])
     const [loading, setLoading] = useState(true);
-    // Menu anchor for action dots
+    
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
     const handleAddBusClick = () => {
@@ -196,8 +198,9 @@ const VehicleManagement = () => {
         }
     };
     useEffect(() => {
-        if (token) getBuses();
-
+        if (token) {
+            getBuses();
+        }
     }, [token]);
     return (
         <MainLayout>
@@ -349,7 +352,7 @@ const VehicleManagement = () => {
 
                                                     <td className="p-4 font-medium">{vehicle.VehicleName || "N/A"}</td>
 
-                                                    <td className="p-4">{vehicle.AssignedTerminal || "N/A"}</td>
+                                                    <td className="p-4">{vehicle.TerminalName || vehicle.terminalName || "N/A"}</td>
 
                                                     <td className="p-4">
                                                         <button

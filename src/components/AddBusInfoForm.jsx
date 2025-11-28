@@ -268,6 +268,28 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 		dispatch(fetchFuelTypes());
 		dispatch(fetchTerminals());
 	}, [dispatch]);
+
+	// Clear validation errors when clicking anywhere on the screen (except form elements)
+	useEffect(() => {
+		const handleClickAnywhere = (event) => {
+			// Check if click is on a form element (input, select, textarea, button, label)
+			const isFormElement = event.target.closest('input, select, textarea, button, label');
+			
+			// If clicking anywhere except form elements, clear errors
+			if (!isFormElement) {
+				setErrors({});
+				setTouched({});
+			}
+		};
+
+		// Add event listener to document
+		document.addEventListener('click', handleClickAnywhere);
+
+		// Cleanup on unmount
+		return () => {
+			document.removeEventListener('click', handleClickAnywhere);
+		};
+	}, []);
 	return (
 		<div className="grid grid-cols-1 bg-white w-full rounded-lg">
 			<form className="w-full" onSubmit={handleSubmit}>

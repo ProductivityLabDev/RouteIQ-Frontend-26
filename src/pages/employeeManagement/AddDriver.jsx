@@ -1,20 +1,15 @@
 import { pickFileIcon } from '@/assets';
 import React, { useState, useEffect } from 'react'
-import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { getAxiosConfig, BASE_URL as API_BASE_URL } from '@/configs/api';
+import { fetchPayTypes, fetchPayCycles, fetchTerminals, fetchStates, createEmployee } from '@/redux/slices/employeSlices';
 
 const AddDriver = ({ handleCancel }) => {
-    const BASE_URL = API_BASE_URL || import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-    const token = localStorage.getItem("token");
-
-    const [payTypes, setPayTypes] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [terminals, setTerminals] = useState([]);
-    const [payCycle, setpayCycle] = useState([])
+    const dispatch = useDispatch();
+    const { payTypes, payCycles, terminals, states, loading, error } = useSelector((state) => state.employees);
+    
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [state, setState] = useState([]);
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
     const [formData, setFormData] = useState({
@@ -158,163 +153,91 @@ const AddDriver = ({ handleCancel }) => {
     // ---------- CREATE EMPLOYEE ----------
 
   const handleSubmitEmployee = async (e) => {
-  e.preventDefault();
-  
-  // Validate form before submitting
-  if (!validateForm()) {
-      const errorMessages = Object.values(errors).filter(msg => msg);
-      errorMessages.forEach(error => {
-          toast.error(error);
-      });
-      return;
-  }
+    e.preventDefault();
+    
+    // Validate form before submitting
+    if (!validateForm()) {
+        const errorMessages = Object.values(errors).filter(msg => msg);
+        errorMessages.forEach(error => {
+            toast.error(error);
+        });
+        return;
+    }
 
-  setSubmitting(true);
+    try {
+      const employeeData = {
+        ...formData,
+        status: "Active",
+        filePath: null,
+      };
 
-  try {
-    const employeeData = {
-      name: formData.name,
-      adress: formData.adress,
-      city: formData.city,
-      state: formData.state,
-      zipCode: formData.zipCode,
-      dop: formData.dop,
-      joiningDate: formData.joiningDate,
-      positionType: formData.positionType,
-      email: formData.email,
-      payGrade: formData.payGrade,
-      routeRate: formData.routeRate,
-      payCycle: formData.payCycle,
-      payType: formData.payTypeId,
-      fuelCardCode: Number(formData.fuelCardCode) || null,
-      terminalAssigmed: formData.terminalAssigmed,
-      status: "Active",
-      filePath: null,
-    };
+      const result = await dispatch(createEmployee(employeeData));
 
-    console.log("Submitting payload:", employeeData);
-
-    const res = await axios.post(`${BASE_URL}/institute/createEmployeeInfo`, employeeData, getAxiosConfig());
-
-    console.log(res.data?.message || "Employee created successfully!");
-    toast.success(res.data?.message || "Employee created successfully!");
-    setFormData({
-      name: "",
-      adress: "",
-      city: "",
-      state: 0,
-      zipCode: "",
-      dop: "",
-      joiningDate: "",
-      positionType: "",
-      email: "",
-      payGrade: "",
-      routeRate: "",
-      payCycle: "",
-      payType: "",
-      fuelCardCode: "",
-      terminalAssigmed: "",
-      phone: "",
-      payTypeId: "",
-    });
-
-  } catch (err) {
-    console.error("Error creating employee:", err.response?.data || err.message);
-    toast.error(err.response?.data?.message || "Failed to create employee");
-  } finally {
-    setSubmitting(false);
-  }
-};
-
-
-
-    const getPayTypes = async () => {
-        try {
-            const res = await axios.get(`${BASE_URL}/institute/paytypes`, getAxiosConfig());
-
-            console.log("Fetched pay types:", res.data);
-            // ✅ API gives { ok:true, data:[...] }
-            if (res.data?.data && Array.isArray(res.data.data)) {
-                setPayTypes(res.data.data);
-            } else {
-                setPayTypes([]);
-            }
-        } catch (err) {
-            console.error("Error fetching pay types:", err);
-            setPayTypes([]);
-        } finally {
-            setLoading(false);
+      if (createEmployee.fulfilled.match(result)) {
+        toast.success(result.payload?.message || "Employee created successfully!");
+        // Reset form
+        setFormData({
+          name: "",
+          adress: "",
+          city: "",
+          state: 0,
+          zipCode: "",
+          dop: "",
+          joiningDate: "",
+          positionType: "",
+          email: "",
+          payGrade: "",
+          routeRate: "",
+          payCycle: "",
+          payType: "",
+          fuelCardCode: "",
+          terminalAssigmed: "",
+          phone: "",
+          payTypeId: "",
+        });
+        if (handleCancel) {
+          handleCancel();
         }
-    };
-    const getPaycycles = async () => {
-        try {
-            const res = await axios.get(`${BASE_URL}/institute/paycycles`, getAxiosConfig());
-
-            console.log("Fetched pay cycles:", res.data);
-            // ✅ API gives { ok:true, data:[...] }
-            if (res.data?.data && Array.isArray(res.data.data)) {
-                setpayCycle(res.data.data);
-            } else {
-                setpayCycle([]);
-            }
-        } catch (err) {
-            console.error("Error fetching pay types:", err);
-            setpayCycle([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-    const getTerminals = async () => {
-        try {
-            const res = await axios.get(`${BASE_URL}/terminals`, getAxiosConfig());
-
-            console.log("Fetched terminals:", res.data);
-
-            // ✅ Works for both cases: direct array or wrapped in `data`
-            const terminalsArray = Array.isArray(res.data)
-                ? res.data
-                : Array.isArray(res.data.data)
-                    ? res.data.data
-                    : [];
-
-            setTerminals(terminalsArray);
-        } catch (err) {
-            console.error("Error fetching terminals:", err);
-            setTerminals([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-    const getCity = async () => {
-        try {
-            const res = await axios.get(`${BASE_URL}/institute/GetStates`, getAxiosConfig());
-
-            console.log("Fetched StateArray:", res.data);
-
-            // ✅ Works for both cases: direct array or wrapped in `data`
-            const StateArray = Array.isArray(res.data)
-                ? res.data
-                : Array.isArray(res.data.data)
-                    ? res.data.data
-                    : [];
-
-            setState(StateArray);
-        } catch (err) {
-            console.error("Error fetching terminals:", err);
-            setState([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+      } else {
+        toast.error(result.payload || "Failed to create employee");
+      }
+    } catch (err) {
+      console.error("Error creating employee:", err);
+      toast.error(err.message || "Failed to create employee");
+    }
+  };
 
 
 
     useEffect(() => {
-        if (token) getPayTypes();
-        getPaycycles();
-        getTerminals()
-        getCity()
-    }, [token]);
+        // Fetch all required data on component mount
+        dispatch(fetchPayTypes());
+        dispatch(fetchPayCycles());
+        dispatch(fetchTerminals());
+        dispatch(fetchStates());
+    }, [dispatch]);
+
+    // Clear validation errors when clicking anywhere on the screen (except form elements)
+    useEffect(() => {
+        const handleClickAnywhere = (event) => {
+            // Check if click is on a form element (input, select, textarea, button, label)
+            const isFormElement = event.target.closest('input, select, textarea, button, label');
+            
+            // If clicking anywhere except form elements, clear errors
+            if (!isFormElement) {
+                setErrors({});
+                setTouched({});
+            }
+        };
+
+        // Add event listener to document
+        document.addEventListener('click', handleClickAnywhere);
+
+        // Cleanup on unmount
+        return () => {
+            document.removeEventListener('click', handleClickAnywhere);
+        };
+    }, []);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white w-full rounded-lg">
@@ -424,12 +347,12 @@ const AddDriver = ({ handleCancel }) => {
                                 }`}
                             >
                                 <option value="">Select</option>
-                                {loading ? (
+                                {loading.payCycles ? (
                                     <option className="text-gray-500">Loading...</option>
-                                ) : payCycle.length > 0 ? (
-                                    payCycle.map((cycle) => (
-                                        <option key={cycle.Id} value={cycle.Id} className="text-black">
-                                            {cycle.Name}
+                                ) : payCycles.length > 0 ? (
+                                    payCycles.map((cycle) => (
+                                        <option key={cycle.PayCycleId} value={cycle.PayCycleId} className="text-black">
+                                            {cycle.PayCycleName}
                                         </option>
                                     ))
                                 ) : (
@@ -507,12 +430,12 @@ const AddDriver = ({ handleCancel }) => {
                             }`}
                         >
                             <option value="">Select</option>
-                            {loading ? (
+                            {loading.terminals ? (
                                 <option className="text-gray-500">Loading...</option>
                             ) : terminals.length > 0 ? (
                                 terminals.map((t) => (
                                     <option key={t.id} value={t.id} className="text-black">
-                                        {t.name} ({t.code})
+                                        {t.name} 
                                     </option>
                                 ))
                             ) : (
@@ -559,12 +482,12 @@ const AddDriver = ({ handleCancel }) => {
                                 }`}
                             >
                                 <option value="">Select</option>
-                                {loading ? (
+                                {loading.states ? (
                                     <option className="text-gray-500">Loading...</option>
-                                ) : state.length > 0 ? (
-                                    state.map((state) => (
-                                        <option key={state.Id} value={state.Id} className="text-black">
-                                            {state.StateName}
+                                ) : states.length > 0 ? (
+                                    states.map((stateItem) => (
+                                        <option key={stateItem.Id} value={stateItem.Id} className="text-black">
+                                            {stateItem.StateName}
                                         </option>
                                     ))
                                 ) : (
@@ -609,11 +532,10 @@ const AddDriver = ({ handleCancel }) => {
                                 value={formData.payTypeId || ""}
                                 onChange={(e) => {
                                     const selectedId = e.target.value;
-                                    const selected = payTypes.find((p) => String(p.Id) === selectedId);
+                                    const selected = payTypes.find((p) => String(p.PayTypeId) === selectedId);
                                     setFormData((prev) => ({
                                         ...prev,
-                                        payTypeId: selected?.Id || "",
-                                        payTypeName: selected?.Name || "",
+                                        payTypeId: selected?.PayTypeId || "",
                                     }));
                                     if (errors.payTypeId) {
                                         setErrors(prev => ({ ...prev, payTypeId: "" }));
@@ -625,12 +547,12 @@ const AddDriver = ({ handleCancel }) => {
                                 }`}
                             >
                                 <option value="">Select</option>
-                                {loading ? (
+                                {loading.payTypes ? (
                                     <option className="text-gray-500">Loading...</option>
                                 ) : payTypes.length > 0 ? (
                                     payTypes.map((type) => (
-                                        <option key={type.Id} value={type.Id} className="text-black">
-                                            {type.Name}
+                                        <option key={type.PayTypeId} value={type.PayTypeId} className="text-black">
+                                            {type.PayTypeName}
                                         </option>
                                     ))
                                 ) : (
@@ -707,9 +629,10 @@ const AddDriver = ({ handleCancel }) => {
                     <button
                         type="submit"
                         onClick={handleSubmitEmployee}
-                        className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded"
+                        disabled={loading.creating}
+                        className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {submitting ? 'Submitting…' : 'Submit'}
+                        {loading.creating ? 'Submitting…' : 'Submit'}
                     </button>
 
                 </div>
