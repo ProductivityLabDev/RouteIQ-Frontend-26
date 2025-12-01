@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Button, Card, Dialog, Typography } from '@material-tailwind/react'
 import { closeicon } from '@/assets'
-import axios from 'axios'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchTerminals, createInstitute } from '@/redux/slices/schoolSlice'
+import { toast } from 'react-hot-toast'
 
 export function SchoolManagementModal({ open, handleOpen, editInstitute, editSchoolData, refreshSchools }) {
-    const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-    const token = localStorage.getItem("token");
+    const dispatch = useDispatch();
+    const { terminals, loading, error } = useSelector((state) => state.schools);
 
     const [formData, setFormData] = useState({
         district: "",
@@ -21,41 +23,11 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute, editSch
         PhoneNo: ""
     });
 
-    const [submitting, setSubmitting] = useState(false);
-    const [terminals, setTerminals] = useState([]);
-    const [loading, setLoading] = useState(true);
-
     useEffect(() => {
-        const getTerminals = async () => {
-            try {
-                const res = await axios.get(`${BASE_URL}/terminals`, {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-
-                console.log("Fetched terminals:", res.data);
-
-                // ✅ Works for both cases: direct array or wrapped in `data`
-                const terminalsArray = Array.isArray(res.data)
-                    ? res.data
-                    : Array.isArray(res.data.data)
-                        ? res.data.data
-                        : [];
-
-                setTerminals(terminalsArray);
-            } catch (err) {
-                console.error("Error fetching terminals:", err);
-                setTerminals([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (open && token) {
-            getTerminals();
+        if (open) {
+            dispatch(fetchTerminals());
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, token]);
+    }, [open, dispatch]);
 
     // Populate form when editing
     useEffect(() => {
@@ -101,234 +73,233 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute, editSch
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitting(true);
 
         try {
-            const payload = {
-                district: formData.district,
-                president: formData.president,
-                terminal: formData.terminal ? Number(formData.terminal) : null,
-                principle: formData.principle,
-                school: formData.school,
-                totalStudent: formData.totalStudent ? Number(formData.totalStudent) : null,
-                totalBuses: formData.totalBuses ? Number(formData.totalBuses) : null,
-                contact: formData.contact,
-                Address: formData.Address,
-                Email: formData.Email,
-                PhoneNo: formData.PhoneNo
-            };
+            const result = await dispatch(createInstitute(formData));
 
-            console.log("📤 Sending payload:", payload);
+            if (createInstitute.fulfilled.match(result)) {
+                toast.success(result.payload?.message || "School created successfully!");
+                
+                // Reset form
+                setFormData({
+                    district: "",
+                    president: "",
+                    terminal: 0,
+                    principle: "",
+                    school: "",
+                    totalStudent: "",
+                    totalBuses: "",
+                    contact: "",
+                    Address: "",
+                    Email: "",
+                    PhoneNo: ""
+                });
 
-            const res = await axios.post(`${BASE_URL}/institute/createinstituteInfo`, payload, {
-                withCredentials: true,
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+                // Refresh schools list if callback provided
+                if (refreshSchools) {
+                    await refreshSchools();
+                }
 
-            console.log("✅ Institute created:", res.data);
-            alert(res.data?.message || "School created successfully!");
-
-            // Reset form
-            setFormData({
-                district: "",
-                president: "",
-                terminal: 0,
-                principle: "",
-                school: "",
-                totalStudent: "",
-                totalBuses: "",
-                contact: "",
-                Address: "",
-                Email: "",
-                PhoneNo: ""
-            });
-
-            // Refresh schools list if callback provided
-            if (refreshSchools) {
-                await refreshSchools();
+                // Close modal
+                handleOpen();
+            } else {
+                toast.error(result.payload || "Failed to create school. Please try again.");
             }
-
-            // Close modal
-            handleOpen();
         } catch (err) {
-            console.error("❌ Error creating institute:", err.response?.data || err);
-            alert(err.response?.data?.message || "Failed to create school. Please try again.");
-        } finally {
-            setSubmitting(false);
+            console.error("❌ Error creating institute:", err);
+            toast.error(err.message || "Failed to create school. Please try again.");
         }
     };
 
     return (
         <div>
-            <Dialog className='px-7 py-6 rounded-[4px]' open={open} handler={handleOpen}>
-                <Card color="transparent" shadow={false}>
-                    <div className='flex justify-between items-center'>
-                        <Typography className='text-[24px] md:text-[32px] text-[#202224] font-bold'>
+            <Dialog className='px-6 py-5' open={open} handler={handleOpen} size="lg">
+                <Card color="transparent" shadow={false} className="max-w-5xl">
+                    <div className='flex justify-between items-center mb-5 pb-3 border-b'>
+                        <Typography className='text-xl font-bold text-gray-800'>
                             {editInstitute ? 'Edit Institute' : 'Add School'}
                         </Typography>
                         <Button
-                            className='p-1'
+                            className='p-1 hover:bg-gray-100 rounded'
                             variant="text"
                             onClick={handleOpen}
                         >
-                            <img src={closeicon} className='w-[17px] h-[17px]' alt="" />
+                            <img src={closeicon} className='w-5 h-5' alt="Close" />
                         </Button>
                     </div>
-                    <form className="md:mt-5 mb-2 md:max-w-screen-lg" onSubmit={handleSubmit}>
-                        <div className='flex justify-between md:flex-nowrap flex-wrap md:space-x-7'>
-                            <div className="mb-1 flex flex-col gap-5 w-full">
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    District
-                                </Typography>
-                                <input
-                                    type='text'
-                                    name="district"
-                                    value={formData.district}
-                                    onChange={handleChange}
-                                    className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Terminal
-                                </Typography>
-                                <select
-                                    name="terminal"
-                                    value={formData.terminal}
-                                    onChange={handleChange}
-                                    className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                >
+                    <form className="mt-4 mb-2" onSubmit={handleSubmit}>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4'>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        District
+                                    </label>
+                                    <input
+                                        type='text'
+                                        name="district"
+                                        value={formData.district}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Terminal
+                                    </label>
+                                    <select
+                                        name="terminal"
+                                        value={formData.terminal}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    >
                                     <option value="">Select Terminal</option>
-                                    {loading ? (
+                                    {loading.terminals ? (
                                         <option className="text-gray-500">Loading...</option>
                                     ) : terminals.length > 0 ? (
-                                        terminals.map((t) => (
-                                            <option key={t.id} value={t.id} className="text-black">
-                                                {t.name} {t.code ? `(${t.code})` : ''}
-                                            </option>
-                                        ))
-                                    ) : (
-                                        <option>No terminals found</option>
-                                    )}
-                                </select>
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    School Name
-                                </Typography>
-                                <input
-                                    type="text"
-                                    name="school"
-                                    value={formData.school}
-                                    onChange={handleChange}
-                                    className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Total Buses
-                                </Typography>
-                                <input
-                                    type="text"
-                                    name="totalBuses"
-                                    value={formData.totalBuses}
-                                    onChange={handleChange}
-                                    className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    School Address
-                                </Typography>
-                                <input
-                                    type='text'
-                                    name="Address"
-                                    value={formData.Address}
-                                    onChange={handleChange}
-                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Email
-                                </Typography>
-                                <input
-                                    type='email'
-                                    name="Email"
-                                    value={formData.Email}
-                                    onChange={handleChange}
-                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
+                                            terminals.map((t) => (
+                                                <option key={t.id} value={t.id} className="text-black">
+                                                    {t.name} {t.code ? `(${t.code})` : ''}
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <option>No terminals found</option>
+                                        )}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        School Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="school"
+                                        value={formData.school}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Total Buses
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="totalBuses"
+                                        value={formData.totalBuses}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        School Address
+                                    </label>
+                                    <input
+                                        type='text'
+                                        name="Address"
+                                        value={formData.Address}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Email
+                                    </label>
+                                    <input
+                                        type='email'
+                                        name="Email"
+                                        value={formData.Email}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
 
                             </div>
-                            <div className="mb-1 flex flex-col gap-5 w-full">
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    President
-                                </Typography>
-                                <input
-                                    type='text'
-                                    name="president"
-                                    value={formData.president}
-                                    onChange={handleChange}
-                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Principle
-                                </Typography>
-                                <input
-                                    type="text"
-                                    name="principle"
-                                    value={formData.principle}
-                                    onChange={handleChange}
-                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Total Students
-                                </Typography>
-                                <input
-                                    type='text'
-                                    name="totalStudent"
-                                    value={formData.totalStudent}
-                                    onChange={handleChange}
-                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Contact No
-                                </Typography>
-                                <input
-                                    type='number'
-                                    name="contact"
-                                    value={formData.contact}
-                                    onChange={handleChange}
-                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
-
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Phone No
-                                </Typography>
-                                <input
-                                    type='number'
-                                    name="PhoneNo"
-                                    value={formData.PhoneNo}
-                                    onChange={handleChange}
-                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        President
+                                    </label>
+                                    <input
+                                        type='text'
+                                        name="president"
+                                        value={formData.president}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Principle
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="principle"
+                                        value={formData.principle}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Total Students
+                                    </label>
+                                    <input
+                                        type='text'
+                                        name="totalStudent"
+                                        value={formData.totalStudent}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Contact No
+                                    </label>
+                                    <input
+                                        type='number'
+                                        name="contact"
+                                        value={formData.contact}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Phone No
+                                    </label>
+                                    <input
+                                        type='number'
+                                        name="PhoneNo"
+                                        value={formData.PhoneNo}
+                                        onChange={handleChange}
+                                        className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
+                                    />
+                                </div>
 
                             </div>
 
                         </div>
-                        <div className='space-x-4 flex justify-end'>
+                        <div className='flex justify-end gap-3 mt-6 pt-4 border-t'>
                             <Button
                                 type="button"
                                 onClick={handleOpen}
-                                className="mt-8 px-14 py-2.5 border-2 border-[#C01824] text-[18px] text-[#C01824] capitalize rounded-[6px]"
+                                className="px-8 py-2 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50"
                                 size='lg'
                                 variant='outlined'
-                                disabled={submitting}
+                                disabled={loading.creating}
                             >
                                 Cancel
                             </Button>
                             <Button
                                 type="submit"
-                                className="mt-8 px-14 py-2.5 bg-[#C01824] text-[18px] capitalize rounded-[6px]"
+                                className="px-8 py-2 bg-[#C01824] text-white font-medium rounded-md hover:bg-[#A01520]"
                                 variant='filled'
                                 size='lg'
-                                disabled={submitting}
+                                disabled={loading.creating}
                             >
-                                {submitting ? 'Submitting...' : 'Submit'}
+                                {loading.creating ? 'Submitting...' : 'Submit'}
                             </Button>
                         </div>
                     </form>

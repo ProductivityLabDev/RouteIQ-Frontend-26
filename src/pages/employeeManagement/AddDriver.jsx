@@ -12,6 +12,7 @@ const AddDriver = ({ handleCancel }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
+    const [selectedFile, setSelectedFile] = useState(null);
     const [formData, setFormData] = useState({
         name: "",
         adress: "",
@@ -149,6 +150,20 @@ const AddDriver = ({ handleCancel }) => {
         }
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedFile(file);
+        }
+    };
+
+    const handleRemoveFile = () => {
+        setSelectedFile(null);
+        if (fileRef.current) {
+            fileRef.current.value = "";
+        }
+    };
+
     // ---------- CREATE EMPLOYEE ----------
 
     const handleSubmitEmployee = async (e) => {
@@ -205,6 +220,7 @@ const AddDriver = ({ handleCancel }) => {
                     payTypeId: "",
                 });
                 // Reset file input
+                setSelectedFile(null);
                 if (fileRef.current) fileRef.current.value = "";
                 
                 if (handleCancel) {
@@ -566,21 +582,50 @@ const AddDriver = ({ handleCancel }) => {
                 {/* File upload section */}
                 <div className="p-6">
                     <label className="block text-sm font-medium text-black mb-2">File Upload</label>
-                    <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center w-full h-32 flex flex-row gap-3 items-center justify-center relative">
-                        <input
-                            type="file"
-                            ref={fileRef}
-                            id="file"
-                            accept="image/*,.pdf,.doc,.docx"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                        <div className="flex justify-center">
-                            <img src={pickFileIcon} className="w-10 h-10" alt="Upload file" />
+                    {!selectedFile ? (
+                        <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center w-full h-32 flex flex-row gap-3 items-center justify-center relative hover:border-[#C01824] transition-colors">
+                            <input
+                                type="file"
+                                ref={fileRef}
+                                id="file"
+                                accept="image/*,.pdf,.doc,.docx"
+                                onChange={handleFileChange}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="flex justify-center">
+                                <img src={pickFileIcon} className="w-10 h-10" alt="Upload file" />
+                            </div>
+                            <p className="mt-1 text-sm text-red-600">Drag and Drop Files or Click to Upload</p>
                         </div>
-                        <p className="mt-1 text-sm text-red-600">Drag and Drop Files or Click to Upload</p>
-                    </div>
-                    {fileRef.current?.files?.[0] && (
-                        <p className="text-xs text-gray-600 mt-1">Selected: {fileRef.current.files[0].name}</p>
+                    ) : (
+                        <div className="mt-2 border-2 border-green-500 rounded-lg p-4 bg-green-50">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 flex-1">
+                                    <div className="flex-shrink-0">
+                                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{selectedFile.name}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {(selectedFile.size / 1024).toFixed(2)} KB
+                                            {selectedFile.type && ` • ${selectedFile.type.split('/')[1]?.toUpperCase() || 'FILE'}`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveFile}
+                                    className="ml-4 flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
+                                    title="Remove file"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </div>
                 {/* Buttons */}
