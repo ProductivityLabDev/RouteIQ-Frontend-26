@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-import { BASE_URL, getAxiosConfig } from "@/configs/api";
+import { BASE_URL, getAuthToken,getAxiosConfig } from "@/configs/api";
+import { decodeToken } from "@/redux/authHelper";
 
 // Async thunk to fetch pay types
 export const fetchPayTypes = createAsyncThunk(
@@ -127,38 +128,77 @@ export const fetchStates = createAsyncThunk(
 // Async thunk to create employee
 export const createEmployee = createAsyncThunk(
   "employees/createEmployee",
-  async (employeeData, { rejectWithValue }) => {
+  async (formData, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Creating employee...", employeeData);
+      console.log("🔄 [Redux] Creating employee with FormData...");
       
-      // Map form data to DTO structure
-      const payload = {
-        name: employeeData.name,
-        adress: employeeData.adress,
-        city: employeeData.city,
-        state: employeeData.state,
-        zipCode: employeeData.zipCode,
-        dop: employeeData.dop,
-        joiningDate: employeeData.joiningDate,
-        positionType: employeeData.positionType || null,
-        email: employeeData.email,
-        payGrade: employeeData.payGrade || null,
-        routeRate: employeeData.routeRate || null,
-        payCycle: employeeData.payCycle,
-        payType: employeeData.payTypeId || employeeData.payType,
-        fuelCardCode: employeeData.fuelCardCode ? Number(employeeData.fuelCardCode) : null,
-        terminalAssigmed: employeeData.terminalAssigmed,
-        status: employeeData.status || "Active",
-        filePath: employeeData.filePath || null,
-        emergencyContactName: employeeData.emergencyContactName || null,
-        emergencyContact: employeeData.emergencyContact ? Number(employeeData.emergencyContact) : null,
-      };
+      // Get token and extract userId
+      const token = getAuthToken();
+      let userId = 1; // Default fallback
+      
+      if (token) {
+        const decoded = decodeToken(token);
+        if (decoded && decoded.sub) {
+          userId = decoded.sub;
+        }
+      }
+      
+      // Create FormData object
+      const data = new FormData();
+      
+      // Append file if provided
+      if (formData.file) {
+        data.append("file", formData.file);
+      }
+      
+      // Append all employee fields as per backend DTO
+      data.append("userId", userId);
+      data.append("name", formData.name || "");
+      data.append("adress", formData.adress || "");
+      // Convert city to integer (must be a number)
+      const cityValue = formData.city && !isNaN(Number(formData.city)) 
+        ? String(Math.floor(Number(formData.city))) 
+        : "0"; // Default to 0 if not a valid number
+      data.append("city", cityValue);
+      data.append("zipCode", formData.zipCode || "");
+      data.append("stateId", 5); // Hardcoded as per requirement
+      data.append("dob", formData.dop || ""); // Map dop to dob
+      data.append("joiningDate", formData.joiningDate || "");
+      data.append("status", formData.status || "Active");
+      data.append("positionType", formData.positionType || "");
+      data.append("email", formData.email || "");
+      data.append("emergencyContact", formData.emergencyContact || "");
+      data.append("payGrade", formData.payGrade || "");
+      data.append("routeRate", formData.routeRate || "");
+      data.append("terminalAssigmedId", formData.terminalAssigmed || ""); // Map terminalAssigmed to terminalAssigmedId
+      // Convert fuelCardCode to integer (must be a number)
+      const fuelCardCodeValue = formData.fuelCardCode && !isNaN(Number(formData.fuelCardCode)) 
+        ? String(Math.floor(Number(formData.fuelCardCode))) 
+        : "0"; // Default to 0 if not a valid number
+      data.append("fuelCardCode", fuelCardCodeValue);
+      data.append("payCycleId", formData.payCycle || ""); // Map payCycle to payCycleId
+      // Ensure payType is sent correctly - convert to string if it's a number
+      // Check if payTypeId exists and is not empty/null/undefined
+      let payTypeValue = "";
+      if (formData.payTypeId !== undefined && formData.payTypeId !== null && formData.payTypeId !== "") {
+        payTypeValue = String(formData.payTypeId);
+      } else if (formData.payType !== undefined && formData.payType !== null && formData.payType !== "") {
+        payTypeValue = String(formData.payType);
+      }
+      data.append("payType", payTypeValue); // Map payTypeId to payType
 
-      console.log("📤 [Redux] Submitting employee data:", payload);
+      console.log("📤 [Redux] Submitting employee FormData with userId:", userId);
+      
       const res = await axios.post(
         `${BASE_URL}/institute/createEmployeeInfo`,
-        payload,
-        getAxiosConfig()
+        data,
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       console.log("✅ [Redux] Employee created successfully:", res.data);

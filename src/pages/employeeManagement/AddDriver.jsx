@@ -1,12 +1,12 @@
 import { pickFileIcon } from '@/assets';
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { fetchPayTypes, fetchPayCycles, fetchTerminals, fetchStates, createEmployee } from '@/redux/slices/employeSlices';
+import { fetchPayTypes, fetchPayCycles, fetchTerminals, createEmployee } from '@/redux/slices/employeSlices';
 
 const AddDriver = ({ handleCancel }) => {
     const dispatch = useDispatch();
-    const { payTypes, payCycles, terminals, states, loading, error } = useSelector((state) => state.employees);
+    const { payTypes, payCycles, terminals, loading, error } = useSelector((state) => state.employees);
 
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -16,7 +16,6 @@ const AddDriver = ({ handleCancel }) => {
         name: "",
         adress: "",
         city: "",
-        state: 0,
         zipCode: "",
         dop: "",
         joiningDate: "",
@@ -31,6 +30,9 @@ const AddDriver = ({ handleCancel }) => {
         phone: "",
         payTypeId: "",
     });
+    
+    // File ref for file upload
+    const fileRef = useRef(null);
 
 
     // Validation function
@@ -52,9 +54,6 @@ const AddDriver = ({ handleCancel }) => {
             newErrors.city = "City is required";
         }
 
-        if (!formData.state || formData.state === 0 || formData.state === "") {
-            newErrors.state = "State is required";
-        }
 
         if (!formData.zipCode || formData.zipCode.trim() === "") {
             newErrors.zipCode = "Zip Code is required";
@@ -165,11 +164,22 @@ const AddDriver = ({ handleCancel }) => {
         }
 
         try {
+            // Collect file from ref
+            const file = fileRef.current?.files?.[0] || null;
+
+            // Prepare employee data with file
             const employeeData = {
                 ...formData,
                 status: "Active",
-                filePath: null,
+                file: file,
+                emergencyContact: formData.phone || "", // Map phone to emergencyContact
             };
+            
+            console.log("📤 [AddDriver] Submitting employee data:", {
+                ...employeeData,
+                file: file ? file.name : "No file",
+                payTypeId: employeeData.payTypeId,
+            });
 
             const result = await dispatch(createEmployee(employeeData));
 
@@ -180,7 +190,6 @@ const AddDriver = ({ handleCancel }) => {
                     name: "",
                     adress: "",
                     city: "",
-                    state: 0,
                     zipCode: "",
                     dop: "",
                     joiningDate: "",
@@ -195,6 +204,9 @@ const AddDriver = ({ handleCancel }) => {
                     phone: "",
                     payTypeId: "",
                 });
+                // Reset file input
+                if (fileRef.current) fileRef.current.value = "";
+                
                 if (handleCancel) {
                     handleCancel();
                 }
@@ -214,7 +226,6 @@ const AddDriver = ({ handleCancel }) => {
         dispatch(fetchPayTypes());
         dispatch(fetchPayCycles());
         dispatch(fetchTerminals());
-        dispatch(fetchStates());
     }, [dispatch]);
 
     // Clear validation errors when clicking anywhere on the screen (except form elements)
@@ -454,44 +465,6 @@ const AddDriver = ({ handleCancel }) => {
                     {/* Third column */}
                     <div className="mb-4 w-full">
                         <label className="block text-sm font-medium text-black mb-1">
-                            State <span className="text-red-500">*</span>
-                        </label>
-
-                        <div className="relative">
-                            <select
-                                name="state"
-                                value={formData.state}
-                                onChange={(e) => {
-                                    const selectedId = Number(e.target.value);
-                                    setFormData((prev) => ({ ...prev, state: selectedId }));
-                                    if (errors.state) {
-                                        setErrors(prev => ({ ...prev, state: "" }));
-                                    }
-                                }}
-                                onBlur={() => handleBlur('state')}
-                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.state && touched.state ? 'border-red-500' : 'border-[#D5D5D5]'
-                                    }`}
-                            >
-                                <option value="">Select</option>
-                                {loading.states ? (
-                                    <option className="text-gray-500">Loading...</option>
-                                ) : states.length > 0 ? (
-                                    states.map((stateItem) => (
-                                        <option key={stateItem.Id} value={stateItem.Id} className="text-black">
-                                            {stateItem.StateName}
-                                        </option>
-                                    ))
-                                ) : (
-                                    <option>No state found</option>
-                                )}
-
-                            </select>
-                        </div>
-                        {errors.state && touched.state && (
-                            <p className="text-red-500 text-xs mt-1">{errors.state}</p>
-                        )}
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
                             Date of Birth <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -519,13 +492,15 @@ const AddDriver = ({ handleCancel }) => {
                         <div className="relative">
                             <select
                                 name="payTypeId"
-                                value={formData.payTypeId || ""}
+                                value={formData.payTypeId !== undefined && formData.payTypeId !== null && formData.payTypeId !== "" ? String(formData.payTypeId) : ""}
                                 onChange={(e) => {
                                     const selectedId = e.target.value;
                                     const selected = payTypes.find((p) => String(p.PayTypeId) === selectedId);
+                                    // Store as number to match the ID
+                                    const payTypeIdValue = selected ? Number(selected.PayTypeId) : "";
                                     setFormData((prev) => ({
                                         ...prev,
-                                        payTypeId: selected?.PayTypeId || "",
+                                        payTypeId: payTypeIdValue,
                                     }));
                                     if (errors.payTypeId) {
                                         setErrors(prev => ({ ...prev, payTypeId: "" }));
@@ -540,7 +515,7 @@ const AddDriver = ({ handleCancel }) => {
                                     <option className="text-gray-500">Loading...</option>
                                 ) : payTypes.length > 0 ? (
                                     payTypes.map((type) => (
-                                        <option key={type.PayTypeId} value={type.PayTypeId} className="text-black">
+                                        <option key={type.PayTypeId} value={String(type.PayTypeId)} className="text-black">
                                             {type.PayTypeName}
                                         </option>
                                     ))
@@ -589,26 +564,24 @@ const AddDriver = ({ handleCancel }) => {
                 </div>
 
                 {/* File upload section */}
-                <label>lisense</label>
-                <div className="mt-6 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center m-6 w-full h-32 flex flex-row gap-3 items-center justify-center">
-                    <div className="flex justify-center">
-                        <img src={pickFileIcon} className="w-10 h-10" />
+                <div className="p-6">
+                    <label className="block text-sm font-medium text-black mb-2">File Upload</label>
+                    <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center w-full h-32 flex flex-row gap-3 items-center justify-center relative">
+                        <input
+                            type="file"
+                            ref={fileRef}
+                            id="file"
+                            accept="image/*,.pdf,.doc,.docx"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="flex justify-center">
+                            <img src={pickFileIcon} className="w-10 h-10" alt="Upload file" />
+                        </div>
+                        <p className="mt-1 text-sm text-red-600">Drag and Drop Files or Click to Upload</p>
                     </div>
-                    <p className="mt-1 text-sm text-red-600">Drag and Drop Files lisense</p>
-                </div>
-                 <label>Profile</label>
-                <div className="mt-6 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center m-6 w-full h-32 flex flex-row gap-3 items-center justify-center">
-                    <div className="flex justify-center">
-                        <img src={pickFileIcon} className="w-10 h-10" />
-                    </div>
-                    <p className="mt-1 text-sm text-red-600">Drag and Drop Files profile picture</p>
-                </div>
-                <label>Documents</label>
-                <div className="mt-6 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center m-6 w-full h-32 flex flex-row gap-3 items-center justify-center">
-                    <div className="flex justify-center">
-                        <img src={pickFileIcon} className="w-10 h-10" />
-                    </div>
-                    <p className="mt-1 text-sm text-red-600">Drag and Drop  Documents</p>
+                    {fileRef.current?.files?.[0] && (
+                        <p className="text-xs text-gray-600 mt-1">Selected: {fileRef.current.files[0].name}</p>
+                    )}
                 </div>
                 {/* Buttons */}
                 <div className="mt-6 flex justify-start space-x-4 p-6">

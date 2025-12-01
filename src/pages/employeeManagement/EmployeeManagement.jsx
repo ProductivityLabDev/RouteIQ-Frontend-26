@@ -20,6 +20,23 @@ const EmployeeManagement = () => {
   const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
   const token = localStorage.getItem("token");
 
+  // Helper function to get image URL
+  const getImageUrl = (filePath) => {
+    if (!filePath) return null;
+    // If it's already a full URL, return as is
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    // If it starts with /, it's a relative path from root
+    if (filePath.startsWith('/')) {
+      return `${BASE_URL}${filePath}`;
+    }
+    // Otherwise, assume it's a relative path and prepend BASE_URL
+    return `${BASE_URL}/${filePath}`;
+  };
+
+  // Default placeholder avatar (data URI or use a default image)
+  const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23E5E7EB'/%3E%3Cpath d='M20 10c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 16c-4.4 0-8 1.8-8 4v2h16v-2c0-2.2-3.6-4-8-4z' fill='%239CA3AF'/%3E%3C/svg%3E";
 
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTab, setSelectedTab] = useState('Employee Management');
@@ -34,13 +51,13 @@ const EmployeeManagement = () => {
   const [modalPosition, setModalPosition] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employee, setEmployee] = useState([]);
-  const [loading, setLoading] = useState()
+  const [loading, setLoading] = useState();
+  const [selectedAvatarImage, setSelectedAvatarImage] = useState(null);
   const modalRef = useRef(null);
 
   const itemsPerPage = 5;
-  const totalPages = Math.ceil(employees.length / itemsPerPage);
+  const [totalPages, setTotalPages] = useState(1);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
 
   const handleClickLicenses = () => setShowImage(true);
   const handleClickInfraction = () => setShowInfraction(true);
@@ -74,9 +91,12 @@ const EmployeeManagement = () => {
           : [];
 
       setEmployee(employeesArray);
+      // Update total pages based on fetched employees
+      setTotalPages(Math.ceil(employeesArray.length / itemsPerPage));
     } catch (err) {
       console.error("❌ Error fetching employees:", err);
       setEmployee([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -215,20 +235,30 @@ const EmployeeManagement = () => {
 
                         <td className="px-10 py-1 border text-center">
                           <div className="flex items-center gap-1">
-                            {/* <img
-                src={emp.AvatarUrl || "/placeholder-avatar.png"}
-                alt="avatar"
-                className="w-10 h-10 rounded-full object-cover border"
-              /> */}
+                            <img
+                              src={getImageUrl(emp.FilePath) || defaultAvatar}
+                              alt="avatar"
+                              className="w-10 h-10 rounded-full object-cover border cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => {
+                                const imageUrl = getImageUrl(emp.FilePath);
+                                if (imageUrl) {
+                                  setSelectedAvatarImage(imageUrl);
+                                }
+                              }}
+                              onError={(e) => {
+                                // Fallback to default avatar if image fails to load
+                                e.target.src = defaultAvatar;
+                              }}
+                            />
                             <h2 className="w-40">{emp.Name || "N/A"}</h2>
                           </div>
                         </td>
 
-                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Adress || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Address || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.City || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Phone || "11111111"}</h2></td>
-                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.DOP
-                          ? new Date(emp.DOP).toLocaleDateString("en-US", {
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.DateOfBirth
+                          ? new Date(emp.DateOfBirth).toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "short",
                             day: "2-digit",
@@ -249,7 +279,7 @@ const EmployeeManagement = () => {
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp._1099 || "—"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.YTD || "—"}</h2></td>
                         <td className="px-10 py-1 border text-[#C01824] font-bold cursor-pointer">View</td>
-                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TerminalAssigned || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TerminalName || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.FuelCardCode || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.AppUserName || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-[#C01824] font-bold text-center"><h2 className="w-40">{emp.DirectDeposit || "N/A"}</h2></td>
@@ -275,8 +305,8 @@ const EmployeeManagement = () => {
                         <td className="px-10 py-1 border ">
                           <div
                             className={`w-[100px] h-[35px] flex items-center justify-center rounded ${emp.Availability === "Present"
-                                ? "bg-[#CCFAEB] text-[#0BA071]"
-                                : "bg-[#F6DCDE] text-[#C01824]"
+                              ? "bg-[#CCFAEB] text-[#0BA071]"
+                              : "bg-[#F6DCDE] text-[#C01824]"
                               }`}
                           >
                             {emp.Availability || "N/A"}
@@ -342,6 +372,34 @@ const EmployeeManagement = () => {
                   <div className="flex"><span className="w-20 font-medium">Status:</span><span className="text-[#67696A]">Pending</span></div>
                   <div className="flex"><span className="w-20 font-medium">Type:</span><span className="text-[#67696A]">Signal Break</span></div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Full Size Avatar Modal */}
+          {selectedAvatarImage && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+              onClick={() => setSelectedAvatarImage(null)}
+            >
+              <div className="relative max-w-4xl max-h-[90vh] p-4">
+                <button
+                  onClick={() => setSelectedAvatarImage(null)}
+                  className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-all z-10"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <img
+                  src={selectedAvatarImage}
+                  alt="Employee Avatar"
+                  className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                  onClick={(e) => e.stopPropagation()}
+                  onError={(e) => {
+                    e.target.src = defaultAvatar;
+                  }}
+                />
               </div>
             </div>
           )}
