@@ -211,6 +211,10 @@ const menuItems = [
         handleOpen={handleStudentModal}
         editDriver={editStudentModal}
         studentEditData={studentEditData}
+        refreshStudents={() => {
+          // Add refresh logic here if needed
+          console.log("Refreshing students list...");
+        }}
       />
     </MainLayout>
   );

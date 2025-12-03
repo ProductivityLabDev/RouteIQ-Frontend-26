@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { Button, Card, Dialog, Typography } from '@material-tailwind/react'
 import { closeicon } from '@/assets'
-import axios from 'axios'
+import { useDispatch, useSelector } from 'react-redux';
+import { createStudent } from '@/redux/slices/studentSlice';
+import { toast } from 'react-hot-toast';
 
 export function AddStudent({ open, handleOpen, refreshStudents }) {
-    const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-    const token = localStorage.getItem("token");
+    const dispatch = useDispatch();
+    const { loading, error } = useSelector((state) => state.students);
 
     const [formData, setFormData] = useState({
         firstName: "",
@@ -18,10 +20,9 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
         address: "",
         guardian1: "" ,
         guardian2: "" ,
+        guardianEmail: "",
         busNo: ""
     });
-
-    const [submitting, setSubmitting] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -33,63 +34,42 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitting(true);
 
         try {
-            const payload = {
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                pickupLocation: formData.pickupLocation,
-                dropLocation: formData.dropLocation,
-                grade: formData.grade,
-                emergencyContact: formData.emergencyContact,
-                enrollmentNo: formData.enrollmentNo,
-                address: formData.address,
-                guardian1: formData.guardian1,
-                guardian2: formData.guardian2,
-                busNo: formData.busNo
-            };
+            const result = await dispatch(createStudent(formData));
 
-            console.log("📤 Sending payload:", payload);
+            if (createStudent.fulfilled.match(result)) {
+                toast.success(result.payload?.message || "Student created successfully!");
+                
+                // Reset form
+                setFormData({
+                    firstName: "",
+                    lastName: "",
+                    pickupLocation: "",
+                    dropLocation: "",
+                    grade: "",
+                    emergencyContact: "",
+                    enrollmentNo: "",
+                    address: "",
+                    guardian1: "",
+                    guardian2: "",
+                    guardianEmail: "",
+                    busNo: ""
+                });
 
-            const res = await axios.post(`${BASE_URL}/institute/create-student`, payload, {
-                withCredentials: true,
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+                // Refresh students list if callback provided
+                if (refreshStudents) {
+                    await refreshStudents();
+                }
 
-            console.log("✅ Student created:", res.data);
-            alert(res.data?.message || "Student created successfully!");
-
-            // Reset form
-            setFormData({
-                firstName: "",
-                lastName: "",
-                pickupLocation: "",
-                dropLocation: "",
-                grade: "",
-                emergencyContact: "",
-                enrollmentNo: "",
-                address: "",
-                guardian1: "",
-                guardian2: "",
-                busNo: ""
-            });
-
-            // Refresh students list if callback provided
-            if (refreshStudents) {
-                await refreshStudents();
+                // Close modal
+                handleOpen();
+            } else {
+                toast.error(result.payload || "Failed to create student. Please try again.");
             }
-
-            // Close modal
-            handleOpen();
         } catch (err) {
-            console.error("❌ Error creating student:", err.response?.data || err);
-            alert(err.response?.data?.message || "Failed to create student. Please try again.");
-        } finally {
-            setSubmitting(false);
+            console.error("❌ Error creating student:", err);
+            toast.error(err.message || "Failed to create student. Please try again.");
         }
     };
 
@@ -235,6 +215,17 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                                     placeholder="Guardian two"
                                     className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                                 />
+                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
+                                    Guardian Email
+                                </Typography>
+                                <input
+                                    type="email"
+                                    name="guardianEmail"
+                                    value={formData.guardianEmail}
+                                    onChange={handleChange}
+                                    placeholder="Guardian Email"
+                                    className=" outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                                />
                             </div>
                         </div>
                         <div className='space-x-4 flex justify-end'>
@@ -244,7 +235,7 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                                 className="mt-8 px-14 py-2.5 border-2 border-[#C01824] text-[18px] text-[#C01824] capitalize rounded-[6px]"
                                 size='lg'
                                 variant='outlined'
-                                disabled={submitting}
+                                disabled={loading.creating}
                             >
                                 Cancel
                             </Button>
@@ -253,9 +244,9 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                                 className="mt-8 px-14 py-2.5 bg-[#C01824] text-[18px] capitalize rounded-[6px]"
                                 variant='filled'
                                 size='lg'
-                                disabled={submitting}
+                                disabled={loading.creating}
                             >
-                                {submitting ? 'Submitting...' : 'Submit'}
+                                {loading.creating ? 'Submitting...' : 'Submit'}
                             </Button>
                         </div>
                     </form>
