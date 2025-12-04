@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import MainLayout from '@/layouts/SchoolLayout'
-import { Button, Typography } from '@material-tailwind/react'
+import { Button, Typography, Spinner } from '@material-tailwind/react'
 import { FaBars,  FaPen } from 'react-icons/fa'
 import { LakeviewSchoolLogo, RosewoodSchoolLogo, SkylineSchoolLogo, SpringdaleSchoolLogo } from '@/assets'
 import { SchoolManagementModal } from './SchoolManagementModal'
@@ -135,7 +135,7 @@ const useApiHierarchy = hierarchicalData.length > 0;
 
   return (
     <MainLayout>
-      <section className='w-full h-full'>
+      <section className="w-full min-h-[80vh] pb-6">
         <div className="flex w-full justify-between flex-row mt-5 mb-8 items-center">
           <Typography className="text-[23px] md:text-[32px] font-[700] text-[#000] mt-5 ps-2">
             School Management
@@ -151,11 +151,19 @@ const useApiHierarchy = hierarchicalData.length > 0;
         </div>
 
         {/* ------------ Dropdown Structure ------------ */}
-        {useApiHierarchy ? (
+        {loading.summary ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Spinner className="h-8 w-8 text-[#C01824]" />
+            <Typography className="mt-3 text-sm text-gray-500">
+              Loading schools...
+            </Typography>
+          </div>
+        ) : useApiHierarchy ? (
           hierarchicalData.map((district) => (
             <DropdownItem
               key={district.districtName}
-              title={district.districtName}
+              // title={district.districtName}
+              title={'District'}
               isOpen={openDistricts[district.districtName] || false}
               onToggle={() =>
                 setOpenDistricts((prev) => ({

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { announcementcardimg, filterIcon, vechileWhite } from '@/assets'
 import MainLayout from '@/layouts/SchoolLayout'
-import { Button, Card, CardBody, CardFooter, Typography } from '@material-tailwind/react'
+import { Button, Card, CardBody, CardFooter, Typography, Spinner } from '@material-tailwind/react'
 import { vehicleManagement } from '@/data/vehicleManagementData'
 import RepairSchedule from './RepairSchedule'
 import { Menu, MenuItem } from "@mui/material";
@@ -173,6 +173,7 @@ const VehicleManagement = () => {
 
     const getBuses = async () => {
         try {
+            setLoading(true);
             const res = await axios.get(`${BASE_URL}/institute/GetBusInfo`, {
                 withCredentials: true,
                 headers: { Authorization: `Bearer ${token}` },
@@ -284,8 +285,13 @@ const VehicleManagement = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white w-full rounded-[4px] border shadow-sm p-4 flex flex-wrap justify-center gap-6">
-                        {toogle ? (
+                    <div className="bg-white w-full rounded-[4px] border shadow-sm p-4 flex flex-wrap justify-center gap-6 min-h-[60vh]">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center h-full w-full">
+                                <Spinner className="h-8 w-8 text-[#C01824]" />
+                                <p className="mt-3 text-sm text-gray-500">Loading vehicles...</p>
+                            </div>
+                        ) : toogle ? (
                             <div className={`flex flex-wrap justify-center gap-6 px-2 ${buses.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
                                 {Object.keys(buses).map((terminal) => (
                                     <div key={terminal} className="mb-6">
@@ -408,11 +414,13 @@ const VehicleManagement = () => {
                             </div>
                         )}
 
-                        <div className="flex items-end justify-end space-x-2 w-[90%]">
-                            <span className="mr-2 text-black-700">Page</span>
-                            {renderPageNumbers()}
-                            <ChevronRightIcon className="w-5 h-5 text-gray-400" />
-                        </div>
+                        {!loading && (
+                            <div className="flex items-end justify-end space-x-2 w-[90%]">
+                                <span className="mr-2 text-black-700">Page</span>
+                                {renderPageNumbers()}
+                                <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                            </div>
+                        )}
                         <FilterModal open={open} onClose={() => setOpen(false)} />
                     </div>
                 </section>

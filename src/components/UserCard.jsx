@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { RiDeleteBin6Line, RiEditBoxFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers } from "@/redux/slices/usersSlice";
+import { Spinner } from "@material-tailwind/react";
 import { getAuthToken } from "@/configs/api";
 
 // Validation function to check if user data is valid
@@ -80,13 +81,20 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
 
     // Fetch users when component mounts or refreshTrigger changes
     useEffect(() => {
-        if (token) {
-            console.log("🔄 [UserCard] Dispatching fetchUsers action...");
-            dispatch(fetchUsers());
-        }
+    if (token) {
+      console.log("🔄 [UserCard] Dispatching fetchUsers action...");
+      dispatch(fetchUsers());
+    }
     }, [token, refreshTrigger, dispatch]);
 
-    if (loading) return <p>Loading users...</p>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-12">
+        <Spinner className="h-8 w-8 text-[#C01824]" />
+        <p className="mt-3 text-sm text-gray-500">Loading users...</p>
+      </div>
+    );
+  }
     
     if (error) {
         return (

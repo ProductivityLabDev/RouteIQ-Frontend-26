@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/layouts/SchoolLayout';
-import { Button, Typography } from '@material-tailwind/react';
+import { Button, Typography, Spinner } from '@material-tailwind/react';
 import { FaEllipsisVertical } from 'react-icons/fa6';
 import { studentData as initialStudentData } from '@/data/vendor-students-data';
-import { NoteIcon } from '@/assets';
+import { NoteIcon, profileavatar } from '@/assets';
 import MenuComponent from '@/components/MenuComponent';
 import { StudentManagementModal } from './StudentManagementModal';
 import StudentNoticeModal from './StudentNoticeModal';
@@ -24,6 +24,7 @@ const Students = () => {
   const [studentEditData, setStudentEditData] = useState(null);
   // will be filled from API – no static rows
   const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { instituteId, schoolName } = location.state || {};
@@ -34,6 +35,7 @@ const Students = () => {
       if (!instituteId) return;
 
       try {
+        setLoading(true);
         console.log('[Students] Loading students for instituteId:', instituteId);
         const result = await dispatch(fetchStudentsByInstitute(instituteId));
         if (fetchStudentsByInstitute.fulfilled.match(result)) {
@@ -42,8 +44,8 @@ const Students = () => {
 
           const mapped = apiStudents.map((student, index) => ({
             id: student.StudentId || index + 1,
-            // static/sample photo if API has no image field
-            studentPic: initialStudentData[0]?.studentPic,
+            // default human avatar icon for Photo column
+            studentPic: profileavatar,
             studentName: student.StudentName || '',
             busNo: student.BusNo || '',
             routeNo: student.RouteNo || '',
@@ -59,6 +61,8 @@ const Students = () => {
         }
       } catch (e) {
         console.error('Error loading students by institute:', e);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -139,6 +143,14 @@ const menuItems = [
         </div>
 
         <div className="w-full mt-5 p-4 bg-white rounded-[4px] border shadow-sm h-[80vh]">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <Spinner className="h-8 w-8 text-[#C01824]" />
+              <Typography className="mt-3 text-sm text-gray-500">
+                Loading students...
+              </Typography>
+            </div>
+          ) : (
           <div className="overflow-x-auto mt-3 border border-gray-200 rounded h-[75vh]">
             <table className="min-w-full">
               <thead className="bg-[#EEEEEE]">
@@ -169,7 +181,7 @@ const menuItems = [
                     <td className="px-6 py-2 border-b text-sm">
                       <img
                         src={student.studentPic}
-                        className="w-10 h-10 rounded-full"
+                        className="w-9 h-9 rounded-full object-cover border border-gray-200"
                         alt="student"
                       />
                     </td>
@@ -242,6 +254,7 @@ const menuItems = [
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </section>
 

@@ -4,7 +4,7 @@ import { ChevronRightIcon } from '@heroicons/react/24/solid';
 import { employees } from '@/data/dummyData';
 import { ActiveTick, licencesPic, unactiveCross } from '@/assets';
 import { FaEllipsisVertical } from 'react-icons/fa6';
-import { Button, ButtonGroup } from '@material-tailwind/react';
+import { Button, ButtonGroup, Spinner } from '@material-tailwind/react';
 import { Toaster } from 'react-hot-toast';
 import AddDriver from './AddDriver';
 import EditDriver from './EditDriver';
@@ -51,7 +51,7 @@ const EmployeeManagement = () => {
   const [modalPosition, setModalPosition] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employee, setEmployee] = useState([]);
-  const [loading, setLoading] = useState();
+  const [loading, setLoading] = useState(false);
   const [selectedAvatarImage, setSelectedAvatarImage] = useState(null);
   const modalRef = useRef(null);
 
@@ -80,6 +80,7 @@ const EmployeeManagement = () => {
 
   const getEmployee = async () => {
     try {
+      setLoading(true);
       const res = await axios.get(`${BASE_URL}/institute/GetEmployeeInfo`, {
         withCredentials: true,
         headers: { Authorization: `Bearer ${token}` },
@@ -211,7 +212,13 @@ const EmployeeManagement = () => {
       ) : editEmployee ? (
         <EditDriver handleCancel={handleEditCancel} />
       ) : (
-        <div className="bg-white w-full rounded-[4px] border shadow-sm p-4 flex flex-col items-center gap-6">
+        <div className="bg-white w-full rounded-[4px] border shadow-sm p-4 flex flex-col items-center gap-6 min-h-[60vh]">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full w-full">
+              <Spinner className="h-8 w-8 text-[#C01824]" />
+              <p className="mt-3 text-sm text-gray-500">Loading employees...</p>
+            </div>
+          ) : (
           <div className="overflow-x-auto w-full">
             <table className="min-w-full border-collapse border">
               <thead className="bg-gray-100">
@@ -336,11 +343,14 @@ const EmployeeManagement = () => {
 
             </table>
           </div>
+          )}
 
           {/* Pagination controls */}
-          <div className="mt-4 flex justify-center">
-            {renderPageNumbers()}
-          </div>
+          {!loading && (
+            <div className="mt-4 flex justify-center">
+              {renderPageNumbers()}
+            </div>
+          )}
 
           {/* Modal Menus */}
           {isModalOpen && (

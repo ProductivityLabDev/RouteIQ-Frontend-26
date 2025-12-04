@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FaAngleLeft, FaAngleRight } from 'react-icons/fa6';
 import axios from 'axios';
 import { BASE_URL } from '@/configs/api';
+import { Spinner } from '@material-tailwind/react';
 
 const SchoolManagementUserTable = ({ instituteId }) => {
   const [rows, setRows] = useState([]);
@@ -138,7 +139,8 @@ const SchoolManagementUserTable = ({ instituteId }) => {
   if (loading) {
     return (
       <div className="mt-3 mb-3 w-[95%] mx-auto text-center py-8">
-        <p className="text-gray-500">Loading students...</p>
+        <Spinner className="h-6 w-6 mx-auto text-[#C01824]" />
+        <p className="mt-2 text-gray-500 text-sm">Loading students...</p>
       </div>
     );
   }
