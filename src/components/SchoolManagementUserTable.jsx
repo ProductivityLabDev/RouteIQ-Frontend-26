@@ -1,23 +1,103 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaAngleLeft, FaAngleRight } from 'react-icons/fa6';
+import axios from 'axios';
+import { BASE_URL } from '@/configs/api';
 
-const SchoolTable = () => {
+const SchoolManagementUserTable = ({ instituteId }) => {
+  const [rows, setRows] = useState([]);
   const [editingRowIndex, setEditingRowIndex] = useState(null);
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const initialRows = Array.from({ length: 10 }, (_, i) => ({
-    id: i + 1,
-    name: `Name ${i + 1}`,
-    title: `Title ${i + 1}`,
-    phone1: `0300-000000${i}`,
-    phone2: `0311-000000${i}`,
-    email: `user${i}@example.com`,
-    supervisor: `Supervisor ${i + 1}`,
-    username: `retailUser${i + 1}`,
-    grade: `Grade ${i + 1}`,
-  }));
+  console.log("🔍 [SchoolManagementUserTable] Render with instituteId:", instituteId, "type:", typeof instituteId);
 
-  const [rows, setRows] = useState(initialRows);
+  // If no instituteId provided, show clear message
+  if (!instituteId) {
+    return (
+      <div className="mt-3 mb-3 w-[95%] mx-auto text-center py-8">
+        <p className="text-red-500">Error: No Institute ID provided for this school.</p>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Normalise instituteId
+        const instituteIdParam =
+          typeof instituteId === 'string' ? parseInt(instituteId, 10) : Number(instituteId);
+
+        console.log("📡 [SchoolManagementUserTable] Normalised instituteId:", instituteIdParam);
+
+        if (!instituteIdParam || isNaN(instituteIdParam)) {
+          console.error("❌ [SchoolManagementUserTable] Invalid instituteId:", instituteId);
+          setError(`Invalid InstituteId: ${instituteId}`);
+          return;
+        }
+
+        const token = localStorage.getItem('token');
+        console.log("🔑 [SchoolManagementUserTable] Token exists:", !!token);
+        if (!token) {
+          setError("Authentication token not found. Please log in again.");
+          return;
+        }
+
+        const apiUrl = `${BASE_URL}/institute/GetStudentsByInstitute?InstituteId=${instituteIdParam}`;
+        console.log("📡 [SchoolManagementUserTable] Request URL:", apiUrl);
+
+        const res = await axios.get(apiUrl, {
+          withCredentials: true,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log("✅ [SchoolManagementUserTable] Raw response:", res.data);
+
+        // Handle possible response shapes
+        let studentsArray = [];
+        if (Array.isArray(res.data)) {
+          studentsArray = res.data;
+        } else if (res.data?.ok === true && Array.isArray(res.data.data)) {
+          studentsArray = res.data.data;
+        } else if (Array.isArray(res.data?.data)) {
+          studentsArray = res.data.data;
+        } else {
+          console.error("❌ [SchoolManagementUserTable] Unexpected response shape:", res.data);
+        }
+
+        console.log("📊 [SchoolManagementUserTable] Parsed studentsArray length:", studentsArray.length);
+        if (studentsArray.length > 0) {
+          console.log("📊 [SchoolManagementUserTable] First student:", studentsArray[0]);
+        }
+
+        // Map API students to table rows
+        const mappedRows = studentsArray.map((student, index) => ({
+          id: student.StudentId || index + 1,
+          name: student.StudentName || '',
+          title: student.Grade || '',
+          phone1: student.EmergencyContact || '',
+          phone2: student.BusNo || '',
+          email: '', // not provided by API
+          supervisor: student.EmergencyContactName || '',
+          username: student.Enrollment || '',
+          grade: student.Grade || '',
+        }));
+
+        console.log("📊 [SchoolManagementUserTable] Mapped rows:", mappedRows);
+        setRows(mappedRows);
+      } catch (err) {
+        console.error("❌ [SchoolManagementUserTable] Error fetching students:", err);
+        setError(err.response?.data?.message || err.message || "Failed to fetch students");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, [instituteId]);
 
   const handleEditClick = (index) => {
     if (editingRowIndex === index) {
@@ -28,11 +108,9 @@ const SchoolTable = () => {
     }
   };
 
-  const handleDelete = (index) => {
-    const updated = [...rows];
-    updated.splice(index, 1); // remove the row
-    setRows(updated);
-    setEditingRowIndex(null); // just in case the deleted row was in edit mode
+  const handleDelete = () => {
+    // Just close edit mode for now; no delete API wired yet
+    setEditingRowIndex(null);
   };
 
   const handleChange = (e) => {
@@ -56,6 +134,30 @@ const SchoolTable = () => {
   };
 
   const inputStyle = `w-full border border-gray-300 rounded px-2 py-1 text-sm`;
+
+  if (loading) {
+    return (
+      <div className="mt-3 mb-3 w-[95%] mx-auto text-center py-8">
+        <p className="text-gray-500">Loading students...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-3 mb-3 w-[95%] mx-auto text-center py-8">
+        <p className="text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
+
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="mt-3 mb-3 w-[95%] mx-auto text-center py-8">
+        <p className="text-gray-500">No students found for this school.</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -96,14 +198,14 @@ const SchoolTable = () => {
                   </>
                 ) : (
                   <>
-                    <td className="px-3 py-2 text-sm">{row.name}</td>
-                    <td className="px-3 py-2 text-sm">{row.title}</td>
-                    <td className="px-3 py-2 text-sm">{row.phone1}</td>
-                    <td className="px-3 py-2 text-sm">{row.phone2}</td>
-                    <td className="px-3 py-2 text-sm">{row.email}</td>
-                    <td className="px-3 py-2 text-sm">{row.supervisor}</td>
-                    <td className="px-3 py-2 text-sm">{row.username}</td>
-                    <td className="px-3 py-2 text-sm">{row.grade}</td>
+                    <td className="px-3 py-2 text-sm">{row.name || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm">{row.title || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm">{row.phone1 || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm">{row.phone2 || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm">{row.email || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm">{row.supervisor || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm">{row.username || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm">{row.grade || 'N/A'}</td>
                     <td className="px-3 py-2 flex flex-col gap-1">
                       <button
                         onClick={() => handleEditClick(index)}
@@ -112,7 +214,7 @@ const SchoolTable = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(index)}
+                        onClick={handleDelete}
                         className="bg-red-600 text-white px-3 py-1 text-xs rounded"
                       >
                         Delete
@@ -147,4 +249,4 @@ const SchoolTable = () => {
   );
 };
 
-export default SchoolTable;
+export default SchoolManagementUserTable;

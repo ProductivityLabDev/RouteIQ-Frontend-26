@@ -112,6 +112,27 @@ export function SignIn() {
       // Decode JWT token to get user info
       const decoded = jwtDecode(token);
 
+      console.log("🔍 [SignIn] ========== TOKEN DECODING ==========");
+      console.log("🔍 [SignIn] Full decoded token:", decoded);
+      console.log("🔍 [SignIn] All token keys:", Object.keys(decoded));
+      console.log("🔍 [SignIn] Checking for instituteId...");
+      console.log("🔍 [SignIn] decoded.instituteId:", decoded.instituteId);
+      console.log("🔍 [SignIn] decoded.InstituteId:", decoded.InstituteId);
+      console.log("🔍 [SignIn] decoded.institute_id:", decoded.institute_id);
+      console.log("🔍 [SignIn] decoded.instituteID:", decoded.instituteID);
+      console.log("🔍 [SignIn] decoded.InstituteID:", decoded.InstituteID);
+
+      // Extract instituteId from token (for school login)
+      const instituteId = decoded.instituteId 
+        || decoded.InstituteId 
+        || decoded.institute_id
+        || decoded.instituteID
+        || decoded.InstituteID
+        || null;
+
+      console.log("✅ [SignIn] Extracted instituteId:", instituteId);
+      console.log("🔍 [SignIn] ====================================");
+
       // Create modules map from decoded token
       const modulesMap = (decoded.modules || []).reduce((acc, mod) => {
         acc[mod.module] = { canRead: mod.canRead, canWrite: mod.canWrite };
@@ -129,10 +150,16 @@ export function SignIn() {
         role: decoded.role || "USER",
         modules: modulesMap,
         control: permission,
+        instituteId: instituteId, // Store instituteId for school login
       };
 
       // Store user in localStorage
       localStorage.setItem("user", JSON.stringify(realUser));
+      
+      // Also store instituteId separately for easy access
+      if (instituteId) {
+        localStorage.setItem("instituteId", instituteId.toString());
+      }
 
       // Dispatch to Redux
       dispatch(setUser({ user: realUser, token }));
@@ -294,7 +321,4 @@ export function SignIn() {
 }
 
 export default SignIn;
-{/* <Typography variant="paragraph" className="text-center text-gray-700 font-medium mt-4">
-            Not registered?
-            <Link to="/account/sign-up" className="text-gray-900 ml-1">Create account</Link>
-          </Typography> */}
+

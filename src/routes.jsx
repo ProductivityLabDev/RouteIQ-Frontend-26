@@ -16,6 +16,7 @@ import {
   FeedbackSupport,
 } from "@/pages/dashboard";
 import { ForgotPassword, SignIn, SignInVendor, SignUp } from "@/pages/auth";
+import Logout from "@/pages/auth/logout";
 import NotFound from "@/components/NotFound";
 import { announcementicon, communicationicon, dashboardicon, logouticon, manageicon, routescheduleicon, settingsicon, tripplannericon } from "./assets";
 
@@ -86,7 +87,7 @@ export const bottomRoutes = [
       icon: <img src={logouticon} alt="Logout" className="w-5 h-5" />,
       name: "logout",
       path: "/logout",
-      element: <SignIn/>,
+      element: <Logout/>,
     },
   ],
 }

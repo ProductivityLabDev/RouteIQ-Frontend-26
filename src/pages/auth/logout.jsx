@@ -14,6 +14,8 @@ export default function Logout() {
                 await persistor.purge();
                 localStorage.removeItem("token");
                 localStorage.removeItem("vendor");
+                localStorage.removeItem("user");
+                localStorage.removeItem("instituteId");
                 sessionStorage.clear();
                 Cookies.remove("token");
 

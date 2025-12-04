@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import MainLayout from '@/layouts/SchoolLayout'
 import { Button, Typography } from '@material-tailwind/react'
 import { FaBars,  FaPen } from 'react-icons/fa'
@@ -6,92 +6,132 @@ import { LakeviewSchoolLogo, RosewoodSchoolLogo, SkylineSchoolLogo, SpringdaleSc
 import { SchoolManagementModal } from './SchoolManagementModal'
 import { DropdownItem } from '@/components/DropDown'
 import SchoolManagementUserTable from '@/components/SchoolManagementUserTable';
-import { FaAngleLeft } from "react-icons/fa6";
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchSchoolManagementSummary } from '@/redux/slices/schoolSlice'
 
 const SchoolManagement = () => {
-  const [openSchoolManagementModal, setOpenSchoolManagementModal] = useState(false)
-  const [editInstitute, setEditInstitute] = useState(false)
-  const [openDistrict, setOpenDistrict] = useState(false)
-  const [openAreas, setOpenAreas] = useState([false, false])
-  const [openSchools, setOpenSchools] = useState([false, false, false, false])
-  const [editingSchoolIndex, setEditingSchoolIndex] = useState(null);
+  const dispatch = useDispatch();
+  const [openSchoolManagementModal, setOpenSchoolManagementModal] = useState(false);
+  const [editInstitute, setEditInstitute] = useState(false);
+  const [editingSchoolKey, setEditingSchoolKey] = useState(null);
+  const [openDistricts, setOpenDistricts] = useState({});
+  const [openTerminals, setOpenTerminals] = useState({});
   const navigate = useNavigate();
+  const { schoolManagementSummary, loading } = useSelector((state) => state.schools);
 
-
-const handleNavigate = () => {
- navigate('/StudentManagement')
-}
+  // Fetch real schools data on mount
+  useEffect(() => {
+    console.log("📡 [SchoolManagement] Mounting, dispatching fetchSchoolManagementSummary...");
+    dispatch(fetchSchoolManagementSummary());
+  }, [dispatch]);
 
   const handleOpenPopUp = () => {
-    setOpenSchoolManagementModal(!openSchoolManagementModal)
-    setEditInstitute(false)
-  }
+    setOpenSchoolManagementModal(!openSchoolManagementModal);
+    setEditInstitute(false);
+  };
 
   const handleEditInstitutePopUp = () => {
-    setOpenSchoolManagementModal(!openSchoolManagementModal)
-    setEditInstitute(true)
-  }
-  
+    setOpenSchoolManagementModal(!openSchoolManagementModal);
+    setEditInstitute(true);
+  };
 
-  const toggleDistrict = () => {
-    if (openSchools.some(isOpen => isOpen)) {
-      setOpenSchools([false, false, false, false])
-    } else if (openAreas.some(isOpen => isOpen)) {
-      setOpenAreas([false, false])
-    } else {
-      setOpenDistrict(!openDistrict)
+  // Build District -> Terminal -> Schools hierarchy from API
+  const hierarchicalData = useMemo(() => {
+    console.log("📊 [SchoolManagement] schoolManagementSummary from Redux:", schoolManagementSummary);
+
+    if (!Array.isArray(schoolManagementSummary) || schoolManagementSummary.length === 0) {
+      console.log("⚠️ [SchoolManagement] No summary data; hierarchy will be empty (static UI only).");
+      return [];
     }
-  }
 
-  const toggleArea = (index) => {
-    if (openSchools.some(isOpen => isOpen)) {
-      setOpenSchools([false, false, false, false])
-    } else {
-      const newOpenAreas = openAreas.map((_, i) => i === index ? !openAreas[i] : false)
-      setOpenAreas(newOpenAreas)
+    const districtMap = {};
 
-      if (!newOpenAreas[index]) {
-        setOpenDistrict(false)
+    schoolManagementSummary.forEach((item) => {
+      const districtName = item.District || "District";
+      const terminalId = item.TerminalId || 1;
+      const terminalName = item.TerminalName || `Terminal ${terminalId}`;
+
+      if (!districtMap[districtName]) {
+        districtMap[districtName] = {};
       }
-    }
-  }
 
-  const toggleSchool = (index) => {
-    setOpenSchools(openSchools.map((_, i) => i === index ? !openSchools[i] : false))
-  }
+      if (!districtMap[districtName][terminalId]) {
+        districtMap[districtName][terminalId] = {
+          terminalId,
+          terminalName,
+          schools: [],
+        };
+      }
 
-const schools = [
+      // Normalise InstituteId (can sometimes come as array or comma-separated string)
+      let normalizedInstituteId = item.InstituteId;
+      if (Array.isArray(normalizedInstituteId)) {
+        normalizedInstituteId = normalizedInstituteId[0];
+      } else if (typeof normalizedInstituteId === "string") {
+        const parts = normalizedInstituteId.split(",").map((p) => p.trim());
+        normalizedInstituteId = parts[0] ? Number(parts[0]) : null;
+      }
+
+      districtMap[districtName][terminalId].schools.push({
+        instituteId: normalizedInstituteId,
+        name: item.InstituteName,
+        logo: SkylineSchoolLogo,
+        totalStudents: item.TotalStudents || 0,
+        totalBuses: item.TotalBuses || 0,
+        address: item.Address,
+        raw: item,
+      });
+    });
+
+    const result = Object.entries(districtMap).map(([districtName, terminals]) => ({
+      districtName,
+      terminals: Object.values(terminals),
+    }));
+
+    console.log("📊 [SchoolManagement] Built hierarchicalData:", result);
+    return result;
+  }, [schoolManagementSummary]);
+
+// Fallback static schools (only used if there's no API data; not grouped)
+const fallbackSchools = [
   {
     name: 'Skyline High School',
     logo: SkylineSchoolLogo,
     totalStudents: 459,
     totalBuses: 10,
-    address: '123 Skyline Ave, City Center'
+    address: '123 Skyline Ave, City Center',
+    instituteId: null,
   },
   {
     name: 'Lakeview High School',
     logo: LakeviewSchoolLogo,
     totalStudents: 459,
     totalBuses: 10,
-    address: '456 Lakeview Rd, Riverside'
+    address: '456 Lakeview Rd, Riverside',
+    instituteId: null,
   },
   {
     name: 'Springdale Elementary School',
     logo: SpringdaleSchoolLogo,
     totalStudents: 459,
     totalBuses: 10,
-    address: '789 Spring St, Downtown'
+    address: '789 Spring St, Downtown',
+    instituteId: null,
   },
   {
     name: 'Rosewood Elementary School',
     logo: RosewoodSchoolLogo,
     totalStudents: 459,
     totalBuses: 10,
-    address: '321 Rosewood Blvd, Suburbia'
+    address: '321 Rosewood Blvd, Suburbia',
+    instituteId: null,
   },
-]
+];
+
+// If we have API hierarchy, use that; otherwise we'll show one static district/terminal list
+const useApiHierarchy = hierarchicalData.length > 0;
 
   return (
     <MainLayout>
@@ -111,98 +151,141 @@ const schools = [
         </div>
 
         {/* ------------ Dropdown Structure ------------ */}
-        <DropdownItem title="District" isOpen={openDistrict} onToggle={toggleDistrict}>
-          {openAreas.map((isOpen, index) => (
-            <DropdownItem key={index} title="Terminal 1" isOpen={isOpen} onToggle={() => toggleArea(index)}>
-             {schools.map((school, schoolIndex) => (
-            <div key={schoolIndex} className="flex flex-col">
-                <div className="flex items-center justify-between bg-white border rounded-lg shadow-sm py-3 px-4 my-2">
-                {/* Left: Drag, Logo, Name, Edit */}
-                 <div className="flex items-center gap-3 flex-1">
+        {useApiHierarchy ? (
+          hierarchicalData.map((district) => (
+            <DropdownItem
+              key={district.districtName}
+              title={district.districtName}
+              isOpen={openDistricts[district.districtName] || false}
+              onToggle={() =>
+                setOpenDistricts((prev) => ({
+                  ...prev,
+                  [district.districtName]: !prev[district.districtName],
+                }))
+              }
+            >
+              {district.terminals.map((terminal) => {
+                const terminalKey = `${district.districtName}-${terminal.terminalId}`;
+                return (
+                  <DropdownItem
+                    key={terminalKey}
+                    title={terminal.terminalName}
+                    isOpen={openTerminals[terminalKey] || false}
+                    onToggle={() =>
+                      setOpenTerminals((prev) => ({
+                        ...prev,
+                        [terminalKey]: !prev[terminalKey],
+                      }))
+                    }
+                  >
+                    {terminal.schools.map((school, schoolIndex) => {
+                      const schoolKey = `${district.districtName}-${terminal.terminalId}-${school.instituteId || schoolIndex}`;
+                      const isOpen = editingSchoolKey === schoolKey;
+                      return (
+                        <div key={schoolKey} className="flex flex-col">
+                          <div className="flex items-center justify-between bg-white border rounded-lg shadow-sm py-3 px-4 my-2">
+                            {/* Left: Drag, Logo, Name, Edit */}
+                            <div className="flex items-center gap-3 flex-1">
+                              <FaBars className="text-gray-600 cursor-move" />
+                              <img src={school.logo} alt={school.name} className="w-10 h-10 rounded" />
+                              <div className="flex flex-col">
+                                <p className="text-black font-semibold whitespace-nowrap">{school.name}</p>
+                                <p className="text-gray-500 text-xs whitespace-nowrap">{school.address}</p>
+                              </div>
+                              <FaPen
+                                className="text-gray-600 cursor-pointer ml-2"
+                                onClick={() =>
+                                  setEditingSchoolKey(isOpen ? null : schoolKey)
+                                }
+                              />
+                            </div>
+
+                            {/* Middle - navigate to Student Management with instituteId */}
+                            <div className="flex justify-center flex-1">
+                              <button
+                                className="bg-[#C01824] text-white font-semibold text-sm px-4 py-2 rounded"
+                                onClick={() =>
+                                  navigate('/StudentManagement', {
+                                    state: {
+                                      instituteId: school.instituteId,
+                                      schoolName: school.name,
+                                    },
+                                  })
+                                }
+                              >
+                                Student Management
+                              </button>
+                            </div>
+
+                            {/* Right: Stats + Chevron */}
+                            <div className="flex items-center gap-6">
+                              <p className="text-[18] text-black whitespace-nowrap">
+                                Total Students: <strong>{school.totalStudents}</strong>
+                              </p>
+                              <p className="text-[18] text-black whitespace-nowrap">
+                                Total Buses: <strong>{school.totalBuses}</strong>
+                              </p>
+                              {isOpen ? (
+                                <FaChevronUp
+                                  className="text-gray-600 cursor-pointer"
+                                  onClick={() => setEditingSchoolKey(null)}
+                                />
+                              ) : (
+                                <FaChevronDown
+                                  className="text-gray-600 cursor-pointer"
+                                  onClick={() => setEditingSchoolKey(schoolKey)}
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Conditionally render user table for this school */}
+                          {isOpen && (
+                            school.instituteId ? (
+                              <SchoolManagementUserTable instituteId={school.instituteId} />
+                            ) : (
+                              <div className="mt-3 mb-3 w-[95%] mx-auto text-center py-8">
+                                <p className="text-red-500">No Institute ID configured for this school.</p>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
+                  </DropdownItem>
+                );
+              })}
+            </DropdownItem>
+          ))
+        ) : (
+          // Static fallback if no API hierarchy is available
+          <DropdownItem title="District" isOpen={true} onToggle={() => {}}>
+            <DropdownItem title="Terminal 1" isOpen={true} onToggle={() => {}}>
+              {fallbackSchools.map((school, schoolIndex) => (
+                <div key={schoolIndex} className="flex flex-col">
+                  <div className="flex items-center justify-between bg-white border rounded-lg shadow-sm py-3 px-4 my-2">
+                    <div className="flex items-center gap-3 flex-1">
                       <FaBars className="text-gray-600 cursor-move" />
                       <img src={school.logo} alt={school.name} className="w-10 h-10 rounded" />
                       <div className="flex flex-col">
-                      <p className="text-black font-semibold whitespace-nowrap">{school.name}</p>
-                      <p className="text-gray-500 text-xs whitespace-nowrap">{school.address}</p>
+                        <p className="text-black font-semibold whitespace-nowrap">{school.name}</p>
+                        <p className="text-gray-500 text-xs whitespace-nowrap">{school.address}</p>
                       </div>
-                      <FaPen
-                        className="text-gray-600 cursor-pointer ml-2"
-                        onClick={() =>
-                          setEditingSchoolIndex(editingSchoolIndex === schoolIndex ? null : schoolIndex)
-                        }
-                      />
                     </div>
-                    
-               {/* Middle */}
-                    <div className="flex justify-center flex-1">
-                      <button
-                        className="bg-[#C01824] text-white font-semibold text-sm px-4 py-2 rounded"
-                        onClick={handleNavigate}
-                      >
-                        Student Management
-                      </button>
-                    </div>
-
-                     {/* <div className="flex justify-center flex-1">
-                      <button
-                        className="bg-[#C01824] text-white font-semibold text-sm px-4 py-2 rounded"
-                        onClick={handleNavigate}
-                      >
-                        Add Contact
-                      </button>
-                    </div> */}
-
-                     {/* <div className="flex justify-center flex-1">
-                      <button
-                        className="bg-[#C01824] text-white font-semibold text-sm px-4 py-2 rounded"
-                        onClick={handleNavigate}
-                      >
-                        Cancel Contact
-                      </button>
-                    </div> */}
-
-                    {/* Right: Stats + Chevron */}
                     <div className="flex items-center gap-6">
-                        <p className="text-[18] text-black whitespace-nowrap">
+                      <p className="text-[18] text-black whitespace-nowrap">
                         Total Students: <strong>{school.totalStudents}</strong>
-                        </p>
-                        <p className="text-[18] text-black whitespace-nowrap">
+                      </p>
+                      <p className="text-[18] text-black whitespace-nowrap">
                         Total Buses: <strong>{school.totalBuses}</strong>
-                        </p>
-                        {editingSchoolIndex === schoolIndex ? (
-                    <FaChevronUp
-                        className="text-gray-600 cursor-pointer"
-                        onClick={() =>
-                        setEditingSchoolIndex(editingSchoolIndex === schoolIndex ? null : schoolIndex)
-                        }
-                    />
-                    ) : (
-                    <FaChevronDown
-                        className="text-gray-600 cursor-pointer"
-                        onClick={() =>
-                        setEditingSchoolIndex(editingSchoolIndex === schoolIndex ? null : schoolIndex)
-                        }
-                    />
-                    )}
+                      </p>
                     </div>
-                    </div>
-
-                    {/* Conditionally render user table for this school */}
-                    {editingSchoolIndex === schoolIndex && (
-                    <SchoolManagementUserTable />
-                    )}
+                  </div>
                 </div>
-                
-                ))}
+              ))}
             </DropdownItem>
-            ))}
-        </DropdownItem>
-
-    
-
-        {/* Extra collapsed districts for later use */}
-        <DropdownItem title="District" isOpen={false} onToggle={() => { }} />
-        <DropdownItem title="District" isOpen={false} onToggle={() => { }} />
+          </DropdownItem>
+        )}
       </section>
 
       <SchoolManagementModal

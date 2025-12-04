@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import MainLayout from '@/layouts/SchoolLayout';
 import { Button, Typography } from '@material-tailwind/react';
 import { FaEllipsisVertical } from 'react-icons/fa6';
@@ -7,12 +7,15 @@ import { NoteIcon } from '@/assets';
 import MenuComponent from '@/components/MenuComponent';
 import { StudentManagementModal } from './StudentManagementModal';
 import StudentNoticeModal from './StudentNoticeModal';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { GrDocumentCsv } from "react-icons/gr";
+import { useDispatch } from 'react-redux';
+import { fetchStudentsByInstitute } from '@/redux/slices/studentSlice';
 
 
 
 const Students = () => {
+  const dispatch = useDispatch();
   const [anchorEl1, setAnchorEl1] = useState(null);
   const [openStudentModal, setOpenStudentModal] = useState(false);
   const [openStudentNoticeModal, setOpenStudentNoticeModal] = useState(false);
@@ -21,6 +24,50 @@ const Students = () => {
   const [studentEditData, setStudentEditData] = useState(null);
   const [students, setStudents] = useState(initialStudentData);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { instituteId, schoolName } = location.state || {};
+
+  // When coming from School Management with an instituteId, fetch students for that school
+  useEffect(() => {
+    const loadStudents = async () => {
+      if (!instituteId) return;
+
+      try {
+        const result = await dispatch(fetchStudentsByInstitute(instituteId));
+        if (fetchStudentsByInstitute.fulfilled.match(result)) {
+          const apiStudents = result.payload || [];
+
+          const mapped = apiStudents.map((student, index) => {
+            const [firstName, ...rest] = (student.StudentName || "").split(" ");
+            const lastName = rest.join(" ");
+
+            return {
+              id: student.StudentId || index + 1,
+              // reuse any sample picture from initial data as placeholder
+              studentPic: initialStudentData[0]?.studentPic,
+              firstName: firstName || '',
+              lastName: lastName || '',
+              emergencyContactName: student.EmergencyContactName || '',
+              emergencyPhone: student.EmergencyContact || '',
+              medicalDetails: '',
+              isAdmin: false,
+              contact1: {},
+              contact2: {},
+              attendanceStatus: 'Present',
+            };
+          });
+
+          if (mapped.length > 0) {
+            setStudents(mapped);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading students by institute:', e);
+      }
+    };
+
+    loadStudents();
+  }, [dispatch, instituteId]);
 
   const openInfraction = Boolean(anchorEl1);
 
@@ -73,7 +120,7 @@ const menuItems = [
       <section className="w-full h-full">
         <div className="flex w-full justify-between flex-row h-[65px] mb-3 items-center">
           <Typography className="text-[23px] md:text-[32px] font-[700] text-[#000] mt-5 ps-2">
-            Students
+            {schoolName ? `Students - ${schoolName}` : 'Students'}
           </Typography>
           <div className="flex justify-end gap-3 flex-row">
             <Button
@@ -102,17 +149,14 @@ const menuItems = [
                 <tr>
                   {[
                     'Photo',
-                    'First Name',
-                    'Last Name',
-                    'Emergency Name',
-                    'Emergency Phone',
-                    'Medical Details',
-                    'Notes',
-                    'Contact 1',
-                    'Contact 2',
-                    'Attendance Status',
-                    'Child Absence',
-                    'Action',
+                    'Student Name',
+                     'Bus No',
+                    'Route No',
+                    'Grade',
+                    'Emergency Contact Name',
+                    'Emergency Contact',
+                    'Enrollment No',
+                    'Address',
                   ].map((header) => (
                     <th
                       key={header}
@@ -133,31 +177,31 @@ const menuItems = [
                         alt="student"
                       />
                     </td>
-                    <td className="px-6 py-2 border-b text-sm">{student.firstName || 'N/A'}</td>
-                    <td className="px-6 py-2 border-b text-sm">{student.lastName || 'N/A'}</td>
+                    <td className="px-6 py-2 border-b text-sm">{student.studentName || 'N/A'}</td>
+                    {/* <td className="px-6 py-2 border-b text-sm">{student.lastName || 'N/A'}</td> */}
                     <td className="px-6 py-2 border-b text-sm">{student.emergencyContactName || 'N/A'}</td>
                     <td className="px-6 py-2 border-b text-sm">{student.emergencyPhone || 'N/A'}</td>
-                    <td className="px-6 py-2 border-b text-sm">
+                    {/* <td className="px-6 py-2 border-b text-sm">
                       {student?.isAdmin ? student.medicalDetails : '••••••'}
-                    </td>
-                    <td className="px-6 py-2 border-b text-sm text-center">
+                    </td> */}
+                    {/* <td className="px-6 py-2 border-b text-sm text-center">
                       <img
                         src={NoteIcon}
                         onClick={handleNotice}
                         className="cursor-pointer inline-block"
                       />
-                    </td>
-                    <td className="px-6 py-2 border-b text-sm">
+                    </td> */}
+                    {/* <td className="px-6 py-2 border-b text-sm">
                       <div><strong>Name:</strong> {student.contact1?.name || 'N/A'}</div>
                       <div><strong>Relation:</strong> {student.contact1?.relationship || 'N/A'}</div>
                       <div><strong>Phone:</strong> {student.contact1?.phone || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-2 border-b text-sm">
+                    </td> */}
+                    {/* <td className="px-6 py-2 border-b text-sm">
                       <div><strong>Name:</strong> {student.contact2?.name || 'N/A'}</div>
                       <div><strong>Relation:</strong> {student.contact2?.relationship || 'N/A'}</div>
                       <div><strong>Phone:</strong> {student.contact2?.phone || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-2 border-b text-sm">
+                    </td> */}
+                    {/* <td className="px-6 py-2 border-b text-sm">
                       <div
                         className={`${
                           student.attendanceStatus === 'Present' ? 'bg-[#CCFAEB]' : 'bg-[#F6DCDE]'
@@ -173,20 +217,20 @@ const menuItems = [
                           {student.attendanceStatus}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-2 border-b text-sm text-center">
+                    </td> */}
+                    {/* <td className="px-6 py-2 border-b text-sm text-center">
                       <img
                         src={NoteIcon}
                         className="cursor-pointer inline-block"
                         onClick={handleStudentNoticeModal}
                       />
-                    </td>
-                    <td className="px-6 py-2 border-b text-sm">
+                    </td> */}
+                    {/* <td className="px-6 py-2 border-b text-sm">
                       <FaEllipsisVertical
                         className="cursor-pointer"
                         onClick={(event) => handleClick(event, student)}
                       />
-                    </td>
+                    </td> */}
                   </tr>
                 ))}
                 <MenuComponent
