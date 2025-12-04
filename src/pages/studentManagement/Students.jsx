@@ -22,7 +22,8 @@ const Students = () => {
   const [editStudentModal, setStudentModal] = useState(false);
   const [noticeState, setNoticeState] = useState(false);
   const [studentEditData, setStudentEditData] = useState(null);
-  const [students, setStudents] = useState(initialStudentData);
+  // will be filled from API – no static rows
+  const [students, setStudents] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
   const { instituteId, schoolName } = location.state || {};
@@ -33,33 +34,28 @@ const Students = () => {
       if (!instituteId) return;
 
       try {
+        console.log('[Students] Loading students for instituteId:', instituteId);
         const result = await dispatch(fetchStudentsByInstitute(instituteId));
         if (fetchStudentsByInstitute.fulfilled.match(result)) {
           const apiStudents = result.payload || [];
+          console.log('[Students] API students from slice:', apiStudents);
 
-          const mapped = apiStudents.map((student, index) => {
-            const [firstName, ...rest] = (student.StudentName || "").split(" ");
-            const lastName = rest.join(" ");
+          const mapped = apiStudents.map((student, index) => ({
+            id: student.StudentId || index + 1,
+            // static/sample photo if API has no image field
+            studentPic: initialStudentData[0]?.studentPic,
+            studentName: student.StudentName || '',
+            busNo: student.BusNo || '',
+            routeNo: student.RouteNo || '',
+            grade: student.Grade || '',
+            emergencyContactName: student.EmergencyContactName || '',
+            emergencyPhone: student.EmergencyContact || '',
+            enrollment: student.Enrollment || '',
+            address: student.Address || '',
+          }));
 
-            return {
-              id: student.StudentId || index + 1,
-              // reuse any sample picture from initial data as placeholder
-              studentPic: initialStudentData[0]?.studentPic,
-              firstName: firstName || '',
-              lastName: lastName || '',
-              emergencyContactName: student.EmergencyContactName || '',
-              emergencyPhone: student.EmergencyContact || '',
-              medicalDetails: '',
-              isAdmin: false,
-              contact1: {},
-              contact2: {},
-              attendanceStatus: 'Present',
-            };
-          });
-
-          if (mapped.length > 0) {
-            setStudents(mapped);
-          }
+          console.log('[Students] Mapped students for table:', mapped);
+          setStudents(mapped);
         }
       } catch (e) {
         console.error('Error loading students by institute:', e);
@@ -178,9 +174,13 @@ const menuItems = [
                       />
                     </td>
                     <td className="px-6 py-2 border-b text-sm">{student.studentName || 'N/A'}</td>
-                    {/* <td className="px-6 py-2 border-b text-sm">{student.lastName || 'N/A'}</td> */}
+                    <td className="px-6 py-2 border-b text-sm">{student.busNo || 'N/A'}</td>
+                    <td className="px-6 py-2 border-b text-sm">{student.routeNo || 'N/A'}</td>
+                    <td className="px-6 py-2 border-b text-sm">{student.grade || 'N/A'}</td>
                     <td className="px-6 py-2 border-b text-sm">{student.emergencyContactName || 'N/A'}</td>
                     <td className="px-6 py-2 border-b text-sm">{student.emergencyPhone || 'N/A'}</td>
+                    <td className="px-6 py-2 border-b text-sm">{student.enrollment || 'N/A'}</td>
+                    <td className="px-6 py-2 border-b text-sm">{student.address || 'N/A'}</td>
                     {/* <td className="px-6 py-2 border-b text-sm">
                       {student?.isAdmin ? student.medicalDetails : '••••••'}
                     </td> */}
