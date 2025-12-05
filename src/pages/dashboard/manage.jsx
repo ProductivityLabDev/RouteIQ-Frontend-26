@@ -9,6 +9,7 @@ import {
   Tooltip,
   Checkbox,
   ButtonGroup,
+  Spinner,
 } from "@material-tailwind/react";
 import { AddStudent, Delete, Note } from "@/components/TripPlanner";
 import {
@@ -294,7 +295,10 @@ export function Manage() {
             {loading && selectedTab === "Students" ? (
               <tr>
                 <td colSpan={STUDENTS_TABLE_HEAD.length + 1} className="px-4 py-8 text-center">
-                  <Typography className="text-gray-500">Loading students...</Typography>
+                  <div className="flex flex-col items-center justify-center">
+                    <Spinner className="h-6 w-6 text-[#C01824]" />
+                    <Typography className="mt-2 text-gray-500 text-sm">Loading students...</Typography>
+                  </div>
                 </td>
               </tr>
             ) : (selectedTab === "Students"

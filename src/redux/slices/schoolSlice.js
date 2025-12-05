@@ -130,10 +130,34 @@ export const fetchSchoolManagementSummary = createAsyncThunk(
     try {
       console.log("📡 [SchoolSlice] Calling GetSchoolManagementSummary...");
       console.log("📡 [SchoolSlice] BASE_URL:", BASE_URL);
-      const res = await axios.get(
-        `${BASE_URL}/institute/GetSchoolManagementSummary`,
-        getAxiosConfig()
-      );
+
+      // 🔐 Extract createdByUserId from token
+      let userId = null;
+      const token = getAuthToken();
+      if (token) {
+        const decoded = decodeToken(token);
+        if (decoded) {
+          userId =
+            decoded.sub ||
+            decoded.userId ||
+            decoded.UserId ||
+            decoded.user_id ||
+            decoded.id ||
+            decoded.Id ||
+            null;
+        }
+      }
+
+      const numericUserId = Number(userId);
+      if (!numericUserId || Number.isNaN(numericUserId)) {
+        console.error("❌ [SchoolSlice] Invalid createdByUserId (must be a number):", userId);
+        return rejectWithValue("Invalid user id for GetSchoolManagementSummary");
+      }
+
+      const apiUrl = `${BASE_URL}/institute/GetSchoolManagementSummary?createdByUserId=${numericUserId}`;
+      console.log("📡 [SchoolSlice] GetSchoolManagementSummary URL:", apiUrl);
+
+      const res = await axios.get(apiUrl, getAxiosConfig());
 
       console.log("✅ [SchoolSlice] Raw summary response:", res.data);
       console.log("✅ [SchoolSlice] Response status:", res.status);

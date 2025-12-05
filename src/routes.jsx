@@ -39,30 +39,40 @@ export const sidenavRoutes = [
         name: "manage",
         path: "/manage",
         element: <Manage />,
+        // Require either Students or Drivers module access
+        modules: ["STUDENTS", "DRIVERS"],
       },
       {
         icon: <img src={routescheduleicon} alt="Route Schedules" className="w-5 h-5" />,
         name: "route schedules",
         path: "/route-schedules",
         element: <Schedule />,
+        // Require Routes module access
+        modules: ["ROUTES"],
       },
       {
         icon: <img src={communicationicon} alt="Route Schedules" className="w-5 h-5" />,
         name: "communication",
         path: "/communication",
         element: <Communication />,
+        // Require Chat module access
+        modules: ["CHAT"],
       },
       {
         icon: <img src={announcementicon} alt="Route Schedules" className="w-5 h-5" />,
         name: "announcements",
         path: "/announcements",
         element: <Announcements />,
+        // Require RFQ or Invoices module access
+        modules: ["RFQ", "INVOICES"],
       },
       {
         icon: <img src={tripplannericon} alt="Route Schedules" className="w-5 h-5" />,
         name: "trip planner",
         path: "/trip-planner",
         element: <TripPlanner />,
+        // Also tied to Routes module
+        modules: ["ROUTES"],
       },
     ],
   },

@@ -71,11 +71,11 @@ export default function ProtectedRoute() {
     "REAL-TIME-TRACKING": "TRACKING",
     "REALTIME-TRACKING": "TRACKING",
 
-    // Scheduling
-    ROUTESCHEDULE: "SCHEDULING",
-    "ROUTE-SCHEDULE": "SCHEDULING",
-    SCHEDULEMANAGEMENT: "SCHEDULING",
-    "SCHEDULE-MANAGEMENT": "SCHEDULING",
+    // Scheduling (treated as Route permissions)
+    ROUTESCHEDULE: "ROUTE",
+    "ROUTE-SCHEDULE": "ROUTE",
+    SCHEDULEMANAGEMENT: "ROUTE",
+    "SCHEDULE-MANAGEMENT": "ROUTE",
 
     // Accounting
     BILLINGINVOICE: "ACCOUNTING",
@@ -107,6 +107,9 @@ export default function ProtectedRoute() {
     "SUBSCRIPTION_PAGE",
     "PAYMENT_SUCCESS",
     "PAYMENT-SUCCESS",
+    // Everyone can access Documents and Feedback
+    "DOCUMENTS",
+    "FEEDBACK",
     "UNAUTHORIZED", // Allow access to unauthorized page for authenticated users
   ];
 
@@ -115,26 +118,82 @@ export default function ProtectedRoute() {
     return <Outlet />;
   }
 
-  // Map route to module
-  const moduleKey = routeToModuleMap[firstSegment] ||
+  // Map route to module (singular key)
+  const rawModuleKey =
+    routeToModuleMap[firstSegment] ||
     routeToModuleMap[location.pathname.replace(/\//g, "_").toUpperCase()] ||
     firstSegment;
+  const moduleKey = rawModuleKey.toUpperCase();
 
   // Get module permissions - user.modules is an object like { "VEHICLE": { canRead: true, canWrite: false } }
-  // Try to find module with case-insensitive matching
+  // Try to find module with flexible matching (case, pluralization, synonyms)
   const userModules = user?.modules || {};
   const moduleKeys = Object.keys(userModules);
   
   // Try exact match first
   let moduleAccess = userModules[moduleKey];
-  
-  // If not found, try case-insensitive match
+  let resolvedModuleKey = moduleKey;
+
+  // Helper: find module key in userModules using flexible rules
   if (!moduleAccess) {
-    const foundKey = moduleKeys.find(key => key.toUpperCase() === moduleKey.toUpperCase());
+    const normalizedModuleKey = moduleKey.toUpperCase();
+
+    // 1) Case-insensitive exact match
+    let foundKey = moduleKeys.find(
+      (key) => key.toUpperCase() === normalizedModuleKey
+    );
+
+    // 2) Handle simple plural/singular differences (VEHICLE <-> VEHICLES, ROUTE <-> ROUTES, etc.)
+    if (!foundKey) {
+      const variants = [normalizedModuleKey];
+      if (!normalizedModuleKey.endsWith("S")) {
+        variants.push(`${normalizedModuleKey}S`);
+      } else {
+        variants.push(normalizedModuleKey.slice(0, -1));
+      }
+
+      foundKey = moduleKeys.find((key) =>
+        variants.includes(key.toUpperCase())
+      );
+    }
+
+    // 3) Handle explicit synonym mapping (ACCOUNTING <-> INVOICES, CHAT <-> CHATS, etc.)
+    if (!foundKey) {
+      const synonymMap = {
+        VEHICLE: ["VEHICLES"],
+        VEHICLES: ["VEHICLE"],
+        DRIVER: ["DRIVERS"],
+        DRIVERS: ["DRIVER"],
+        ROUTE: ["ROUTES"],
+        ROUTES: ["ROUTE"],
+        STUDENT: ["STUDENTS"],
+        STUDENTS: ["STUDENT"],
+        // Allow School-related routes to use student permissions
+        SCHOOL: ["SCHOOL", "STUDENT", "STUDENTS"],
+        // Allow Employee routes to reuse driver permissions (for vendors)
+        EMPLOYEE: ["EMPLOYEE", "DRIVER", "DRIVERS"],
+        TRACKING: ["TRACKING"],
+        ACCESS: ["ACCESS"],
+        ACCOUNTING: ["INVOICES"],
+        INVOICES: ["ACCOUNTING"],
+        CHAT: ["CHATS"],
+        CHATS: ["CHAT"],
+        DOCUMENTS: ["DOCUMENTS"],
+      };
+
+      const synonyms = synonymMap[normalizedModuleKey] || [];
+      foundKey = moduleKeys.find((key) =>
+        synonyms.includes(key.toUpperCase())
+      );
+    }
+
     if (foundKey) {
+      resolvedModuleKey = foundKey;
       moduleAccess = userModules[foundKey];
       if (import.meta.env.DEV) {
-        console.log(`⚠️ Module key case mismatch: Looking for '${moduleKey}', found '${foundKey}'`);
+        console.log(
+          `⚠️ Module key normalized: Looking for '${moduleKey}', resolved to '${foundKey}'`
+        );
       }
     }
   }
@@ -145,6 +204,7 @@ export default function ProtectedRoute() {
       path: location.pathname,
       firstSegment,
       moduleKey,
+      resolvedModuleKey,
       userModules: userModules,
       moduleKeys: moduleKeys,
       moduleAccess,

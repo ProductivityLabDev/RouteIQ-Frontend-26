@@ -125,6 +125,36 @@ export const fetchStates = createAsyncThunk(
   }
 );
 
+// Async thunk to fetch cities
+export const fetchCities = createAsyncThunk(
+  "employees/fetchCities",
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log("🔄 [Redux] Fetching cities...");
+      const res = await axios.get(
+        `${BASE_URL}/institute/GetCities`,
+        getAxiosConfig()
+      );
+
+      console.log("Fetched cities:", res.data);
+
+      const citiesArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.data)
+          ? res.data.data
+          : [];
+
+      console.log("✅ [Redux] Cities fetched successfully:", citiesArray.length);
+      return citiesArray;
+    } catch (error) {
+      console.error("❌ [Redux] Error fetching cities:", error);
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch cities"
+      );
+    }
+  }
+);
+
 // Async thunk to create employee
 export const createEmployee = createAsyncThunk(
   "employees/createEmployee",
@@ -146,26 +176,46 @@ export const createEmployee = createAsyncThunk(
       // Create FormData object
       const data = new FormData();
       
-      // Append file if provided
-      if (formData.file) {
-        data.append("file", formData.file);
+      // Append files if provided
+      // General file (backend expects field name 'file')
+      if (formData.filePath) {
+        data.append("file", formData.filePath);
+      }
+      // Driving license file (for drivers)
+      if (formData.drivingLicenses) {
+        data.append("drivingLicenses", formData.drivingLicenses);
+      }
+      // Certificates file
+      if (formData.certificates) {
+        data.append("certificates", formData.certificates);
       }
       
       // Append all employee fields as per backend DTO
       data.append("userId", userId);
       data.append("name", formData.name || "");
       data.append("adress", formData.adress || "");
-      // Convert city to integer (must be a number)
-      const cityValue = formData.city && !isNaN(Number(formData.city)) 
-        ? String(Math.floor(Number(formData.city))) 
-        : "0"; // Default to 0 if not a valid number
+      // City must be an integer id (CityId)
+      const cityValue =
+        formData.city !== undefined && formData.city !== null && formData.city !== "" && !isNaN(Number(formData.city))
+          ? String(Math.floor(Number(formData.city)))
+          : "0";
       data.append("city", cityValue);
       data.append("zipCode", formData.zipCode || "");
-      data.append("stateId", 5); // Hardcoded as per requirement
+      // StateId comes from form (dropdown), default to 0 if not provided
+      const stateIdValue =
+        formData.stateId !== undefined && formData.stateId !== null && formData.stateId !== ""
+          ? String(Math.floor(Number(formData.stateId)))
+          : "0";
+      data.append("stateId", stateIdValue);
       data.append("dob", formData.dop || ""); // Map dop to dob
       data.append("joiningDate", formData.joiningDate || "");
       data.append("status", formData.status || "Active");
-      data.append("positionType", formData.positionType || "");
+      // PositionType is numeric id from dropdown (1..5)
+      const positionTypeValue =
+        formData.positionType !== undefined && formData.positionType !== null && formData.positionType !== ""
+          ? String(Math.floor(Number(formData.positionType)))
+          : "";
+      data.append("positionType", positionTypeValue);
       data.append("email", formData.email || "");
       data.append("emergencyContact", formData.emergencyContact || "");
       data.append("payGrade", formData.payGrade || "");
@@ -217,6 +267,7 @@ const initialState = {
   payCycles: [],
   terminals: [],
   states: [],
+  cities: [],
   loading: {
     payTypes: false,
     payCycles: false,
@@ -324,6 +375,24 @@ const employeeSlice = createSlice({
         state.error.states = action.payload || "Failed to fetch states";
         state.states = [];
         console.error("❌ [Redux] Fetch states failed:", action.payload);
+      })
+      // Fetch cities
+      .addCase(fetchCities.pending, (state) => {
+        state.loading.cities = true;
+        state.error.cities = null;
+        console.log("⏳ [Redux] Fetching cities...");
+      })
+      .addCase(fetchCities.fulfilled, (state, action) => {
+        state.loading.cities = false;
+        state.cities = action.payload;
+        state.error.cities = null;
+        console.log("✅ [Redux] Cities loaded:", action.payload.length);
+      })
+      .addCase(fetchCities.rejected, (state, action) => {
+        state.loading.cities = false;
+        state.error.cities = action.payload || "Failed to fetch cities";
+        state.cities = [];
+        console.error("❌ [Redux] Fetch cities failed:", action.payload);
       })
       // Create employee
       .addCase(createEmployee.pending, (state) => {

@@ -2,21 +2,22 @@ import { pickFileIcon } from '@/assets';
 import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { fetchPayTypes, fetchPayCycles, fetchTerminals, createEmployee } from '@/redux/slices/employeSlices';
+import { fetchPayTypes, fetchPayCycles, fetchTerminals, fetchStates, fetchCities, createEmployee } from '@/redux/slices/employeSlices';
 
 const AddDriver = ({ handleCancel }) => {
     const dispatch = useDispatch();
-    const { payTypes, payCycles, terminals, loading, error } = useSelector((state) => state.employees);
+    const { payTypes, payCycles, terminals, states, cities, loading, error } = useSelector((state) => state.employees);
 
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null); // general filePath
     const [formData, setFormData] = useState({
         name: "",
         adress: "",
         city: "",
+        stateId: "",
         zipCode: "",
         dop: "",
         joiningDate: "",
@@ -33,8 +34,19 @@ const AddDriver = ({ handleCancel }) => {
     });
     
     // File ref for file upload
-    const fileRef = useRef(null);
+    const fileRef = useRef(null); // general filePath
 
+    // Additional file uploaders
+    const [licenseFile, setLicenseFile] = useState(null);
+    const [certificateFile, setCertificateFile] = useState(null);
+    const licenseFileRef = useRef(null);
+    const certificateFileRef = useRef(null);
+
+    // City dropdown (searchable) state
+    const [citySearchTerm, setCitySearchTerm] = useState("");
+    const [showCityDropdown, setShowCityDropdown] = useState(false);
+    const [selectedCityName, setSelectedCityName] = useState("");
+    const cityDropdownRef = useRef(null);
 
     // Validation function
     const validateForm = () => {
@@ -55,6 +67,9 @@ const AddDriver = ({ handleCancel }) => {
             newErrors.city = "City is required";
         }
 
+        if (!formData.stateId || formData.stateId === "") {
+            newErrors.stateId = "State is required";
+        }
 
         if (!formData.zipCode || formData.zipCode.trim() === "") {
             newErrors.zipCode = "Zip Code is required";
@@ -164,6 +179,34 @@ const AddDriver = ({ handleCancel }) => {
         }
     };
 
+    const handleLicenseFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setLicenseFile(file);
+        }
+    };
+
+    const handleRemoveLicenseFile = () => {
+        setLicenseFile(null);
+        if (licenseFileRef.current) {
+            licenseFileRef.current.value = "";
+        }
+    };
+
+    const handleCertificateFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setCertificateFile(file);
+        }
+    };
+
+    const handleRemoveCertificateFile = () => {
+        setCertificateFile(null);
+        if (certificateFileRef.current) {
+            certificateFileRef.current.value = "";
+        }
+    };
+
     // ---------- CREATE EMPLOYEE ----------
 
     const handleSubmitEmployee = async (e) => {
@@ -179,20 +222,26 @@ const AddDriver = ({ handleCancel }) => {
         }
 
         try {
-            // Collect file from ref
-            const file = fileRef.current?.files?.[0] || null;
+            // Collect files from refs
+            const file = fileRef.current?.files?.[0] || selectedFile || null;
+            const license = licenseFileRef.current?.files?.[0] || licenseFile || null;
+            const certificate = certificateFileRef.current?.files?.[0] || certificateFile || null;
 
-            // Prepare employee data with file
+            // Prepare employee data with files
             const employeeData = {
                 ...formData,
                 status: "Active",
-                file: file,
+                filePath: file,
+                drivingLicenses: license,
+                certificates: certificate,
                 emergencyContact: formData.phone || "", // Map phone to emergencyContact
             };
             
             console.log("📤 [AddDriver] Submitting employee data:", {
                 ...employeeData,
-                file: file ? file.name : "No file",
+                filePath: file ? file.name : "No file",
+                drivingLicenses: license ? license.name : "No license file",
+                certificates: certificate ? certificate.name : "No certificate file",
                 payTypeId: employeeData.payTypeId,
             });
 
@@ -219,9 +268,13 @@ const AddDriver = ({ handleCancel }) => {
                     phone: "",
                     payTypeId: "",
                 });
-                // Reset file input
+                // Reset file inputs
                 setSelectedFile(null);
+                setLicenseFile(null);
+                setCertificateFile(null);
                 if (fileRef.current) fileRef.current.value = "";
+                if (licenseFileRef.current) licenseFileRef.current.value = "";
+                if (certificateFileRef.current) certificateFileRef.current.value = "";
                 
                 if (handleCancel) {
                     handleCancel();
@@ -242,6 +295,8 @@ const AddDriver = ({ handleCancel }) => {
         dispatch(fetchPayTypes());
         dispatch(fetchPayCycles());
         dispatch(fetchTerminals());
+        dispatch(fetchStates());
+        dispatch(fetchCities());
     }, [dispatch]);
 
     // Clear validation errors when clicking anywhere on the screen (except form elements)
@@ -266,13 +321,69 @@ const AddDriver = ({ handleCancel }) => {
         };
     }, []);
 
+    // Close city dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target)) {
+                setShowCityDropdown(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const filteredCities = (cities || []).filter((city) =>
+        city.CityName?.toLowerCase().includes(citySearchTerm.toLowerCase())
+    );
+
+    const handleCitySelect = (city) => {
+        setFormData((prev) => ({
+            ...prev,
+            // store CityId for API (must be integer), and show name separately
+            city: city.CityId != null ? String(city.CityId) : "",
+        }));
+        setSelectedCityName(city.CityName || "");
+        setCitySearchTerm("");
+        setShowCityDropdown(false);
+        if (errors.city) {
+            setErrors((prev) => ({ ...prev, city: "" }));
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white w-full rounded-lg">
             <form className="w-full">
                 <div className="flex flex-row w-full gap-6 p-6">
                     {/* First column */}
                     <div className="mb-4 w-full">
+                        {/* Position Type dropdown BEFORE Name */}
                         <label className="block text-sm font-medium text-black mb-1">
+                            Position Type
+                        </label>
+                        <select
+                            name="positionType"
+                            value={formData.positionType}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setFormData(prev => ({
+                                    ...prev,
+                                    positionType: value ? Number(value) : ""
+                                }));
+                            }}
+                            className="outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
+                        >
+                            <option value="">Select</option>
+                            <option value={1}>Driver</option>
+                            <option value={2}>Mechanic</option>
+                            <option value={3}>Manager</option>
+                            <option value={4}>Accountant</option>
+                            <option value={5}>Terminal Manager</option>
+                        </select>
+
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
                             Name <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -287,7 +398,6 @@ const AddDriver = ({ handleCancel }) => {
                         {errors.name && touched.name && (
                             <p className="text-red-500 text-xs mt-1">{errors.name}</p>
                         )}
-
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">
                             Zip <span className="text-red-500">*</span>
@@ -414,17 +524,85 @@ const AddDriver = ({ handleCancel }) => {
 
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">
+                            State <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            name="stateId"
+                            value={formData.stateId}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setFormData((prev) => ({ ...prev, stateId: value }));
+                                if (errors.stateId) {
+                                    setErrors(prev => ({ ...prev, stateId: "" }));
+                                }
+                            }}
+                            onBlur={() => handleBlur('stateId')}
+                            className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.stateId && touched.stateId ? 'border-red-500' : 'border-[#D5D5D5]'
+                                }`}
+                        >
+                            <option value="">Select State</option>
+                            {loading.states ? (
+                                <option className="text-gray-500">Loading...</option>
+                            ) : states.length > 0 ? (
+                                states.map((state) => (
+                                    <option key={state.StateId} value={state.StateId} className="text-black">
+                                        {state.StateName}
+                                    </option>
+                                ))
+                            ) : (
+                                <option>No states found</option>
+                            )}
+                        </select>
+                        {errors.stateId && touched.stateId && (
+                            <p className="text-red-500 text-xs mt-1">{errors.stateId}</p>
+                        )}
+
+                        <label className="block text-sm font-medium text-black mt-4 mb-1">
                             City <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="text"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('city')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.city && touched.city ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        />
+                        <div className="relative" ref={cityDropdownRef}>
+                            <input
+                                type="text"
+                                name="citySearch"
+                                value={citySearchTerm || selectedCityName}
+                                onChange={(e) => {
+                                    setCitySearchTerm(e.target.value);
+                                    setShowCityDropdown(true);
+                                    if (!e.target.value) {
+                                        setFormData((prev) => ({ ...prev, city: "" }));
+                                    }
+                                }}
+                                onFocus={() => {
+                                    setShowCityDropdown(true);
+                                    if (!selectedCityName) {
+                                        setCitySearchTerm("");
+                                    }
+                                }}
+                                onBlur={() => handleBlur('city')}
+                                placeholder={loading.cities ? "Loading cities..." : "Search city..."}
+                                className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.city && touched.city ? 'border-red-500' : 'border-[#D5D5D5]'
+                                    }`}
+                            />
+                            {showCityDropdown && !loading.cities && (
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {filteredCities.length > 0 ? (
+                                        filteredCities.map((city) => (
+                                            <div
+                                                key={city.CityId}
+                                                onClick={() => handleCitySelect(city)}
+                                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                            >
+                                                {city.CityName}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="px-4 py-2 text-sm text-gray-500">
+                                            {citySearchTerm ? "No cities found" : "Start typing to search..."}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                         {errors.city && touched.city && (
                             <p className="text-red-500 text-xs mt-1">{errors.city}</p>
                         )}
@@ -495,12 +673,6 @@ const AddDriver = ({ handleCancel }) => {
                         {errors.dop && touched.dop && (
                             <p className="text-red-500 text-xs mt-1">{errors.dop}</p>
                         )}
-
-                        {/* <label className="block text-sm font-medium text-black mt-4 mb-1">Type</label>
-                        <input
-                            type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        /> */}
 
                         <label className="block text-sm font-medium text-black mt-4 mb-1">
                             Pay Type <span className="text-red-500">*</span>
@@ -579,7 +751,7 @@ const AddDriver = ({ handleCancel }) => {
                     </div>
                 </div>
 
-                {/* File upload section */}
+                {/* File upload: General filePath */}
                 <div className="p-6">
                     <label className="block text-sm font-medium text-black mb-2">File Upload</label>
                     {!selectedFile ? (
@@ -617,6 +789,108 @@ const AddDriver = ({ handleCancel }) => {
                                 <button
                                     type="button"
                                     onClick={handleRemoveFile}
+                                    className="ml-4 flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
+                                    title="Remove file"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* File upload: Driving License (only when Position Type is Driver) */}
+                {formData.positionType === 1 && (
+                    <div className="px-6 pb-2">
+                        <label className="block text-sm font-medium text-black mb-2">Driving License Upload</label>
+                        {!licenseFile ? (
+                            <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-4 text-center w-full h-28 flex flex-row gap-3 items-center justify-center relative hover:border-[#C01824] transition-colors">
+                                <input
+                                    type="file"
+                                    ref={licenseFileRef}
+                                    id="licenseFile"
+                                    accept="image/*,.pdf,.doc,.docx"
+                                    onChange={handleLicenseFileChange}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <div className="flex justify-center">
+                                    <img src={pickFileIcon} className="w-8 h-8" alt="Upload license" />
+                                </div>
+                                <p className="mt-1 text-sm text-red-600">Upload driving license (Driver only)</p>
+                            </div>
+                        ) : (
+                            <div className="mt-2 border-2 border-green-500 rounded-lg p-3 bg-green-50">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="flex-shrink-0">
+                                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">{licenseFile.name}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {(licenseFile.size / 1024).toFixed(2)} KB
+                                                {licenseFile.type && ` • ${licenseFile.type.split('/')[1]?.toUpperCase() || 'FILE'}`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleRemoveLicenseFile}
+                                        className="ml-4 flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
+                                        title="Remove file"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* File upload: Certificates */}
+                <div className="px-6 pb-6">
+                    <label className="block text-sm font-medium text-black mb-2">Certificates Upload</label>
+                    {!certificateFile ? (
+                        <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-4 text-center w-full h-28 flex flex-row gap-3 items-center justify-center relative hover:border-[#C01824] transition-colors">
+                            <input
+                                type="file"
+                                ref={certificateFileRef}
+                                id="certificateFile"
+                                accept="image/*,.pdf,.doc,.docx"
+                                onChange={handleCertificateFileChange}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="flex justify-center">
+                                <img src={pickFileIcon} className="w-8 h-8" alt="Upload certificates" />
+                            </div>
+                            <p className="mt-1 text-sm text-red-600">Upload certificates (optional)</p>
+                        </div>
+                    ) : (
+                        <div className="mt-2 border-2 border-green-500 rounded-lg p-3 bg-green-50">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 flex-1">
+                                    <div className="flex-shrink-0">
+                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{certificateFile.name}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {(certificateFile.size / 1024).toFixed(2)} KB
+                                            {certificateFile.type && ` • ${certificateFile.type.split('/')[1]?.toUpperCase() || 'FILE'}`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveCertificateFile}
                                     className="ml-4 flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
                                     title="Remove file"
                                 >

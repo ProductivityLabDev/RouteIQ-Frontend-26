@@ -20,6 +20,7 @@ import { IoIosList } from "react-icons/io";
 import AddBusInfoForm from '@/components/AddBusInfoForm'
 import axios from 'axios'
 import { useDispatch, useSelector } from 'react-redux'
+import { jwtDecode } from 'jwt-decode'
 const VehicleManagement = () => {
     const dispatch = useDispatch();
     const { terminals } = useSelector((state) => state.buses);
@@ -174,12 +175,55 @@ const VehicleManagement = () => {
     const getBuses = async () => {
         try {
             setLoading(true);
-            const res = await axios.get(`${BASE_URL}/institute/GetBusInfo`, {
+
+            if (!token) {
+                console.error("❌ [VehicleManagement] No token found, cannot fetch buses.");
+                setBuses([]);
+                return;
+            }
+
+            // 🔐 Decode token to extract user id
+            let userId = null;
+            try {
+                const decoded = jwtDecode(token);
+                userId =
+                    decoded.userId ||
+                    decoded.UserId ||
+                    decoded.user_id ||
+                    decoded.id ||
+                    decoded.Id ||
+                    decoded.sub ||
+                    null;
+
+                console.log("👤 [VehicleManagement] Decoded user from token:", decoded);
+                console.log("👤 [VehicleManagement] Resolved userId for GetBusInfo:", userId);
+            } catch (decodeError) {
+                console.error("❌ [VehicleManagement] Failed to decode token:", decodeError);
+            }
+
+            if (!userId) {
+                console.error("❌ [VehicleManagement] No userId found in token. GetBusInfo requires userId.");
+                setBuses([]);
+                return;
+            }
+
+            // Ensure we send only the numeric id as a path param: /GetBusInfo/54
+            const numericUserId = Number(userId);
+            if (!numericUserId || Number.isNaN(numericUserId)) {
+                console.error("❌ [VehicleManagement] Invalid userId (must be a number):", userId);
+                setBuses([]);
+                return;
+            }
+
+            const apiUrl = `${BASE_URL}/institute/GetBusInfo/${numericUserId}`;
+            console.log("📡 [VehicleManagement] Calling GetBusInfo with URL:", apiUrl);
+
+            const res = await axios.get(apiUrl, {
                 withCredentials: true,
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            console.log("Buses :", res.data);
+            console.log("✅ [VehicleManagement] Buses raw response:", res.data);
 
             // ✅ Works for both cases: direct array or wrapped in `data`
             const BusesArray = Array.isArray(res.data)
@@ -187,12 +231,13 @@ const VehicleManagement = () => {
                 : Array.isArray(res.data.data)
                     ? res.data.data
                     : [];
-            console.log("🚍 All Bus IDs:", BusesArray.map(b => b.BusId));
-            
+
+            console.log("🚍 [VehicleManagement] All Bus IDs:", BusesArray.map(b => b.BusId));
+
             setBuses(BusesArray);
-            console.log(BusesArray,"bus array")
+            console.log("🚍 [VehicleManagement] Final buses array:", BusesArray);
         } catch (err) {
-            console.error("Error fetching terminals:", err);
+            console.error("❌ [VehicleManagement] Error fetching buses:", err);
             setBuses([]);
         } finally {
             setLoading(false);

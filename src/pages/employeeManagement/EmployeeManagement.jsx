@@ -12,7 +12,7 @@ import ToggleBar from './ToggleBar';
 import SearchInput from '@/components/SearchInput';
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa6";
 import axios from 'axios';
-
+import { jwtDecode } from 'jwt-decode';
 
 
 const EmployeeManagement = () => {
@@ -81,7 +81,45 @@ const EmployeeManagement = () => {
   const getEmployee = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${BASE_URL}/institute/GetEmployeeInfo`, {
+
+      if (!token) {
+        console.error("❌ [EmployeeManagement] No token found, cannot fetch employees.");
+        setEmployee([]);
+        setTotalPages(1);
+        return;
+      }
+
+      // 🔐 Decode token to extract user id
+      let userId = null;
+      try {
+        const decoded = jwtDecode(token);
+        userId =
+          decoded.userId ||
+          decoded.UserId ||
+          decoded.user_id ||
+          decoded.id ||
+          decoded.Id ||
+          decoded.sub ||
+          null;
+
+        console.log("👤 [EmployeeManagement] Decoded user from token:", decoded);
+        console.log("👤 [EmployeeManagement] Resolved userId for GetEmployeeInfo:", userId);
+      } catch (decodeError) {
+        console.error("❌ [EmployeeManagement] Failed to decode token:", decodeError);
+      }
+
+      const numericUserId = Number(userId);
+      if (!numericUserId || Number.isNaN(numericUserId)) {
+        console.error("❌ [EmployeeManagement] Invalid userId (must be a number):", userId);
+        setEmployee([]);
+        setTotalPages(1);
+        return;
+      }
+
+      const apiUrl = `${BASE_URL}/institute/GetEmployeeInfo/${numericUserId}`;
+      console.log("📡 [EmployeeManagement] Calling GetEmployeeInfo with URL:", apiUrl);
+
+      const res = await axios.get(apiUrl, {
         withCredentials: true,
         headers: { Authorization: `Bearer ${token}` },
       });

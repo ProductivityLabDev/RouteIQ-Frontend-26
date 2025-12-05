@@ -69,7 +69,7 @@ function App() {
       />} />
       {/* <Route path="/School-dashboard" element={<SchoolDashboard />} /> */}
       {/* ---------- PRIVATE (GUARDED) ---------- */}
-      {/* <Route element={<ProtectedRoute />}> */}
+      <Route element={<ProtectedRoute />}>
       <Route path="/dashboard/*" element={<Dashboard />} />
       <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
       <Route path="/dashboard" element={<SchoolDashboard />} />
@@ -100,7 +100,7 @@ function App() {
       <Route path="/reported-defects" element={<ReportedDefects />} />
       <Route path="/notes" element={<Notes />} />
       <Route path="/schedule-management" element={<SehcudleManagement />} />
-      {/* </Route> */}
+      </Route>
 
       {/* ---------- 404 ---------- */}
       <Route path="*" element={<Navigate to="/sign-in-vendor" replace />} />
