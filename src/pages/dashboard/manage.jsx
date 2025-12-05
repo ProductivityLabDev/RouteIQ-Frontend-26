@@ -65,7 +65,33 @@ export function Manage() {
 
   const getStudents = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/institute/GetStudents`, {
+      // Try to resolve instituteId (from localStorage or stored user)
+      let instituteId = null;
+      const storedInstituteId = localStorage.getItem('instituteId');
+      const storedUser = localStorage.getItem('user');
+      if (storedInstituteId) {
+        instituteId = storedInstituteId;
+      } else if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          if (user.instituteId) instituteId = user.instituteId;
+          else if (user.InstituteId) instituteId = user.InstituteId;
+        } catch (e) {
+          console.warn('Could not parse stored user for instituteId', e);
+        }
+      }
+
+      if (!instituteId) {
+        console.warn('No instituteId found in localStorage/user — requesting without instituteId may fail');
+      }
+
+      const apiUrl = instituteId
+        ? `${BASE_URL}/institute/GetStudentsByInstitute?InstituteId=${instituteId}`
+        : `${BASE_URL}/institute/GetStudents`;
+
+      console.log('[getStudents] Requesting students from', apiUrl);
+
+      const res = await axios.get(apiUrl, {
         withCredentials: true,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -87,27 +113,35 @@ export function Manage() {
       }
 
       // Map API response to table format
-      const mappedStudents = studentsArray.map((student, index) => ({
-        id: student.id || student.studentId || student.Id || index + 1,
-        name: student.firstName || student.FirstName || student.name || student.Name || "",
-        lastname: student.lastName || student.LastName || student.lastname || student.Lastname || "",
-        grade: student.grade || student.Grade || "",
-        contact: student.emergencyContact || student.EmergencyContact || student.contact || student.Contact || "",
-        enrollment: student.enrollmentNo || student.EnrollmentNo || student.enrollment || student.Enrollment || "",
-        address: student.address || student.Address || "",
-        present: student.present !== undefined ? student.present : (student.attendanceStatus === "Present" || student.AttendanceStatus === "Present") || false,
-        pickupLocation: student.pickupLocation || student.PickupLocation || "",
-        dropLocation: student.dropLocation || student.DropLocation || "",
-        guardian1: student.guardian1 || student.Guardian1 || "",
-        guardian2: student.guardian2 || student.Guardian2 || "",
-        busNo: student.busNo || student.BusNo || "",
-        // Default values for fields that might not be in API
-        drivername: student.drivername || student.driverName || student.DriverName || "N/A",
-        busanimalam: student.busanimalam || student.busAnimalAM || student.BusAnimalAM || "N/A",
-        busnoam: student.busnoam || student.busNoAM || student.BusNoAM || "N/A",
-        busanimalpm: student.busanimalpm || student.busAnimalPM || student.BusAnimalPM || "N/A",
-        busnopm: student.busnopm || student.busNoPM || student.BusNoPM || "N/A",
-      }));
+      const mappedStudents = studentsArray.map((student, index) => {
+        // Extract name from StudentName (backend format)
+        const studentName = student.StudentName || student.studentName || "";
+        const nameParts = studentName.split(" ");
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+        
+        return {
+          id: student.StudentId || student.studentId || student.id || index + 1,
+          name: firstName,
+          lastname: lastName,
+          grade: student.Grade || student.grade || "N/A",
+          contact: student.EmergencyContact || student.emergencyContact || "N/A",
+          enrollment: student.Enrollment || student.enrollment || "N/A",
+          address: student.Address || student.address || "N/A",
+          present: student.present !== undefined ? student.present : (student.attendanceStatus === "Present" || student.AttendanceStatus === "Present") || false,
+          pickupLocation: student.pickupLocation || student.PickupLocation || student.PickUp_Location || "N/A",
+          dropLocation: student.dropLocation || student.DropLocation || student.Drop_Location || "N/A",
+          guardian1: student.Guardian1 || student.guardian1 || "N/A",
+          guardian2: student.Guardian2 || student.guardian2 || "N/A",
+          busNo: student.BusNo || student.busNo || "N/A",
+          // Static defaults for fields not in API response
+          drivername: "Jhon Michael",
+          busanimalam: "N/A",
+          busnoam: "N/A",
+          busanimalpm: "N/A",
+          busnopm: "N/A",
+        };
+      });
 
       console.log("✅ Mapped students:", mappedStudents);
       if (mappedStudents.length > 0) {

@@ -27,6 +27,11 @@ const SchoolManagement = () => {
     dispatch(fetchSchoolManagementSummary());
   }, [dispatch]);
 
+  const handleRefreshSchools = () => {
+    console.log("🔄 [SchoolManagement] Refreshing schools...");
+    dispatch(fetchSchoolManagementSummary());
+  };
+
   const handleOpenPopUp = () => {
     setOpenSchoolManagementModal(!openSchoolManagementModal);
     setEditInstitute(false);
@@ -300,6 +305,7 @@ const useApiHierarchy = hierarchicalData.length > 0;
         open={openSchoolManagementModal}
         handleOpen={handleOpenPopUp}
         editInstitute={editInstitute}
+        refreshSchools={handleRefreshSchools}
       />
     </MainLayout>
   )
