@@ -47,7 +47,7 @@ const SchoolManagementUserTable = ({ instituteId }) => {
           return;
         }
 
-        const apiUrl = `${BASE_URL}/institute/GetStudentsByInstitute?InstituteId=${instituteIdParam}`;
+        const apiUrl = `${BASE_URL}/institute/students-by-institute?instituteId=${instituteIdParam}`;
         console.log("📡 [SchoolManagementUserTable] Request URL:", apiUrl);
 
         const res = await axios.get(apiUrl, {

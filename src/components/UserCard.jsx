@@ -14,7 +14,7 @@ const validateUser = (user) => {
     // Check for required fields - at least username or some identifier
     const hasUsername = user.Username || user.username;
     const hasId = user.Id || user.id || user.UserId || user.userId || user.ID || user._id;
-    
+
     if (!hasUsername && !hasId) {
         return { isValid: false, error: "User missing required identifier" };
     }
@@ -62,14 +62,14 @@ const getUserId = (user) => {
 const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => {
     const dispatch = useDispatch();
     const token = getAuthToken();
-    
+
     // Get users data from Redux store
     const { users: userDetail, loading, error } = useSelector((state) => state.users);
 
     // Validate and filter users
     const validUsers = useMemo(() => {
         if (!Array.isArray(userDetail)) return [];
-        
+
         return userDetail.filter((user) => {
             const validation = validateUser(user);
             if (!validation.isValid) {
@@ -80,35 +80,13 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
     }, [userDetail]);
 
     // Fetch users when component mounts or refreshTrigger changes
+    // MUST be called before any early returns (Rules of Hooks)
     useEffect(() => {
-    if (token) {
-      console.log("🔄 [UserCard] Dispatching fetchUsers action...");
-      dispatch(fetchUsers());
-    }
+        if (token) {
+            console.log("🔄 [UserCard] Dispatching fetchUsers action...");
+            dispatch(fetchUsers());
+        }
     }, [token, refreshTrigger, dispatch]);
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full py-12">
-        <Spinner className="h-8 w-8 text-[#C01824]" />
-        <p className="mt-3 text-sm text-gray-500">Loading users...</p>
-      </div>
-    );
-  }
-    
-    if (error) {
-        return (
-            <div className="text-center text-red-500 py-8">
-                <p>Error: {error}</p>
-                <button 
-                    onClick={() => dispatch(fetchUsers())}
-                    className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                >
-                    Retry
-                </button>
-            </div>
-        );
-    }
 
     // Handle edit with validation
     const handleEdit = (user) => {
@@ -154,12 +132,35 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
         }
     };
 
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+                <Spinner className="h-8 w-8 text-[#C01824]" />
+                <p className="mt-3 text-sm text-gray-500">Loading users...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="text-center text-red-500 py-8">
+                <p>Error: {error}</p>
+                <button
+                    onClick={() => dispatch(fetchUsers())}
+                    className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full h-full">
             {validUsers.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
-                    {userDetail.length === 0 
-                        ? "No users found" 
+                    {userDetail.length === 0
+                        ? "No users found"
                         : `No valid users found (${userDetail.length - validUsers.length} invalid entries filtered)`}
                 </p>
             ) : (
@@ -168,7 +169,7 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
                         const userId = getUserId(item);
                         const username = item.Username || item.username || "N/A";
                         const password = item.Password || item.password || "";
-                        
+
                         return (
                             <div
                                 key={userId || item.Username || index}
@@ -186,7 +187,7 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
 
                                     <div className="flex items-center">
                                         <span className="text-[18px] font-semibold text-[#202224] mr-3">
-                                            Password: 
+                                            Password:
                                         </span>
                                         <span className="text-[18px] font-semibold text-[#202224] tracking-widest">
                                             {password ? `${password.substring(0, 2)}********` : "********"}

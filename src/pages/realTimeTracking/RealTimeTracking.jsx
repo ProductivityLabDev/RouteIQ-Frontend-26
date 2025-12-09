@@ -32,11 +32,12 @@ const RealTimeTracking = () => {
     };
 
     const filterStudents = () => {
+        const list = studentsData[selectedTab] || [];
         if (activeTab === "allstudents") {
-            return studentsData[selectedTab];
+            return list;
         }
         if (activeTab === "onboard") {
-            return studentsData[selectedTab].slice(0, 2);
+            return list.slice(0, 2);
         }
         return [];
     };

@@ -7,22 +7,30 @@ import {
     MenuHandler,
     MenuList,
     MenuItem,
+    Spinner,
 } from '@material-tailwind/react';
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { FaArrowLeft } from "react-icons/fa6";
-
+import { useDispatch, useSelector } from "react-redux";
+import { createRoute } from "@/redux/slices/routesSlice";
+import { fetchSchoolManagementSummary } from "@/redux/slices/schoolSlice";
+import { fetchStudentsByInstitute } from "@/redux/slices/studentSlice";
 
 
 const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip }) => {
+    const dispatch = useDispatch();
+    const { creating } = useSelector((state) => state.routes);
+    const { schoolManagementSummary } = useSelector((state) => state.schools);
+    const { students, loading: studentsLoading } = useSelector((state) => state.students);
+
     const [showSeats, setShowSeats] = useState(false);
-    
 
     const handleFieldClick = () => {
         setShowSeats(true);
     };
     const drivers = ["Driver A", "Driver B", "Driver C"];
-   
-      const [selectedTime, setSelectedTime] = useState("");
+
+    const [selectedTime, setSelectedTime] = useState("");
     const timeSlots = [
         "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
         "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
@@ -31,6 +39,88 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
     const menuRef = useRef(null);
     const selectedItemRef = useRef(null);
+    const pickupDateRef = useRef(null);
+    const routeDateRef = useRef(null);
+
+    // Local form state for simple route creation
+    const [routeForm, setRouteForm] = useState({
+        pickup: "",
+        dropoff: "",
+        routeDate: "",
+        routeTime: "",
+        driverId: "",
+        busId: "",
+    });
+    const [selectedDriverName, setSelectedDriverName] = useState("");
+    const [selectedSchoolId, setSelectedSchoolId] = useState("");
+    const isFormValid =
+        routeForm.pickup?.trim() &&
+        routeForm.dropoff?.trim() &&
+        routeForm.routeDate &&
+        routeForm.routeTime &&
+        routeForm.driverId &&
+        routeForm.busId;
+
+    const handleRouteFieldChange = (e) => {
+        const { name, value } = e.target;
+        setRouteForm((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleSelectDriver = (driverName) => {
+        // Map index to a simple numeric driverId
+        const index = drivers.indexOf(driverName);
+        const driverId = index >= 0 ? index + 1 : "";
+        setRouteForm((prev) => ({
+            ...prev,
+            driverId,
+        }));
+        setSelectedDriverName(driverName);
+    };
+
+    const handleSelectSchool = (e) => {
+        const id = e.target.value;
+        setSelectedSchoolId(id);
+        if (id) {
+            dispatch(fetchStudentsByInstitute(Number(id)));
+        }
+    };
+
+    const handleSubmitRoute = async () => {
+        if (!routeForm.pickup || !routeForm.dropoff || !routeForm.routeDate || !routeForm.routeTime) {
+            alert("Please fill Pickup, Drop Off, Date and Time.");
+            return;
+        }
+
+        try {
+            const result = await dispatch(createRoute(routeForm));
+            if (createRoute.fulfilled.match(result)) {
+                alert("Route created successfully!");
+                setRouteForm({
+                    pickup: "",
+                    dropoff: "",
+                    routeDate: "",
+                    routeTime: "",
+                    driverId: "",
+                    busId: "",
+                });
+                setSelectedDriverName("");
+                if (onBack) onBack();
+            } else {
+                alert(result.payload || "Failed to create route");
+            }
+        } catch (err) {
+            console.error("Error creating route from UI:", err);
+            alert("Failed to create route");
+        }
+    };
+
+    // Load schools for dropdown on mount
+    useEffect(() => {
+        dispatch(fetchSchoolManagementSummary());
+    }, [dispatch]);
 
     // Scroll to selected item when dropdown opens
     useEffect(() => {
@@ -235,11 +325,23 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
+                                        ref={pickupDateRef}
                                         type="date"
                                         placeholder="Select date"
                                         className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
                                     />
-                                    {/* <img src={calendericonred} alt="calendar" className="h-5 w-5" /> */}
+                                    <img
+                                        src={calendericonred}
+                                        alt="calendar"
+                                        className="h-5 w-5 cursor-pointer"
+                                        onClick={() => {
+                                            if (pickupDateRef.current?.showPicker) {
+                                                pickupDateRef.current.showPicker();
+                                            } else {
+                                                pickupDateRef.current?.focus();
+                                            }
+                                        }}
+                                    />
                                 </div>
                             </div>
 
@@ -557,9 +659,12 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
                                     <input
                                         type="text"
+                                        name="pickup"
+                                        value={routeForm.pickup}
                                         placeholder="Enter pickup location"
                                         className="bg-[#F5F6FA] outline-none w-full"
                                         onClick={handleFieldClick}
+                                        onChange={handleRouteFieldChange}
                                     />
                                     <img src={locationicon} alt="not found" className="h-5 w-5" />
                                 </div>
@@ -571,9 +676,11 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between relative">
                                     <input
                                         type="text"
+                                        name="dropoff"
+                                        value={routeForm.dropoff}
                                         placeholder="Enter drop location"
                                         className="bg-[#F5F6FA] outline-none w-full"
-                                        readOnly
+                                        onChange={handleRouteFieldChange}
                                     />
                                     <img src={locationicon} alt="not found" className="h-5 w-5" />
                                 </div>
@@ -584,11 +691,26 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
                                     <input
-                                        type="text"
+                                        ref={routeDateRef}
+                                        type="date"
+                                        name="routeDate"
+                                        value={routeForm.routeDate}
                                         placeholder="Select date"
-                                        className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none w-full custom-date-input"
+                                        onChange={handleRouteFieldChange}
                                     />
-                                    <img src={calendericonred} alt="not found" className="h-5 w-5" />
+                                    <img
+                                        src={calendericonred}
+                                        alt="not found"
+                                        className="h-5 w-5 cursor-pointer"
+                                        onClick={() => {
+                                            if (routeDateRef.current?.showPicker) {
+                                                routeDateRef.current.showPicker();
+                                            } else {
+                                                routeDateRef.current?.focus();
+                                            }
+                                        }}
+                                    />
                                 </div>
                             </div>
                             {/* {editRoute && ( */}
@@ -598,9 +720,12 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                     </Typography>
                                     <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
                                         <input
-                                            type="date"
-                                            placeholder="Select date"
+                                            type="time"
+                                            name="routeTime"
+                                            value={routeForm.routeTime}
+                                            placeholder="Select time"
                                             className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
+                                            onChange={handleRouteFieldChange}
                                         />
                                         {/* <img src={calendericonred} alt="not found" className="h-5 w-5" /> */}
                                     </div>
@@ -615,8 +740,9 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
                                             <input
                                                 type="text"
+                                                value={selectedDriverName}
                                                 placeholder="Select driver"
-                                                className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                                className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1 cursor-pointer"
                                                 readOnly
                                             />
                                             <ChevronDownIcon className="h-5 w-5 text-gray-400 ml-2" />
@@ -624,7 +750,9 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                     </MenuHandler>
                                     <MenuList>
                                         {drivers.map((driver) => (
-                                            <MenuItem key={driver}>{driver}</MenuItem>
+                                            <MenuItem key={driver} onClick={() => handleSelectDriver(driver)}>
+                                                {driver}
+                                            </MenuItem>
                                         ))}
                                     </MenuList>
                                 </Menu>
@@ -635,9 +763,12 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
                                     <input
-                                        type="text"
-                                        placeholder="Enter bus no"
+                                        type="number"
+                                        name="busId"
+                                        value={routeForm.busId}
+                                        placeholder="Enter bus id"
                                         className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
+                                        onChange={handleRouteFieldChange}
                                     />
                                 </div>
                             </div>
@@ -645,36 +776,97 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 <Button className="mt-8 px-12 py-4 border border-[#C01824] bg-[#fff] text-[#C01824] text-[14px] capitalize rounded-[6px]" variant='filled' size='lg' onClick={onBack}>
                                     Cancel
                                 </Button>
-                                <Button className="mt-8 px-12 py-4 bg-[#B8B9BC] text-[#fff] text-[14px] capitalize rounded-[6px]" variant='filled' size='lg' onClick={onBack}>
-                                    Submit
+                                <Button
+                                    className={`mt-8 px-12 py-4 text-[#fff] text-[14px] capitalize rounded-[6px] disabled:opacity-50 disabled:cursor-not-allowed ${isFormValid ? "bg-[#C01824]" : "bg-[#B8B9BC]"}`}
+                                    variant='filled'
+                                    size='lg'
+                                    onClick={handleSubmitRoute}
+                                    disabled={creating || !isFormValid}
+                                >
+                                    {creating ? "Submitting..." : "Submit"}
                                 </Button>
                             </div>
 
                         </div>
-                        {showSeats ?
+                        {showSeats ? (
                             <div className="flex flex-col w-[100%]">
-                                <div className="text-xl font-bold mb-4">Select Students (10 seats)</div>
-                                <div className="grid grid-cols-3 gap-4">
-                                    {Array.from({ length: 10 }).map((_, index) => (
-                                        <div key={index} className="flex items-center space-x-2 p-2 w-[75%] h-[6vh] border border-gray-300 rounded-lg">
-                                            <img
-                                                src={studentfive}
-                                                className="h-10 w-10 rounded-full"
-                                            />
-                                            <span>Jane Cooper</span>
-                                            <input type="checkbox" className="form-checkbox custom-checkbox2" />
-                                        </div>
-                                    ))}
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="text-xl font-bold">Select Students</div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-semibold text-[#2C2F32]">Drop-off School:</span>
+                                        <select
+                                            className="border border-gray-300 rounded px-2 py-1 text-sm"
+                                            value={selectedSchoolId}
+                                            onChange={handleSelectSchool}
+                                        >
+                                            <option value="">Select School</option>
+                                            {schoolManagementSummary && schoolManagementSummary.length > 0 ? (
+                                                // unique schools by InstituteId
+                                                [...new Map(
+                                                    schoolManagementSummary
+                                                        .filter(item => item.InstituteId)
+                                                        .map(item => {
+                                                            const rawId = Array.isArray(item.InstituteId)
+                                                                ? item.InstituteId[0]
+                                                                : typeof item.InstituteId === "string"
+                                                                    ? Number(item.InstituteId.split(",")[0])
+                                                                    : item.InstituteId;
+                                                            return [Number(rawId), {
+                                                                id: Number(rawId),
+                                                                name: item.InstituteName || `School ${rawId}`,
+                                                            }];
+                                                        })
+                                                ).values()].map((school) => (
+                                                    <option key={school.id} value={school.id}>
+                                                        {school.name}
+                                                    </option>
+                                                ))
+                                            ) : (
+                                                <option disabled>No schools found</option>
+                                            )}
+                                        </select>
+                                    </div>
                                 </div>
+
+                                {studentsLoading?.fetching ? (
+                                    <div className="flex flex-col items-center justify-center h-full py-8">
+                                        <Spinner className="h-8 w-8 text-[#C01824]" />
+                                        <p className="mt-3 text-sm text-gray-500">Loading students...</p>
+                                    </div>
+                                ) : !selectedSchoolId ? (
+                                    <div className="text-sm text-gray-600">
+                                        Please select a drop-off school to load students.
+                                    </div>
+                                ) : students && students.length > 0 ? (
+                                    <div className="grid grid-cols-3 gap-4">
+                                        {students.map((stu, index) => (
+                                            <div key={stu.StudentId || index} className="flex items-center space-x-2 p-2 w-[75%] h-[6vh] border border-gray-300 rounded-lg">
+                                                <img
+                                                    src={studentfive}
+                                                    className="h-10 w-10 rounded-full"
+                                                    alt={stu.StudentName || "Student"}
+                                                />
+                                                <span className="text-sm">
+                                                    {stu.StudentName || "Unnamed Student"}
+                                                </span>
+                                                <input type="checkbox" className="form-checkbox custom-checkbox2" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-600">
+                                        No students found for the selected school.
+                                    </div>
+                                )}
                             </div>
-                            :
+                        ) : (
                             <div className="flex flex-col w-[100%]">
                                 <div className="text-xl font-bold mb-4">Select Students {editRoute ? "(0 seats)" : "(10 seats)"}</div>
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Please first enter Pickup and Dropoff location to show the student records.
                                 </Typography>
                             </div>
-                        }
+                        )}
                     </div>
             }
         </section >

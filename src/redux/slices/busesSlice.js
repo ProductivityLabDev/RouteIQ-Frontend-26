@@ -95,6 +95,76 @@ export const fetchTerminals = createAsyncThunk(
   }
 );
 
+// Async thunk to fetch buses by userId
+export const fetchBuses = createAsyncThunk(
+  "buses/fetchBuses",
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log("🔄 [Redux] Fetching buses...");
+      
+      const token = getAuthToken();
+      if (!token) {
+        console.error("❌ [Redux] No token found, cannot fetch buses.");
+        return rejectWithValue("Authentication token not found");
+      }
+
+      // Decode token to extract user id
+      let userId = null;
+      try {
+        const decoded = decodeToken(token);
+        if (decoded) {
+          userId =
+            decoded.userId ||
+            decoded.UserId ||
+            decoded.user_id ||
+            decoded.id ||
+            decoded.Id ||
+            decoded.sub ||
+            null;
+        }
+      } catch (decodeError) {
+        console.error("❌ [Redux] Failed to decode token:", decodeError);
+        return rejectWithValue("Failed to decode authentication token");
+      }
+
+      if (!userId) {
+        console.error("❌ [Redux] No userId found in token. GetBusInfo requires userId.");
+        return rejectWithValue("User ID not found in token");
+      }
+
+      // Ensure we send only the numeric id as a path param: /GetBusInfo/54
+      const numericUserId = Number(userId);
+      if (!numericUserId || Number.isNaN(numericUserId)) {
+        console.error("❌ [Redux] Invalid userId (must be a number):", userId);
+        return rejectWithValue("Invalid user ID");
+      }
+
+      const apiUrl = `${BASE_URL}/institute/GetBusInfo/${numericUserId}`;
+      console.log("📡 [Redux] Calling GetBusInfo with URL:", apiUrl);
+
+      const res = await axios.get(apiUrl, getAxiosConfig());
+
+      console.log("✅ [Redux] Buses raw response:", res.data);
+
+      // Handle response structure: direct array or wrapped in `data`
+      const busesArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.data)
+          ? res.data.data
+          : [];
+
+      console.log("🚍 [Redux] All Bus IDs:", busesArray.map(b => b.BusId));
+      console.log("✅ [Redux] Buses fetched successfully:", busesArray.length);
+      return busesArray;
+    } catch (error) {
+      console.error("❌ [Redux] Error fetching buses:", error);
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch buses"
+      );
+    }
+  }
+);
+
 // Async thunk to create bus
 export const createBus = createAsyncThunk(
   "buses/createBus",
@@ -191,16 +261,19 @@ const initialState = {
   drivers: [],
   fuelTypes: [],
   terminals: [],
+  buses: [],
   loading: {
     drivers: false,
     fuelTypes: false,
     terminals: false,
+    buses: false,
     creating: false,
   },
   error: {
     drivers: null,
     fuelTypes: null,
     terminals: null,
+    buses: null,
     creating: null,
   },
 };
@@ -213,10 +286,12 @@ const busesSlice = createSlice({
       state.drivers = [];
       state.fuelTypes = [];
       state.terminals = [];
+      state.buses = [];
       state.error = {
         drivers: null,
         fuelTypes: null,
         terminals: null,
+        buses: null,
         creating: null,
       };
     },
@@ -276,6 +351,24 @@ const busesSlice = createSlice({
         state.error.terminals = action.payload || "Failed to fetch terminals";
         state.terminals = [];
         console.error("❌ [Redux] Fetch terminals failed:", action.payload);
+      })
+      // Fetch buses
+      .addCase(fetchBuses.pending, (state) => {
+        state.loading.buses = true;
+        state.error.buses = null;
+        console.log("⏳ [Redux] Fetching buses...");
+      })
+      .addCase(fetchBuses.fulfilled, (state, action) => {
+        state.loading.buses = false;
+        state.buses = action.payload;
+        state.error.buses = null;
+        console.log("✅ [Redux] Buses loaded:", action.payload.length);
+      })
+      .addCase(fetchBuses.rejected, (state, action) => {
+        state.loading.buses = false;
+        state.error.buses = action.payload || "Failed to fetch buses";
+        state.buses = [];
+        console.error("❌ [Redux] Fetch buses failed:", action.payload);
       })
       // Create bus
       .addCase(createBus.pending, (state) => {

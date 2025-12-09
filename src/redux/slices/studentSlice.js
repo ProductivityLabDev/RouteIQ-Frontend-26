@@ -30,7 +30,7 @@ export const fetchStudentsByInstitute = createAsyncThunk(
         return rejectWithValue("Institute ID is required");
       }
       
-      const apiUrl = `${BASE_URL}/institute/GetStudentsByInstitute?InstituteId=${finalInstituteId}`;
+      const apiUrl = `${BASE_URL}/institute/students-by-institute?instituteId=${finalInstituteId}`;
       
       console.log("📤 [fetchStudentsByInstitute] API URL:", apiUrl);
       console.log("📤 [fetchStudentsByInstitute] Institute ID:", finalInstituteId);

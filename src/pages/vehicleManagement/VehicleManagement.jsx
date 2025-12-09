@@ -18,15 +18,12 @@ import { IoEllipsisHorizontal } from "react-icons/io5";
 import { BsThreeDots } from 'react-icons/bs'
 import { IoIosList } from "react-icons/io";
 import AddBusInfoForm from '@/components/AddBusInfoForm'
-import axios from 'axios'
 import { useDispatch, useSelector } from 'react-redux'
-import { jwtDecode } from 'jwt-decode'
+import { fetchBuses } from '@/redux/slices/busesSlice'
 const VehicleManagement = () => {
     const dispatch = useDispatch();
-    const { terminals } = useSelector((state) => state.buses);
-
-    const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-    const token = localStorage.getItem("token");
+    const { terminals, buses, loading } = useSelector((state) => state.buses);
+    const isLoadingBuses = loading?.buses || false;
 
     const [isNavigate, setIsNavigate] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -46,8 +43,6 @@ const VehicleManagement = () => {
     const itemsPerPage = 9;
     const totalPages = Math.ceil(vehicleManagement.length / itemsPerPage);
     const [addbusinfo, setAddBusInfo] = useState(false);
-    const [buses, setBuses] = useState([])
-    const [loading, setLoading] = useState(true);
     
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
@@ -166,88 +161,10 @@ const VehicleManagement = () => {
     const endIndex = startIndex + itemsPerPage;
     const currentVehicles = vehicleManagement.slice(startIndex, endIndex);
 
-    // const groupedVehicles = currentVehicles.reduce((acc, vehicle) => {
-    //     if (!acc[vehicle.title]) acc[vehicle.title] = [];
-    //     acc[vehicle.title].push(vehicle);
-    //     return acc;
-    // }, {});
-
-    const getBuses = async () => {
-        try {
-            setLoading(true);
-
-            if (!token) {
-                console.error("❌ [VehicleManagement] No token found, cannot fetch buses.");
-                setBuses([]);
-                return;
-            }
-
-            // 🔐 Decode token to extract user id
-            let userId = null;
-            try {
-                const decoded = jwtDecode(token);
-                userId =
-                    decoded.userId ||
-                    decoded.UserId ||
-                    decoded.user_id ||
-                    decoded.id ||
-                    decoded.Id ||
-                    decoded.sub ||
-                    null;
-
-                console.log("👤 [VehicleManagement] Decoded user from token:", decoded);
-                console.log("👤 [VehicleManagement] Resolved userId for GetBusInfo:", userId);
-            } catch (decodeError) {
-                console.error("❌ [VehicleManagement] Failed to decode token:", decodeError);
-            }
-
-            if (!userId) {
-                console.error("❌ [VehicleManagement] No userId found in token. GetBusInfo requires userId.");
-                setBuses([]);
-                return;
-            }
-
-            // Ensure we send only the numeric id as a path param: /GetBusInfo/54
-            const numericUserId = Number(userId);
-            if (!numericUserId || Number.isNaN(numericUserId)) {
-                console.error("❌ [VehicleManagement] Invalid userId (must be a number):", userId);
-                setBuses([]);
-                return;
-            }
-
-            const apiUrl = `${BASE_URL}/institute/GetBusInfo/${numericUserId}`;
-            console.log("📡 [VehicleManagement] Calling GetBusInfo with URL:", apiUrl);
-
-            const res = await axios.get(apiUrl, {
-                withCredentials: true,
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            console.log("✅ [VehicleManagement] Buses raw response:", res.data);
-
-            // ✅ Works for both cases: direct array or wrapped in `data`
-            const BusesArray = Array.isArray(res.data)
-                ? res.data
-                : Array.isArray(res.data.data)
-                    ? res.data.data
-                    : [];
-
-            console.log("🚍 [VehicleManagement] All Bus IDs:", BusesArray.map(b => b.BusId));
-
-            setBuses(BusesArray);
-            console.log("🚍 [VehicleManagement] Final buses array:", BusesArray);
-        } catch (err) {
-            console.error("❌ [VehicleManagement] Error fetching buses:", err);
-            setBuses([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Fetch buses from Redux on mount
     useEffect(() => {
-        if (token) {
-            getBuses();
-        }
-    }, [token]);
+        dispatch(fetchBuses());
+    }, [dispatch]);
     return (
         <MainLayout>
             {isNavigate ? (
@@ -263,7 +180,7 @@ const VehicleManagement = () => {
             ) : showScheduleManagement ? (
                 <SehcudleManagement onBack={handleBackClick} />
             ) : addbusinfo ? (
-                <AddBusInfoForm handleCancel={handleCancel} refreshBuses={getBuses} />
+                <AddBusInfoForm handleCancel={handleCancel} refreshBuses={() => dispatch(fetchBuses())} />
             ) : (
                 <section className="w-full h-full">
                     <div className="w-full bg-white p-4">
@@ -331,7 +248,7 @@ const VehicleManagement = () => {
                     </div>
 
                     <div className="bg-white w-full rounded-[4px] border shadow-sm p-4 flex flex-wrap justify-center gap-6 min-h-[60vh]">
-                        {loading ? (
+                        {isLoadingBuses ? (
                             <div className="flex flex-col items-center justify-center h-full w-full">
                                 <Spinner className="h-8 w-8 text-[#C01824]" />
                                 <p className="mt-3 text-sm text-gray-500">Loading vehicles...</p>
@@ -459,7 +376,7 @@ const VehicleManagement = () => {
                             </div>
                         )}
 
-                        {!loading && (
+                        {!isLoadingBuses && (
                             <div className="flex items-end justify-end space-x-2 w-[90%]">
                                 <span className="mr-2 text-black-700">Page</span>
                                 {renderPageNumbers()}

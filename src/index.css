@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Hide native calendar icon for custom date inputs that use the red calendar icon */
+.custom-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  display: none;
+}
+
+.custom-date-input {
+  -webkit-appearance: none;
+  appearance: none;
+}
