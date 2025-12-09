@@ -134,45 +134,45 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
     return (
         <section className='w-full h-full'>
-         <Typography
-  fontWeight={700}
-  className="text-[#202224] font-[Nunito Sans] font-bold py-3 ps-2 text-[32px] flex items-center gap-2"
-  marginInline={1}
->
-  <FaArrowLeft
-        className="cursor-pointer"
-        onClick={handleBackTrip} // yaha form band ho jayega
-      />
-  {editRoute ? "Edit Route" : isEditable ? "Edit Trip" : "Create Route"}
-</Typography>
+            <Typography
+                fontWeight={700}
+                className="text-[#202224] font-[Nunito Sans] font-bold py-3 ps-2 text-[32px] flex items-center gap-2"
+                marginInline={1}
+            >
+                <FaArrowLeft
+                    className="cursor-pointer"
+                    onClick={handleBackTrip} // yaha form band ho jayega
+                />
+                {editRoute ? "Edit Route" : isEditable ? "Edit Trip" : "Create Route"}
+            </Typography>
             {
                 isEditable ?
                     <div className="w-full p-4 bg-white h-[155vh] rounded-[4px] border shadow-sm">
                         <form className="grid grid-cols-2 gap-x-6 gap-y-4 py-16 ps-5 w-[50%]">
                             {/* Pickup field */}
-                            
-                             <div className="col-span-1">
-                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                        Select Cueernt Trip
-                                    </Typography>
-                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
-                                        <select
-                                            className="bg-[#F5F6FA] outline-none w-full"
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>Select</option>
-                                            <option value="trip1">Motorcoach (56 Passenger)</option>
-                                            <option value="trip2">Motorcoach (47 Passenger)</option>
-                                            <option value="trip3">Motorcoach (22 Passenger)</option>
-                                             <option value="trip3">School Bus (50 Passenger 2/seat)</option>
-                                             <option value="trip3">School Bus (15-29 Passenger 3/seat)</option>
-                                            {/* Add more options as needed */}
-                                        </select>
-                                        
-                                    </div>
-                                </div>
 
-                                <div className="col-span-1">
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Select Cueernt Trip
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <select
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>Select</option>
+                                        <option value="trip1">Motorcoach (56 Passenger)</option>
+                                        <option value="trip2">Motorcoach (47 Passenger)</option>
+                                        <option value="trip3">Motorcoach (22 Passenger)</option>
+                                        <option value="trip3">School Bus (50 Passenger 2/seat)</option>
+                                        <option value="trip3">School Bus (15-29 Passenger 3/seat)</option>
+                                        {/* Add more options as needed */}
+                                    </select>
+
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Company/Group Name
                                 </Typography>
@@ -182,11 +182,11 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         placeholder="Enter Name"
                                         className="bg-[#F5F6FA] outline-none w-full"
                                     />
-                                  
+
                                 </div>
                             </div>
 
-                             <div className="col-span-1">
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Phone Number
                                 </Typography>
@@ -196,11 +196,11 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         placeholder="Enter Number"
                                         className="bg-[#F5F6FA] outline-none w-full"
                                     />
-                                  
+
                                 </div>
                             </div>
 
-                             <div className="col-span-1">
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Email Address
                                 </Typography>
@@ -210,30 +210,30 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         placeholder="Enter Email"
                                         className="bg-[#F5F6FA] outline-none w-full"
                                     />
-                                  
+
                                 </div>
                             </div>
 
-                             <div className="col-span-1">
-                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                        Round Trip
-                                    </Typography>
-                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
-                                        <select
-                                            className="bg-[#F5F6FA] outline-none w-full"
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>Select </option>
-                                            <option value="trip1">One Way</option>
-                                            <option value="trip2">Shuttle</option>
-                                           
-                                            {/* Add more options as needed */}
-                                        </select>
-                                        
-                                    </div>
-                                </div>
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Round Trip
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <select
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>Select </option>
+                                        <option value="trip1">One Way</option>
+                                        <option value="trip2">Shuttle</option>
 
-                                  <div className="col-span-1">
+                                        {/* Add more options as needed */}
+                                    </select>
+
+                                </div>
+                            </div>
+
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Number Of Passengers
                                 </Typography>
@@ -243,7 +243,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         placeholder="Enter Location"
                                         className="bg-[#F5F6FA] outline-none w-full"
                                     />
-                                  
+
                                 </div>
                             </div>
 
@@ -257,32 +257,32 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         placeholder="Enter Location"
                                         className="bg-[#F5F6FA] outline-none w-full"
                                     />
-                                  
+
                                 </div>
                             </div>
 
-                             <div className="col-span-1">
-                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                        Bus Type
-                                    </Typography>
-                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
-                                        <select
-                                            className="bg-[#F5F6FA] outline-none w-full"
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>Select</option>
-                                            <option value="trip1">a. Motorcoach (56 Passenger)</option>
-                                            <option value="trip2">b. Motorcoach (47 Passenger)</option>
-                                            <option value="trip3">c. Motorcoach (22 Passenger)</option>
-                                             <option value="trip3">d. School Bus (50 Passenger 2/seat)</option>
-                                             <option value="trip3">e. School Bus (15-29 Passenger 3/seat)</option>
-                                              <option value="trip3">f. Mini Van (4 Passengers)</option>
-                                            {/* Add more options as needed */}
-                                        </select>
-                                        
-                                    </div>
+                            <div className="col-span-1">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Bus Type
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <select
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>Select</option>
+                                        <option value="trip1">a. Motorcoach (56 Passenger)</option>
+                                        <option value="trip2">b. Motorcoach (47 Passenger)</option>
+                                        <option value="trip3">c. Motorcoach (22 Passenger)</option>
+                                        <option value="trip3">d. School Bus (50 Passenger 2/seat)</option>
+                                        <option value="trip3">e. School Bus (15-29 Passenger 3/seat)</option>
+                                        <option value="trip3">f. Mini Van (4 Passengers)</option>
+                                        {/* Add more options as needed */}
+                                    </select>
+
                                 </div>
-                            
+                            </div>
+
                             {/* <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Pickup
@@ -345,7 +345,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </div>
                             </div>
 
-                             <div className="col-span-1">
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Pickup Time
                                 </Typography>
@@ -376,7 +376,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </Menu>
                             </div>
 
-                             <div className="col-span-1">
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Return Date
                                 </Typography>
@@ -391,7 +391,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             </div>
 
 
-                             <div className="col-span-1">
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Return Time
                                 </Typography>
@@ -426,7 +426,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             {/* Number of Persons field */}
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                Type Of Group
+                                    Type Of Group
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -465,7 +465,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             {/* Bus No field */}
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                Name
+                                    Name
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -478,7 +478,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                 Pickup Address
+                                    Pickup Address
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -491,7 +491,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                 Pickup City
+                                    Pickup City
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -504,7 +504,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                 Pickup State
+                                    Pickup State
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -517,7 +517,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                 Pickup Zip
+                                    Pickup Zip
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -530,7 +530,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                  Add Additional Destinations
+                                    Add Additional Destinations
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -543,7 +543,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                  Destination Location
+                                    Destination Location
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -554,9 +554,9 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </div>
                             </div>
 
-                             <div className="col-span-1">
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                  Destination Address
+                                    Destination Address
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -567,9 +567,9 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </div>
                             </div>
 
-                             <div className="col-span-1">
+                            <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                  Destination City
+                                    Destination City
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -582,7 +582,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                  Destination State
+                                    Destination State
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -595,7 +595,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
                             <div className="col-span-1">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                  Destination Zip
+                                    Destination Zip
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
                                     <input
@@ -607,25 +607,25 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             </div>
 
                             <div className="col-span-1">
-                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                      How Were You Referred To Us?
-                                    </Typography>
-                                    <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
-                                        <select
-                                            className="bg-[#F5F6FA] outline-none w-full"
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>Select</option>
-                                            <option value="trip1">Google</option>
-                                            <option value="trip2">Facebook</option>
-                                            <option value="trip3">Linkedin</option>
-                                             <option value="trip3">Youtube</option>
-                                            
-                                            {/* Add more options as needed */}
-                                        </select>
-                                        
-                                    </div>
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    How Were You Referred To Us?
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                                    <select
+                                        className="bg-[#F5F6FA] outline-none w-full"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>Select</option>
+                                        <option value="trip1">Google</option>
+                                        <option value="trip2">Facebook</option>
+                                        <option value="trip3">Linkedin</option>
+                                        <option value="trip3">Youtube</option>
+
+                                        {/* Add more options as needed */}
+                                    </select>
+
                                 </div>
+                            </div>
 
 
 
@@ -714,22 +714,22 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 </div>
                             </div>
                             {/* {editRoute && ( */}
-                                <div className="flex flex-col">
-                                    <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                        Time
-                                    </Typography>
-                                    <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
-                                        <input
-                                            type="time"
-                                            name="routeTime"
-                                            value={routeForm.routeTime}
-                                            placeholder="Select time"
-                                            className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
-                                            onChange={handleRouteFieldChange}
-                                        />
-                                        {/* <img src={calendericonred} alt="not found" className="h-5 w-5" /> */}
-                                    </div>
+                            <div className="flex flex-col">
+                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                    Time
+                                </Typography>
+                                <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
+                                    <input
+                                        type="time"
+                                        name="routeTime"
+                                        value={routeForm.routeTime}
+                                        placeholder="Select time"
+                                        className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
+                                        onChange={handleRouteFieldChange}
+                                    />
+                                    {/* <img src={calendericonred} alt="not found" className="h-5 w-5" /> */}
                                 </div>
+                            </div>
                             {/* )} */}
                             <div className="flex flex-col">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">

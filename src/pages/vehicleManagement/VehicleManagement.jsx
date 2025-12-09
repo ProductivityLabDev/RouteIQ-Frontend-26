@@ -253,6 +253,11 @@ const VehicleManagement = () => {
                                 <Spinner className="h-8 w-8 text-[#C01824]" />
                                 <p className="mt-3 text-sm text-gray-500">Loading vehicles...</p>
                             </div>
+                        ) : (!buses || buses.length === 0) ? (
+                            <div className="flex flex-col items-center justify-center h-full w-full text-center text-gray-600 py-12">
+                                <p className="text-lg font-semibold">No vehicles found for this vendor.</p>
+                                <p className="text-sm mt-1">Use “Add Bus” to create the first vehicle.</p>
+                            </div>
                         ) : toogle ? (
                             <div className={`flex flex-wrap justify-center gap-6 px-2 ${buses.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
                                 {Object.keys(buses).map((terminal) => (

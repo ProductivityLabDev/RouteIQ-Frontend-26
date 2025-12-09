@@ -271,33 +271,10 @@ const useApiHierarchy = hierarchicalData.length > 0;
             </DropdownItem>
           ))
         ) : (
-          // Static fallback if no API hierarchy is available
-          <DropdownItem title="District" isOpen={true} onToggle={() => {}}>
-            <DropdownItem title="Terminal 1" isOpen={true} onToggle={() => {}}>
-              {fallbackSchools.map((school, schoolIndex) => (
-                <div key={schoolIndex} className="flex flex-col">
-                  <div className="flex items-center justify-between bg-white border rounded-lg shadow-sm py-3 px-4 my-2">
-                    <div className="flex items-center gap-3 flex-1">
-                      <FaBars className="text-gray-600 cursor-move" />
-                      <img src={school.logo} alt={school.name} className="w-10 h-10 rounded" />
-                      <div className="flex flex-col">
-                        <p className="text-black font-semibold whitespace-nowrap">{school.name}</p>
-                        <p className="text-gray-500 text-xs whitespace-nowrap">{school.address}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <p className="text-[18] text-black whitespace-nowrap">
-                        Total Students: <strong>{school.totalStudents}</strong>
-                      </p>
-                      <p className="text-[18] text-black whitespace-nowrap">
-                        Total Buses: <strong>{school.totalBuses}</strong>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </DropdownItem>
-          </DropdownItem>
+          <div className="flex flex-col items-center justify-center py-12 text-center text-gray-600">
+            <p className="text-lg font-semibold">No schools found for this vendor.</p>
+            <p className="text-sm mt-1">Use “Add School” to create the first school.</p>
+          </div>
         )}
       </section>
 

@@ -256,6 +256,11 @@ const EmployeeManagement = () => {
               <Spinner className="h-8 w-8 text-[#C01824]" />
               <p className="mt-3 text-sm text-gray-500">Loading employees...</p>
             </div>
+          ) : employee.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full w-full text-center text-gray-600 py-12">
+              <p className="text-lg font-semibold">No employees found for this vendor.</p>
+              <p className="text-sm mt-1">Use “Add Employee” to create the first employee.</p>
+            </div>
           ) : (
           <div className="overflow-x-auto w-full">
             <table className="min-w-full border-collapse border">
