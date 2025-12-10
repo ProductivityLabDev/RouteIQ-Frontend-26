@@ -115,19 +115,17 @@ export function Manage() {
 
       // Map API response to table format
       const mappedStudents = studentsArray.map((student, index) => {
-        // Extract name from StudentName (backend format)
-        const studentName = student.StudentName || student.studentName || "";
-        const nameParts = studentName.split(" ");
-        const firstName = nameParts[0] || "";
-        const lastName = nameParts.slice(1).join(" ") || "";
+        // Use FirstName and LastName directly from API response
+        const firstName = student.FirstName || student.firstName || "";
+        const lastName = student.LastName || student.lastName || "";
         
         return {
           id: student.StudentId || student.studentId || student.id || index + 1,
           name: firstName,
           lastname: lastName,
           grade: student.Grade || student.grade || "N/A",
-          contact: student.EmergencyContact || student.emergencyContact || "N/A",
-          enrollment: student.Enrollment || student.enrollment || "N/A",
+          contact: student.ContactPhone || student.contactPhone || student.EmergencyContact || student.emergencyContact || "N/A",
+          enrollment: student.EnrollmentNumber || student.enrollmentNumber || student.Enrollment || student.enrollment || "N/A",
           address: student.Address || student.address || "N/A",
           present: student.present !== undefined ? student.present : (student.attendanceStatus === "Present" || student.AttendanceStatus === "Present") || false,
           pickupLocation: student.pickupLocation || student.PickupLocation || student.PickUp_Location || "N/A",
