@@ -87,8 +87,8 @@ export function Manage() {
       }
 
       const apiUrl = instituteId
-        ? `${BASE_URL}/institute/GetStudentsByInstitute?InstituteId=${instituteId}`
-        : `${BASE_URL}/institute/GetStudents`;
+        ? `${BASE_URL}/school/GetStudents?InstituteId=${instituteId}`
+        : `${BASE_URL}/school/GetStudents`;
 
       console.log('[getStudents] Requesting students from', apiUrl);
 
