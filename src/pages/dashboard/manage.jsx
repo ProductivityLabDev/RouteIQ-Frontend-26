@@ -64,6 +64,56 @@ export function Manage() {
   const [selectedRows, setSelectedRows] = useState([]);
   const [rowsToDelete, setRowsToDelete] = useState([]);
 
+  const downloadAttendanceCsv = () => {
+    if (!students || students.length === 0) {
+      console.warn("No students to export");
+      return;
+    }
+
+    const headers = [
+      "First Name",
+      "Last Name",
+      "Grade",
+      "Contact",
+      "Enrollment",
+      "Address",
+      "Bus No",
+      "Pickup Location",
+      "Drop Location",
+      "Status",
+    ];
+
+    const csvRows = students.map((s) => {
+      const status = s.present ? "Present" : "Absent";
+      return [
+        s.name || "",
+        s.lastname || "",
+        s.grade || "",
+        s.contact || "",
+        s.enrollment || "",
+        s.address || "",
+        s.busNo || "",
+        s.pickupLocation || "",
+        s.dropLocation || "",
+        status,
+      ]
+        .map((value) => {
+          const safe = `${value ?? ""}`.replace(/"/g, '""');
+          return `"${safe}"`;
+        })
+        .join(",");
+    });
+
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "attendance_report.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getStudents = async () => {
     try {
       // Try to resolve instituteId (from localStorage or stored user)
@@ -273,7 +323,9 @@ export function Manage() {
                   Add Student
                 </Button>
                 <Button
+                  onClick={downloadAttendanceCsv}
                   className="flex items-center capitalize font-normal px-4 md:px-6 py-3 md:py-3.5 md:text-[14px] rounded-[6px] bg-[#C01824] gap-3"
+                  disabled={loading || students.length === 0}
                   size="md"
                 >
                   Download Attendance Report
