@@ -11,24 +11,65 @@ import {
 } from '@material-tailwind/react';
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { FaArrowLeft } from "react-icons/fa6";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { createRoute } from "@/redux/slices/routesSlice";
 import { fetchSchoolManagementSummary } from "@/redux/slices/schoolSlice";
 import { fetchStudentsByInstitute } from "@/redux/slices/studentSlice";
+import { fetchEmployees } from "@/redux/slices/employeSlices";
+import { fetchBuses } from "@/redux/slices/busesSlice";
+import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
 
-
+/**
+ * @type {import('./CreateRoute').default}
+ */
 const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip }) => {
-    const dispatch = useDispatch();
-    const { creating } = useSelector((state) => state.routes);
-    const { schoolManagementSummary } = useSelector((state) => state.schools);
-    const { students, loading: studentsLoading } = useSelector((state) => state.students);
+    const dispatch = useAppDispatch();
+    const { creating } = useAppSelector((state) => state.routes);
+    const { schoolManagementSummary } = useAppSelector((state) => state.schools);
+    const { students, loading: studentsLoading } = useAppSelector((state) => state.students);
+    const { employees: realDrivers, loading: employeesLoading } = useAppSelector((state) => state.employees);
+    const { buses: realBuses, loading: busesLoading } = useAppSelector((state) => state.buses);
+
+    // 🔐 Load Google Maps API for Autocomplete
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+        libraries: ['places']
+    });
+
+    const [autocompletePickup, setAutocompletePickup] = useState(null);
+    const [autocompleteDropoff, setAutocompleteDropoff] = useState(null);
+
+    const onPickupLoad = (autocomplete) => setAutocompletePickup(autocomplete);
+    const onDropoffLoad = (autocomplete) => setAutocompleteDropoff(autocomplete);
+
+    const onPickupPlaceChanged = () => {
+        if (autocompletePickup !== null) {
+            const place = autocompletePickup.getPlace();
+            setRouteForm(prev => ({
+                ...prev,
+                pickup: place.formatted_address || place.name
+            }));
+            // Automatically trigger student selection when address is picked
+            setShowSeats(true);
+        }
+    };
+
+    const onDropoffPlaceChanged = () => {
+        if (autocompleteDropoff !== null) {
+            const place = autocompleteDropoff.getPlace();
+            setRouteForm(prev => ({
+                ...prev,
+                dropoff: place.formatted_address || place.name
+            }));
+        }
+    };
 
     const [showSeats, setShowSeats] = useState(false);
 
     const handleFieldClick = () => {
         setShowSeats(true);
     };
-    const drivers = ["Driver A", "Driver B", "Driver C"];
 
     const [selectedTime, setSelectedTime] = useState("");
     const timeSlots = [
@@ -42,8 +83,10 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
     const pickupDateRef = useRef(null);
     const routeDateRef = useRef(null);
 
-    // Local form state for simple route creation
+    // Local form state matched to SP parameters
     const [routeForm, setRouteForm] = useState({
+        routeName: "",
+        routeNumber: "",
         pickup: "",
         dropoff: "",
         routeDate: "",
@@ -51,15 +94,10 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         driverId: "",
         busId: "",
     });
+    const [selectedStudents, setSelectedStudents] = useState([]); // Array of IDs
     const [selectedDriverName, setSelectedDriverName] = useState("");
+    const [selectedBusName, setSelectedBusName] = useState("");
     const [selectedSchoolId, setSelectedSchoolId] = useState("");
-    const isFormValid =
-        routeForm.pickup?.trim() &&
-        routeForm.dropoff?.trim() &&
-        routeForm.routeDate &&
-        routeForm.routeTime &&
-        routeForm.driverId &&
-        routeForm.busId;
 
     const handleRouteFieldChange = (e) => {
         const { name, value } = e.target;
@@ -69,15 +107,29 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         }));
     };
 
-    const handleSelectDriver = (driverName) => {
-        // Map index to a simple numeric driverId
-        const index = drivers.indexOf(driverName);
-        const driverId = index >= 0 ? index + 1 : "";
+    const handleSelectDriver = (driver) => {
+        const id = driver.EmpId || driver.EmployeeId;
         setRouteForm((prev) => ({
             ...prev,
-            driverId,
+            driverId: id ? parseInt(id, 10) : null,
         }));
-        setSelectedDriverName(driverName);
+        setSelectedDriverName(driver.Name);
+    };
+
+    const handleSelectBus = (bus) => {
+        console.log("🚌 Bus Selected Object:", bus); // 👈 Debugging click
+        const id = bus.BusId || bus.id || bus.VehicleId || bus.VehicleID;
+        
+        if (id) {
+            setRouteForm((prev) => ({
+                ...prev,
+                busId: parseInt(id, 10),
+            }));
+            setSelectedBusName(bus.VehicleName || bus.name || `Bus ${id}`);
+        } else {
+            console.error("❌ Selected bus has no ID field!", bus);
+            alert("This bus record is missing an ID. Please check Vehicle Management.");
+        }
     };
 
     const handleSelectSchool = (e) => {
@@ -88,25 +140,68 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         }
     };
 
+    const handleStudentToggle = (studentId) => {
+        setSelectedStudents((prev) =>
+            prev.includes(studentId)
+                ? prev.filter((id) => id !== studentId)
+                : [...prev, studentId]
+        );
+    };
+
+            const isFormValid = Boolean(
+                routeForm.routeName && 
+                routeForm.routeNumber && 
+                routeForm.pickup && 
+                routeForm.dropoff && 
+                routeForm.routeDate && 
+                routeForm.routeTime && 
+                routeForm.driverId && 
+                routeForm.busId && 
+                selectedStudents.length > 0
+            );
+
+            // Debugging for you to see in Console why button is disabled
+            useEffect(() => {
+                if (!isFormValid) {
+                    console.log("🛠️ Form Validation Details:", {
+                        routeName: routeForm.routeName || "MISSING",
+                        routeNumber: routeForm.routeNumber || "MISSING",
+                        pickup: routeForm.pickup || "MISSING",
+                        dropoff: routeForm.dropoff || "MISSING",
+                        routeDate: routeForm.routeDate || "MISSING",
+                        routeTime: routeForm.routeTime || "MISSING",
+                        driverId: routeForm.driverId || "MISSING (Select from dropdown)",
+                        busId: routeForm.busId || "MISSING (Select from dropdown)",
+                        studentsSelectedCount: selectedStudents.length
+                    });
+                }
+            }, [routeForm, selectedStudents, isFormValid]);
+
     const handleSubmitRoute = async () => {
-        if (!routeForm.pickup || !routeForm.dropoff || !routeForm.routeDate || !routeForm.routeTime) {
-            alert("Please fill Pickup, Drop Off, Date and Time.");
+        if (!isFormValid) {
+            alert("Please fill all required fields and select at least one student.");
             return;
         }
 
+        const payload = {
+            instituteId: Number(selectedSchoolId),
+            routeNumber: routeForm.routeNumber,
+            routeName: routeForm.routeName,
+            pickup: routeForm.pickup, // Changed from pickupLocation to match backend error
+            dropoff: routeForm.dropoff, // Changed from dropoffLocation
+            routeDate: routeForm.routeDate,
+            routeTime: routeForm.routeTime,
+            driverId: Number(routeForm.driverId), // Changed from driverEmployeeId to match backend error
+            busId: Number(routeForm.busId), // Changed from vehicleId to match backend error
+            studentIds: selectedStudents.join(','),
+        };
+
         try {
-            const result = await dispatch(createRoute(routeForm));
+            const result = await dispatch(createRoute(payload));
             if (createRoute.fulfilled.match(result)) {
                 alert("Route created successfully!");
-                setRouteForm({
-                    pickup: "",
-                    dropoff: "",
-                    routeDate: "",
-                    routeTime: "",
-                    driverId: "",
-                    busId: "",
-                });
-                setSelectedDriverName("");
+                // Clear state
+                setSelectedStudents([]);
                 if (onBack) onBack();
             } else {
                 alert(result.payload || "Failed to create route");
@@ -117,9 +212,11 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         }
     };
 
-    // Load schools for dropdown on mount
+    // Load schools, drivers and buses for dropdown on mount
     useEffect(() => {
         dispatch(fetchSchoolManagementSummary());
+        dispatch(fetchEmployees());
+        dispatch(fetchBuses());
     }, [dispatch]);
 
     // Scroll to selected item when dropdown opens
@@ -654,37 +751,101 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                         <div className="flex flex-col space-y-4 w-[46%] ps-3">
                             <div className="flex flex-col">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Pickup
+                                    Route Name
                                 </Typography>
                                 <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
                                     <input
                                         type="text"
-                                        name="pickup"
-                                        value={routeForm.pickup}
-                                        placeholder="Enter pickup location"
+                                        name="routeName"
+                                        value={routeForm.routeName}
+                                        placeholder="Enter Route Name (e.g. Morning Shift)"
                                         className="bg-[#F5F6FA] outline-none w-full"
-                                        onClick={handleFieldClick}
                                         onChange={handleRouteFieldChange}
                                     />
-                                    <img src={locationicon} alt="not found" className="h-5 w-5" />
                                 </div>
                             </div>
                             <div className="flex flex-col">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Drop Off
+                                    Route Number
                                 </Typography>
-                                <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between relative">
+                                <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
                                     <input
                                         type="text"
-                                        name="dropoff"
-                                        value={routeForm.dropoff}
-                                        placeholder="Enter drop location"
+                                        name="routeNumber"
+                                        value={routeForm.routeNumber}
+                                        placeholder="Enter Route Number (e.g. RT-001)"
                                         className="bg-[#F5F6FA] outline-none w-full"
                                         onChange={handleRouteFieldChange}
                                     />
-                                    <img src={locationicon} alt="not found" className="h-5 w-5" />
                                 </div>
                             </div>
+                                    <div className="flex flex-col">
+                                        <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                            Pickup
+                                        </Typography>
+                                        <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
+                                            {isLoaded ? (
+                                                <Autocomplete
+                                                    onLoad={onPickupLoad}
+                                                    onPlaceChanged={onPickupPlaceChanged}
+                                                    className="w-full"
+                                                >
+                                                    <input
+                                                        type="text"
+                                                        name="pickup"
+                                                        value={routeForm.pickup}
+                                                        placeholder="Enter pickup location"
+                                                        className="bg-[#F5F6FA] outline-none w-full"
+                                                        onClick={handleFieldClick}
+                                                        onChange={handleRouteFieldChange}
+                                                    />
+                                                </Autocomplete>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    name="pickup"
+                                                    value={routeForm.pickup}
+                                                    placeholder="Loading address search..."
+                                                    className="bg-[#F5F6FA] outline-none w-full"
+                                                    disabled
+                                                />
+                                            )}
+                                            <img src={locationicon} alt="not found" className="h-5 w-5" />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                            Drop Off
+                                        </Typography>
+                                        <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between relative">
+                                            {isLoaded ? (
+                                                <Autocomplete
+                                                    onLoad={onDropoffLoad}
+                                                    onPlaceChanged={onDropoffPlaceChanged}
+                                                    className="w-full"
+                                                >
+                                                    <input
+                                                        type="text"
+                                                        name="dropoff"
+                                                        value={routeForm.dropoff}
+                                                        placeholder="Enter drop location"
+                                                        className="bg-[#F5F6FA] outline-none w-full"
+                                                        onChange={handleRouteFieldChange}
+                                                    />
+                                                </Autocomplete>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    name="dropoff"
+                                                    value={routeForm.dropoff}
+                                                    placeholder="Loading address search..."
+                                                    className="bg-[#F5F6FA] outline-none w-full"
+                                                    disabled
+                                                />
+                                            )}
+                                            <img src={locationicon} alt="not found" className="h-5 w-5" />
+                                        </div>
+                                    </div>
                             <div className="flex flex-col">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Date
@@ -748,30 +909,61 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                             <ChevronDownIcon className="h-5 w-5 text-gray-400 ml-2" />
                                         </div>
                                     </MenuHandler>
-                                    <MenuList>
-                                        {drivers.map((driver) => (
-                                            <MenuItem key={driver} onClick={() => handleSelectDriver(driver)}>
-                                                {driver}
-                                            </MenuItem>
-                                        ))}
-                                    </MenuList>
+                                            <MenuList className="max-h-72 overflow-y-auto">
+                                                {employeesLoading?.employees ? (
+                                                    <MenuItem disabled className="flex items-center justify-center">
+                                                        <Spinner className="h-4 w-4" />
+                                                        <span className="ml-2">Loading drivers...</span>
+                                                    </MenuItem>
+                                                ) : realDrivers && realDrivers.length > 0 ? (
+                                                    realDrivers.map((driver) => (
+                                                        <MenuItem key={driver.EmpId || driver.EmployeeId} onClick={() => handleSelectDriver(driver)}>
+                                                            {driver.Name}
+                                                        </MenuItem>
+                                                    ))
+                                                ) : (
+                                                    <MenuItem disabled>No drivers found</MenuItem>
+                                                )}
+                                            </MenuList>
                                 </Menu>
                             </div>
-                            <div className="flex flex-col">
-                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Bus No
-                                </Typography>
-                                <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
-                                    <input
-                                        type="number"
-                                        name="busId"
-                                        value={routeForm.busId}
-                                        placeholder="Enter bus id"
-                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1"
-                                        onChange={handleRouteFieldChange}
-                                    />
-                                </div>
-                            </div>
+                                    <div className="flex flex-col">
+                                        <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
+                                            Bus No
+                                        </Typography>
+                                        <Menu>
+                                            <MenuHandler>
+                                                <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between cursor-pointer">
+                                                    <input
+                                                        type="text"
+                                                        value={selectedBusName}
+                                                        placeholder="Select bus"
+                                                        className="bg-[#F5F6FA] rounded-[6px] outline-none flex-1 cursor-pointer"
+                                                        readOnly
+                                                    />
+                                                    <ChevronDownIcon className="h-5 w-5 text-gray-400 ml-2" />
+                                                </div>
+                                            </MenuHandler>
+                                            <MenuList className="max-h-72 overflow-y-auto">
+                                                {busesLoading?.buses ? (
+                                                    <MenuItem disabled className="flex items-center justify-center">
+                                                        <Spinner className="h-4 w-4" />
+                                                        <span className="ml-2">Loading buses...</span>
+                                                    </MenuItem>
+                                                ) : realBuses && realBuses.length > 0 ? (
+                                                    realBuses.map((bus) => (
+                                                        <MenuItem key={bus.BusId || bus.id} onClick={() => handleSelectBus(bus)}>
+                                                            {bus.VehicleName || `Bus ${bus.BusId}`}
+                                                        </MenuItem>
+                                                    ))
+                                                ) : (
+                                                    <MenuItem disabled className="text-red-500 font-bold italic">
+                                                        ⚠️ No buses found! Please add a bus in Vehicle Management first.
+                                                    </MenuItem>
+                                                )}
+                                            </MenuList>
+                                        </Menu>
+                                    </div>
                             <div className="flex flex-row space-x-4 mt-4">
                                 <Button className="mt-8 px-12 py-4 border border-[#C01824] bg-[#fff] text-[#C01824] text-[14px] capitalize rounded-[6px]" variant='filled' size='lg' onClick={onBack}>
                                     Cancel
@@ -849,7 +1041,12 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                                 <span className="text-sm">
                                                     {stu.StudentName || "Unnamed Student"}
                                                 </span>
-                                                <input type="checkbox" className="form-checkbox custom-checkbox2" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="form-checkbox custom-checkbox2" 
+                                                    checked={selectedStudents.includes(stu.StudentId)}
+                                                    onChange={() => handleStudentToggle(stu.StudentId)}
+                                                />
                                             </div>
                                         ))}
                                     </div>

@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-import { BASE_URL, getAxiosConfig, getAuthToken } from "@/configs/api";
-import { decodeToken } from "@/redux/authHelper";
+import { routeService } from "@/services/routeService";
 
 // Async thunk to create a route
 export const createRoute = createAsyncThunk(
@@ -10,42 +8,11 @@ export const createRoute = createAsyncThunk(
     try {
       console.log("🔄 [Redux] Creating route...", routeData);
 
-      // Get token for auth (and optionally user context)
-      const token = getAuthToken();
-      if (!token) {
-        console.error("❌ [Redux] No token found, cannot create route.");
-        return rejectWithValue("Authentication token not found");
-      }
+      // Pass routeData directly to service as it's already mapped in the component
+      const data = await routeService.createRoute(routeData);
 
-      // Optional: decode token if we ever need vendorId / instituteId etc.
-      try {
-        const decoded = decodeToken(token);
-        console.log("👤 [Redux] Decoded token for createRoute:", decoded);
-      } catch (err) {
-        console.warn("⚠️ [Redux] Failed to decode token for createRoute:", err);
-      }
-
-      // Map frontend payload to DTO that backend expects
-      // Backend expects: pickup, dropoff, routeDate, routeTime, driverId, busId
-      const payload = {
-        pickup: routeData.pickup || "",
-        dropoff: routeData.dropoff || "",
-        routeDate: routeData.routeDate || null,
-        routeTime: routeData.routeTime || null,
-        driverId: routeData.driverId ? Number(routeData.driverId) : null,
-        busId: routeData.busId ? Number(routeData.busId) : null,
-      };
-
-      console.log("📤 [Redux] Submitting route payload:", payload);
-
-      const res = await axios.post(
-        `${BASE_URL}/institute/createRoute`,
-        payload,
-        getAxiosConfig()
-      );
-
-      console.log("✅ [Redux] Route created successfully:", res.data);
-      return res.data;
+      console.log("✅ [Redux] Route created successfully:", data);
+      return data;
     } catch (error) {
       console.error("❌ [Redux] Error creating route:", error);
       const errorMessage =

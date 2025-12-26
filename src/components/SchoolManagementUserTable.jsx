@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { FaAngleLeft, FaAngleRight } from 'react-icons/fa6';
-import axios from 'axios';
-import { BASE_URL } from '@/configs/api';
+import { schoolService } from '@/services/schoolService';
 import { Spinner } from '@material-tailwind/react';
 
+/**
+ * @type {React.FC<import('@/pages/schoolManagement/SchoolManagement').SchoolManagementUserTableProps>}
+ */
 const SchoolManagementUserTable = ({ instituteId }) => {
   const [rows, setRows] = useState([]);
   const [editingRowIndex, setEditingRowIndex] = useState(null);
@@ -40,39 +42,10 @@ const SchoolManagementUserTable = ({ instituteId }) => {
           return;
         }
 
-        const token = localStorage.getItem('token');
-        console.log("🔑 [SchoolManagementUserTable] Token exists:", !!token);
-        if (!token) {
-          setError("Authentication token not found. Please log in again.");
-          return;
-        }
-
-        const apiUrl = `${BASE_URL}/school/GetStudents?InstituteId=${instituteIdParam}`;
-        console.log("📡 [SchoolManagementUserTable] Request URL:", apiUrl);
-
-        const res = await axios.get(apiUrl, {
-          withCredentials: true,
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        console.log("✅ [SchoolManagementUserTable] Raw response:", res.data);
-
-        // Handle possible response shapes
-        let studentsArray = [];
-        if (Array.isArray(res.data)) {
-          studentsArray = res.data;
-        } else if (res.data?.ok === true && Array.isArray(res.data.data)) {
-          studentsArray = res.data.data;
-        } else if (Array.isArray(res.data?.data)) {
-          studentsArray = res.data.data;
-        } else {
-          console.error("❌ [SchoolManagementUserTable] Unexpected response shape:", res.data);
-        }
+        const response = await schoolService.getStudentsBySchool(instituteIdParam);
+        const studentsArray = response.data;
 
         console.log("📊 [SchoolManagementUserTable] Parsed studentsArray length:", studentsArray.length);
-        if (studentsArray.length > 0) {
-          console.log("📊 [SchoolManagementUserTable] First student:", studentsArray[0]);
-        }
 
         // Map API students to table rows
         const mappedRows = studentsArray.map((student, index) => ({

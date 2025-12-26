@@ -1,6 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-import { BASE_URL, getAuthToken,getAxiosConfig } from "@/configs/api";
+import { employeeService } from "@/services/employeeService";
+import { busService } from "@/services/busService";
+import { schoolService } from "@/services/schoolService";
+import { getAuthToken } from "@/configs/api";
 import { decodeToken } from "@/redux/authHelper";
 
 // Async thunk to fetch pay types
@@ -8,28 +10,10 @@ export const fetchPayTypes = createAsyncThunk(
   "employees/fetchPayTypes",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching pay types...");
-      const res = await axios.get(
-        `${BASE_URL}/institute/paytypes`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched pay types:", res.data);
-      
-      // Handle response structure: { ok: true, data: [...] }
-      const payTypesArray = res.data?.data && Array.isArray(res.data.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
-
-      console.log("✅ [Redux] Pay types fetched successfully:", payTypesArray.length);
-      return payTypesArray;
+      const response = await employeeService.getPayTypes();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching pay types:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch pay types"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch pay types");
     }
   }
 );
@@ -39,58 +23,23 @@ export const fetchPayCycles = createAsyncThunk(
   "employees/fetchPayCycles",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching pay cycles...");
-      const res = await axios.get(
-        `${BASE_URL}/institute/paycycles`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched pay cycles:", res.data);
-      
-      // Handle response structure: { ok: true, data: [...] }
-      const payCyclesArray = res.data?.data && Array.isArray(res.data.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
-
-      console.log("✅ [Redux] Pay cycles fetched successfully:", payCyclesArray.length);
-      return payCyclesArray;
+      const response = await employeeService.getPayCycles();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching pay cycles:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch pay cycles"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch pay cycles");
     }
   }
 );
 
-// Async thunk to fetch terminals (reusable, can be shared with busesSlice if needed)
+// Async thunk to fetch terminals
 export const fetchTerminals = createAsyncThunk(
   "employees/fetchTerminals",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching terminals...");
-      const res = await axios.get(
-        `${BASE_URL}/terminals`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched terminals:", res.data);
-
-      const terminalsArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
-
-      console.log("✅ [Redux] Terminals fetched successfully:", terminalsArray.length);
-      return terminalsArray;
+      const response = await busService.getTerminals();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching terminals:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch terminals"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch terminals");
     }
   }
 );
@@ -100,27 +49,10 @@ export const fetchStates = createAsyncThunk(
   "employees/fetchStates",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching states...");
-      const res = await axios.get(
-        `${BASE_URL}/institute/GetStates`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched states:", res.data);
-
-      const statesArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
-
-      console.log("✅ [Redux] States fetched successfully:", statesArray.length);
-      return statesArray;
+      const response = await schoolService.getStates();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching states:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch states"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch states");
     }
   }
 );
@@ -130,27 +62,29 @@ export const fetchCities = createAsyncThunk(
   "employees/fetchCities",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching cities...");
-      const res = await axios.get(
-        `${BASE_URL}/institute/GetCities`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched cities:", res.data);
-
-      const citiesArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
-
-      console.log("✅ [Redux] Cities fetched successfully:", citiesArray.length);
-      return citiesArray;
+      const response = await schoolService.getCities();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching cities:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch cities"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch cities");
+    }
+  }
+);
+
+// Async thunk to fetch employees
+export const fetchEmployees = createAsyncThunk(
+  "employees/fetchEmployees",
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = getAuthToken();
+      if (!token) return rejectWithValue("No token found");
+      
+      const decoded = decodeToken(token);
+      const userId = decoded?.sub || decoded?.userId || decoded?.UserId || 1;
+      
+      const response = await employeeService.getEmployees(Number(userId));
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch employees");
     }
   }
 );
@@ -160,115 +94,64 @@ export const createEmployee = createAsyncThunk(
   "employees/createEmployee",
   async (formData, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Creating employee with FormData...");
-      
-      // Get token and extract userId
       const token = getAuthToken();
-      let userId = 1; // Default fallback
-      
+      let userId = 1;
       if (token) {
         const decoded = decodeToken(token);
-        if (decoded && decoded.sub) {
-          userId = decoded.sub;
-        }
+        if (decoded?.sub) userId = decoded.sub;
       }
       
-      // Create FormData object
       const data = new FormData();
+      if (formData.filePath) data.append("file", formData.filePath);
+      if (formData.drivingLicenses) data.append("drivingLicenses", formData.drivingLicenses);
+      if (formData.certificates) data.append("certificates", formData.certificates);
       
-      // Append files if provided
-      // General file (backend expects field name 'file')
-      if (formData.filePath) {
-        data.append("file", formData.filePath);
-      }
-      // Driving license file (for drivers)
-      if (formData.drivingLicenses) {
-        data.append("drivingLicenses", formData.drivingLicenses);
-      }
-      // Certificates file
-      if (formData.certificates) {
-        data.append("certificates", formData.certificates);
-      }
-      
-      // Append all employee fields as per backend DTO
       data.append("userId", userId);
       data.append("name", formData.name || "");
       data.append("adress", formData.adress || "");
-      // City must be an integer id (CityId)
-      const cityValue =
-        formData.city !== undefined && formData.city !== null && formData.city !== "" && !isNaN(Number(formData.city))
-          ? String(Math.floor(Number(formData.city)))
-          : "0";
+      
+      const cityValue = formData.city && !isNaN(Number(formData.city)) ? String(Math.floor(Number(formData.city))) : "0";
       data.append("city", cityValue);
       data.append("zipCode", formData.zipCode || "");
-      // StateId comes from form (dropdown), default to 0 if not provided
-      const stateIdValue =
-        formData.stateId !== undefined && formData.stateId !== null && formData.stateId !== ""
-          ? String(Math.floor(Number(formData.stateId)))
-          : "0";
+      
+      const stateIdValue = formData.stateId ? String(Math.floor(Number(formData.stateId))) : "0";
       data.append("stateId", stateIdValue);
-      data.append("dob", formData.dop || ""); // Map dop to dob
+      data.append("dob", formData.dop || "");
       data.append("joiningDate", formData.joiningDate || "");
       data.append("status", formData.status || "Active");
-      // PositionType is numeric id from dropdown (1..5)
-      const positionTypeValue =
-        formData.positionType !== undefined && formData.positionType !== null && formData.positionType !== ""
-          ? String(Math.floor(Number(formData.positionType)))
-          : "";
+      
+      const positionTypeValue = formData.positionType ? String(Math.floor(Number(formData.positionType))) : "";
       data.append("positionType", positionTypeValue);
       data.append("email", formData.email || "");
       data.append("emergencyContact", formData.emergencyContact || "");
       data.append("payGrade", formData.payGrade || "");
       data.append("routeRate", formData.routeRate || "");
-      data.append("terminalAssigmedId", formData.terminalAssigmed || ""); // Map terminalAssigmed to terminalAssigmedId
-      // Convert fuelCardCode to integer (must be a number)
-      const fuelCardCodeValue = formData.fuelCardCode && !isNaN(Number(formData.fuelCardCode)) 
-        ? String(Math.floor(Number(formData.fuelCardCode))) 
-        : "0"; // Default to 0 if not a valid number
-      data.append("fuelCardCode", fuelCardCodeValue);
-      data.append("payCycleId", formData.payCycle || ""); // Map payCycle to payCycleId
-      // Ensure payType is sent correctly - convert to string if it's a number
-      // Check if payTypeId exists and is not empty/null/undefined
-      let payTypeValue = "";
-      if (formData.payTypeId !== undefined && formData.payTypeId !== null && formData.payTypeId !== "") {
-        payTypeValue = String(formData.payTypeId);
-      } else if (formData.payType !== undefined && formData.payType !== null && formData.payType !== "") {
-        payTypeValue = String(formData.payType);
-      }
-      data.append("payType", payTypeValue); // Map payTypeId to payType
-
-      console.log("📤 [Redux] Submitting employee FormData with userId:", userId);
+      data.append("terminalAssigmedId", formData.terminalAssigmed || "");
       
-      const res = await axios.post(
-        `${BASE_URL}/institute/createEmployeeInfo`,
-        data,
-        {
-          withCredentials: true,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const fuelCardCodeValue = formData.fuelCardCode && !isNaN(Number(formData.fuelCardCode)) ? String(Math.floor(Number(formData.fuelCardCode))) : "0";
+      data.append("fuelCardCode", fuelCardCodeValue);
+      data.append("payCycleId", formData.payCycle || "");
+      
+      let payTypeValue = formData.payTypeId || formData.payType || "";
+      data.append("payType", String(payTypeValue));
 
-      console.log("✅ [Redux] Employee created successfully:", res.data);
-      return res.data;
+      const response = await employeeService.createEmployee(data);
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error creating employee:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create employee"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to create employee");
     }
   }
 );
 
 const initialState = {
+  employees: [], // Added for the list of drivers/employees
   payTypes: [],
   payCycles: [],
   terminals: [],
   states: [],
   cities: [],
   loading: {
+    employees: false,
     payTypes: false,
     payCycles: false,
     terminals: false,
@@ -276,6 +159,7 @@ const initialState = {
     creating: false,
   },
   error: {
+    employees: null,
     payTypes: null,
     payCycles: null,
     terminals: null,
@@ -304,6 +188,21 @@ const employeeSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch employees
+      .addCase(fetchEmployees.pending, (state) => {
+        state.loading.employees = true;
+        state.error.employees = null;
+      })
+      .addCase(fetchEmployees.fulfilled, (state, action) => {
+        state.loading.employees = false;
+        state.employees = action.payload;
+        state.error.employees = null;
+      })
+      .addCase(fetchEmployees.rejected, (state, action) => {
+        state.loading.employees = false;
+        state.error.employees = action.payload || "Failed to fetch employees";
+        state.employees = [];
+      })
       // Fetch pay types
       .addCase(fetchPayTypes.pending, (state) => {
         state.loading.payTypes = true;

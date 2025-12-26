@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-import { BASE_URL, getAxiosConfig, getAuthToken } from "@/configs/api";
+import { busService } from "@/services/busService";
+import { getAuthToken } from "@/configs/api";
 import { decodeToken } from "@/redux/authHelper";
 
 // Async thunk to fetch drivers
@@ -8,28 +8,10 @@ export const fetchDrivers = createAsyncThunk(
   "buses/fetchDrivers",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching drivers...");
-      const res = await axios.get(
-        `${BASE_URL}/institute/drivers`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched Drivers:", res.data);
-      
-      // Handle response structure: { ok: true, data: [...] }
-      const driversArray = res.data?.data && Array.isArray(res.data.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
-
-      console.log("✅ [Redux] Drivers fetched successfully:", driversArray.length);
-      return driversArray;
+      const response = await busService.getDrivers();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching drivers:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch drivers"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch drivers");
     }
   }
 );
@@ -39,28 +21,10 @@ export const fetchFuelTypes = createAsyncThunk(
   "buses/fetchFuelTypes",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching fuel types...");
-      const res = await axios.get(
-        `${BASE_URL}/institute/fueltypes`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched Fuel Types:", res.data);
-      
-      // Handle response structure: { ok: true, data: [...] }
-      const fuelTypesArray = res.data?.data && Array.isArray(res.data.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
-
-      console.log("✅ [Redux] Fuel types fetched successfully:", fuelTypesArray.length);
-      return fuelTypesArray;
+      const response = await busService.getFuelTypes();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching fuel types:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch fuel types"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch fuel types");
     }
   }
 );
@@ -70,27 +34,23 @@ export const fetchTerminals = createAsyncThunk(
   "buses/fetchTerminals",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching terminals...");
-      const res = await axios.get(
-        `${BASE_URL}/terminals`,
-        getAxiosConfig()
-      );
-
-      console.log("Fetched terminals:", res.data);
-
-      const terminalsArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
-
-      console.log("✅ [Redux] Terminals fetched successfully:", terminalsArray.length);
-      return terminalsArray;
+      const response = await busService.getTerminals();
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching terminals:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch terminals"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch terminals");
+    }
+  }
+);
+
+// Async thunk to create terminal
+export const createTerminal = createAsyncThunk(
+  "buses/createTerminal",
+  async (terminalData, { rejectWithValue }) => {
+    try {
+      const response = await busService.createTerminal(terminalData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to create terminal");
     }
   }
 );
@@ -100,67 +60,18 @@ export const fetchBuses = createAsyncThunk(
   "buses/fetchBuses",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Fetching buses...");
-      
       const token = getAuthToken();
-      if (!token) {
-        console.error("❌ [Redux] No token found, cannot fetch buses.");
-        return rejectWithValue("Authentication token not found");
-      }
+      if (!token) return rejectWithValue("Authentication token not found");
 
-      // Decode token to extract user id
-      let userId = null;
-      try {
-        const decoded = decodeToken(token);
-        if (decoded) {
-          userId =
-            decoded.userId ||
-            decoded.UserId ||
-            decoded.user_id ||
-            decoded.id ||
-            decoded.Id ||
-            decoded.sub ||
-            null;
-        }
-      } catch (decodeError) {
-        console.error("❌ [Redux] Failed to decode token:", decodeError);
-        return rejectWithValue("Failed to decode authentication token");
-      }
+      const decoded = decodeToken(token);
+      const userId = decoded?.userId || decoded?.UserId || decoded?.id || decoded?.sub;
 
-      if (!userId) {
-        console.error("❌ [Redux] No userId found in token. GetBusInfo requires userId.");
-        return rejectWithValue("User ID not found in token");
-      }
+      if (!userId) return rejectWithValue("User ID not found in token");
 
-      // Ensure we send only the numeric id as a path param: /GetBusInfo/54
-      const numericUserId = Number(userId);
-      if (!numericUserId || Number.isNaN(numericUserId)) {
-        console.error("❌ [Redux] Invalid userId (must be a number):", userId);
-        return rejectWithValue("Invalid user ID");
-      }
-
-      const apiUrl = `${BASE_URL}/institute/GetBusInfo/${numericUserId}`;
-      console.log("📡 [Redux] Calling GetBusInfo with URL:", apiUrl);
-
-      const res = await axios.get(apiUrl, getAxiosConfig());
-
-      console.log("✅ [Redux] Buses raw response:", res.data);
-
-      // Handle response structure: direct array or wrapped in `data`
-      const busesArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
-
-      console.log("🚍 [Redux] All Bus IDs:", busesArray.map(b => b.BusId));
-      console.log("✅ [Redux] Buses fetched successfully:", busesArray.length);
-      return busesArray;
+      const response = await busService.getBusesByUserId(Number(userId));
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error fetching buses:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch buses"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch buses");
     }
   }
 );
@@ -170,19 +81,10 @@ export const createBus = createAsyncThunk(
   "buses/createBus",
   async (busData, { rejectWithValue }) => {
     try {
-      console.log("🔄 [Redux] Creating bus...", busData);
-      
-      // Extract userId from token if available
-      let userId = null;
       const token = getAuthToken();
-      if (token) {
-        const decoded = decodeToken(token);
-        if (decoded) {
-          userId = decoded.sub || decoded.id || decoded.userId || decoded.UserId;
-        }
-      }
+      const decoded = token ? decodeToken(token) : null;
+      const userId = decoded?.sub || decoded?.id || decoded?.userId || decoded?.UserId;
 
-      // Calculate serviceInterval as number of days from today to the selected date
       let serviceIntervalDays = null;
       if (busData.serviceInterval) {
         const serviceDate = new Date(busData.serviceInterval);
@@ -193,25 +95,14 @@ export const createBus = createAsyncThunk(
         serviceIntervalDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
       }
 
-      // Convert undercarriageStorage from "yes"/"no" to number (1 for yes, 0 for no)
-      const undercarriageStorageNum = busData.undercarriageStorage === 'yes' 
-        ? 1 
-        : busData.undercarriageStorage === 'no' 
-          ? 0 
-          : null;
+      const undercarriageStorageNum = busData.undercarriageStorage === 'yes' ? 1 : busData.undercarriageStorage === 'no' ? 0 : null;
 
-      // Ensure driverId is always set (default to 1 for testing since drivers API is not working)
-      let driverIdValue = 1; // Default to 1
-      if (busData.driver && busData.driver !== "" && busData.driver !== null && busData.driver !== undefined) {
+      let driverIdValue = 1;
+      if (busData.driver) {
         const parsed = parseInt(busData.driver, 10);
-        if (!isNaN(parsed)) {
-          driverIdValue = parsed;
-        }
+        if (!isNaN(parsed)) driverIdValue = parsed;
       }
-      
-      console.log("🔍 [Redux] Driver value from form:", busData.driver, "→ driverId:", driverIdValue);
 
-      // Map form data to DTO structure
       const payload = {
         vehicleName: busData.vehicleName || null,
         busType: busData.busType || null,
@@ -232,27 +123,10 @@ export const createBus = createAsyncThunk(
         userId: userId,
       };
 
-      console.log("📤 [Redux] Submitting bus data:", payload);
-      const res = await axios.post(
-        `${BASE_URL}/institute/createbuses`,
-        payload,
-        getAxiosConfig()
-      );
-
-      console.log("✅ [Redux] Bus created successfully:", res.data);
-      return res.data;
+      const response = await busService.createBus(payload);
+      return response.data;
     } catch (error) {
-      console.error("❌ [Redux] Error creating bus:", error);
-      console.error("❌ [Redux] Error response:", error.response?.data);
-      console.error("❌ [Redux] Error status:", error.response?.status);
-      console.error("❌ [Redux] Full error:", error);
-      
-      const errorMessage = error.response?.data?.message 
-        || error.response?.data?.error 
-        || error.message 
-        || "Failed to create bus";
-      
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(error.response?.data?.message || error.message || "Failed to create bus");
     }
   }
 );
@@ -385,6 +259,21 @@ const busesSlice = createSlice({
         state.loading.creating = false;
         state.error.creating = action.payload || "Failed to create bus";
         console.error("❌ [Redux] Create bus failed:", action.payload);
+      })
+      // Create terminal
+      .addCase(createTerminal.pending, (state) => {
+        state.loading.creating = true;
+        state.error.creating = null;
+      })
+      .addCase(createTerminal.fulfilled, (state, action) => {
+        state.loading.creating = false;
+        state.error.creating = null;
+        console.log("✅ [Redux] Terminal created");
+      })
+      .addCase(createTerminal.rejected, (state, action) => {
+        state.loading.creating = false;
+        state.error.creating = action.payload || "Failed to create terminal";
+        console.error("❌ [Redux] Create terminal failed:", action.payload);
       });
   },
 });

@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Button, Card, Dialog, Typography } from '@material-tailwind/react'
 import { closeicon } from '@/assets'
-import { useDispatch, useSelector } from 'react-redux'
+import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { fetchTerminals, fetchInstituteTypes, fetchStates, fetchCities, createInstitute } from '@/redux/slices/schoolSlice'
 import { toast } from 'react-hot-toast'
 
+/**
+ * @type {React.FC<import('./SchoolManagement').SchoolManagementModalProps>}
+ */
 export function SchoolManagementModal({ open, handleOpen, editInstitute, editSchoolData, refreshSchools }) {
-    const dispatch = useDispatch();
-    const { terminals, instituteTypes, states, cities, loading, error } = useSelector((state) => state.schools);
+    const dispatch = useAppDispatch();
+    const { terminals, instituteTypes, states, cities, loading, error } = useAppSelector((state) => state.schools);
 
     const [citySearchTerm, setCitySearchTerm] = useState("");
     const [showCityDropdown, setShowCityDropdown] = useState(false);

@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-import { BASE_URL, getAxiosConfig, getAuthToken } from "@/configs/api";
+import { schoolService } from "@/services/schoolService";
+import { busService } from "@/services/busService";
+import { getAuthToken } from "@/configs/api";
 import { decodeToken } from "@/redux/authHelper";
 
 // Async thunk to fetch terminals (for school management)
@@ -8,24 +9,10 @@ export const fetchTerminals = createAsyncThunk(
   "schools/fetchTerminals",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get(
-        `${BASE_URL}/terminals`,
-        getAxiosConfig()
-      );
-
-      // Handle response structure: direct array or wrapped in `data`
-      const terminalsArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
-
-      return terminalsArray;
+      const response = await busService.getTerminals();
+      return response.data;
     } catch (error) {
-      console.error("Error fetching terminals:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch terminals"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch terminals");
     }
   }
 );
@@ -35,28 +22,10 @@ export const fetchStates = createAsyncThunk(
   "schools/fetchStates",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get(
-        `${BASE_URL}/institute/GetStates`,
-        getAxiosConfig()
-      );
-
-      // Handle response structure: direct array or wrapped in `{ok: true, data: [...]}`
-      let statesArray = [];
-      
-      if (Array.isArray(res.data)) {
-        statesArray = res.data;
-      } else if (res.data?.ok && Array.isArray(res.data.data)) {
-        statesArray = res.data.data;
-      } else if (Array.isArray(res.data.data)) {
-        statesArray = res.data.data;
-      }
-
-      return statesArray;
+      const response = await schoolService.getStates();
+      return response.data;
     } catch (error) {
-      console.error("Error fetching states:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch states"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch states");
     }
   }
 );
@@ -66,28 +35,10 @@ export const fetchCities = createAsyncThunk(
   "schools/fetchCities",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get(
-        `${BASE_URL}/institute/GetCities`,
-        getAxiosConfig()
-      );
-
-      // Handle response structure: direct array or wrapped in `data`
-      let citiesArray = [];
-      
-      if (Array.isArray(res.data)) {
-        citiesArray = res.data;
-      } else if (res.data?.ok && Array.isArray(res.data.data)) {
-        citiesArray = res.data.data;
-      } else if (Array.isArray(res.data.data)) {
-        citiesArray = res.data.data;
-      }
-
-      return citiesArray;
+      const response = await schoolService.getCities();
+      return response.data;
     } catch (error) {
-      console.error("Error fetching cities:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch cities"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch cities");
     }
   }
 );
@@ -97,28 +48,10 @@ export const fetchInstituteTypes = createAsyncThunk(
   "schools/fetchInstituteTypes",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get(
-        `${BASE_URL}/institute/GetInstituteType`,
-        getAxiosConfig()
-      );
-
-      // Handle response structure: direct array or wrapped in `data`
-      let typesArray = [];
-      
-      if (Array.isArray(res.data)) {
-        typesArray = res.data;
-      } else if (res.data?.ok && Array.isArray(res.data.data)) {
-        typesArray = res.data.data;
-      } else if (Array.isArray(res.data.data)) {
-        typesArray = res.data.data;
-      }
-
-      return typesArray;
+      const response = await schoolService.getInstituteTypes();
+      return response.data;
     } catch (error) {
-      console.error("Error fetching institute types:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch institute types"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch institute types");
     }
   }
 );
@@ -128,62 +61,16 @@ export const fetchSchoolManagementSummary = createAsyncThunk(
   "schools/fetchSchoolManagementSummary",
   async (_, { rejectWithValue }) => {
     try {
-      console.log("📡 [SchoolSlice] Calling GetSchoolManagementSummary...");
-      console.log("📡 [SchoolSlice] BASE_URL:", BASE_URL);
-
-      // 🔐 Extract createdByUserId from token
-      let userId = null;
       const token = getAuthToken();
-      if (token) {
-        const decoded = decodeToken(token);
-        if (decoded) {
-          userId =
-            decoded.sub ||
-            decoded.userId ||
-            decoded.UserId ||
-            decoded.user_id ||
-            decoded.id ||
-            decoded.Id ||
-            null;
-        }
-      }
+      const decoded = token ? decodeToken(token) : null;
+      const userId = decoded?.sub || decoded?.userId || decoded?.UserId || decoded?.id;
 
-      const numericUserId = Number(userId);
-      if (!numericUserId || Number.isNaN(numericUserId)) {
-        console.error("❌ [SchoolSlice] Invalid createdByUserId (must be a number):", userId);
-        return rejectWithValue("Invalid user id for GetSchoolManagementSummary");
-      }
+      if (!userId || isNaN(Number(userId))) return rejectWithValue("Invalid user id for summary");
 
-      const apiUrl = `${BASE_URL}/institute/GetSchoolManagementSummary?createdByUserId=${numericUserId}`;
-      console.log("📡 [SchoolSlice] GetSchoolManagementSummary URL:", apiUrl);
-
-      const res = await axios.get(apiUrl, getAxiosConfig());
-
-      console.log("✅ [SchoolSlice] Raw summary response:", res.data);
-      console.log("✅ [SchoolSlice] Response status:", res.status);
-
-      // Handle response structure: direct array or wrapped in `data`
-      let summaryArray = [];
-      
-      if (Array.isArray(res.data)) {
-        summaryArray = res.data;
-      } else if (res.data?.ok && Array.isArray(res.data.data)) {
-        summaryArray = res.data.data;
-      } else if (Array.isArray(res.data.data)) {
-        summaryArray = res.data.data;
-      }
-
-      console.log("📊 [SchoolSlice] Parsed schoolManagementSummary length:", summaryArray.length);
-      if (summaryArray.length > 0) {
-        console.log("📊 [SchoolSlice] First summary item:", summaryArray[0]);
-      }
-
-      return summaryArray;
+      const response = await schoolService.getSchoolManagementSummary(Number(userId));
+      return response.data;
     } catch (error) {
-      console.error("Error fetching school management summary:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch school management summary"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch school management summary");
     }
   }
 );
@@ -193,21 +80,10 @@ export const createInstitute = createAsyncThunk(
   "schools/createInstitute",
   async (instituteData, { rejectWithValue }) => {
     try {
-      // Extract userId from token
-      let userId = null;
       const token = getAuthToken();
-      if (token) {
-        const decoded = decodeToken(token);
-        if (decoded) {
-          userId = decoded.sub 
-            || decoded.userId 
-            || decoded.UserId 
-            || decoded.id 
-            || decoded.Id;
-        }
-      }
+      const decoded = token ? decodeToken(token) : null;
+      const userId = decoded?.sub || decoded?.userId || decoded?.UserId || decoded?.id;
 
-      // Map form data to stored procedure parameters
       const payload = {
         District: instituteData.district || null,
         Principle: instituteData.principle || null,
@@ -225,18 +101,10 @@ export const createInstitute = createAsyncThunk(
         UserId: userId ? Number(userId) : null,
       };
 
-      const res = await axios.post(
-        `${BASE_URL}/institute/createinstituteInfo`,
-        payload,
-        getAxiosConfig()
-      );
-
-      return res.data;
+      const response = await schoolService.createInstitute(payload);
+      return response.data;
     } catch (error) {
-      console.error("Error creating institute:", error);
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create institute"
-      );
+      return rejectWithValue(error.response?.data?.message || "Failed to create institute");
     }
   }
 );

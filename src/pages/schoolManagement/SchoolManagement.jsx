@@ -8,18 +8,21 @@ import { DropdownItem } from '@/components/DropDown'
 import SchoolManagementUserTable from '@/components/SchoolManagementUserTable';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 import { useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
+import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { fetchSchoolManagementSummary } from '@/redux/slices/schoolSlice'
 
+/**
+ * @type {import('./SchoolManagement').default}
+ */
 const SchoolManagement = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const [openSchoolManagementModal, setOpenSchoolManagementModal] = useState(false);
   const [editInstitute, setEditInstitute] = useState(false);
   const [editingSchoolKey, setEditingSchoolKey] = useState(null);
   const [openDistricts, setOpenDistricts] = useState({});
   const [openTerminals, setOpenTerminals] = useState({});
   const navigate = useNavigate();
-  const { schoolManagementSummary, loading } = useSelector((state) => state.schools);
+  const { schoolManagementSummary, loading } = useAppSelector((state) => state.schools);
 
   // Fetch real schools data on mount
   useEffect(() => {

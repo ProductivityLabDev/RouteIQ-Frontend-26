@@ -1,6 +1,9 @@
 import React from 'react';
 import { Button } from '@material-tailwind/react';
 
+/**
+ * @type {React.FC<import('@/pages/accessManagement/AccessManagement').DeleteUserModalProps>}
+ */
 const DeleteUserModal = ({ isOpen, onClose, onDelete, isDeleting = false }) => {
     if (!isOpen) return null;
 

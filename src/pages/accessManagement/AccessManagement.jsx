@@ -1,15 +1,20 @@
 import React, { useState } from 'react'
 import MainLayout from '@/layouts/SchoolLayout'
-import { Button, ButtonGroup, Input, Popover, PopoverContent, PopoverHandler } from '@material-tailwind/react';
-import { useDispatch, useSelector } from 'react-redux';
+import { Button } from '@material-tailwind/react';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { deleteUser } from '@/redux/slices/usersSlice';
 import UserCard from '@/components/UserCard';
 import CreateAccessCard from '@/components/CreateAccessCard';
 import DeleteUserModal from '@/components/DeleteAccessUser';
 import { Toaster, toast } from 'react-hot-toast';
+
+/**
+ * @type {import('./AccessManagement').default}
+ */
 const AccessManagement = () => {
-    const dispatch = useDispatch();
-    const { deleting } = useSelector((state) => state.users);
+    const dispatch = useAppDispatch();
+    const { deleting } = useAppSelector((state) => state.users);
+console.log("Google Maps API Key:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
     const [createAccess, setCreateAccess] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);

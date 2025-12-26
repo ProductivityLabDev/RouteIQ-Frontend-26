@@ -2,15 +2,18 @@ import React, { useState, useEffect } from "react";
 import {
     Button,
 } from "@material-tailwind/react";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { createUser, updateUser } from "@/redux/slices/usersSlice";
 import { toast } from 'react-hot-toast';
 import axios from "axios";
 import { BASE_URL, getAxiosConfig } from "@/configs/api";
 
+/**
+ * @type {React.FC<import('@/pages/accessManagement/AccessManagement').CreateAccessCardProps>}
+ */
 const CreateAccessCard = ({ setCreateAccess, editUser }) => {
-    const dispatch = useDispatch();
-    const { creating, updating, error } = useSelector((state) => state.users);
+    const dispatch = useAppDispatch();
+    const { creating, updating, error } = useAppSelector((state) => state.users);
     const isEditMode = !!editUser;
     const [data, setData] = useState([]);
     const [vendorUsers, setVendorUsers] = useState([]);

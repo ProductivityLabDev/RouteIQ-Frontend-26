@@ -5,7 +5,7 @@ import { tripsData } from '@/data';
 import { busTrips } from '@/data/dummyData';
 import MainLayout from '@/layouts/SchoolLayout';
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { Button, ButtonGroup, Input, Popover, PopoverContent, PopoverHandler } from '@material-tailwind/react';
+import { Button, ButtonGroup, Input, Popover, PopoverContent, PopoverHandler, Typography } from '@material-tailwind/react';
 import { format } from "date-fns";
 import React, { useState } from 'react';
 import { DayPicker } from "react-day-picker";
@@ -13,8 +13,30 @@ import { FaArrowDown, FaArrowUp, FaPlus } from 'react-icons/fa';
 import { FaEllipsisVertical } from "react-icons/fa6";
 import CreateRoute from './CreateRoute';
 import SchoolList from './SchoolList';
+import VendorGlobalModal from "@/components/Modals/VendorGlobalModal";
+import { useAppDispatch } from "@/redux/hooks";
+import { createTerminal } from "@/redux/slices/busesSlice";
 
 const RouteManagement = () => {
+    // --- Mock Data for the Functional Map UI ---
+    const mapMarkers = [
+        { id: 'school-1', position: { lat: 44.9778, lng: -93.2650 }, title: "Terminal 1", type: 'school' },
+        { id: 'bus-1', position: { lat: 44.9850, lng: -93.2750 }, title: "Bus 101", type: 'bus' },
+        { id: 'bus-2', position: { lat: 44.9700, lng: -93.2500 }, title: "Bus 202", type: 'bus' },
+    ];
+
+    const mapRoutes = [
+        {
+            id: 'route-1',
+            color: '#7B61FF', // The purple from your screenshot
+            path: [
+                { lat: 44.9778, lng: -93.2650 },
+                { lat: 44.9800, lng: -93.2700 },
+                { lat: 44.9850, lng: -93.2750 },
+            ]
+        }
+    ];
+
     const [selectedTab, setSelectedTab] = useState('Route Schedules');
     const [date, setDate] = useState();
     const [active, setActive] = useState(1);
@@ -32,6 +54,36 @@ const RouteManagement = () => {
     const [sortDirection, setSortDirection] = useState("asc");
     const [modalPosition, setModalPosition] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAddTerminalModalOpen, setIsAddTerminalModalOpen] = useState(false);
+    const [terminalForm, setTerminalForm] = useState({
+        name: "",
+        code: "",
+        address: "",
+    });
+
+    const dispatch = useAppDispatch();
+
+    const handleTerminalFormChange = (e) => {
+        const { name, value } = e.target;
+        setTerminalForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleCreateTerminalSubmit = async () => {
+        console.log("🚀 Creating Terminal from Route Management:", terminalForm);
+        try {
+            const result = await dispatch(createTerminal(terminalForm));
+            if (createTerminal.fulfilled.match(result)) {
+                alert("Terminal created successfully!");
+                setIsAddTerminalModalOpen(false);
+                setTerminalForm({ name: "", code: "", address: "" });
+            } else {
+                alert(result.payload || "Failed to create terminal");
+            }
+        } catch (err) {
+            console.error("Error creating terminal:", err);
+            alert("Failed to create terminal");
+        }
+    };
 
     const handleSort = (column) => {
         if (sortColumn === column) {
@@ -102,7 +154,14 @@ const RouteManagement = () => {
     return (
         <MainLayout>
             {openMapScreen ? (
-                <MapComponent onBack={handleBackClick} isRouteMap={isRouteMap} closeCard={closeCard} showCard={showCard} />
+                <MapComponent 
+                    onBack={handleBackClick} 
+                    isRouteMap={isRouteMap} 
+                    closeCard={closeCard} 
+                    showCard={showCard}
+                    markers={mapMarkers}
+                    routes={mapRoutes}
+                />
             ) : isCreateRoute || isEditable ? (
                 <CreateRoute onBack={handleBackClick} editRoute={isEditRoute} isEditable={isEditable} handleBackTrip={handleBackTrip} />
             ) :
@@ -121,26 +180,23 @@ const RouteManagement = () => {
                         </ButtonGroup>
                         {selectedTab === "Trip Planner" ?
                             null
-                            // <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center'
-                            //     variant='filled' size='lg' onClick={handleOpen}>
-                            //     <span>
-                            //         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                            //             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            //         </svg>
-                            //     </span>
-                            //     Create Trip
-                            // </Button>
                             :
-                            <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center'
-                                variant='filled' size='lg' onClick={handleOpenRoute}>
-                                <span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                    </svg>
-                                </span>
-                                Create Route
-                            </Button>
-
+                            <div className="flex gap-4">
+                                <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center gap-2'
+                                    variant='filled' size='lg' onClick={() => setIsAddTerminalModalOpen(true)}>
+                                    <FaPlus size={16} />
+                                    Add Terminal
+                                </Button>
+                                <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center'
+                                    variant='filled' size='lg' onClick={handleOpenRoute}>
+                                    <span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                        </svg>
+                                    </span>
+                                    Create Route
+                                </Button>
+                            </div>
                         }
                     </div>
                     
@@ -736,6 +792,68 @@ const RouteManagement = () => {
             }
 
             {/* <TripPlannerModal open={open} handleOpen={handleOpen} isEditable={isEditable} /> */}
+            {/* TripPlannerModal ya CreateAnnouncementModal yahan aa sakte hain */}
+            
+            {/* 🚀 Naya Terminal Creation Modal */}
+            <VendorGlobalModal
+                isOpen={isAddTerminalModalOpen}
+                onClose={() => setIsAddTerminalModalOpen(false)}
+                title="Add New Terminal"
+                primaryButtonText="Create"
+                secondaryButtonText="Cancel"
+                onPrimaryAction={handleCreateTerminalSubmit}
+            >
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col">
+                        <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
+                            Terminal Name
+                        </Typography>
+                        <Input
+                            size="lg"
+                            placeholder="e.g. West Coast Terminal"
+                            name="name"
+                            value={terminalForm.name}
+                            onChange={handleTerminalFormChange}
+                            className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+                            labelProps={{
+                                className: "before:content-none after:content-none",
+                            }}
+                        />
+                    </div>
+                    <div className="flex flex-col">
+                        <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
+                            Terminal Code
+                        </Typography>
+                        <Input
+                            size="lg"
+                            placeholder="e.g. T-101"
+                            name="code"
+                            value={terminalForm.code}
+                            onChange={handleTerminalFormChange}
+                            className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+                            labelProps={{
+                                className: "before:content-none after:content-none",
+                            }}
+                        />
+                    </div>
+                    <div className="flex flex-col">
+                        <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
+                            Address / Location
+                        </Typography>
+                        <Input
+                            size="lg"
+                            placeholder="Enter full address"
+                            name="address"
+                            value={terminalForm.address}
+                            onChange={handleTerminalFormChange}
+                            className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+                            labelProps={{
+                                className: "before:content-none after:content-none",
+                            }}
+                        />
+                    </div>
+                </div>
+            </VendorGlobalModal>
         </MainLayout >
     )
 }

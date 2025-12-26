@@ -16,6 +16,7 @@ import {
   Popover,
   PopoverContent,
   PopoverHandler,
+  Typography,
 } from "@material-tailwind/react";
 import { FaRegTrashAlt } from "react-icons/fa";
 import { MdOutlineKeyboardArrowLeft } from "react-icons/md";
@@ -1365,16 +1366,9 @@ const Accounting = () => {
                       </Button>
                     ))}
                   </ButtonGroup>
-                  {/* {selectedTerminalTab === "Terminals Details" && (
-                    <Button
-                      className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                      variant="filled"
-                      size="lg"
-                      onClick={() => setCreateInvoice(true)}
-                    >
-                      Add Terminal
-                    </Button>
-                  )} */}
+                  {selectedTerminalTab === "Terminals Details" && (
+                    <div className="h-[45px]"></div>
+                  )}
                 </div>
                 {selectedTerminalTab === "Terminals Details" && (
                   <>

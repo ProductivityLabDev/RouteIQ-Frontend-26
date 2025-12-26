@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { RiDeleteBin6Line, RiEditBoxFill } from "react-icons/ri";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { fetchUsers } from "@/redux/slices/usersSlice";
 import { Spinner } from "@material-tailwind/react";
 import { getAuthToken } from "@/configs/api";
@@ -59,12 +59,15 @@ const getUserId = (user) => {
     return user.Id || user.id || user.UserId || user.userId || user.ID || user._id || null;
 };
 
+/**
+ * @type {React.FC<import('@/pages/accessManagement/AccessManagement').UserCardProps>}
+ */
 const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => {
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
     const token = getAuthToken();
 
     // Get users data from Redux store
-    const { users: userDetail, loading, error } = useSelector((state) => state.users);
+    const { users: userDetail, loading, error } = useAppSelector((state) => state.users);
 
     // Validate and filter users
     const validUsers = useMemo(() => {
