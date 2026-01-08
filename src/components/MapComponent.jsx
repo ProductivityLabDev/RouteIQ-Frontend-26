@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { arrow_back_ios, BusIcon, Mapnotations, VendorMap2 } from '@/assets';
 import { Button, Typography, Spinner } from '@material-tailwind/react';
-import { GoogleMap, useJsApiLoader, Marker, Polyline } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, MarkerF, PolylineF, DirectionsRenderer } from '@react-google-maps/api';
 
 /**
  * @typedef {import('@/types/maps').MapMarker} MapMarker
@@ -15,6 +15,7 @@ const containerStyle = {
 };
 
 const defaultCenter = { lat: 44.9778, lng: -93.2650 };
+const GOOGLE_LIBRARIES = ["places"];
 
 /**
  * MapComponent - Renders the real Google Map with custom UI overlays.
@@ -28,15 +29,25 @@ const MapComponent = ({
     markers = [],
     routes = [],
     center = defaultCenter,
-    zoom = 12
+    zoom = 12,
+    distanceKm,
+    durationMinutes,
+    cardTitle,
+    scheduleText,
+    contactText,
+    contactPhone,
+    destinationName,
+    destinationAddress,
+    destinationLatLng,
 }) => {
     const [distance, setDistance] = useState(0);
     const [map, setMap] = useState(null);
+    const [directionsResult, setDirectionsResult] = useState(null);
 
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-        libraries: ['places']
+        libraries: GOOGLE_LIBRARIES,
     });
 
     const onLoad = useCallback((mapInstance) => {
@@ -52,31 +63,135 @@ const MapComponent = ({
         setMap(null);
     }, []);
 
+    const stopPoints = useMemo(() => {
+        if (!Array.isArray(markers)) return [];
+        return markers
+            .filter((m) => m?.type === "stop" && m?.position)
+            .slice()
+            .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    }, [markers]);
+
+    // Compute road-follow route using Google Directions API (origin + waypoints + destination).
+    useEffect(() => {
+        if (!isLoaded) return;
+        if (!window.google?.maps?.DirectionsService) return;
+
+        // Only for route map view: require 2+ stops
+        if (!isRouteMap || stopPoints.length < 2) {
+            setDirectionsResult(null);
+            return;
+        }
+
+        let cancelled = false;
+        const service = new window.google.maps.DirectionsService();
+
+        const origin = stopPoints[0].position;
+        const destination = stopPoints[stopPoints.length - 1].position;
+        const waypoints = stopPoints.slice(1, -1).map((p) => ({
+            location: p.position,
+            stopover: true,
+        }));
+
+        service.route(
+            {
+                origin,
+                destination,
+                waypoints,
+                optimizeWaypoints: false,
+                travelMode: window.google.maps.TravelMode.DRIVING,
+            },
+            (result, status) => {
+                if (cancelled) return;
+                if (status === "OK" && result) {
+                    setDirectionsResult(result);
+                } else {
+                    // Fallback to polyline if Directions fails (e.g., API not enabled)
+                    console.warn("Directions request failed:", status);
+                    setDirectionsResult(null);
+                }
+            }
+        );
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isLoaded, isRouteMap, stopPoints]);
+
     const renderedMarkers = useMemo(() => {
         if (!isLoaded) return null;
-        return markers.map((marker) => (
-            <Marker
-                key={marker.id}
-                position={marker.position}
-                title={marker.title}
-                icon={marker.type === 'bus' ? {
-                    url: BusIcon,
-                    scaledSize: new window.google.maps.Size(40, 40)
-                } : undefined}
-            />
-        ));
+        return markers.map((marker) => {
+            const isBus = marker.type === 'bus';
+            const isStop = marker.type === 'stop';
+            const isStudent = marker.type === 'student';
+            const role = marker.stopRole || "mid";
+
+            // Static-UI style:
+            // - stops: black dots
+            // - start/end: red dot with white outline
+            const stopIcon = isStop
+                ? role === "start" || role === "end"
+                    ? {
+                          path: window.google.maps.SymbolPath.CIRCLE,
+                          scale: 10,
+                          fillColor: "#C01824",
+                          fillOpacity: 1,
+                          strokeColor: "#ffffff",
+                          strokeWeight: 3,
+                      }
+                    : {
+                          path: window.google.maps.SymbolPath.CIRCLE,
+                          scale: 8,
+                          fillColor: "#111111",
+                          fillOpacity: 1,
+                          strokeColor: "#ffffff",
+                          strokeWeight: 2,
+                      }
+                : undefined;
+
+            const studentIcon = isStudent
+                ? {
+                      path: window.google.maps.SymbolPath.CIRCLE,
+                      scale: 6,
+                      fillColor: "#2563EB", // blue
+                      fillOpacity: 1,
+                      strokeColor: "#ffffff",
+                      strokeWeight: 2,
+                  }
+                : undefined;
+
+            const icon = isBus
+                ? { url: BusIcon, scaledSize: new window.google.maps.Size(40, 40) }
+                : isStudent
+                ? studentIcon
+                : stopIcon;
+
+            return (
+                <MarkerF
+                    key={marker.id}
+                    position={marker.position}
+                    title={marker.title}
+                    icon={icon}
+                />
+            );
+        });
     }, [markers, isLoaded]);
 
     const renderedRoutes = useMemo(() => {
         if (!isLoaded) return null;
         return routes.map((route) => (
-            <Polyline
+            <PolylineF
                 key={route.id}
                 path={route.path}
                 options={{
-                    strokeColor: route.color || '#C01824',
-                    strokeOpacity: 0.8,
-                    strokeWeight: 4,
+                    // Use route-provided color (static-map style is mauve/burgundy)
+                    strokeColor: route.color || "#8B6B73",
+                    strokeOpacity: 1,
+                    strokeWeight: 8,
+                    clickable: false,
+                    geodesic: true,
+                    zIndex: 10,
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round",
                 }}
             />
         ));
@@ -84,6 +199,14 @@ const MapComponent = ({
 
     const handleImport = () => console.log('Import button clicked');
     const handleOk = () => console.log(`OK clicked with distance: ${distance} km`);
+    const handleOpenInGoogleMaps = () => {
+        const query = destinationLatLng
+            ? `${destinationLatLng.lat},${destinationLatLng.lng}`
+            : (destinationAddress || destinationName || "").trim();
+        if (!query) return;
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
 
     if (loadError) {
         return (
@@ -113,7 +236,24 @@ const MapComponent = ({
                     }}
                 >
                     {renderedMarkers}
-                    {renderedRoutes}
+                    {directionsResult ? (
+                        <DirectionsRenderer
+                            directions={directionsResult}
+                            options={{
+                                suppressMarkers: true,
+                                preserveViewport: true,
+                                polylineOptions: {
+                                    strokeColor: "#8B6B73",
+                                    strokeOpacity: 1,
+                                    strokeWeight: 8,
+                                    clickable: false,
+                                    zIndex: 10,
+                                },
+                            }}
+                        />
+                    ) : (
+                        renderedRoutes
+                    )}
                 </GoogleMap>
             ) : (
                 <div className="flex flex-col items-center justify-center h-full">
@@ -121,6 +261,8 @@ const MapComponent = ({
                     <Typography className="mt-4 text-gray-500 font-medium italic">Initializing RouteIQ Engine...</Typography>
                 </div>
             )}
+
+            {/* debug badge removed */}
             
             <div className="absolute top-0 left-0 right-0 flex flex-row justify-between items-center p-4 pointer-events-none">
                 <img
@@ -142,7 +284,9 @@ const MapComponent = ({
                     <div className="bg-white rounded-xl shadow-2xl w-80 pointer-events-auto border border-gray-100 transform transition-all duration-300 hover:shadow-red-100">
                         <div className="p-5 relative">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">ABC</h2>
+                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                                    {cardTitle || "Route"}
+                                </h2>
                                 <button className="p-1.5 rounded-full bg-gray-50 hover:bg-gray-200 transition-colors" onClick={closeCard}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -153,28 +297,65 @@ const MapComponent = ({
 
                             <div className="bg-[#C01824] text-white p-3 gap-3 rounded-lg flex items-center justify-center mb-5 shadow-lg shadow-red-200">
                                 <img src={BusIcon} className="w-6 h-6 invert" alt="Bus" />
-                                <span className="font-bold text-lg">7 minutes</span>
+                                <span className="font-bold text-lg">
+                                    {typeof durationMinutes === "number" ? `${durationMinutes} minutes` : "7 minutes"}
+                                </span>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
                                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Schedule</p>
-                                    <p className="font-bold text-gray-800 text-base">17:00 - 00:00</p>
+                                    <p className="font-bold text-gray-800 text-base">{scheduleText || "—"}</p>
                                 </div>
 
                                 <div>
                                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Contact</p>
-                                    <a href="tel:+375173271045" className="text-blue-600 font-bold text-base hover:underline">+375 (17) 327-10-45</a>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            {contactText ? (
+                                                <p className="text-gray-900 font-bold text-base truncate">{contactText}</p>
+                                            ) : null}
+
+                                            {contactPhone ? (
+                                                <a
+                                                    href={`tel:${contactPhone}`}
+                                                    className="text-sky-600 font-bold text-base hover:underline break-all"
+                                                >
+                                                    {contactPhone}
+                                                </a>
+                                            ) : !contactText ? (
+                                                <p className="text-gray-800 font-bold text-base">—</p>
+                                            ) : null}
+                                        </div>
+
+                                        {contactPhone ? (
+                                            <button
+                                                type="button"
+                                                className="shrink-0 h-9 w-9 rounded-full bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center shadow-md pointer-events-auto"
+                                                onClick={() => window.open(`tel:${contactPhone}`)}
+                                                title="Call"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.12.81.3 1.6.54 2.36a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.72-1.06a2 2 0 0 1 2.11-.45c.76.24 1.55.42 2.36.54A2 2 0 0 1 22 16.92z"/>
+                                                </svg>
+                                            </button>
+                                        ) : null}
+                                    </div>
                                 </div>
 
                                 <div className="pt-2 border-t border-gray-50">
                                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Destination</p>
                                     <div className="flex justify-between items-end">
                                         <div>
-                                            <p className="font-bold text-gray-900 leading-tight">Hoover Elementary</p>
-                                            <p className="text-sm text-gray-500 mt-0.5">950 Hunt Ave, WI 54956</p>
+                                            <p className="font-bold text-gray-900 leading-tight">{destinationName || "—"}</p>
+                                            <p className="text-sm text-gray-500 mt-0.5">{destinationAddress || "—"}</p>
                                         </div>
-                                        <button className="bg-blue-600 text-white rounded-full h-10 w-10 flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors pointer-events-auto">
+                                        <button
+                                            className="bg-blue-600 text-white rounded-full h-10 w-10 flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors pointer-events-auto"
+                                            onClick={handleOpenInGoogleMaps}
+                                            title="Open in Google Maps"
+                                            type="button"
+                                        >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                                 <polyline points="9 18 15 12 9 6"></polyline>
                                             </svg>
@@ -208,8 +389,13 @@ const MapComponent = ({
                                     onChange={(e) => setDistance(e.target.value)}
                                     className="flex-grow accent-[#C01824] h-1.5 rounded-lg bg-gray-200 cursor-pointer"
                                 />
-                                <span className="font-black text-gray-900 min-w-[45px] text-right">{distance} km</span>
+                                        <span className="font-black text-gray-900 min-w-[45px] text-right">{distance} km</span>
                             </div>
+                                    {typeof distanceKm === "number" && typeof durationMinutes === "number" ? (
+                                        <div className="mt-2 text-xs font-bold text-gray-600">
+                                            Route: {distanceKm.toFixed(2)} km • {durationMinutes} min
+                                        </div>
+                                    ) : null}
                         </div>
                         <Button
                             onClick={handleOk}

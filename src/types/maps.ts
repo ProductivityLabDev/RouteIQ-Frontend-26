@@ -13,7 +13,7 @@ export interface MapMarker {
   id: string | number;
   position: LatLng;
   title: string;
-  type: 'student' | 'school' | 'bus';
+  type: 'student' | 'school' | 'bus' | 'stop';
   details?: {
     name?: string;
     address?: string;

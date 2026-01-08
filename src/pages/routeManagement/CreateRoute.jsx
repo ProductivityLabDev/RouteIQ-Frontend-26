@@ -30,11 +30,12 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
     const { employees: realDrivers, loading: employeesLoading } = useAppSelector((state) => state.employees);
     const { buses: realBuses, loading: busesLoading } = useAppSelector((state) => state.buses);
 
+    const GOOGLE_LIBRARIES = ["places"];
     // 🔐 Load Google Maps API for Autocomplete
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-        libraries: ['places']
+        libraries: GOOGLE_LIBRARIES
     });
 
     const [autocompletePickup, setAutocompletePickup] = useState(null);
@@ -50,8 +51,6 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                 ...prev,
                 pickup: place.formatted_address || place.name
             }));
-            // Automatically trigger student selection when address is picked
-            setShowSeats(true);
         }
     };
 
@@ -65,11 +64,9 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         }
     };
 
-    const [showSeats, setShowSeats] = useState(false);
-
-    const handleFieldClick = () => {
-        setShowSeats(true);
-    };
+    // Students are loaded by Drop-off School (instituteId), not pickup/dropoff.
+    // Keep panel visible; do not couple to pickup/dropoff fields.
+    const [showSeats] = useState(true);
 
     const [selectedTime, setSelectedTime] = useState("");
     const timeSlots = [
@@ -157,6 +154,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                 routeForm.routeTime && 
                 routeForm.driverId && 
                 routeForm.busId && 
+                selectedSchoolId &&
                 selectedStudents.length > 0
             );
 
@@ -796,7 +794,6 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                                         value={routeForm.pickup}
                                                         placeholder="Enter pickup location"
                                                         className="bg-[#F5F6FA] outline-none w-full"
-                                                        onClick={handleFieldClick}
                                                         onChange={handleRouteFieldChange}
                                                     />
                                                 </Autocomplete>
@@ -980,7 +977,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                             </div>
 
                         </div>
-                        {showSeats ? (
+                        {showSeats && (
                             <div className="flex flex-col w-[100%]">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="text-xl font-bold">Select Students</div>
@@ -1055,13 +1052,6 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         No students found for the selected school.
                                     </div>
                                 )}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col w-[100%]">
-                                <div className="text-xl font-bold mb-4">Select Students {editRoute ? "(0 seats)" : "(10 seats)"}</div>
-                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Please first enter Pickup and Dropoff location to show the student records.
-                                </Typography>
                             </div>
                         )}
                     </div>

@@ -24,6 +24,24 @@ export interface Bus {
   // ... add more fields
 }
 
+export interface CreateTerminalPayload {
+  // Preferred shape (UI forms)
+  name?: string;
+  code?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+
+  // Backward/alternate shapes (some screens may pass backend-shaped keys)
+  TerminalName?: string;
+  TerminalCode?: string;
+  Address?: string | null;
+  City?: string | null;
+  State?: string | null;
+  ZipCode?: string | null;
+}
+
 export interface CreateBusPayload {
   vehicleName: string | null;
   busType: string | null;
@@ -69,8 +87,28 @@ export const busService = {
     };
   },
 
-  createTerminal: async (payload: { name: string; code: string; address?: string }): Promise<ApiResponse<any>> => {
-    const response = await apiClient.post("/institute/createTerminal", payload);
+  // Backend/SP expects TerminalCode/TerminalName/Address/City/State/ZipCode
+  createTerminal: async (payload: CreateTerminalPayload): Promise<ApiResponse<any>> => {
+    // Backend route: POST /terminals/create-terminals
+    const terminalCode =
+      (payload.code ?? payload.TerminalCode ?? "")?.toString().trim();
+    const terminalName =
+      (payload.name ?? payload.TerminalName ?? "")?.toString().trim();
+    const address =
+      (payload.address ?? payload.Address ?? undefined) ?? undefined;
+    const city = (payload.city ?? payload.City ?? undefined) ?? undefined;
+    const state = (payload.state ?? payload.State ?? undefined) ?? undefined;
+    const zipCode =
+      (payload.zipCode ?? payload.ZipCode ?? undefined) ?? undefined;
+
+    const response = await apiClient.post("/terminals/create-terminals", {
+      TerminalCode: terminalCode,
+      TerminalName: terminalName,
+      Address: address ?? null,
+      City: city ?? null,
+      State: state ?? null,
+      ZipCode: zipCode ?? null,
+    });
     return {
       ok: true,
       data: response.data,

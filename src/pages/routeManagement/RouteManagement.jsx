@@ -5,17 +5,20 @@ import { tripsData } from '@/data';
 import { busTrips } from '@/data/dummyData';
 import MainLayout from '@/layouts/SchoolLayout';
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { Button, ButtonGroup, Input, Popover, PopoverContent, PopoverHandler, Typography } from '@material-tailwind/react';
+import { Button, ButtonGroup, Input, Popover, PopoverContent, PopoverHandler, Typography, Spinner, Select, Option, Menu, MenuHandler, MenuList, MenuItem } from '@material-tailwind/react';
 import { format } from "date-fns";
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DayPicker } from "react-day-picker";
 import { FaArrowDown, FaArrowUp, FaPlus } from 'react-icons/fa';
 import { FaEllipsisVertical } from "react-icons/fa6";
+import { Toaster, toast } from "react-hot-toast";
 import CreateRoute from './CreateRoute';
 import SchoolList from './SchoolList';
 import VendorGlobalModal from "@/components/Modals/VendorGlobalModal";
-import { useAppDispatch } from "@/redux/hooks";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { createTerminal } from "@/redux/slices/busesSlice";
+import { fetchRouteManagementTerminals, fetchRouteMap, fetchRouteStudents, fetchRouteMetrics, fetchRouteDetails } from "@/redux/slices/routesSlice";
+import { fetchStates, fetchCities } from "@/redux/slices/employeSlices";
 
 const RouteManagement = () => {
     // --- Mock Data for the Functional Map UI ---
@@ -55,13 +58,43 @@ const RouteManagement = () => {
     const [modalPosition, setModalPosition] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAddTerminalModalOpen, setIsAddTerminalModalOpen] = useState(false);
-    const [terminalForm, setTerminalForm] = useState({
+    const INITIAL_TERMINAL_FORM = {
         name: "",
         code: "",
         address: "",
-    });
+        city: "",
+        state: "",
+        zipCode: "",
+    };
+    const [terminalForm, setTerminalForm] = useState(INITIAL_TERMINAL_FORM);
 
     const dispatch = useAppDispatch();
+    const { terminalsHierarchy, loading: routesLoading, mapView, studentsByRoute, metricsByRoute, detailsByRoute } = useAppSelector((state) => state.routes);
+    const { states, cities, loading: employeeLoading } = useAppSelector((state) => state.employees);
+
+    const [citySearch, setCitySearch] = useState("");
+
+    const resetTerminalForm = () => {
+        setTerminalForm(INITIAL_TERMINAL_FORM);
+        setCitySearch("");
+    };
+
+    const handleCloseAddTerminalModal = () => {
+        setIsAddTerminalModalOpen(false);
+        resetTerminalForm();
+    };
+
+    // Load Route Management hierarchy: Terminal -> Institutes + States/Cities for dropdown
+    useEffect(() => {
+        dispatch(fetchRouteManagementTerminals());
+        dispatch(fetchStates());
+        dispatch(fetchCities()); // City list (we will render only top N + search)
+    }, [dispatch]);
+
+    const displayedTerminals = useMemo(() => {
+        if (Array.isArray(terminalsHierarchy) && terminalsHierarchy.length > 0) return terminalsHierarchy;
+        return [];
+    }, [terminalsHierarchy]);
 
     const handleTerminalFormChange = (e) => {
         const { name, value } = e.target;
@@ -71,17 +104,38 @@ const RouteManagement = () => {
     const handleCreateTerminalSubmit = async () => {
         console.log("🚀 Creating Terminal from Route Management:", terminalForm);
         try {
-            const result = await dispatch(createTerminal(terminalForm));
+            // busService.createTerminal expects { name, code, address?, city?, state?, zipCode? }
+            const payload = {
+                name: String(terminalForm.name || "").trim(),
+                code: String(terminalForm.code || "").trim(),
+                address: terminalForm.address ? String(terminalForm.address).trim() : undefined,
+                city: terminalForm.city ? String(terminalForm.city).trim() : undefined,
+                state: terminalForm.state ? String(terminalForm.state).trim() : undefined,
+                zipCode: terminalForm.zipCode ? String(terminalForm.zipCode).trim() : undefined,
+            };
+
+            if (!payload.name) {
+                toast.error("Terminal Name is required");
+                return;
+            }
+            if (!payload.code) {
+                toast.error("Terminal Code is required");
+                return;
+            }
+
+            const result = await dispatch(createTerminal(payload));
             if (createTerminal.fulfilled.match(result)) {
-                alert("Terminal created successfully!");
-                setIsAddTerminalModalOpen(false);
-                setTerminalForm({ name: "", code: "", address: "" });
+                toast.success("Terminal created successfully!");
+                handleCloseAddTerminalModal();
+                // refresh hierarchy so the new terminal appears in Route Management list
+                dispatch(fetchRouteManagementTerminals());
             } else {
-                alert(result.payload || "Failed to create terminal");
+                const errorMessage = result.payload || "Failed to create terminal";
+                toast.error(String(errorMessage));
             }
         } catch (err) {
             console.error("Error creating terminal:", err);
-            alert("Failed to create terminal");
+            toast.error("Failed to create terminal");
         }
     };
 
@@ -126,7 +180,51 @@ const RouteManagement = () => {
         setIsEditable(true)
         setOpen(!open)
     }
-    const handleMapScreenClick = () => {
+    const resolveRouteId = (route) =>
+        route?.routeId ??
+        route?.RouteId ??
+        route?.routeID ??
+        route?.routeid ??
+        route?.id ??
+        route?.ID;
+
+    const handleMapScreenClick = (route) => {
+        // If called from a bare button (event object), just open the map with fallback markers.
+        if (route && route.nativeEvent) {
+            setIsRouteMap(false);
+            setShowCard(true);
+            setOpenMapScreen(true);
+            return;
+        }
+
+        const resolvedId = resolveRouteId(route);
+        if (resolvedId) {
+            setShowCard(true);
+            dispatch(fetchRouteMap({ routeId: resolvedId, type: "AM" }));
+            // Load students (with lat/lng) for map points, but avoid refetch if cached
+            const already = Array.isArray(studentsByRoute?.[resolvedId]) && studentsByRoute[resolvedId].length > 0;
+            const isLoading = routesLoading?.routeStudents?.[resolvedId];
+            if (!already && !isLoading) {
+                dispatch(fetchRouteStudents({ routeId: resolvedId, type: "AM" }));
+            }
+
+            // Compute metrics once per route (cache)
+            const hasMetrics = Boolean(metricsByRoute?.[resolvedId]?.distanceKm);
+            const metricsLoading = routesLoading?.routeMetrics?.[resolvedId];
+            if (!hasMetrics && !metricsLoading) {
+                dispatch(fetchRouteMetrics(resolvedId));
+            }
+
+            // Fetch route details for the bus card (cache)
+            const hasDetails = Boolean(detailsByRoute?.[resolvedId] && Object.keys(detailsByRoute[resolvedId]).length > 0);
+            const detailsLoading = routesLoading?.routeDetails?.[resolvedId];
+            if (!hasDetails && !detailsLoading) {
+                dispatch(fetchRouteDetails(resolvedId));
+            }
+            setIsRouteMap(true);
+        } else {
+            console.warn("⚠️ Route ID not found for map call", route);
+        }
         setOpenMapScreen(true);
     };
 
@@ -135,6 +233,7 @@ const RouteManagement = () => {
         setIsCreateRoute(false)
         setIsEditRoute(false)
         setIsRouteMap(false)
+        setShowCard(true)
     };
     const handleOpenRoute = () => {
         setIsCreateRoute(true)
@@ -151,17 +250,247 @@ const RouteManagement = () => {
     const closeCard = () => {
         setShowCard(false);
     };
+
+    const mapData = useMemo(() => {
+        const payload = mapView?.data || {};
+        const stops = payload.stops || payload.data?.stops || [];
+        // For student markers we prefer route students endpoint (has lat/lng)
+        const selectedRouteId = mapView?.routeId;
+        const students =
+            (selectedRouteId ? studentsByRoute?.[selectedRouteId] : null) ||
+            payload.students ||
+            payload.data?.students ||
+            [];
+
+        const normalizedStops = stops
+            .map((stop, idx) => {
+                const lat =
+                    stop.stopLatitude ??
+                    stop.StopLatitude ??
+                    stop.latitude ??
+                    stop.lat;
+                const lng =
+                    stop.stopLongitude ??
+                    stop.StopLongitude ??
+                    stop.longitude ??
+                    stop.lng;
+                if (lat === undefined || lng === undefined) return null;
+                return {
+                    id: stop.stopId || stop.StopId || `stop-${idx}`,
+                    order: stop.stopOrder ?? stop.StopOrder ?? idx + 1,
+                    position: { lat: Number(lat), lng: Number(lng) },
+                    title: stop.stopName || stop.StopName || `Stop ${stop.stopOrder ?? stop.StopOrder ?? idx + 1}`,
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const stopMarkers = normalizedStops.map((s) => ({
+            id: s.id,
+            position: s.position,
+            title: s.title,
+            type: "stop",
+            order: s.order,
+            stopRole:
+                s.order === normalizedStops[0]?.order
+                    ? "start"
+                    : s.order === normalizedStops[normalizedStops.length - 1]?.order
+                    ? "end"
+                    : "mid",
+            details: {
+                address:
+                    (stops || []).find((x) => (x.stopId ?? x.StopId) === s.id)?.stopAddress ||
+                    (stops || []).find((x) => (x.stopId ?? x.StopId) === s.id)?.StopAddress,
+            },
+        }));
+
+        const path = normalizedStops.map((s) => s.position);
+
+        const studentMarkers = (Array.isArray(students) ? students : [])
+            .map((stu, idx) => {
+                const lat =
+                    stu.studentLatitude ??
+                    stu.StudentLatitude ??
+                    stu.latitude ??
+                    stu.Latitude ??
+                    stu.lat;
+                const lng =
+                    stu.studentLongitude ??
+                    stu.StudentLongitude ??
+                    stu.longitude ??
+                    stu.Longitude ??
+                    stu.lng;
+                if (lat === undefined || lng === undefined) return null;
+                return {
+                    id: stu.studentId || stu.StudentId || `student-${idx}`,
+                    position: { lat: Number(lat), lng: Number(lng) },
+                    title: stu.studentName || stu.StudentName || `Student ${idx + 1}`,
+                    type: "student",
+                };
+            })
+            .filter(Boolean);
+
+        const markers = [...stopMarkers, ...studentMarkers];
+        // Match the original static-map "mauve/burgundy" route line color
+        const routes = path.length > 0 ? [{ id: "route-path", color: "#8B6B73", path, stops: stopMarkers }] : [];
+
+        // Compute center (avg of all markers) if available
+        let center = null;
+        if (markers.length > 0) {
+            const sum = markers.reduce(
+                (acc, m) => ({
+                    lat: acc.lat + m.position.lat,
+                    lng: acc.lng + m.position.lng,
+                }),
+                { lat: 0, lng: 0 }
+            );
+            center = {
+                lat: sum.lat / markers.length,
+                lng: sum.lng / markers.length,
+            };
+        }
+
+        return {
+            markers,
+            routes,
+            center,
+        };
+    }, [mapView]);
+
+    const effectiveMarkers = mapData.markers && mapData.markers.length > 0 ? mapData.markers : mapMarkers;
+    const effectiveRoutes = mapData.routes && mapData.routes.length > 0 ? mapData.routes : mapRoutes;
+    const effectiveCenter = mapData.center || (mapMarkers[0] ? mapMarkers[0].position : undefined);
+
+    const activeRouteId = mapView?.routeId;
+    const activeRouteMetrics = activeRouteId ? metricsByRoute?.[activeRouteId] : null;
+    const activeRouteDetails = activeRouteId ? detailsByRoute?.[activeRouteId] : null;
+
+    const details = activeRouteDetails || {};
+    const pickFirst = (...vals) => vals.find((v) => v !== undefined && v !== null && String(v).trim() !== "");
+    const hhmm = (iso) => {
+        if (!iso) return null;
+        if (typeof iso === "string" && iso.includes("T")) return iso.split("T")[1]?.slice(0, 5) || null;
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return String(iso);
+            const h = String(d.getHours()).padStart(2, "0");
+            const m = String(d.getMinutes()).padStart(2, "0");
+            return `${h}:${m}`;
+        } catch {
+            return String(iso);
+        }
+    };
+
+    const scheduleStart = pickFirst(
+        details.scheduleStartTime,
+        details.ScheduleStartTime,
+        details.startTime,
+        details.StartTime,
+        details.routeStartTime,
+        details.RouteStartTime
+    );
+    const scheduleEnd = pickFirst(
+        details.scheduleEndTime,
+        details.ScheduleEndTime,
+        details.endTime,
+        details.EndTime,
+        details.routeEndTime,
+        details.RouteEndTime
+    );
+
+    // Some backends return schedule as array/object
+    const scheduleObj = Array.isArray(details.schedule)
+        ? details.schedule[0]
+        : details.schedule || details.Schedule || null;
+    const scheduleStart2 = scheduleObj
+        ? pickFirst(scheduleObj.startTime, scheduleObj.StartTime, scheduleObj.scheduleStartTime, scheduleObj.ScheduleStartTime)
+        : null;
+    const scheduleEnd2 = scheduleObj
+        ? pickFirst(scheduleObj.endTime, scheduleObj.EndTime, scheduleObj.scheduleEndTime, scheduleObj.ScheduleEndTime)
+        : null;
+
+    // Vendor schedule response uses pickupTime/dropoffTime
+    const schedulePickup = scheduleObj
+        ? pickFirst(scheduleObj.pickupTime, scheduleObj.PickupTime)
+        : null;
+    const scheduleDropoff = scheduleObj
+        ? pickFirst(scheduleObj.dropoffTime, scheduleObj.DropoffTime)
+        : null;
+
+    const finalScheduleStart = scheduleStart || scheduleStart2;
+    const finalScheduleEnd = scheduleEnd || scheduleEnd2;
+    const finalPickup = schedulePickup ? hhmm(schedulePickup) : null;
+    const finalDropoff = scheduleDropoff ? hhmm(scheduleDropoff) : null;
+
+    const driverName = pickFirst(details.driverName, details.DriverName, details.driverFullName, details.DriverFullName);
+    const driverPhone = pickFirst(
+        details.driverPhone,
+        details.DriverPhone,
+        details.phone,
+        details.Phone,
+        details.mobile,
+        details.Mobile,
+        details.driverMobile,
+        details.DriverMobile
+    );
+
+    const lastStop = (mapView?.data?.stops || [])[((mapView?.data?.stops || []).length || 1) - 1];
+    const destinationName = lastStop?.stopName || lastStop?.StopName;
+    const destinationAddress = lastStop?.stopAddress || lastStop?.StopAddress;
+    const destinationLat = lastStop?.latitude ?? lastStop?.Latitude ?? lastStop?.stopLatitude ?? lastStop?.StopLatitude;
+    const destinationLng = lastStop?.longitude ?? lastStop?.Longitude ?? lastStop?.stopLongitude ?? lastStop?.StopLongitude;
+    const destinationLatLng =
+        destinationLat !== undefined && destinationLng !== undefined
+            ? { lat: Number(destinationLat), lng: Number(destinationLng) }
+            : null;
     return (
         <MainLayout>
+            <Toaster
+                position="top-right"
+                reverseOrder={false}
+                toastOptions={{
+                    duration: 3000,
+                }}
+            />
             {openMapScreen ? (
-                <MapComponent 
-                    onBack={handleBackClick} 
-                    isRouteMap={isRouteMap} 
-                    closeCard={closeCard} 
-                    showCard={showCard}
-                    markers={mapMarkers}
-                    routes={mapRoutes}
-                />
+                mapView?.loading ? (
+                    <div className="flex flex-col items-center justify-center h-full py-12">
+                        <Spinner className="h-10 w-10 text-[#C01824]" />
+                        <Typography className="mt-3 text-gray-600 font-medium">Loading map data...</Typography>
+                    </div>
+                ) : (
+                    <MapComponent 
+                        key={mapView?.routeId || "route-map"}
+                        onBack={handleBackClick} 
+                        isRouteMap={isRouteMap} 
+                        closeCard={closeCard} 
+                        showCard={showCard}
+                        markers={effectiveMarkers}
+                        routes={effectiveRoutes}
+                        center={effectiveCenter}
+                        distanceKm={activeRouteMetrics?.distanceKm}
+                        durationMinutes={activeRouteMetrics?.durationMinutes}
+                        cardTitle={
+                            details?.routeNumber ||
+                            details?.RouteNumber ||
+                            details?.routeName ||
+                            details?.RouteName ||
+                            `Route #${activeRouteId || ""}`
+                        }
+                        scheduleText={
+                            finalPickup || finalDropoff
+                                ? `${finalPickup || "—"} - ${finalDropoff || "—"}`
+                                : finalScheduleStart || finalScheduleEnd
+                                ? `${finalScheduleStart || "—"} - ${finalScheduleEnd || "—"}`
+                                : null
+                        }
+                        contactText={driverName || null}
+                        contactPhone={driverPhone || null}
+                        destinationName={destinationName || null}
+                        destinationAddress={destinationAddress || null}
+                        destinationLatLng={destinationLatLng}
+                    />
+                )
             ) : isCreateRoute || isEditable ? (
                 <CreateRoute onBack={handleBackClick} editRoute={isEditRoute} isEditable={isEditable} handleBackTrip={handleBackTrip} />
             ) :
@@ -182,8 +511,15 @@ const RouteManagement = () => {
                             null
                             :
                             <div className="flex gap-4">
-                                <Button className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center gap-2'
-                                    variant='filled' size='lg' onClick={() => setIsAddTerminalModalOpen(true)}>
+                                <Button
+                                    className='bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center gap-2'
+                                    variant='filled'
+                                    size='lg'
+                                    onClick={() => {
+                                        resetTerminalForm();
+                                        setIsAddTerminalModalOpen(true);
+                                    }}
+                                >
                                     <FaPlus size={16} />
                                     Add Terminal
                                 </Button>
@@ -201,8 +537,13 @@ const RouteManagement = () => {
                     </div>
                     
                     <div className="w-full space-y-4">
-                        {[...Array(4)].map((_, index) => (
-                            <div className="w-full bg-white border-b border-gray-200 shadow-sm">
+                        {routesLoading?.terminalsHierarchy && displayedTerminals.length === 0 ? (
+                            <div className="bg-white border border-gray-200 rounded-lg p-4 text-gray-600">
+                                Loading terminals...
+                            </div>
+                        ) : displayedTerminals.length > 0 ? (
+                            displayedTerminals.map((terminal, index) => (
+                            <div key={terminal.terminalId || `terminal-${index}`} className="w-full bg-white border-b border-gray-200 shadow-sm">
                                 <div className="flex items-center justify-between px-4 py-2">
                                     <div className="flex items-center space-x-3">
                                         <button className="text-gray-600 hover:text-gray-800">
@@ -210,7 +551,9 @@ const RouteManagement = () => {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                                             </svg>
                                         </button>
-                                        <h2 className="font-medium text-gray-800 text-lg">Terminal 1</h2>
+                                        <h2 className="font-medium text-gray-800 text-lg">
+                                            {terminal.terminalName || `Terminal ${terminal.terminalId || index + 1}`}
+                                        </h2>
                                         <button className="text-gray-600 hover:text-gray-800"  onClick={() => setIsOpen(index === isOpen ? null : index)}>
                                            <svg width="20" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                            <path d="M3.27702 20.6328C3.01105 20.6328 2.78653 20.5278 2.60348 20.318C2.42056 20.1079 2.3291 19.8503 2.3291 19.5451V17.1006C2.3291 16.8114 2.3766 16.535 2.4716 16.2714C2.56646 16.0079 2.70195 15.7753 2.87806 15.5733L13.3191 3.61121C13.4924 3.42443 13.6848 3.28132 13.8962 3.18188C14.1074 3.08244 14.3292 3.03271 14.5614 3.03271C14.7903 3.03271 15.0139 3.08244 15.2322 3.18188C15.4504 3.28132 15.6426 3.43049 15.8087 3.62938L17.1687 5.19657C17.342 5.38334 17.4694 5.60295 17.5508 5.85538C17.6322 6.10765 17.6729 6.36096 17.6729 6.61531C17.6729 6.88177 17.6322 7.13715 17.5508 7.38145C17.4694 7.62592 17.342 7.8476 17.1687 8.04648L6.74848 20.0029C6.5725 20.205 6.36966 20.3604 6.13994 20.4693C5.91035 20.5783 5.66952 20.6328 5.41744 20.6328H3.27702ZM14.5556 7.94823L15.7222 6.61531L14.5506 5.26517L13.3789 6.60384L14.5556 7.94823Z" fill="#1C1B1F"/>
@@ -768,13 +1111,22 @@ const RouteManagement = () => {
                                         </div>
                                         :
                                         <div className="w-full bg-white border-t border-gray-200 shadow-sm">
-                                            <SchoolList handleMapScreenClick={handleMapScreenClick} handleEditRoute={handleEditRoute} />
+                                            <SchoolList
+                                                institutes={terminal.institutes || []}
+                                                handleMapScreenClick={handleMapScreenClick}
+                                                handleEditRoute={handleEditRoute}
+                                            />
                                         </div>
 
 
                                 )}
                             </div>
-                        ))}
+                        ))
+                        ) : (
+                            <div className="bg-white border border-gray-200 rounded-lg p-4 text-gray-600">
+                                No terminals found for this vendor.
+                            </div>
+                        )}
                     </div>
 
                     {/* <div className='flex justify-between items-center mt-6 mb-4 px-7 py-3'>
@@ -797,7 +1149,7 @@ const RouteManagement = () => {
             {/* 🚀 Naya Terminal Creation Modal */}
             <VendorGlobalModal
                 isOpen={isAddTerminalModalOpen}
-                onClose={() => setIsAddTerminalModalOpen(false)}
+                onClose={handleCloseAddTerminalModal}
                 title="Add New Terminal"
                 primaryButtonText="Create"
                 secondaryButtonText="Cancel"
@@ -851,6 +1203,112 @@ const RouteManagement = () => {
                                 className: "before:content-none after:content-none",
                             }}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex flex-col">
+                            <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
+                                City
+                            </Typography>
+                            <Menu placement="bottom-start">
+                                <MenuHandler>
+                                    <div>
+                                        <Input
+                                            size="lg"
+                                            placeholder="Select City (search)"
+                                            readOnly
+                                            value={terminalForm.city || ""}
+                                            className="cursor-pointer !border-t-blue-gray-200 focus:!border-t-gray-900"
+                                            labelProps={{
+                                                className: "before:content-none after:content-none",
+                                            }}
+                                        />
+                                    </div>
+                                </MenuHandler>
+                                <MenuList className="max-h-96 w-72">
+                                    <div className="p-2">
+                                        <Input
+                                            size="sm"
+                                            placeholder="Search city..."
+                                            value={citySearch}
+                                            onChange={(e) => setCitySearch(e.target.value)}
+                                            labelProps={{
+                                                className: "before:content-none after:content-none",
+                                            }}
+                                            crossOrigin={undefined}
+                                        />
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto">
+                                        {(employeeLoading?.cities) ? (
+                                            <MenuItem disabled>Loading cities...</MenuItem>
+                                        ) : (() => {
+                                            const all = Array.isArray(cities) ? cities : [];
+                                            const term = citySearch.toLowerCase();
+                                            const filtered = all
+                                                .filter((c) => {
+                                                    const name = (c.CityName || c.cityName || c.name || "").toLowerCase();
+                                                    return term ? name.includes(term) : true;
+                                                })
+                                                .slice(0, 100); // limit render to top 100
+                                            if (filtered.length === 0) {
+                                                return <MenuItem disabled>No matches</MenuItem>;
+                                            }
+                                            return filtered.map((city) => {
+                                                const name = city.CityName || city.cityName || city.name || "Unknown";
+                                                return (
+                                                    <MenuItem
+                                                        key={city.CityId || city.cityId || city.id || name}
+                                                        onClick={() => {
+                                                            setTerminalForm((prev) => ({ ...prev, city: name }));
+                                                        }}
+                                                    >
+                                                        {name}
+                                                    </MenuItem>
+                                                );
+                                            });
+                                        })()}
+                                    </div>
+                                </MenuList>
+                            </Menu>
+                        </div>
+                        <div className="flex flex-col">
+                            <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
+                                State
+                            </Typography>
+                            <select
+                                className="h-11 w-full rounded-md border border-blue-gray-200 bg-transparent px-3 text-sm text-blue-gray-700 outline-none focus:border-gray-900"
+                                value={terminalForm.state || ""}
+                                onChange={(e) => setTerminalForm((prev) => ({ ...prev, state: e.target.value }))}
+                            >
+                                <option value="" disabled>
+                                    {employeeLoading?.states ? "Loading states..." : "Select State"}
+                                </option>
+                                {(Array.isArray(states) ? states : []).map((state) => {
+                                    const id = state.StateId || state.stateId || state.id;
+                                    const name = state.StateName || state.stateName || state.name || `State ${id}`;
+                                    return (
+                                        <option key={id ?? name} value={String(id)}>
+                                            {name}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+                        <div className="flex flex-col">
+                            <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
+                                Zip Code
+                            </Typography>
+                            <Input
+                                size="lg"
+                                placeholder="e.g. 60601"
+                                name="zipCode"
+                                value={terminalForm.zipCode}
+                                onChange={handleTerminalFormChange}
+                                className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+                                labelProps={{
+                                    className: "before:content-none after:content-none",
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             </VendorGlobalModal>

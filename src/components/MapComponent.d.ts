@@ -10,6 +10,15 @@ export interface MapComponentProps {
   routes?: MapRoute[];
   center?: { lat: number; lng: number };
   zoom?: number;
+  distanceKm?: number;
+  durationMinutes?: number;
+  cardTitle?: string | null;
+  scheduleText?: string | null;
+  contactText?: string | null;
+  contactPhone?: string | null;
+  destinationName?: string | null;
+  destinationAddress?: string | null;
+  destinationLatLng?: { lat: number; lng: number } | null;
 }
 
 declare const MapComponent: React.FC<MapComponentProps>;

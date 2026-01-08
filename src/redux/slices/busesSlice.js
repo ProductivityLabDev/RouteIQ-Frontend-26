@@ -50,7 +50,11 @@ export const createTerminal = createAsyncThunk(
       const response = await busService.createTerminal(terminalData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to create terminal");
+      const msg = error?.response?.data?.message;
+      // Nest often returns { message: string[] }
+      const normalized =
+        Array.isArray(msg) ? msg.join(", ") : msg || "Failed to create terminal";
+      return rejectWithValue(normalized);
     }
   }
 );
