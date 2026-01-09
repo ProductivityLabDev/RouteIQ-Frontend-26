@@ -5,14 +5,31 @@ export interface CreateRoutePayload {
   instituteId: number;
   routeNumber: string;
   routeName: string;
+  // UI field names
   pickup: string;
   dropoff: string;
   routeDate: string; // YYYY-MM-DD
   routeTime: string; // HH:mm
+  // UI field names
   driverId: number;
   busId: number;
   createdByUserId?: number;
   studentIds: string; // Comma separated string e.g. '1,2,5'
+}
+
+// Backend DTO expects these keys (forbidNonWhitelisted=true)
+interface CreateRouteBackendDto {
+  instituteId: number;
+  routeNumber: string;
+  routeName: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  routeDate: string;
+  routeTime: string;
+  driverEmployeeId: number;
+  vehicleId: number;
+  studentIds: string;
+  createdByUserId?: number;
 }
 
 export interface RouteResponse {
@@ -121,9 +138,23 @@ export const routeService = {
    * Create a new route
    */
   createRoute: async (payload: CreateRoutePayload): Promise<ApiResponse<RouteResponse>> => {
+    const body: CreateRouteBackendDto = {
+      instituteId: Number(payload.instituteId),
+      routeNumber: String(payload.routeNumber ?? ""),
+      routeName: String(payload.routeName ?? ""),
+      pickupLocation: String(payload.pickup ?? ""),
+      dropoffLocation: String(payload.dropoff ?? ""),
+      routeDate: String(payload.routeDate ?? ""),
+      routeTime: String(payload.routeTime ?? ""),
+      driverEmployeeId: Number(payload.driverId),
+      vehicleId: Number(payload.busId),
+      studentIds: String(payload.studentIds ?? ""),
+      ...(payload.createdByUserId !== undefined ? { createdByUserId: Number(payload.createdByUserId) } : {}),
+    };
+
     const response = await apiClient.post<ApiResponse<RouteResponse>>(
       "/institute/create-with-students",
-      payload
+      body
     );
     return response.data;
   },

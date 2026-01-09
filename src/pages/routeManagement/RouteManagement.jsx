@@ -357,9 +357,24 @@ const RouteManagement = () => {
         };
     }, [mapView]);
 
-    const effectiveMarkers = mapData.markers && mapData.markers.length > 0 ? mapData.markers : mapMarkers;
-    const effectiveRoutes = mapData.routes && mapData.routes.length > 0 ? mapData.routes : mapRoutes;
-    const effectiveCenter = mapData.center || (mapMarkers[0] ? mapMarkers[0].position : undefined);
+            // Important: only use mock fallback when opening the generic map (not a specific route map).
+            // If a real route has no stops/students lat/lng yet, we should NOT show a fake polyline/markers.
+            const useMockFallback = !isRouteMap;
+            const effectiveMarkers =
+                mapData.markers && mapData.markers.length > 0
+                    ? mapData.markers
+                    : useMockFallback
+                      ? mapMarkers
+                      : [];
+            const effectiveRoutes =
+                mapData.routes && mapData.routes.length > 0
+                    ? mapData.routes
+                    : useMockFallback
+                      ? mapRoutes
+                      : [];
+            const effectiveCenter =
+                mapData.center ||
+                (useMockFallback && mapMarkers[0] ? mapMarkers[0].position : undefined);
 
     const activeRouteId = mapView?.routeId;
     const activeRouteMetrics = activeRouteId ? metricsByRoute?.[activeRouteId] : null;
@@ -457,6 +472,19 @@ const RouteManagement = () => {
                     <div className="flex flex-col items-center justify-center h-full py-12">
                         <Spinner className="h-10 w-10 text-[#C01824]" />
                         <Typography className="mt-3 text-gray-600 font-medium">Loading map data...</Typography>
+                    </div>
+                ) : isRouteMap && (!effectiveRoutes || effectiveRoutes.length === 0) ? (
+                    <div className="flex flex-col items-center justify-center h-full py-12 bg-white rounded-lg border border-gray-200">
+                        <Typography className="text-lg font-semibold text-gray-800">
+                            No stops/coordinates found for this route yet
+                        </Typography>
+                        <Typography className="text-sm mt-2 text-gray-600 max-w-xl text-center">
+                            This route is created, but stops (or student lat/lng) are not available in the map API response.
+                            Once stops are added/assigned (or student locations are saved), the polyline will follow real roads.
+                        </Typography>
+                        <Button onClick={handleBackClick} className="mt-5 bg-[#C01824]">
+                            Back
+                        </Button>
                     </div>
                 ) : (
                     <MapComponent 
