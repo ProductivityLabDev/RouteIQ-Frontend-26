@@ -121,6 +121,7 @@ export const createBus = createAsyncThunk(
         vinNo: busData.vinNo || null,
         mileage: busData.mileage ? parseFloat(busData.mileage) : null,
         driverId: driverIdValue,
+        driverName: busData.driverName || null,
         fuelTypeId: busData.fuelType ? parseInt(busData.fuelType, 10) : null,
         insuranceExpiration: busData.insuranceExpiration || null,
         undercarriageStorage: undercarriageStorageNum,
@@ -131,6 +132,77 @@ export const createBus = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message || "Failed to create bus");
+    }
+  }
+);
+
+// Async thunk to update bus
+export const updateBus = createAsyncThunk(
+  "buses/updateBus",
+  async ({ vehicleId, busData }, { rejectWithValue }) => {
+    try {
+      console.log("🔄 [busesSlice] updateBus called with vehicleId:", vehicleId);
+      console.log("🔄 [busesSlice] busData:", busData);
+
+      // Calculate serviceInterval as number of days from today to the selected date
+      let serviceIntervalDays = null;
+      if (busData.serviceInterval) {
+        const serviceDate = new Date(busData.serviceInterval);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        serviceDate.setHours(0, 0, 0, 0);
+        const diffTime = serviceDate.getTime() - today.getTime();
+        serviceIntervalDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        // Ensure it's a positive number (days from today)
+        if (serviceIntervalDays < 0) serviceIntervalDays = 0;
+      }
+
+      // Handle undercarriageStorage - convert yes/no to number or keep as number
+      let undercarriageStorageValue = null;
+      if (busData.undercarriageStorage === 'yes' || busData.undercarriageStorage === 1) {
+        undercarriageStorageValue = 1;
+      } else if (busData.undercarriageStorage === 'no' || busData.undercarriageStorage === 0) {
+        undercarriageStorageValue = 0;
+      } else if (typeof busData.undercarriageStorage === 'number') {
+        undercarriageStorageValue = busData.undercarriageStorage;
+      }
+
+      // Get driver ID
+      let driverIdValue = null;
+      if (busData.driver) {
+        const parsed = parseInt(busData.driver, 10);
+        if (!isNaN(parsed)) driverIdValue = parsed;
+      }
+
+      // Build payload matching API specification
+      const payload = {
+        vehicleId: vehicleId, // Use vehicleId as per API spec
+        vehicleName: busData.vehicleName || null,
+        busType: busData.busType || null,
+        numberPlate: busData.numberPlate || null,
+        modelYear: busData.modelYear ? parseInt(busData.modelYear, 10) : null,
+        serviceInterval: serviceIntervalDays, // Number of days
+        fuelTankSize: busData.fuelTankSize ? parseFloat(busData.fuelTankSize) : null,
+        assignedTerminalId: busData.assignedTerminal ? parseInt(busData.assignedTerminal, 10) : null,
+        expiredDate: busData.expiredDate || null,
+        vehicleMake: busData.vehicleMake || null,
+        noOfPassenger: busData.noOfPassenger ? parseInt(busData.noOfPassenger, 10) : null,
+        vinNo: busData.vinNo || null,
+        mileage: busData.mileage ? parseFloat(busData.mileage) : null,
+        driverId: driverIdValue,
+        driverName: busData.driverName || null,
+        fuelTypeId: busData.fuelType ? parseInt(busData.fuelType, 10) : null,
+        insuranceExpiration: busData.insuranceExpiration || null,
+        undercarriageStorage: undercarriageStorageValue,
+      };
+
+      console.log("🔄 [busesSlice] Final payload:", payload);
+
+      const response = await busService.updateBus(vehicleId, payload);
+      return response.data;
+    } catch (error) {
+      console.error("❌ [busesSlice] Update error:", error);
+      return rejectWithValue(error.response?.data?.message || error.message || "Failed to update bus");
     }
   }
 );
@@ -146,6 +218,7 @@ const initialState = {
     terminals: false,
     buses: false,
     creating: false,
+    updating: false,
   },
   error: {
     drivers: null,
@@ -153,6 +226,7 @@ const initialState = {
     terminals: null,
     buses: null,
     creating: null,
+    updating: null,
   },
 };
 
@@ -263,6 +337,22 @@ const busesSlice = createSlice({
         state.loading.creating = false;
         state.error.creating = action.payload || "Failed to create bus";
         console.error("❌ [Redux] Create bus failed:", action.payload);
+      })
+      // Update bus
+      .addCase(updateBus.pending, (state) => {
+        state.loading.updating = true;
+        state.error.updating = null;
+        console.log("⏳ [Redux] Updating bus...");
+      })
+      .addCase(updateBus.fulfilled, (state, action) => {
+        state.loading.updating = false;
+        state.error.updating = null;
+        console.log("✅ [Redux] Bus updated");
+      })
+      .addCase(updateBus.rejected, (state, action) => {
+        state.loading.updating = false;
+        state.error.updating = action.payload || "Failed to update bus";
+        console.error("❌ [Redux] Update bus failed:", action.payload);
       })
       // Create terminal
       .addCase(createTerminal.pending, (state) => {

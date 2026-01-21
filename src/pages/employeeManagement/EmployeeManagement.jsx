@@ -266,10 +266,11 @@ const EmployeeManagement = () => {
             <table className="min-w-full border-collapse border">
               <thead className="bg-gray-100">
                 <tr>
+                  {/* "W2", "1099", "YTD", */}
                   {[
                     "Title", "Name", "Address", "City", "Phone", "Date of Birth", "State", "Zip", "Terminal", "Email",
                     "Emergency Contact Name", "Emergency Contact", "Pay Grade", "Trip Rate", "Route Rate", "Pay Cycle", "Pay Type",
-                    "W2", "1099", "YTD", "Pay Stub", "Terminal Assigned To", "Fuel Card Code", "User Name", "Direct Deposit", "Account Number", "Routing No", "Social Security No",
+                     "Pay Stub", "Terminal Assigned To", "Fuel Card Code", "User Name", "Direct Deposit", "Account Number", "Routing No", "Social Security No",
                     "Password Reset", "Status", "Availability", "Action"
                   ].map((head) => (
                     <th key={head} className="px-10 py-1 border whitespace-nowrap">{head}</th>
@@ -308,7 +309,7 @@ const EmployeeManagement = () => {
                         </td>
 
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Address || "N/A"}</h2></td>
-                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.City || "N/A"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.CityName || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.Phone || "11111111"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.DateOfBirth
                           ? new Date(emp.DateOfBirth).toLocaleDateString("en-US", {
@@ -328,9 +329,9 @@ const EmployeeManagement = () => {
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.RouteRate || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayCycleName || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.PayTypeName || "N/A"}</h2></td>
-                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.W2 || "—"}</h2></td>
+                        {/* <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.W2 || "—"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp._1099 || "—"}</h2></td>
-                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.YTD || "—"}</h2></td>
+                        <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.YTD || "—"}</h2></td> */}
                         <td className="px-10 py-1 border text-[#C01824] font-bold cursor-pointer">View</td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.TerminalName || "N/A"}</h2></td>
                         <td className="px-10 py-1 border text-center"><h2 className="w-40">{emp.FuelCardCode || "N/A"}</h2></td>

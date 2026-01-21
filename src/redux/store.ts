@@ -9,6 +9,7 @@ import employeesReducer from "./slices/employeSlices";
 import schoolsReducer from "./slices/schoolSlice";
 import studentsReducer from "./slices/studentSlice";
 import routesReducer from "./slices/routesSlice";
+import repairScheduleReducer from "./slices/repairScheduleSlice";
 
 const persistConfig = {
   key: "root",
@@ -24,6 +25,7 @@ const rootReducer = combineReducers({
   schools: schoolsReducer,
   students: studentsReducer,
   routes: routesReducer,
+  repairSchedule: repairScheduleReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

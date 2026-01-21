@@ -1,10 +1,63 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import VendorDashboardHeader from '@/components/VendorDashboardHeader'
-import { Typography } from '@material-tailwind/react'
+import { Typography, Spinner } from '@material-tailwind/react'
 import { editicon } from '@/assets'
+import { busService } from '@/services/busService'
+import { toast } from 'react-hot-toast'
 
 const VehicleInfoComponent = ({ vehicle, onBack }) => {
+    const [busData, setBusData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
     console.log("🚌 Vehicle data received in VehicleInfoComponent:", vehicle);
+
+    useEffect(() => {
+        const fetchBusDetails = async () => {
+            if (!vehicle) {
+                setLoading(false);
+                return;
+            }
+
+            // Extract vehicleId from vehicle object (try multiple property names)
+            const vehicleId = vehicle.vehicleId 
+                || vehicle.VehicleId 
+                || vehicle.BusId 
+                || vehicle.busId 
+                || vehicle.id 
+                || vehicle.Id
+                || vehicle.ID;
+
+            if (!vehicleId) {
+                console.error("❌ [VehicleInfoComponent] No vehicleId found in vehicle:", vehicle);
+                setError("Vehicle ID not found");
+                setLoading(false);
+                toast.error("Vehicle ID not found");
+                return;
+            }
+
+            try {
+                setLoading(true);
+                console.log("🔄 [VehicleInfoComponent] Fetching bus details for vehicleId:", vehicleId);
+                const response = await busService.getBusByVehicleId(vehicleId);
+                
+                if (response.ok && response.data) {
+                    console.log("✅ [VehicleInfoComponent] Bus details fetched:", response.data);
+                    setBusData(response.data);
+                } else {
+                    throw new Error("Failed to fetch bus details");
+                }
+            } catch (err) {
+                console.error("❌ [VehicleInfoComponent] Error fetching bus details:", err);
+                setError(err.message || "Failed to load bus information");
+                toast.error("Failed to load bus information");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBusDetails();
+    }, [vehicle]);
 
     if (!vehicle) {
         return (
@@ -21,6 +74,42 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
         );
     }
 
+    if (loading) {
+        return (
+            <section className='w-full h-full'>
+                <div className='bg-white w-full rounded-[4px] border shadow-sm h-[105vh]'>
+                    <VendorDashboardHeader title='Bus Information' TextClassName='md:text-[22px]' className='ms-12' icon={true} handleNavigate={onBack} />
+                    <div className='flex items-center justify-center h-[50vh]'>
+                        <div className='flex flex-col items-center'>
+                            <Spinner className="h-8 w-8 text-[#C01824]" />
+                            <Typography className="mt-3 text-center font-bold text-[16px] text-gray-500">
+                                Loading bus information...
+                            </Typography>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
+    if (error || !busData) {
+        return (
+            <section className='w-full h-full'>
+                <div className='bg-white w-full rounded-[4px] border shadow-sm h-[105vh]'>
+                    <VendorDashboardHeader title='Bus Information' TextClassName='md:text-[22px]' className='ms-12' icon={true} handleNavigate={onBack} />
+                    <div className='flex items-center justify-center h-[50vh]'>
+                        <Typography className="text-center font-bold text-[16px] text-red-500">
+                            {error || "Failed to load bus information"}
+                        </Typography>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
+    // Use busData from API instead of vehicle prop
+    const vehicleData = busData;
+
     return (
         <section className='w-full h-full'>
             <div className='bg-white w-full rounded-[4px] border shadow-sm h-[105vh]'>
@@ -28,20 +117,20 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                 <div className='flex flex-row w-[100%] h-[23vh] justify-between h-[33vh] ps-5 border-b-2 border-[#d3d3d3]'>
                     <div className='flex flex-row w-[60%] h-[23vh] gap-[59px]'>
                         <img 
-                            src={vehicle?.vehiclImg || vehicle?.VehicleImage || '/src/assets/vechicelSvg.svg'} 
-                            alt={vehicle?.VehicleName || vehicle?.vehicleName || "vehicle"}
+                            src={vehicleData?.vehiclImg || vehicleData?.VehicleImage || vehicleData?.vehicleImage || '/src/assets/vechicelSvg.svg'} 
+                            alt={vehicleData?.VehicleName || vehicleData?.vehicleName || "vehicle"}
                             className="w-48 h-32 object-cover rounded"
                         />
                         <div className='flex flex-col h-full w-[65%] gap-[13px]'>
                             <Typography className="mb-2 text-start font-extrabold text-[19px] text-black">
-                                {vehicle?.VehicleName || vehicle?.vehicleName || "N/A"}
+                                {vehicleData?.VehicleName || vehicleData?.vehicleName || vehicleData?.vehicleName || "N/A"}
                             </Typography>
                             <div className='flex flex-row gap-[85px]'>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
                                     Bus type
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    {vehicle?.BusType || vehicle?.busType || "School Bus"}
+                                    {vehicleData?.BusType || vehicleData?.busType || "School Bus"}
                                 </Typography>
                             </div>
                             <div className='flex flex-row gap-[50px]'>
@@ -49,7 +138,7 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                                     Vehicle Make
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    {vehicle?.VehicleMake || vehicle?.vehicleMake || "N/A"}
+                                    {vehicleData?.VehicleMake || vehicleData?.vehicleMake || "N/A"}
                                 </Typography>
                             </div>
                             <div className='flex flex-row gap-[45px]'>
@@ -57,7 +146,7 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                                     Number Plate
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    {vehicle?.NumberPlate || vehicle?.numberPlate || vehicle?.LicensePlate || "N/A"}
+                                    {vehicleData?.NumberPlate || vehicleData?.numberPlate || vehicleData?.LicensePlate || "N/A"}
                                 </Typography>
                             </div>
                         </div>
@@ -116,33 +205,33 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
 
                         <div className='flex flex-col w-[100%] h-[52vh] ps-12 pt-10'>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.VehicleName || vehicle?.vehicleName || "N/A"}
+                                {vehicleData?.VehicleName || vehicleData?.vehicleName || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.VehicleMake || vehicle?.vehicleMake || "N/A"}
+                                {vehicleData?.VehicleMake || vehicleData?.vehicleMake || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.BusType || vehicle?.busType || "School Bus"}
+                                {vehicleData?.BusType || vehicleData?.busType || "School Bus"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.NoOfPassenger || vehicle?.noOfPassenger || vehicle?.NumberOfPassengers || "N/A"}
+                                {vehicleData?.NoOfPassenger || vehicleData?.noOfPassenger || vehicleData?.NumberOfPassengers || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.NumberPlate || vehicle?.numberPlate || vehicle?.LicensePlate || "N/A"}
+                                {vehicleData?.NumberPlate || vehicleData?.numberPlate || vehicleData?.LicensePlate || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.VinNo || vehicle?.vinNo || vehicle?.VIN || vehicle?.VINNumber || "N/A"}
+                                {vehicleData?.VinNo || vehicleData?.vinNo || vehicleData?.VIN || vehicleData?.VINNumber || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.ModelYear || vehicle?.modelYear || vehicle?.Year || vehicle?.year || "N/A"}
+                                {vehicleData?.ModelYear || vehicleData?.modelYear || vehicleData?.Year || vehicleData?.year || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.Mileage || vehicle?.mileage ? `${vehicle.Mileage || vehicle.mileage} Km/Ltr` : "N/A"}
+                                {vehicleData?.Mileage || vehicleData?.mileage ? `${vehicleData.Mileage || vehicleData.mileage} Km/Ltr` : "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black flex flex-row gap-3">
                                 {(() => {
-                                    const serviceInterval = vehicle?.ServiceInterval || vehicle?.serviceInterval;
-                                    const nextServiceDate = vehicle?.NextServiceDate || vehicle?.nextServiceDate;
+                                    const serviceInterval = vehicleData?.ServiceInterval || vehicleData?.serviceInterval;
+                                    const nextServiceDate = vehicleData?.NextServiceDate || vehicleData?.nextServiceDate;
                                     
                                     if (!serviceInterval) return "N/A";
                                     
@@ -173,45 +262,20 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                                 })()}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.GPS || vehicle?.gps || vehicle?.GPSTracking || "N/A"}
+                                {vehicleData?.GPS || vehicleData?.gps || vehicleData?.GPSTracking || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] flex flex-row gap-3 items-center flex-wrap">
-                                {(() => {
-                                    const drivers = vehicle?.Driver || vehicle?.driver || vehicle?.Drivers || vehicle?.drivers;
-                                    if (!drivers) return "N/A";
-                                    
-                                    let driverNames = [];
-                                    if (Array.isArray(drivers)) {
-                                        driverNames = drivers.map(d => d?.Name || d?.name || d || "Unknown");
-                                    } else if (typeof drivers === 'string') {
-                                        driverNames = drivers.split(",").map(d => d.trim());
-                                    } else if (drivers?.Name || drivers?.name) {
-                                        driverNames = [drivers.Name || drivers.name];
-                                    } else {
-                                        driverNames = ["N/A"];
-                                    }
-                                    
-                                    return (
-                                        <>
-                                            {driverNames.map((name, idx) => (
-                                                <span key={idx} className="text-red-500 underline">
-                                                    {name}{idx < driverNames.length - 1 ? "," : ""}
-                                                </span>
-                                            ))}
-                                            <img src={editicon} alt="edit" className="ml-1" />
-                                        </>
-                                    );
-                                })()}
+                                {vehicleData?.EmpName || vehicleData?.empName || vehicleData?.DriverName || vehicleData?.driverName || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.FuelTankSize || vehicle?.fuelTankSize ? `${vehicle.FuelTankSize || vehicle.fuelTankSize} L` : "N/A"}
+                                {vehicleData?.FuelTankSize || vehicleData?.fuelTankSize ? `${vehicleData.FuelTankSize || vehicleData.fuelTankSize} L` : "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
-                                {vehicle?.FuelType || vehicle?.fuelType || "N/A"}
+                                {vehicleData?.FuelType || vehicleData?.fuelType || "N/A"}
                             </Typography>
                             <Typography className="mb-2 text-left font-bold text-[16px] text-black">
                                 {(() => {
-                                    const fuelDate = vehicle?.FuelDate || vehicle?.fuelDate;
+                                    const fuelDate = vehicleData?.FuelDate || vehicleData?.fuelDate;
                                     if (!fuelDate) return "N/A";
                                     try {
                                         const date = new Date(fuelDate);
