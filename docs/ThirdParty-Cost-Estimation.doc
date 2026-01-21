@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Route IQ — Third‑Party & Operational Cost Estimation</title>
+    <style>
+      body {
+        font-family: Calibri, Arial, sans-serif;
+        font-size: 11pt;
+        color: #111;
+        line-height: 1.35;
+        margin: 0;
+        padding: 36pt;
+      }
+      h1 {
+        font-size: 22pt;
+        margin: 0 0 10pt 0;
+        color: #C01824;
+      }
+      h2 {
+        font-size: 14pt;
+        margin: 18pt 0 8pt 0;
+        color: #202224;
+        border-bottom: 1px solid #e6e6e6;
+        padding-bottom: 4pt;
+      }
+      h3 {
+        font-size: 12pt;
+        margin: 14pt 0 6pt 0;
+        color: #202224;
+      }
+      .meta {
+        margin: 0 0 16pt 0;
+        color: #444;
+      }
+      .callout {
+        background: #fff5f5;
+        border: 1px solid #ffd1d1;
+        padding: 10pt 12pt;
+        border-radius: 6pt;
+        margin: 10pt 0 14pt 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8pt 0 12pt 0;
+      }
+      th, td {
+        border: 1px solid #d9d9d9;
+        padding: 8pt;
+        vertical-align: top;
+      }
+      th {
+        background: #f6f7f9;
+        font-weight: 700;
+      }
+      ul { margin: 6pt 0 6pt 18pt; }
+      li { margin: 3pt 0; }
+      .small { font-size: 10pt; color: #444; }
+      .footer {
+        margin-top: 22pt;
+        font-size: 9.5pt;
+        color: #666;
+        border-top: 1px solid #e6e6e6;
+        padding-top: 8pt;
+      }
+      a { color: #1a73e8; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <h1>Route IQ — Third‑Party & Operational Cost Estimation</h1>
+    <p class="meta"><b>Date:</b> 2026‑01‑14<br/>
+      <b>Scope:</b> Estimated recurring + optional one‑time costs for third‑party services used by Route IQ (Frontend + Backend).<br/>
+      <b>Document type:</b> Client‑facing (budgetary estimate)
+    </p>
+
+    <div class="callout">
+      <b>Important:</b> This version is intentionally prepared <b>without amounts</b>. It is a checklist of the services,
+      accounts, and operational items the client should expect for production. Final numbers can be calculated later
+      using official calculators and expected usage.
+    </div>
+
+    <h2>What we confirmed from the project</h2>
+    <ul>
+      <li><b>Database is MSSQL (SQL Server)</b> → on Azure this maps to <b>Azure SQL Database</b> (recommended) or <b>Azure SQL Managed Instance</b>.</li>
+      <li><b>Google Maps is used in the frontend</b> (Maps JS + Places Autocomplete + Directions routing).</li>
+      <li><b>Backend is NestJS</b> and currently <b>not using Docker</b> → recommended hosting is <b>Azure App Service (Linux)</b>.</li>
+    </ul>
+
+    <h2>Client checklist (no amounts)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Billing model (typical)</th>
+          <th>Required?</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Backend Hosting (NestJS API)</b></td>
+          <td>Monthly compute + bandwidth</td>
+          <td><b>Yes</b></td>
+          <td>Recommended: Azure App Service (Linux) (current setup: no Docker)</td>
+        </tr>
+        <tr>
+          <td><b>Azure DB (MSSQL)</b></td>
+          <td>Monthly tier + storage</td>
+          <td><b>Yes</b></td>
+          <td>Azure SQL Database (recommended) or Azure SQL Managed Instance</td>
+        </tr>
+        <tr>
+          <td><b>Google Maps Platform</b></td>
+          <td>Usage‑based (requests/loads)</td>
+          <td><b>Yes</b></td>
+          <td>Maps JS + Places Autocomplete + Directions/Routing</td>
+        </tr>
+        <tr>
+          <td><b>AWS S3 (Images/Docs)</b></td>
+          <td>Storage + requests + egress</td>
+          <td><b>Yes</b></td>
+          <td>Object storage for images/docs (S3 bucket already in use)</td>
+        </tr>
+        <tr>
+          <td><b>Mobile store accounts (Android + iOS)</b></td>
+          <td>One‑time + annual (platform rules)</td>
+          <td><b>Yes</b></td>
+          <td>Required to publish both apps</td>
+        </tr>
+        <tr>
+          <td><b>In‑App Subscriptions (store billing)</b></td>
+          <td>Revenue share / service fee</td>
+          <td><b>Yes</b></td>
+          <td>Store commission + billing compliance apply</td>
+        </tr>
+        <tr>
+          <td><b>Monitoring (optional)</b></td>
+          <td>Usage‑based or monthly</td>
+          <td>Recommended</td>
+          <td>Sentry/log aggregation/etc.</td>
+        </tr>
+        <tr>
+          <td><b>Email/SMS (optional)</b></td>
+          <td>Usage‑based</td>
+          <td>Optional</td>
+          <td>Only if OTP/alerts are enabled</td>
+        </tr>
+        <tr>
+          <td><b>Domain/DNS/SSL</b></td>
+          <td>Annual (domain) + optional monthly (CDN/WAF)</td>
+          <td><b>Yes</b></td>
+          <td>Website needs a domain + HTTPS</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Usage inputs (fill these for accurate totals)</h2>
+    <table>
+      <tr><th>Input</th><th>Value</th></tr>
+      <tr><td>Active users / month</td><td>____</td></tr>
+      <tr><td>Map loads / user / day</td><td>____</td></tr>
+      <tr><td>Routes created / month</td><td>____</td></tr>
+      <tr><td>Autocomplete searches / route creation (pickup + dropoff)</td><td>____</td></tr>
+      <tr><td>Route views (map opens) / month</td><td>____</td></tr>
+      <tr><td>Images stored (GB)</td><td>____</td></tr>
+      <tr><td>Image downloads / month (GB egress)</td><td>____</td></tr>
+      <tr><td>Subscription plan(s) (monthly/yearly) + expected month‑1 revenue</td><td>____</td></tr>
+    </table>
+
+    <h2>Backend Hosting (NestJS API)</h2>
+    <h3>Recommended (current setup: no Docker)</h3>
+    <ul>
+      <li><b>Azure App Service (Linux)</b>: managed hosting, easiest deploy, supports autoscale.</li>
+      <li>If you later move to Docker, you can switch to <b>Azure Container Apps</b>.</li>
+    </ul>
+    <p class="small">
+      Reference: <a href="https://azure.microsoft.com/pricing/details/app-service/">Azure App Service pricing</a>,
+      <a href="https://azure.microsoft.com/pricing/calculator/">Azure Pricing Calculator</a>
+    </p>
+
+    <h2>Database (MSSQL on Azure)</h2>
+    <ul>
+      <li><b>Azure SQL Database</b> (recommended): managed MSSQL, easiest operations.</li>
+      <li><b>Azure SQL Managed Instance</b>: if you need instance-level compatibility.</li>
+    </ul>
+    <p class="small">
+      Reference: <a href="https://azure.microsoft.com/pricing/details/azure-sql-database/">Azure SQL Database pricing</a>
+    </p>
+
+    <h2>Google Maps Platform</h2>
+    <ul>
+      <li><b>Dynamic Maps</b>: map renders (map loads).</li>
+      <li><b>Places Autocomplete</b>: pickup/dropoff search.</li>
+      <li><b>Directions/Routing</b>: road-follow polyline.</li>
+    </ul>
+    <p class="small">
+      Reference: <a href="https://developers.google.com/maps/billing-and-pricing/pricing">Google Maps Platform pricing</a>
+    </p>
+
+    <h2>AWS S3 (Images/Docs)</h2>
+    <ul>
+      <li>Costs include <b>storage (GB-month)</b>, <b>requests</b>, and <b>egress (downloads)</b>.</li>
+    </ul>
+    <p class="small">
+      Reference: <a href="https://aws.amazon.com/s3/pricing/">Amazon S3 pricing</a>
+    </p>
+
+    <h2>Notifications (clarification)</h2>
+    <p>
+      <b>Notifications do not run from the database.</b> The database stores data; the backend sends push notifications via
+      <b>FCM</b> (Android) and <b>APNs</b> (iOS). SMS/Email (if used) have per-message costs.
+    </p>
+
+    <h2>Domain / DNS / SSL</h2>
+    <ul>
+      <li><b>Domain</b>: required for the production website (purchased via a registrar).</li>
+      <li><b>DNS</b>: can be managed by the registrar or a dedicated DNS provider; CDN/WAF is optional but recommended.</li>
+      <li><b>SSL</b>: HTTPS certificate typically via Let’s Encrypt or included with managed hosting/CDN.</li>
+    </ul>
+
+    <h2>Mobile Apps (2 apps: Android + iOS) — Publishing & In‑App Subscriptions</h2>
+
+    <h3>A) Store accounts (mandatory)</h3>
+    <ul>
+      <li><b>Google Play Console</b> developer account (required to publish Android).</li>
+      <li><b>Apple Developer Program</b> account (required to publish iOS).</li>
+    </ul>
+
+    <h3>B) Build & publishing requirements</h3>
+    <ul>
+      <li><b>App builds</b>: Android AAB, iOS IPA.</li>
+      <li><b>Signing</b>: Android keystore + Play App Signing; iOS certificates + provisioning profiles.</li>
+      <li><b>Store listing assets</b>: app icon, screenshots (multiple device sizes), description, privacy policy URL, support URL.</li>
+      <li><b>Compliance</b>: permissions justification (location/notifications), content rating, iOS privacy disclosures.</li>
+      <li><b>Release management</b>: testing tracks + production rollout plan.</li>
+    </ul>
+
+    <h3>C) In‑app subscriptions (required for this model)</h3>
+    <ul>
+      <li><b>Product setup</b> in both stores: monthly/yearly plans, offers (if any), localization.</li>
+      <li><b>In‑app purchase flow</b>: StoreKit (iOS) + Google Play Billing (Android).</li>
+      <li><b>Backend validation</b>: server‑side receipt/token validation, webhooks/real‑time notifications handling, subscription state sync.</li>
+      <li><b>Entitlements</b>: feature access based on subscription status + restore purchases.</li>
+      <li><b>Store service fee (commission)</b>: applies to in‑app subscription revenue (platform rules).</li>
+    </ul>
+
+    <h3>D) Push notifications (if used)</h3>
+    <ul>
+      <li>iOS: APNs configuration</li>
+      <li>Android: FCM configuration</li>
+      <li>Backend endpoints for device token registration + user notification preferences</li>
+    </ul>
+
+    <h3>E) Analytics / crash reporting (recommended)</h3>
+    <ul>
+      <li>Crash reporting (e.g., Sentry / Firebase Crashlytics)</li>
+      <li>Analytics events (signup, subscription, churn, route usage)</li>
+    </ul>
+
+    <h3>F) QA & testing (required)</h3>
+    <ul>
+      <li>Testing on real Android + iOS devices</li>
+      <li>Store review checklist testing (permissions, login, subscription purchase/restore)</li>
+      <li>Staging environment for safe testing</li>
+    </ul>
+
+    <p class="small">
+      References:
+      <a href="https://developer.apple.com/app-store/small-business-program/">Apple Small Business Program</a>,
+      <a href="https://support.google.com/googleplay/android-developer/answer/112622">Google Play service fees</a>
+    </p>
+
+    <div class="footer">
+      Prepared for client discussion. Final costs depend on usage, region, and vendor policy updates.
+      Word tip: Open this file in Microsoft Word and use <b>File → Save As</b> to save as <b>.docx</b>.
+    </div>
+  </body>
+</html>
+

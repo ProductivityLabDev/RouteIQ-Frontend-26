@@ -1,0 +1,126 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+\fs24
+\b Route IQ \u8212? Third-Party \& Operational Cost Estimation (Client-Facing)\b0\par
+\par
+\b Date:\b0  2026-01-14\par
+\b Scope:\b0  Estimated recurring + optional one-time costs for third-party services used by Route IQ (Frontend + Backend).\par
+\b Note:\b0  Prices vary by region/tier and can change. This is a budgetary estimate; confirm via official calculators before approval.\par
+\par
+\b What we confirmed from the codebase\b0\par
+\pard\fi-360\li720
+\bullet  Database is MSSQL (SQL Server) \u8594? Azure option is typically Azure SQL Database or Azure SQL Managed Instance.\par
+\bullet  Google Maps is used in the frontend (@react-google-maps/api): Map loads + Places Autocomplete + Directions (road-follow routing).\par
+\pard\par
+
+\b Client checklist (no amounts)\b0\par
+\pard\fi-360\li720
+\bullet  Backend Hosting (NestJS API) \u8212? required (monthly compute + bandwidth)\par
+\bullet  Database (MSSQL) \u8212? required (monthly tier + storage)\par
+\bullet  Google Maps Platform \u8212? required (usage-based: map loads + autocomplete + routing)\par
+\bullet  AWS S3 (Images/Docs) \u8212? required (storage + requests + egress)\par
+\bullet  Mobile store accounts (Android + iOS) \u8212? required (platform registration)\par
+\bullet  In-app subscriptions (store billing) \u8212? required (store commission + compliance)\par
+\bullet  Monitoring / crash reporting \u8212? recommended\par
+\bullet  Domain / DNS / SSL \u8212? required (website)\par
+\bullet  Email/SMS \u8212? optional (if OTP/alerts enabled)\par
+\pard\par
+
+\b Usage inputs (fill for accurate totals)\b0\par
+\pard\fi-360\li720
+\bullet  Active users / month: ____\par
+\bullet  Map loads / user / day: ____\par
+\bullet  Autocomplete searches / route creation (pickup + dropoff): ____\par
+\bullet  Routes created / month: ____\par
+\bullet  Route views (map opens) / month: ____\par
+\bullet  Images stored (GB): ____\par
+\bullet  Image downloads / month (GB egress): ____\par
+\pard\par
+
+\b 1) Google Maps Platform (Frontend)\b0\par
+\pard\fi-360\li720
+\bullet  Maps JavaScript API (Dynamic Maps): map rendering\par
+\bullet  Places Autocomplete: pickup/dropoff suggestions\par
+\bullet  Directions/Routing: road-follow polyline\par
+\pard\par
+\b Official pricing:\b0  https://developers.google.com/maps/billing-and-pricing/pricing\par
+\par
+
+\b 2) Azure Database (MSSQL)\b0\par
+\pard\fi-360\li720
+\bullet  Option A: Azure SQL Database (Single DB) \u8212? easiest to start/scale\par
+\bullet  Option B: Azure SQL Managed Instance \u8212? closer to full SQL Server instance features\par
+\pard\par
+\b Official pricing:\b0  https://azure.microsoft.com/pricing/details/azure-sql-database/\par
+\b Calculator:\b0  https://azure.microsoft.com/pricing/calculator/\par
+\par
+
+\b 2.1) Backend Hosting (NestJS API)\b0\par
+\pard\fi-360\li720
+\bullet  Option A: Azure App Service (Linux) \u8212? \b recommended for current setup (no Docker)\b0 ; simplest managed hosting for NestJS\par
+\bullet  Option B: Azure Container Apps \u8212? best if you already use Docker; scales on demand\par
+\bullet  Option C: Azure VM \u8212? full control but you manage OS/patching/scaling\par
+\pard\par
+\b Recommended choice today:\b0  Use Azure App Service (Linux). If you later move to Docker, you can switch to Container Apps.\par
+\par
+\b Cost drivers:\b0  compute size (CPU/RAM), instances/autoscale, bandwidth egress, monitoring/logs.\par
+\b References:\b0  https://azure.microsoft.com/pricing/details/app-service/  |  https://azure.microsoft.com/pricing/details/container-apps/\par
+\par
+
+\b 3) AWS S3 (Images/Attachments)\b0\par
+\pard\fi-360\li720
+\bullet  Costs: storage (GB-month) + requests (PUT/GET) + egress (downloads)\par
+\pard\par
+\b Official pricing:\b0  https://aws.amazon.com/s3/pricing/\par
+\par
+
+\b 4) Payment / Merchant (Optional)\b0\par
+\pard\fi-360\li720
+\bullet  If enabled: processor fees (percentage + fixed fee), chargebacks, etc.\par
+\pard\par
+\b References:\b0  https://stripe.com/pricing  |  https://www.paypal.com/webapps/mpp/merchant-fees\par
+\par
+
+\b 5) Email / SMS (Optional)\b0\par
+\pard\fi-360\li720
+\bullet  SMS is usually per-message (varies by country)\par
+\bullet  Email is per-volume or per-plan\par
+\pard\par
+\b References:\b0  https://www.twilio.com/pricing  |  https://sendgrid.com/pricing/\par
+\par
+
+\b 5.1) Notifications (important clarification)\b0\par
+Notifications do not run from the database. SQL stores data; the backend triggers delivery via FCM/APNs (push) and/or SMS/Email providers.\par
+\par
+
+\b 6) Domain / DNS / SSL\b0\par
+\pard\fi-360\li720
+\bullet  Domain \u8212? required for production website (purchased via a registrar).\par
+\bullet  DNS \u8212? can be via registrar or dedicated DNS provider; CDN/WAF optional but recommended.\par
+\bullet  SSL (HTTPS) \u8212? typically via Let\u8217?s Encrypt or included with managed hosting/CDN.\par
+\pard\par
+
+\b 7) Mobile Apps (2 apps: Android + iOS) \u8212? publishing \& subscriptions\b0\par
+\pard\fi-360\li720
+\bullet  Store accounts (required): Google Play Console + Apple Developer Program\par
+\bullet  Builds: Android AAB + iOS IPA\par
+\bullet  Signing: Android keystore/Play App Signing + iOS certificates/profiles\par
+\bullet  Store listings: icon, screenshots (multiple sizes), descriptions, privacy policy URL, support URL\par
+\bullet  Compliance: permissions (location/notifications), content/age rating, iOS privacy disclosures\par
+\bullet  In-app subscriptions: store product setup + billing SDK integration + restore purchases\par
+\bullet  Backend validation: server-side receipt/token validation + webhooks/real-time notifications + entitlement sync\par
+\bullet  Push notifications (if used): APNs + FCM + backend token registration endpoints\par
+\bullet  QA: real device testing + store review checklist\par
+\pard\par
+\b References:\b0  https://developer.apple.com/app-store/small-business-program/  |  https://support.google.com/googleplay/android-developer/answer/112622\par
+\par
+
+\b What we need from you to finalize exact totals\b0\par
+\pard\fi-360\li720
+\bullet  Active users/month\par
+\bullet  Map opens/day and route creations/month\par
+\bullet  Images/month + average image size\par
+\bullet  Subscription pricing (monthly/yearly) + expected month-1 revenue\par
+\pard\par
+}
+
