@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { FaArrowLeft } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchDrivers, fetchFuelTypes, fetchTerminals, createBus } from '@/redux/slices/busesSlice';
+import { fetchDrivers, fetchFuelTypes, fetchTerminals, createBus, updateBus } from '@/redux/slices/busesSlice';
 import { toast } from 'react-hot-toast';
 
-const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
+const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 	const dispatch = useDispatch();
 	const { drivers, fuelTypes, terminals, loading, error } = useSelector((state) => state.buses);
+	const isEditMode = !!editBus;
 	
 	const [storageOption, setStorageOption] = useState('');
 	const [formData, setFormData] = useState({
@@ -49,35 +50,44 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 
 	const validateField = (name, value) => {
 		let error = "";
+		
+		// Helper to safely convert value to string (handles null, undefined, numbers)
+		const getStringValue = (val) => {
+			if (val == null) return ""; // null or undefined
+			if (typeof val === "string") return val.trim();
+			return String(val).trim(); // Convert number/other types to string
+		};
+		
+		const stringValue = getStringValue(value);
 
 		switch (name) {
 			case "vehicleName":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "Vehicle name/number is required";
-				} else if (value.trim().length < 2) {
+				} else if (stringValue.length < 2) {
 					error = "Vehicle name must be at least 2 characters";
 				}
 				break;
 
 			case "busType":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "Bus type is required";
 				}
 				break;
 
 			case "numberPlate":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "Number plate is required";
-				} else if (value.trim().length < 3) {
+				} else if (stringValue.length < 3) {
 					error = "Number plate must be at least 3 characters";
 				}
 				break;
 
 			case "modelYear":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "Year is required";
 				} else {
-					const year = parseInt(value);
+					const year = parseInt(stringValue);
 					const currentYear = new Date().getFullYear();
 					if (isNaN(year) || year < 1900 || year > currentYear + 1) {
 						error = `Year must be between 1900 and ${currentYear + 1}`;
@@ -97,10 +107,10 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 				break;
 
 			case "fuelTankSize":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "Fuel tank size is required";
 				} else {
-					const size = parseFloat(value);
+					const size = parseFloat(stringValue);
 					if (isNaN(size) || size <= 0 || size > 1000) {
 						error = "Fuel tank size must be a number between 1 and 1000 liters";
 					}
@@ -108,16 +118,16 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 				break;
 
 			case "vehicleMake":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "Vehicle make is required";
 				}
 				break;
 
 			case "noOfPassenger":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "Number of passengers is required";
 				} else {
-					const passengers = parseInt(value);
+					const passengers = parseInt(stringValue);
 					if (isNaN(passengers) || passengers < 1 || passengers > 100) {
 						error = "Number of passengers must be between 1 and 100";
 					}
@@ -125,26 +135,26 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 				break;
 
 			case "vinNo":
-				if (!value.trim()) {
+				if (!stringValue) {
 					error = "VIN number is required";
-				} else if (value.trim().length !== 17) {
+				} else if (stringValue.length !== 17) {
 					error = "VIN number must be exactly 17 characters";
-				} else if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(value.trim())) {
+				} else if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(stringValue)) {
 					error = "Invalid VIN format (must be 17 alphanumeric characters, excluding I, O, Q)";
 				}
 				break;
 
 			case "mileage":
-				if (value.trim() && (isNaN(parseFloat(value)) || parseFloat(value) < 0)) {
+				if (stringValue && (isNaN(parseFloat(stringValue)) || parseFloat(stringValue) < 0)) {
 					error = "Mileage must be a positive number";
 				}
 				break;
 
 			case "driver":
 				// Skip validation for now since drivers API is not working
-				// if (!value) {
-				// 	error = "Please select a driver";
-				// }
+				if (!value) {
+					error = "Please select a driver";
+				}
 				break;
 
 			case "fuelType":
@@ -172,7 +182,7 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 
 			case "insuranceExpiration":
 				// Optional field, but if provided should be valid date
-				if (value.trim()) {
+				if (stringValue) {
 					const insDate = new Date(value);
 					if (isNaN(insDate.getTime())) {
 						error = "Invalid date format";
@@ -238,27 +248,64 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 
 		try {
 			// Prepare form data with undercarriageStorage
-			// Hardcode driver ID for testing (remove when drivers API is working)
 			const busData = {
 				...formData,
 				driver: formData.driver || "1", // Default to driver ID 1 if not selected
 				undercarriageStorage: storageOption,
 			};
 
-			const result = await dispatch(createBus(busData));
-
-			if (createBus.fulfilled.match(result)) {
-				toast.success("Bus added successfully!");
-				if (refreshBuses) {
-					await refreshBuses();
+			if (isEditMode && editBus) {
+				// Update existing bus - try multiple possible property names
+				const vehicleId = editBus.vehicleId 
+					|| editBus.VehicleId
+					|| editBus.BusId 
+					|| editBus.busId 
+					|| editBus.id 
+					|| editBus.Id
+					|| editBus.ID;
+				
+				console.log("🔄 [AddBusInfoForm] Updating bus with vehicleId:", vehicleId);
+				console.log("🔄 [AddBusInfoForm] Edit bus data:", editBus);
+				console.log("🔄 [AddBusInfoForm] Edit bus keys:", Object.keys(editBus));
+				console.log("🔄 [AddBusInfoForm] Form data:", busData);
+				
+				if (!vehicleId) {
+					toast.error("Vehicle ID not found. Cannot update.");
+					console.error("❌ [AddBusInfoForm] Vehicle ID not found in editBus:", editBus);
+					console.error("❌ [AddBusInfoForm] Available keys:", Object.keys(editBus));
+					return;
 				}
-				handleCancel();
+
+				const result = await dispatch(updateBus({ vehicleId, busData }));
+				console.log("🔄 [AddBusInfoForm] Update result:", result);
+
+				if (updateBus.fulfilled.match(result)) {
+					toast.success("Bus updated successfully!");
+					if (refreshBuses) {
+						await refreshBuses();
+					}
+					handleCancel();
+				} else {
+					console.error("❌ [AddBusInfoForm] Update failed:", result.payload);
+					toast.error(result.payload || "Failed to update bus");
+				}
 			} else {
-				toast.error(result.payload || "Failed to add bus");
+				// Create new bus
+				const result = await dispatch(createBus(busData));
+
+				if (createBus.fulfilled.match(result)) {
+					toast.success("Bus added successfully!");
+					if (refreshBuses) {
+						await refreshBuses();
+					}
+					handleCancel();
+				} else {
+					toast.error(result.payload || "Failed to add bus");
+				}
 			}
 		} catch (err) {
-			console.error("Error adding Bus:", err);
-			toast.error(err.message || "Failed to add bus");
+			console.error(`Error ${isEditMode ? 'updating' : 'adding'} Bus:`, err);
+			toast.error(err.message || `Failed to ${isEditMode ? 'update' : 'add'} bus`);
 		}
 	};
 
@@ -268,6 +315,53 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 		dispatch(fetchFuelTypes());
 		dispatch(fetchTerminals());
 	}, [dispatch]);
+
+	// Populate form when editing
+	useEffect(() => {
+		if (editBus && isEditMode) {
+			// Convert date strings to YYYY-MM-DD format for date inputs
+			const formatDate = (dateString) => {
+				if (!dateString) return "";
+				const date = new Date(dateString);
+				if (isNaN(date.getTime())) return "";
+				return date.toISOString().split('T')[0];
+			};
+
+			// Calculate service interval date from days
+			const getServiceIntervalDate = (days) => {
+				if (!days || days === 0) return "";
+				const today = new Date();
+				today.setDate(today.getDate() + parseInt(days));
+				return formatDate(today);
+			};
+
+			setFormData({
+				vehicleName: editBus.VehicleName || editBus.vehicleName || "",
+				busType: editBus.BusType || editBus.busType || "",
+				numberPlate: editBus.NumberPlate || editBus.numberPlate || "",
+				modelYear: editBus.ModelYear || editBus.modelYear || "",
+				serviceInterval: editBus.ServiceInterval ? getServiceIntervalDate(editBus.ServiceInterval) : "",
+				fuelTankSize: editBus.FuelTankSize || editBus.fuelTankSize || "",
+				assignedTerminal: editBus.AssignedTerminalId || editBus.assignedTerminalId || editBus.TerminalId || editBus.terminalId || "",
+				expiredDate: formatDate(editBus.ExpiredDate || editBus.expiredDate),
+				vehicleMake: editBus.VehicleMake || editBus.vehicleMake || "",
+				noOfPassenger: editBus.NoOfPassenger || editBus.noOfPassenger || "",
+				vinNo: editBus.VinNo || editBus.vinNo || "",
+				mileage: editBus.Mileage || editBus.mileage || "",
+				driver: editBus.DriverId || editBus.driverId || "",
+				driverName: editBus.DriverName || editBus.driverName || "",
+				fuelType: editBus.FuelTypeId || editBus.fuelTypeId || "",
+				insuranceExpiration: formatDate(editBus.InsuranceExpiration || editBus.insuranceExpiration),
+				undercarriageStorage: editBus.UndercarriageStorage === 1 || editBus.undercarriageStorage === 1 ? "yes" : 
+					editBus.UndercarriageStorage === 0 || editBus.undercarriageStorage === 0 ? "no" : ""
+			});
+
+			setStorageOption(
+				editBus.UndercarriageStorage === 1 || editBus.undercarriageStorage === 1 ? "yes" : 
+				editBus.UndercarriageStorage === 0 || editBus.undercarriageStorage === 0 ? "no" : ""
+			);
+		}
+	}, [editBus, isEditMode]);
 
 	// Clear validation errors when clicking anywhere on the screen (except form elements)
 	useEffect(() => {
@@ -491,8 +585,8 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 								<option className="text-gray-500">Loading...</option>
 							) : drivers.length > 0 ? (
 								drivers.map((d) => (
-									<option key={d.EmpId} value={d.EmpId} className="text-black">
-										{d.Name} ({d.DesignationName})
+									<option key={d.DriverId} value={d.DriverId} className="text-black">
+										{d.Name} {d.DriverName}
 									</option>
 								))
 							) : (
@@ -635,14 +729,17 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses }) => {
 
 				{/* Buttons */}
 				<div className="mt-6 flex justify-start space-x-4 px-6 pb-6">
-					<button
-						type="submit"
-						onClick={handleSubmit}
-						disabled={loading.creating}
-						className="px-8 py-4 bg-[#C01824] w-[30%] text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						{loading.creating ? "Submitting..." : "Submit"}
-					</button>
+				<button
+					type="button"
+					onClick={handleSubmit}
+					disabled={isEditMode ? loading.updating : loading.creating}
+					className="px-8 py-4 bg-[#C01824] w-[30%] text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					{isEditMode 
+						? (loading.updating ? "Updating..." : "Update Bus")
+						: (loading.creating ? "Submitting..." : "Submit")
+					}
+				</button>
 				</div>
 			</form>
 		</div>

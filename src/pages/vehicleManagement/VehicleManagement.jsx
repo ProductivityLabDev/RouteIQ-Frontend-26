@@ -35,6 +35,7 @@ const VehicleManagement = () => {
     const [toogle, setToogle] = useState(false)
     const [notes, setNotes] = useState(false)
     const [showScheduleManagement, setShowScheduleManagement] = useState(false);
+    const [selectedScheduleDate, setSelectedScheduleDate] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [anchorEl, setAnchorEl] = useState(null);
     const openSortBy = Boolean(anchorEl);
@@ -43,14 +44,20 @@ const VehicleManagement = () => {
     const itemsPerPage = 9;
     const totalPages = Math.ceil(vehicleManagement.length / itemsPerPage);
     const [addbusinfo, setAddBusInfo] = useState(false);
+    const [editBus, setEditBus] = useState(null);
     
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+    const [selectedVehicleForMenu, setSelectedVehicleForMenu] = useState(null);
 
     const handleAddBusClick = () => {
+        setEditBus(null);
         setAddBusInfo(true);
     };
 
-    const handleCancel = () => setAddBusInfo(false);
+    const handleCancel = () => {
+        setAddBusInfo(false);
+        setEditBus(null);
+    };
 
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);
@@ -116,17 +123,27 @@ const VehicleManagement = () => {
         setNotes(true)
     }
 
-    const handleMenuOpen = (event) => {
+    const handleMenuOpen = (event, vehicle) => {
         setMenuAnchorEl(event.currentTarget);
+        setSelectedVehicleForMenu(vehicle);
     };
 
     const handleMenuClose = () => {
         setMenuAnchorEl(null);
+        setSelectedVehicleForMenu(null);
     };
 
     const handleEditClickFromMenu = () => {
+        if (selectedVehicleForMenu) {
+            console.log("🔄 [VehicleManagement] Setting editBus:", selectedVehicleForMenu);
+            console.log("🔄 [VehicleManagement] Vehicle keys:", Object.keys(selectedVehicleForMenu));
+            console.log("🔄 [VehicleManagement] BusId:", selectedVehicleForMenu.BusId);
+            setEditBus(selectedVehicleForMenu);
+            setAddBusInfo(true);
+        } else {
+            console.error("❌ [VehicleManagement] No vehicle selected for editing");
+        }
         handleMenuClose();
-        handleAddBusClick();
     };
 
     const renderPageNumbers = () => {
@@ -161,6 +178,21 @@ const VehicleManagement = () => {
     const endIndex = startIndex + itemsPerPage;
     const currentVehicles = vehicleManagement.slice(startIndex, endIndex);
 
+    // Calculate total bus count (handle both array and object structures)
+    const totalBusesCount = React.useMemo(() => {
+        if (!buses) return 0;
+        if (Array.isArray(buses)) {
+            return buses.length;
+        }
+        // If buses is an object grouped by terminal, sum all vehicles
+        if (typeof buses === 'object') {
+            return Object.values(buses).reduce((total, terminalBuses) => {
+                return total + (Array.isArray(terminalBuses) ? terminalBuses.length : 0);
+            }, 0);
+        }
+        return 0;
+    }, [buses]);
+
     // Fetch buses from Redux on mount
     useEffect(() => {
         dispatch(fetchBuses());
@@ -168,7 +200,16 @@ const VehicleManagement = () => {
     return (
         <MainLayout>
             {isNavigate ? (
-                <RepairSchedule vehicle={selectedVehicle} onBack={handleBackClick} handleSeeMoreInfoClick={handleSeeMoreInfoClick} handleEditClick={handleEditClick} handleNotes={handleNotes} setShowScheduleManagement={setShowScheduleManagement} setIsNavigate={setIsNavigate} />
+                <RepairSchedule 
+                    vehicle={selectedVehicle} 
+                    onBack={handleBackClick} 
+                    handleSeeMoreInfoClick={handleSeeMoreInfoClick} 
+                    handleEditClick={handleEditClick} 
+                    handleNotes={handleNotes} 
+                    setShowScheduleManagement={setShowScheduleManagement} 
+                    setIsNavigate={setIsNavigate}
+                    setSelectedScheduleDate={setSelectedScheduleDate}
+                />
             ) : isSeeMoreInfo ? (
                 <VehicleInfoComponent vehicle={selectedVehicle} onBack={handleBackClick} />
             ) : editMode ? (
@@ -178,15 +219,23 @@ const VehicleManagement = () => {
             ) : notes ? (
                 <Notes item={selectedVehicle} onBack={handleBackClick} handleSeeMoreInfoClick={handleSeeMoreInfoClick} />
             ) : showScheduleManagement ? (
-                <SehcudleManagement onBack={handleBackClick} />
+                <SehcudleManagement 
+                    onBack={handleBackClick} 
+                    vehicle={selectedVehicle}
+                    selectedDate={selectedScheduleDate}
+                />
             ) : addbusinfo ? (
-                <AddBusInfoForm handleCancel={handleCancel} refreshBuses={() => dispatch(fetchBuses())} />
+                <AddBusInfoForm 
+                    handleCancel={handleCancel} 
+                    refreshBuses={() => dispatch(fetchBuses())} 
+                    editBus={editBus}
+                />
             ) : (
                 <section className="w-full h-full">
                     <div className="w-full bg-white p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex w-[35%] ps-4 space-x-4">
-                                <p className='p-4 font-medium'><strong>Total Vehicles: 10</strong></p>
+                                <p className='p-4 font-medium'><strong>Total Vehicles: {totalBusesCount}</strong></p>
                                 <Button className="bg-[#C01824] w-[50%] text-white hover:bg-[#A01520] px-6" onClick={handleAddBusClick}>
                                     Add Bus
                                 </Button>
@@ -268,7 +317,7 @@ const VehicleManagement = () => {
                                                 <Card key={vehicle.id} className="w-[330px] h-[330px] shadow-2xl rounded-[16px] mt-4 overflow-hidden p-2 flex flex-col">
                                                     <div className="flex justify-end items-end px-3 py-2">
                                                         <div className="relative">
-                                                            <BsThreeDots className="text-black cursor-pointer text-lg" onClick={handleMenuOpen} />
+                                                            <BsThreeDots className="text-black cursor-pointer text-lg" onClick={(e) => handleMenuOpen(e, vehicle)} />
                                                             <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
                                                                 <MenuItem onClick={handleEditClickFromMenu}>Edit</MenuItem>
                                                             </Menu>
@@ -350,7 +399,7 @@ const VehicleManagement = () => {
                                                             <IoEllipsisHorizontal
                                                                 size={25}
                                                                 className="cursor-pointer"
-                                                                onClick={handleMenuOpen}
+                                                                onClick={(e) => handleMenuOpen(e, vehicle)}
                                                             />
                                                             <Menu
                                                                 anchorEl={menuAnchorEl}

@@ -56,6 +56,7 @@ export interface CreateBusPayload {
   vinNo: string | null;
   mileage: number | null;
   driverId: number;
+  driverName: string | null;
   fuelTypeId: number | null;
   insuranceExpiration: string | null;
   undercarriageStorage: number | null;
@@ -123,8 +124,30 @@ export const busService = {
     };
   },
 
+  getBusByVehicleId: async (vehicleId: number): Promise<ApiResponse<Bus>> => {
+    const response = await apiClient.get(`/institute/bus/${vehicleId}`);
+    return {
+      ok: true,
+      data: response.data?.data || response.data || {},
+    };
+  },
+
   createBus: async (payload: CreateBusPayload): Promise<ApiResponse<any>> => {
     const response = await apiClient.post("/institute/createbuses", payload);
+    return {
+      ok: true,
+      data: response.data,
+    };
+  },
+
+  updateBus: async (vehicleId: number, payload: CreateBusPayload): Promise<ApiResponse<any>> => {
+    console.log("🔄 [busService] Updating vehicle with ID:", vehicleId);
+    console.log("🔄 [busService] Payload:", payload);
+    
+    // The payload already contains vehicleId, so we just send it as is
+    const response = await apiClient.post(`/institute/updatevehicle`, payload);
+    console.log("✅ [busService] Update response:", response.data);
+    
     return {
       ok: true,
       data: response.data,

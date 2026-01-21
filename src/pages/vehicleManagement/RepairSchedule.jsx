@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import VendorDashboardHeader from "@/components/VendorDashboardHeader";
 import {
   Popover,
@@ -6,6 +6,7 @@ import {
   Typography,
   Input,
   PopoverContent,
+  Spinner,
 } from "@material-tailwind/react";
 import ButtonComponent from "@/components/buttons/CustomButton";
 import { CalenderIcon, editicon, filterIcon } from "@/assets";
@@ -14,19 +15,27 @@ import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import { FaChevronDown } from "react-icons/fa6";
-import { RepairSchedlue } from "@/data/repairScheduleData";
 import DatePickerComponent from "@/components/DatePicker";
 import PositionedMenu from "@/components/ServiceDialog";
 import { Button } from "@mui/material";
-import VehicleInfoComponent from "./VehicleInfoComponent"; // Adjust path if needed
+import VehicleInfoComponent from "./VehicleInfoComponent";
 import { vechicelSvg } from "@/assets";
 import ServiceRecordForm from "@/components/ServiceRecordForm";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchRepairSchedules,
+  deleteRepairSchedule,
+} from "@/redux/slices/repairScheduleSlice";
 
 const RepairSchedule = ({
+  vehicle,
   onBack,
   setShowScheduleManagement,
   setIsNavigate,
+  setSelectedScheduleDate,
 }) => {
+  const dispatch = useDispatch();
+  const { repairSchedules, loading } = useSelector((state) => state.repairSchedule);
   const [date, setDate] = useState();
   const [selectedDate, setSelectedDate] = useState(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -34,8 +43,24 @@ const RepairSchedule = ({
   const [showVehicleInfo, setShowVehicleInfo] = useState(false);
   const [vehicleInfoData, setVehicleInfoData] = useState(null);
   const datePickerRef = useRef(null);
-
+  const [searchQuery, setSearchQuery] = useState("");
   const [serviceRecord, setServiceRecord] = useState(false);
+
+  // Extract busId from vehicle
+  const busId = vehicle?.vehicleId 
+    || vehicle?.VehicleId 
+    || vehicle?.BusId 
+    || vehicle?.busId 
+    || vehicle?.id 
+    || vehicle?.Id
+    || vehicle?.ID;
+
+  // Fetch repair schedules when component mounts or busId changes
+  useEffect(() => {
+    if (busId) {
+      dispatch(fetchRepairSchedules(busId));
+    }
+  }, [dispatch, busId]);
 
   const handleServiceRecordClick = () => {
     setServiceRecord(true);
@@ -78,11 +103,37 @@ const RepairSchedule = ({
 
   const handleEditClick = (item) => {
     console.log("Edit Clicked:", item);
+    // TODO: Open edit modal/form with item data
   };
 
-  const handleNotes = (vehicle) => {
-    console.log("Notes Clicked:", vehicle);
+  const handleNotes = (item) => {
+    console.log("Notes Clicked:", item);
+    // TODO: Show notes modal
   };
+
+  const handleDelete = async (maintenanceId) => {
+    if (window.confirm("Are you sure you want to delete this repair schedule?")) {
+      await dispatch(deleteRepairSchedule(maintenanceId));
+      // Refresh the list after deletion
+      if (busId) {
+        dispatch(fetchRepairSchedules(busId));
+      }
+    }
+  };
+
+  // Filter and search repair schedules
+  const filteredSchedules = repairSchedules.filter((schedule) => {
+    const matchesSearch = searchQuery === "" || 
+      (schedule.serviceDesc?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (schedule.partDesc?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (schedule.vendor?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (schedule.terminal?.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesDate = !date || 
+      (schedule.repairDate && format(new Date(schedule.repairDate), "yyyy-MM-dd") === format(date, "yyyy-MM-dd"));
+    
+    return matchesSearch && matchesDate;
+  });
 
   if (showVehicleInfo) {
     return (
@@ -93,15 +144,29 @@ const RepairSchedule = ({
     );
   }
 
-  const vehicle = {
+  // Use vehicle prop or fallback to default
+  const vehicleData = vehicle || {
     vehiclImg: vechicelSvg,
     vehicleName: "Minotour® School Bus.",
+    BusType: "School Bus",
+    VehicleMake: "Minotour",
+    NumberPlate: "112200",
   };
 
   return (
     <>
       {serviceRecord ? (
-        <ServiceRecordForm handleCancel={handleCancel} />
+        <ServiceRecordForm 
+          handleCancel={handleCancel} 
+          vehicle={vehicleData}
+          busId={busId}
+          onSuccess={() => {
+            handleCancel();
+            if (busId) {
+              dispatch(fetchRepairSchedules(busId));
+            }
+          }}
+        />
       ) : (
         <section className="w-full h-full">
           <div className="bg-white w-full rounded-[4px] border shadow-sm h-full">
@@ -115,17 +180,21 @@ const RepairSchedule = ({
 
             <div className="flex flex-row w-[97%] h-[23vh] justify-between h-[33vh] m-5 border-b-2 border-[#d3d3d3]">
               <div className="flex flex-row w-[60%] h-[23vh] gap-[59px]">
-                <img src={vehicle?.vehiclImg} />
+                <img 
+                  src={vehicleData?.vehiclImg || vehicleData?.VehicleImage || vechicelSvg} 
+                  alt={vehicleData?.vehicleName || vehicleData?.VehicleName || "Vehicle"}
+                  className="w-48 h-32 object-cover rounded"
+                />
                 <div className="flex flex-col h-full w-[65%] gap-[13px]">
                   <Typography className="mb-2 text-start font-extrabold text-[19px] text-black">
-                    {vehicle?.vehicleName}
+                    {vehicleData?.vehicleName || vehicleData?.VehicleName || "N/A"}
                   </Typography>
                   <div className="flex flex-row gap-[85px]">
                     <Typography className="mb-2 text-center font-bold text-[16px] text-black">
                       Bus type
                     </Typography>
                     <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                      School Bus
+                      {vehicleData?.BusType || vehicleData?.busType || "School Bus"}
                     </Typography>
                   </div>
                   <div className="flex flex-row gap-[50px]">
@@ -133,7 +202,7 @@ const RepairSchedule = ({
                       Vehicle Make
                     </Typography>
                     <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                      Minotour
+                      {vehicleData?.VehicleMake || vehicleData?.vehicleMake || "N/A"}
                     </Typography>
                   </div>
                   <div className="flex flex-row gap-[45px]">
@@ -141,14 +210,14 @@ const RepairSchedule = ({
                       Number Plate
                     </Typography>
                     <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                      112200
+                      {vehicleData?.NumberPlate || vehicleData?.numberPlate || "N/A"}
                     </Typography>
                   </div>
                   <ButtonComponent
                     sx={{ width: "145px", height: "42px", fontSize: "13px" }}
                     label="See more Info"
                     Icon={false}
-                    onClick={() => handleSeeMoreInfoClick(vehicle)}
+                    onClick={() => handleSeeMoreInfoClick(vehicleData)}
                   />
                 </div>
               </div>
@@ -168,6 +237,9 @@ const RepairSchedule = ({
                       setSelectedDate(date);
                       setIsCalendarOpen(false);
                       setIsNavigate(false);
+                      if (setSelectedScheduleDate) {
+                        setSelectedScheduleDate(date);
+                      }
                       setShowScheduleManagement(true);
                     }}
                     datePickerRef={datePickerRef}
@@ -227,6 +299,8 @@ const RepairSchedule = ({
                   <input
                     type="search"
                     placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="p-3 w-[98%] text-[#090909] font-light outline-none rounded-[6px] h-[45px]"
                   />
                 </div>
@@ -304,56 +378,76 @@ const RepairSchedule = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {RepairSchedlue?.map((item, index) => (
-                      <tr
-                        key={index}
-                        className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                      >
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.desc}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.plateNumber}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.partDesc}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.qty}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.vendor}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.partCost}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.mileage}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.estimatedCompletion}
-                        </td>
-                        <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
-                          {item.terminal}
-                        </td>
-                        <td
-                          className="px-6 py-4 border-b text-[14px] font-[600] text-[#C01824] underline flex-row flex gap-7 cursor-pointer"
-                          onClick={() => handleNotes(vehicle)}
-                        >
-                          {item.notes}
-                          <div
-                            className="flex space-x-2 md:space-x-7 justify-start items-center"
-                            onClick={() => handleEditClick(item)}
-                          >
-                            <img
-                              src={editicon}
-                              className="cursor-pointer w-5"
-                              alt="Edit Icon"
-                            />
+                    {loading.fetching ? (
+                      <tr>
+                        <td colSpan={10} className="px-6 py-8 text-center">
+                          <div className="flex justify-center items-center">
+                            <Spinner className="h-8 w-8 text-[#C01824]" />
+                            <span className="ml-3 text-gray-500">Loading repair schedules...</span>
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    ) : filteredSchedules.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                          No repair schedules found
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSchedules.map((item, index) => (
+                        <tr
+                          key={item.maintenanceId || index}
+                          className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                        >
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.serviceDesc || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.passNum || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.partDesc || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.quantity || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.vendor || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.partCost ? `$${item.partCost}` : "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.mileage ? `${item.mileage}Km` : "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.estimatedCompletionTime || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 border-b text-[14px] font-[600] text-[#141516]">
+                            {item.terminal || "N/A"}
+                          </td>
+                          <td
+                            className="px-6 py-4 border-b text-[14px] font-[600] text-[#C01824] underline flex-row flex gap-7 cursor-pointer"
+                            onClick={() => handleNotes(item)}
+                          >
+                            {item.notes || "See Notes"}
+                            <div
+                              className="flex space-x-2 md:space-x-7 justify-start items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(item);
+                              }}
+                            >
+                              <img
+                                src={editicon}
+                                className="cursor-pointer w-5"
+                                alt="Edit Icon"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
