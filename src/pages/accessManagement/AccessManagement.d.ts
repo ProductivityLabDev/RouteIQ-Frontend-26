@@ -21,6 +21,13 @@ export interface DeleteUserModalProps {
   isDeleting?: boolean;
 }
 
+export interface DeletePersonal {
+  isOpen: boolean;
+  onClose: () => void;
+  onDelete: () => void;
+  isDeleting?: boolean;
+}
+
 declare const AccessManagement: React.FC<AccessManagementProps>;
 export default AccessManagement;
 
