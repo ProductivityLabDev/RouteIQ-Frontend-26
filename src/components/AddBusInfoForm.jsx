@@ -646,8 +646,8 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 								<option className="text-gray-500">Loading...</option>
 							) : terminals.length > 0 ? (
 								terminals.map((t) => (
-									<option key={t.id} value={t.id} className="text-black">
-										{t.name}
+									<option key={t.TerminalId || t.id} value={t.TerminalId || t.id} className="text-black">
+										{t.TerminalName || t.name || "N/A"}
 									</option>
 								))
 							) : (

@@ -13,8 +13,20 @@ export interface FuelType {
 }
 
 export interface Terminal {
-  id: number;
-  name: string;
+  TerminalId: number;
+  TerminalCode: string;
+  TerminalName: string;
+  Address?: string;
+  City?: string;
+  State?: string;
+  ZipCode?: string;
+  IsActive?: boolean;
+  IsDeleted?: boolean;
+  CreatedAt?: string;
+  UpdatedAt?: string | null;
+  // Legacy support for backward compatibility
+  id?: number;
+  name?: string;
   code?: string;
 }
 
@@ -81,7 +93,7 @@ export const busService = {
   },
 
   getTerminals: async (): Promise<ApiResponse<Terminal[]>> => {
-    const response = await apiClient.get("/terminals");
+    const response = await apiClient.get("/terminals/my");
     return {
       ok: true,
       data: response.data?.data || response.data || [],
