@@ -11,6 +11,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { GrDocumentCsv } from "react-icons/gr";
 import { useDispatch } from 'react-redux';
 import { fetchStudentsByInstitute } from '@/redux/slices/studentSlice';
+import { useJsApiLoader } from '@react-google-maps/api';
 
 
 
@@ -28,6 +29,28 @@ const Students = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { instituteId, schoolName } = location.state || {};
+
+  // Google Maps API Loader - Load in parent so script is ready before modal opens
+  const GOOGLE_LIBRARIES = ["places"];
+  const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+  
+  console.log("🔍 [Students] Initializing Google Maps in parent:", {
+    apiKey: googleApiKey ? "✅ Present" : "❌ Missing",
+    apiKeyLength: googleApiKey.length
+  });
+  
+  const { isLoaded: isGoogleMapsLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: googleApiKey,
+    libraries: GOOGLE_LIBRARIES
+  });
+
+  useEffect(() => {
+    console.log("🔍 [Students] Google Maps Status:", {
+      isLoaded: isGoogleMapsLoaded,
+      loadError: loadError?.message || null
+    });
+  }, [isGoogleMapsLoaded, loadError]);
 
   // When coming from School Management with an instituteId, fetch students for that school
   useEffect(() => {
@@ -268,6 +291,7 @@ const menuItems = [
         handleOpen={handleStudentModal}
         editDriver={editStudentModal}
         studentEditData={studentEditData}
+        isGoogleMapsLoaded={isGoogleMapsLoaded}
         refreshStudents={() => {
           // Add refresh logic here if needed
           console.log("Refreshing students list...");

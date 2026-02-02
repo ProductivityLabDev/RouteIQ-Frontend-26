@@ -1,21 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Card, Dialog, Typography } from '@material-tailwind/react';
-import { closeicon, profileavatar, studentone } from '@/assets';
+import { closeicon, profileavatar, studentone, locationicon } from '@/assets';
 import { BiEdit } from "react-icons/bi";
 import { useDispatch, useSelector } from 'react-redux';
 import { createStudent } from '@/redux/slices/studentSlice';
 import { toast } from 'react-hot-toast';
+import { Autocomplete } from '@react-google-maps/api';
 
 
-export function StudentManagementModal({ open, handleOpen, editDriver, studentEditData, refreshStudents }) {
+export function StudentManagementModal({ open, handleOpen, editDriver, studentEditData, refreshStudents, isGoogleMapsLoaded }) {
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.students);
+  
+  // Use Google Maps loader from parent component (Students.jsx)
+  // This ensures script loads before modal opens
+  const isLoaded = isGoogleMapsLoaded !== undefined ? isGoogleMapsLoaded : false;
+  
+  useEffect(() => {
+    console.log("🔍 [StudentModal] Google Maps Status:", {
+      isLoaded,
+      modalOpen: open,
+      receivedFromParent: isGoogleMapsLoaded !== undefined
+    });
+  }, [isLoaded, open, isGoogleMapsLoaded]);
+
+  const [autocompletePickup, setAutocompletePickup] = useState(null);
+  const [autocompleteDropoff, setAutocompleteDropoff] = useState(null);
   
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     pickupLocation: '',
+    pickupLatitude: null,
+    pickupLongitude: null,
     dropLocation: '',
+    dropLatitude: null,
+    dropLongitude: null,
     grade: '',
     emergencyContact: '',
     enrollmentNo: '',
@@ -35,7 +55,11 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
         firstName: studentEditData?.FirstName || studentEditData?.firstName || '',
         lastName: studentEditData?.LastName || studentEditData?.lastName || '',
         pickupLocation: studentEditData?.PickUp || studentEditData?.pickupLocation || '',
+        pickupLatitude: studentEditData?.PickupLatitude || studentEditData?.pickupLatitude || studentEditData?.Latitude || null,
+        pickupLongitude: studentEditData?.PickupLongitude || studentEditData?.pickupLongitude || studentEditData?.Longitude || null,
         dropLocation: studentEditData?.PickDown || studentEditData?.dropLocation || '',
+        dropLatitude: studentEditData?.DropLatitude || studentEditData?.dropLatitude || null,
+        dropLongitude: studentEditData?.DropLongitude || studentEditData?.dropLongitude || null,
         grade: studentEditData?.Grade || studentEditData?.grade || '',
         emergencyContact: studentEditData?.ContactPhone || studentEditData?.emergencyContact || '',
         enrollmentNo: studentEditData?.EnrollmentNumber || studentEditData?.enrollmentNo || '',
@@ -51,7 +75,11 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
         firstName: '',
         lastName: '',
         pickupLocation: '',
+        pickupLatitude: null,
+        pickupLongitude: null,
         dropLocation: '',
+        dropLatitude: null,
+        dropLongitude: null,
         grade: '',
         emergencyContact: '',
         enrollmentNo: '',
@@ -65,6 +93,45 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
       setSelectedFile(null);
     }
   }, [editDriver, studentEditData, open]);
+
+  // Google Places Autocomplete handlers - Exact same as Route Management
+  const onPickupLoad = (autocomplete) => {
+    console.log("✅ [StudentModal] Pickup Autocomplete loaded!");
+    setAutocompletePickup(autocomplete);
+  };
+  
+  const onDropoffLoad = (autocomplete) => {
+    console.log("✅ [StudentModal] Dropoff Autocomplete loaded!");
+    setAutocompleteDropoff(autocomplete);
+  };
+
+  const onPickupPlaceChanged = () => {
+    if (autocompletePickup !== null) {
+      const place = autocompletePickup.getPlace();
+      const lat = place.geometry?.location?.lat();
+      const lng = place.geometry?.location?.lng();
+      setFormData(prev => ({
+        ...prev,
+        pickupLocation: place.formatted_address || place.name,
+        pickupLatitude: lat || null,
+        pickupLongitude: lng || null,
+      }));
+    }
+  };
+
+  const onDropoffPlaceChanged = () => {
+    if (autocompleteDropoff !== null) {
+      const place = autocompleteDropoff.getPlace();
+      const lat = place.geometry?.location?.lat();
+      const lng = place.geometry?.location?.lng();
+      setFormData(prev => ({
+        ...prev,
+        dropLocation: place.formatted_address || place.name,
+        dropLatitude: lat || null,
+        dropLongitude: lng || null,
+      }));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -93,7 +160,11 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
           firstName: '',
           lastName: '',
           pickupLocation: '',
+          pickupLatitude: null,
+          pickupLongitude: null,
           dropLocation: '',
+          dropLatitude: null,
+          dropLongitude: null,
           grade: '',
           emergencyContact: '',
           enrollmentNo: '',
@@ -181,24 +252,66 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
               />
 
               <label className="text-[#2C2F32] text-[14px] font-bold -mb-3">Pickup Location</label>
-              <input
-                type="text"
-                name="pickupLocation"
-                placeholder="Pickup Location"
-                className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                value={formData.pickupLocation}
-                onChange={handleChange}
-              />
+              <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between relative">
+                {isLoaded && window.google?.maps?.places ? (
+                  <Autocomplete
+                    onLoad={onPickupLoad}
+                    onPlaceChanged={onPickupPlaceChanged}
+                    className="w-full"
+                  >
+                    <input
+                      type="text"
+                      name="pickupLocation"
+                      placeholder="Enter pickup location"
+                      className="bg-[#F5F6FA] outline-none w-full"
+                      value={formData.pickupLocation}
+                      onChange={handleChange}
+                    />
+                  </Autocomplete>
+                ) : (
+                  <input
+                    type="text"
+                    name="pickupLocation"
+                    placeholder={isLoaded ? "Enter pickup location" : "Loading Google Maps..."}
+                    className="bg-[#F5F6FA] outline-none w-full"
+                    value={formData.pickupLocation}
+                    onChange={handleChange}
+                    disabled={!isLoaded}
+                  />
+                )}
+                <img src={locationicon} alt="location" className="h-5 w-5 ml-2 flex-shrink-0" />
+              </div>
 
               <label className="text-[#2C2F32] text-[14px] font-bold -mb-3">Drop Location</label>
-              <input
-                type="text"
-                name="dropLocation"
-                placeholder="Drop Location"
-                className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                value={formData.dropLocation}
-                onChange={handleChange}
-              />
+              <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                {isLoaded ? (
+                  <Autocomplete
+                    onLoad={onDropoffLoad}
+                    onPlaceChanged={onDropoffPlaceChanged}
+                    className="w-full"
+                  >
+                    <input
+                      type="text"
+                      name="dropLocation"
+                      placeholder="Enter drop location"
+                      className="bg-[#F5F6FA] outline-none w-full"
+                      value={formData.dropLocation}
+                      onChange={handleChange}
+                    />
+                  </Autocomplete>
+                ) : (
+                  <input
+                    type="text"
+                    name="dropLocation"
+                    placeholder="Loading address search..."
+                    className="bg-[#F5F6FA] outline-none w-full"
+                    value={formData.dropLocation}
+                    onChange={handleChange}
+                    disabled
+                  />
+                )}
+                <img src={locationicon} alt="location" className="h-5 w-5" />
+              </div>
 
               <label className="text-[#2C2F32] text-[14px] font-bold -mb-3">Grade</label>
               <input

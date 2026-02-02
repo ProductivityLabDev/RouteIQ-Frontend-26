@@ -12,7 +12,11 @@ export interface CreateStudentPayload {
   firstName: string;
   lastName: string;
   pickupLocation: string;
+  pickupLatitude?: number | null;
+  pickupLongitude?: number | null;
   dropLocation: string;
+  dropLatitude?: number | null;
+  dropLongitude?: number | null;
   grade: string;
   emergencyContact: string;
   enrollmentNo: string;

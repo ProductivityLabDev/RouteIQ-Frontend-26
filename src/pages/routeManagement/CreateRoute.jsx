@@ -18,6 +18,8 @@ import { fetchStudentsByInstitute } from "@/redux/slices/studentSlice";
 import { fetchEmployees } from "@/redux/slices/employeSlices";
 import { fetchBuses } from "@/redux/slices/busesSlice";
 import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
+import { routeService } from "@/services/routeService";
+import { toast } from "react-hot-toast";
 
 /**
  * @type {import('./CreateRoute').default}
@@ -47,20 +49,30 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
     const onPickupPlaceChanged = () => {
         if (autocompletePickup !== null) {
             const place = autocompletePickup.getPlace();
+            const lat = place.geometry?.location?.lat();
+            const lng = place.geometry?.location?.lng();
             setRouteForm(prev => ({
                 ...prev,
                 pickup: place.formatted_address || place.name
             }));
+            if (lat && lng) {
+                setPickupCoords({ lat, lng });
+            }
         }
     };
 
     const onDropoffPlaceChanged = () => {
         if (autocompleteDropoff !== null) {
             const place = autocompleteDropoff.getPlace();
+            const lat = place.geometry?.location?.lat();
+            const lng = place.geometry?.location?.lng();
             setRouteForm(prev => ({
                 ...prev,
                 dropoff: place.formatted_address || place.name
             }));
+            if (lat && lng) {
+                setDropoffCoords({ lat, lng });
+            }
         }
     };
 
@@ -95,6 +107,15 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
     const [selectedDriverName, setSelectedDriverName] = useState("");
     const [selectedBusName, setSelectedBusName] = useState("");
     const [selectedSchoolId, setSelectedSchoolId] = useState("");
+    
+    // Smart matching state
+    const [smartMatching, setSmartMatching] = useState({
+        loading: false,
+        matchedStudents: [],
+        showMatched: false,
+    });
+    const [pickupCoords, setPickupCoords] = useState({ lat: null, lng: null });
+    const [dropoffCoords, setDropoffCoords] = useState({ lat: null, lng: null });
 
     const handleRouteFieldChange = (e) => {
         const { name, value } = e.target;
@@ -143,6 +164,211 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                 ? prev.filter((id) => id !== studentId)
                 : [...prev, studentId]
         );
+    };
+
+    // Smart matching function - Find students by location
+    const handleSmartMatch = async () => {
+        if (!selectedSchoolId) {
+            toast.error("Please select a school first");
+            return;
+        }
+
+        if (!routeForm.pickup || !routeForm.dropoff) {
+            toast.error("Please enter both pickup and dropoff locations");
+            return;
+        }
+
+        setSmartMatching(prev => ({ ...prev, loading: true, showMatched: false }));
+
+        try {
+            // Normalize addresses (trim, lowercase for better matching)
+            const normalizedPickup = routeForm.pickup.trim();
+            const normalizedDropoff = routeForm.dropoff.trim();
+            
+            console.log("🔍 [Smart Match] Starting search...", {
+                instituteId: selectedSchoolId,
+                pickup: normalizedPickup,
+                dropoff: normalizedDropoff,
+                hasPickupCoords: !!(pickupCoords.lat && pickupCoords.lng),
+                hasDropoffCoords: !!(dropoffCoords.lat && dropoffCoords.lng)
+            });
+
+            // Try address matching FIRST (better for exact address matches like "N Knox Avenue street 42")
+            // Note: For address matching, use radiusMeters (not radiusKm)
+            // Default 50m is too small, using 5000m (5km) for better results
+            let payload = {
+                instituteId: Number(selectedSchoolId),
+                pickupLocation: normalizedPickup,
+                dropoffLocation: normalizedDropoff,
+                radiusMeters: 5000, // 5km radius for address matching (max 5000m per API docs)
+                maxResults: 100,
+                matchType: "address", // Start with address matching for exact matches
+            };
+
+            // Add coordinates if available (for better matching)
+            if (pickupCoords.lat && pickupCoords.lng) {
+                payload.pickupLatitude = pickupCoords.lat;
+                payload.pickupLongitude = pickupCoords.lng;
+            }
+            if (dropoffCoords.lat && dropoffCoords.lng) {
+                payload.dropoffLatitude = dropoffCoords.lat;
+                payload.dropoffLongitude = dropoffCoords.lng;
+            }
+
+            // If coordinates available, also try coordinate matching as fallback
+            const hasCoordinates = pickupCoords.lat && pickupCoords.lng;
+            
+            console.log("📍 [Smart Match] Strategy:", {
+                primary: "address matching (for exact address match)",
+                fallback: hasCoordinates ? "coordinate matching" : "none",
+                pickupAddress: normalizedPickup,
+                dropoffAddress: normalizedDropoff
+            });
+
+            console.log("🔍 [Smart Match] Request payload:", payload);
+            console.log("🔍 [Smart Match] All students in Redux for institute 31:", students);
+            console.log("🔍 [Smart Match] Checking if student addresses match...");
+            
+            // Debug: Check students in current institute
+            if (students && students.length > 0) {
+                console.log("📋 [Smart Match] Students in selected institute:", students.map(s => ({
+                    id: s.StudentId || s.studentId,
+                    name: s.StudentName || s.firstName,
+                    address: s.Address || s.address || s.PickupLocation || s.pickupLocation,
+                    pickupLocation: s.PickupLocation || s.pickupLocation || s.PickUp_Location,
+                    instituteId: s.InstituteId || s.instituteId
+                })));
+            }
+
+            const response = await routeService.findStudentsByLocation(payload);
+
+            console.log("✅ [Smart Match] Response received:", response);
+            console.log("📊 [Smart Match] Response details:", {
+                ok: response.ok,
+                totalMatched: response.data?.totalMatched,
+                totalSearched: response.data?.totalSearched,
+                matchedCount: response.data?.matchedStudents?.length,
+                matchType: response.data?.matchType
+            });
+            
+            // Debug: Log first matched student structure
+            if (response.data?.matchedStudents && response.data.matchedStudents.length > 0) {
+                console.log("🔍 [Smart Match] First matched student structure:", response.data.matchedStudents[0]);
+                console.log("🔍 [Smart Match] All student fields:", Object.keys(response.data.matchedStudents[0]));
+            }
+
+            if (response.ok && response.data?.matchedStudents && response.data.matchedStudents.length > 0) {
+                console.log("✅ [Smart Match] Processing matched students:", response.data.matchedStudents);
+                
+                // Automatically select all matched students
+                // Handle different ID field names
+                const matchedIds = response.data.matchedStudents.map(s => 
+                    s.studentId || s.StudentId || s.id
+                ).filter(id => id);
+                
+                console.log("✅ [Smart Match] Extracted student IDs:", matchedIds);
+                
+                setSelectedStudents(prev => {
+                    const newIds = matchedIds.filter(id => !prev.includes(id));
+                    console.log("✅ [Smart Match] Adding new student IDs:", newIds);
+                    return [...prev, ...newIds];
+                });
+                
+                setSmartMatching({
+                    loading: false,
+                    matchedStudents: response.data.matchedStudents,
+                    showMatched: true,
+                });
+                toast.success(`Found and selected ${response.data.totalMatched} students!`);
+            } else {
+                // If address matching failed and coordinates available, try coordinate matching
+                if (hasCoordinates && (!response.ok || !response.data?.matchedStudents?.length)) {
+                    console.log("⚠️ [Smart Match] Address matching found 0, trying coordinate matching...");
+                    
+                    const coordinatePayload = {
+                        instituteId: Number(selectedSchoolId),
+                        pickupLocation: normalizedPickup,
+                        dropoffLocation: normalizedDropoff,
+                        pickupLatitude: pickupCoords.lat,
+                        pickupLongitude: pickupCoords.lng,
+                        dropoffLatitude: dropoffCoords.lat,
+                        dropoffLongitude: dropoffCoords.lng,
+                        radiusKm: 10, // For coordinate matching, use radiusKm
+                        maxResults: 100,
+                        matchType: "coordinate",
+                    };
+
+                    console.log("🔍 [Smart Match] Retry with coordinate matching:", coordinatePayload);
+                    
+                    const coordinateResponse = await routeService.findStudentsByLocation(coordinatePayload);
+                    console.log("✅ [Smart Match] Coordinate matching response:", coordinateResponse);
+
+                    if (coordinateResponse.ok && coordinateResponse.data?.matchedStudents && coordinateResponse.data.matchedStudents.length > 0) {
+                        console.log("✅ [Smart Match] Processing coordinate matched students:", coordinateResponse.data.matchedStudents);
+                        
+                        // Automatically select all matched students
+                        // Handle different ID field names
+                        const matchedIds = coordinateResponse.data.matchedStudents.map(s => 
+                            s.studentId || s.StudentId || s.id
+                        ).filter(id => id);
+                        
+                        console.log("✅ [Smart Match] Extracted student IDs from coordinate match:", matchedIds);
+                        
+                        setSelectedStudents(prev => {
+                            const newIds = matchedIds.filter(id => !prev.includes(id));
+                            return [...prev, ...newIds];
+                        });
+                        
+                        setSmartMatching({
+                            loading: false,
+                            matchedStudents: coordinateResponse.data.matchedStudents,
+                            showMatched: true,
+                        });
+                        toast.success(`Found and selected ${coordinateResponse.data.totalMatched} students using coordinate matching!`);
+                    } else {
+                        setSmartMatching(prev => ({ ...prev, loading: false }));
+                        const totalSearched = coordinateResponse.data?.totalSearched || response.data?.totalSearched || 0;
+                        toast.error(`No students found. Searched ${totalSearched} students. Check: 1) Address format matches exactly 2) Student belongs to selected school 3) Student has address in database.`);
+                        console.error("❌ [Smart Match] No students found. Debug info:", {
+                            searched: totalSearched,
+                            pickupAddress: normalizedPickup,
+                            dropoffAddress: normalizedDropoff,
+                            instituteId: selectedSchoolId
+                        });
+                    }
+                } else {
+                    setSmartMatching(prev => ({ ...prev, loading: false }));
+                    const totalSearched = response.data?.totalSearched || 0;
+                    toast.error(`No students found. Searched ${totalSearched} students. Check: 1) Address "N Knox Avenue street 42" matches exactly in database 2) Student belongs to selected school.`);
+                    console.error("❌ [Smart Match] No students found. Debug info:", {
+                        searched: totalSearched,
+                        pickupAddress: normalizedPickup,
+                        dropoffAddress: normalizedDropoff,
+                        instituteId: selectedSchoolId,
+                        matchType: payload.matchType
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("❌ [Smart Match] Error:", error);
+            console.error("❌ [Smart Match] Error details:", {
+                message: error.response?.data?.message,
+                status: error.response?.status,
+                data: error.response?.data
+            });
+            setSmartMatching(prev => ({ ...prev, loading: false }));
+            toast.error(error.response?.data?.message || "Failed to find students. Please check console for details.");
+        }
+    };
+
+    // Select all matched students
+    const handleSelectAllMatched = () => {
+        const matchedIds = smartMatching.matchedStudents.map(s => s.studentId);
+        setSelectedStudents(prev => {
+            const newIds = matchedIds.filter(id => !prev.includes(id));
+            return [...prev, ...newIds];
+        });
+        toast.success(`Added ${matchedIds.length} students to selection`);
     };
 
             const isFormValid = Boolean(
@@ -982,6 +1208,23 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="text-xl font-bold">Select Students</div>
                                     <div className="flex items-center gap-2">
+                                        {/* Smart Match Button */}
+                                        {routeForm.pickup && routeForm.dropoff && selectedSchoolId && (
+                                            <Button
+                                                className="bg-[#28a745] hover:bg-[#218838] text-white px-4 py-2 text-sm capitalize rounded-[6px]"
+                                                onClick={handleSmartMatch}
+                                                disabled={smartMatching.loading}
+                                            >
+                                                {smartMatching.loading ? (
+                                                    <>
+                                                        <Spinner className="h-4 w-4 inline mr-2" />
+                                                        Finding...
+                                                    </>
+                                                ) : (
+                                                    "🔍 Smart Match"
+                                                )}
+                                            </Button>
+                                        )}
                                         <span className="text-sm font-semibold text-[#2C2F32]">Drop-off School:</span>
                                         <select
                                             className="border border-gray-300 rounded px-2 py-1 text-sm"
@@ -1017,6 +1260,107 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                     </div>
                                 </div>
 
+                                {/* Smart Matched Students Section */}
+                                {smartMatching.showMatched && smartMatching.matchedStudents.length > 0 && (
+                                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div>
+                                                <Typography className="text-lg font-bold text-green-800">
+                                                    🎯 Smart Matched Students ({smartMatching.matchedStudents.length})
+                                                </Typography>
+                                                <Typography className="text-sm text-green-600">
+                                                    Found within 5km radius of your route
+                                                </Typography>
+                                            </div>
+                                            <Button
+                                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-xs capitalize rounded"
+                                                onClick={handleSelectAllMatched}
+                                            >
+                                                Select All
+                                            </Button>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-4 max-h-60 overflow-y-auto">
+                                            {smartMatching.matchedStudents.map((stu, index) => {
+                                                // Handle different response formats from backend
+                                                const studentId = stu.studentId || stu.StudentId || stu.id || stu.ID;
+                                                
+                                                // Try multiple name field combinations
+                                                let studentName = null;
+                                                
+                                                // Direct name fields
+                                                if (stu.studentName) studentName = stu.studentName;
+                                                else if (stu.StudentName) studentName = stu.StudentName;
+                                                else if (stu.name) studentName = stu.name;
+                                                else if (stu.Name) studentName = stu.Name;
+                                                else if (stu.fullName) studentName = stu.fullName;
+                                                else if (stu.FullName) studentName = stu.FullName;
+                                                
+                                                // FirstName + LastName combination
+                                                if (!studentName) {
+                                                    const firstName = stu.firstName || stu.FirstName || stu.first_name || stu.First_Name || '';
+                                                    const lastName = stu.lastName || stu.LastName || stu.last_name || stu.Last_Name || '';
+                                                    if (firstName || lastName) {
+                                                        studentName = `${firstName} ${lastName}`.trim();
+                                                    }
+                                                }
+                                                
+                                                // Fallback: Check all string fields that might be name
+                                                if (!studentName) {
+                                                    for (const key in stu) {
+                                                        if (typeof stu[key] === 'string' && 
+                                                            (key.toLowerCase().includes('name') || 
+                                                             key.toLowerCase().includes('student'))) {
+                                                            studentName = stu[key];
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // Final fallback
+                                                if (!studentName) {
+                                                    studentName = `Student ${studentId || index + 1}`;
+                                                }
+                                                
+                                                console.log("🔍 [Smart Match] Rendering student:", {
+                                                    studentId,
+                                                    studentName,
+                                                    firstName: stu.firstName || stu.FirstName,
+                                                    lastName: stu.lastName || stu.LastName,
+                                                    allKeys: Object.keys(stu),
+                                                    rawData: stu
+                                                });
+                                                
+                                                return (
+                                                    <div key={studentId || index} className="flex items-center space-x-2 p-2 w-[75%] h-[6vh] border border-green-300 rounded-lg bg-white">
+                                                        <img
+                                                            src={studentfive}
+                                                            className="h-10 w-10 rounded-full"
+                                                            alt={studentName}
+                                                        />
+                                                        <div className="flex flex-col flex-1">
+                                                            <span className="text-sm font-semibold">
+                                                                {studentName}
+                                                            </span>
+                                                            {stu.distanceKm !== undefined && (
+                                                                <span className="text-xs text-green-600">
+                                                                    📍 {stu.distanceKm.toFixed(2)} km away
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="form-checkbox custom-checkbox2" 
+                                                            checked={selectedStudents.includes(studentId)}
+                                                            onChange={() => handleStudentToggle(studentId)}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* All Students Section */}
                                 {studentsLoading?.fetching ? (
                                     <div className="flex flex-col items-center justify-center h-full py-8">
                                         <Spinner className="h-8 w-8 text-[#C01824]" />
@@ -1027,25 +1371,57 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         Please select a drop-off school to load students.
                                     </div>
                                 ) : students && students.length > 0 ? (
-                                    <div className="grid grid-cols-3 gap-4">
-                                        {students.map((stu, index) => (
-                                            <div key={stu.StudentId || index} className="flex items-center space-x-2 p-2 w-[75%] h-[6vh] border border-gray-300 rounded-lg">
-                                                <img
-                                                    src={studentfive}
-                                                    className="h-10 w-10 rounded-full"
-                                                    alt={stu.StudentName || "Student"}
-                                                />
-                                                <span className="text-sm">
-                                                    {stu.StudentName || "Unnamed Student"}
-                                                </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="form-checkbox custom-checkbox2" 
-                                                    checked={selectedStudents.includes(stu.StudentId)}
-                                                    onChange={() => handleStudentToggle(stu.StudentId)}
-                                                />
-                                            </div>
-                                        ))}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <Typography className="text-md font-semibold text-gray-700">
+                                                All Students ({(() => {
+                                                    // Remove duplicates based on StudentId
+                                                    const uniqueStudents = students.filter((stu, index, self) => 
+                                                        index === self.findIndex((s) => 
+                                                            (s.StudentId && stu.StudentId && s.StudentId === stu.StudentId) ||
+                                                            (s.studentId && stu.studentId && s.studentId === stu.studentId) ||
+                                                            (index === self.findIndex((s2) => 
+                                                                s2.StudentId === stu.StudentId || s2.studentId === stu.studentId
+                                                            ))
+                                                        )
+                                                    );
+                                                    return uniqueStudents.length;
+                                                })()})
+                                            </Typography>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                                            {(() => {
+                                                // Remove duplicates based on StudentId (keep first occurrence)
+                                                const uniqueStudents = students.filter((stu, index, self) => {
+                                                    const studentId = stu.StudentId || stu.studentId;
+                                                    if (!studentId) return true; // Keep students without ID
+                                                    return index === self.findIndex((s) => 
+                                                        (s.StudentId || s.studentId) === studentId
+                                                    );
+                                                });
+                                                return uniqueStudents.map((stu, index) => {
+                                                    const studentId = stu.StudentId || stu.studentId;
+                                                    return (
+                                                        <div key={`student-${studentId || index}-${stu.StudentName || index}`} className={`flex items-center space-x-2 p-2 w-[75%] h-[6vh] border rounded-lg ${selectedStudents.includes(studentId) ? 'border-green-400 bg-green-50' : 'border-gray-300'}`}>
+                                                            <img
+                                                                src={studentfive}
+                                                                className="h-10 w-10 rounded-full"
+                                                                alt={stu.StudentName || "Student"}
+                                                            />
+                                                            <span className="text-sm">
+                                                                {stu.StudentName || "Unnamed Student"}
+                                                            </span>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="form-checkbox custom-checkbox2" 
+                                                                checked={selectedStudents.includes(studentId)}
+                                                                onChange={() => handleStudentToggle(studentId)}
+                                                            />
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="text-sm text-gray-600">

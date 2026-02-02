@@ -45,7 +45,11 @@ export const createStudent = createAsyncThunk(
         firstName: studentData.firstName || "",
         lastName: studentData.lastName || "",
         pickupLocation: studentData.pickupLocation || "",
+        pickupLatitude: studentData.pickupLatitude !== null && studentData.pickupLatitude !== undefined ? Number(studentData.pickupLatitude) : null,
+        pickupLongitude: studentData.pickupLongitude !== null && studentData.pickupLongitude !== undefined ? Number(studentData.pickupLongitude) : null,
         dropLocation: studentData.dropLocation || "",
+        dropLatitude: studentData.dropLatitude !== null && studentData.dropLatitude !== undefined ? Number(studentData.dropLatitude) : null,
+        dropLongitude: studentData.dropLongitude !== null && studentData.dropLongitude !== undefined ? Number(studentData.dropLongitude) : null,
         grade: studentData.grade || "",
         emergencyContact: studentData.emergencyContact || "",
         enrollmentNo: studentData.enrollmentNo || "",
@@ -112,9 +116,22 @@ const studentSlice = createSlice({
         console.log("✅ [Redux Reducer] Payload received:", payload);
         console.log("✅ [Redux Reducer] Payload length:", payload.length);
         state.loading.fetching = false;
-        state.students = Array.isArray(payload) ? payload : [];
+        
+        // Remove duplicates based on StudentId (keep first occurrence)
+        const uniqueStudents = Array.isArray(payload) ? payload.filter((stu, index, self) => {
+          const studentId = stu.StudentId || stu.studentId;
+          if (!studentId) return true; // Keep students without ID
+          return index === self.findIndex((s) => 
+            (s.StudentId || s.studentId) === studentId
+          );
+        }) : [];
+        
+        state.students = uniqueStudents;
         state.error.fetching = null;
-        console.log("✅ [Redux Reducer] State updated - students count:", state.students.length);
+        console.log("✅ [Redux Reducer] State updated - unique students count:", state.students.length);
+        if (payload.length !== uniqueStudents.length) {
+          console.log(`⚠️ [Redux Reducer] Removed ${payload.length - uniqueStudents.length} duplicate students`);
+        }
       })
       .addCase(fetchStudentsByInstitute.rejected, (state, action) => {
         state.loading.fetching = false;

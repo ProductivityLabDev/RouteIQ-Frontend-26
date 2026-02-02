@@ -128,6 +128,83 @@ export interface RouteDetails {
   [key: string]: any;
 }
 
+export interface RouteStop {
+  stopId?: number;
+  stopName?: string;
+  stopAddress?: string;
+  latitude?: number;
+  longitude?: number;
+  stopOrder?: number;
+  estimatedArrivalTime?: string;
+  [key: string]: any;
+}
+
+export interface UpdateRouteIconPayload {
+  routeAnimalIcon: string;
+}
+
+export interface UpdateStudentLocationPayload {
+  latitude: number;
+  longitude: number;
+}
+
+export interface FindStudentsByLocationPayload {
+  instituteId: number;
+  pickupLocation: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  dropoffLocation: string;
+  dropoffLatitude?: number;
+  dropoffLongitude?: number;
+  radiusKm?: number; // Used when matchType=coordinate (min 0.01, max 50)
+  radiusMeters?: number; // Used when matchType=address (min 10, max 5000, default 50)
+  maxResults?: number;
+  matchType?: "coordinate" | "address";
+}
+
+export interface MatchedStudent {
+  studentId: number;
+  firstName?: string;
+  lastName?: string;
+  studentName?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  distanceKm?: number;
+  [key: string]: any;
+}
+
+export interface FindStudentsByLocationResponse {
+  ok: boolean;
+  message?: string;
+  data: {
+    matchedStudents: MatchedStudent[];
+    totalMatched: number;
+    totalSearched?: number;
+    searchRadiusKm?: number;
+    matchType?: string;
+    suggestion?: any;
+  };
+}
+
+export interface CreateRouteBasicPayload {
+  instituteId: number;
+  routeNumber: string;
+  routeName: string;
+  routeAnimalIcon?: string;
+  pickupLat?: number;
+  pickupLng?: number;
+  dropoffLat?: number;
+  dropoffLng?: number;
+  pickup: string;
+  dropoff: string;
+  routeDate: string; // YYYY-MM-DD
+  routeTime: string; // HH:MM
+  driverId: number;
+  busId: number;
+  studentIds?: string; // Comma-separated string e.g. '1,2,5'
+}
+
 /**
  * Route Service
  * -------------
@@ -304,6 +381,120 @@ export const routeService = {
     if (payload?.routeSchedule && !merged.routeSchedule) merged.routeSchedule = payload.routeSchedule;
 
     return merged || {};
+  },
+
+  /**
+   * Get route stops (ordered list with lat/lng for map rendering)
+   */
+  getRouteStops: async (routeId: number): Promise<ApiResponse<RouteStop[]>> => {
+    const response = await apiClient.get<RouteStop[]>(
+      `/route-management/routes/${routeId}/stops`
+    );
+    return {
+      ok: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  },
+
+  /**
+   * Update route animal icon (e.g. lion, fox, elephant)
+   */
+  updateRouteIcon: async (
+    routeId: number,
+    icon: string
+  ): Promise<ApiResponse<any>> => {
+    const payload: UpdateRouteIconPayload = {
+      routeAnimalIcon: icon,
+    };
+    const response = await apiClient.patch<any>(
+      `/route-management/routes/${routeId}/icon`,
+      payload
+    );
+    return {
+      ok: true,
+      data: response.data,
+    };
+  },
+
+  /**
+   * Update student location coordinates (latitude/longitude)
+   */
+  updateStudentLocation: async (
+    studentId: number,
+    latitude: number,
+    longitude: number
+  ): Promise<ApiResponse<any>> => {
+    const payload: UpdateStudentLocationPayload = {
+      latitude,
+      longitude,
+    };
+    const response = await apiClient.patch<any>(
+      `/route-management/students/${studentId}/location`,
+      payload
+    );
+    return {
+      ok: true,
+      data: response.data,
+    };
+  },
+
+  /**
+   * Find students by location (smart matching for route creation)
+   * Supports coordinate-based (Haversine) or address-based matching
+   */
+  findStudentsByLocation: async (
+    payload: FindStudentsByLocationPayload
+  ): Promise<FindStudentsByLocationResponse> => {
+    const response = await apiClient.post<FindStudentsByLocationResponse>(
+      "/route-management/find-students-by-location",
+      payload
+    );
+    return response.data;
+  },
+
+  /**
+   * Create route (basic) - without students or with optional comma-separated studentIds
+   */
+  createRouteBasic: async (
+    payload: CreateRouteBasicPayload
+  ): Promise<ApiResponse<RouteResponse>> => {
+    const body: any = {
+      instituteId: Number(payload.instituteId),
+      routeNumber: String(payload.routeNumber ?? ""),
+      routeName: String(payload.routeName ?? ""),
+      pickup: String(payload.pickup ?? ""),
+      dropoff: String(payload.dropoff ?? ""),
+      routeDate: String(payload.routeDate ?? ""),
+      routeTime: String(payload.routeTime ?? ""),
+      driverId: Number(payload.driverId),
+      busId: Number(payload.busId),
+    };
+
+    // Optional fields
+    if (payload.routeAnimalIcon) {
+      body.routeAnimalIcon = String(payload.routeAnimalIcon);
+    }
+    if (payload.pickupLat !== undefined) {
+      body.pickupLat = Number(payload.pickupLat);
+    }
+    if (payload.pickupLng !== undefined) {
+      body.pickupLng = Number(payload.pickupLng);
+    }
+    if (payload.dropoffLat !== undefined) {
+      body.dropoffLat = Number(payload.dropoffLat);
+    }
+    if (payload.dropoffLng !== undefined) {
+      body.dropoffLng = Number(payload.dropoffLng);
+    }
+    if (payload.studentIds) {
+      body.studentIds = String(payload.studentIds);
+    }
+
+    const response = await apiClient.post<ApiResponse<RouteResponse>>(
+      "/institute/createRoute",
+      body
+    );
+    return response.data;
   },
 };
 
