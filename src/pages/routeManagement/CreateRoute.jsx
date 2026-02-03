@@ -130,8 +130,10 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         setRouteForm((prev) => ({
             ...prev,
             driverId: id ? parseInt(id, 10) : null,
+            busId: "", // reset bus when driver changes
         }));
         setSelectedDriverName(driver.Name);
+        setSelectedBusName(""); // clear bus name so user picks from driver's buses only
     };
 
     const handleSelectBus = (bus) => {
@@ -411,13 +413,17 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
             instituteId: Number(selectedSchoolId),
             routeNumber: routeForm.routeNumber,
             routeName: routeForm.routeName,
-            pickup: routeForm.pickup, // Changed from pickupLocation to match backend error
-            dropoff: routeForm.dropoff, // Changed from dropoffLocation
+            pickup: routeForm.pickup,
+            dropoff: routeForm.dropoff,
             routeDate: routeForm.routeDate,
             routeTime: routeForm.routeTime,
-            driverId: Number(routeForm.driverId), // Changed from driverEmployeeId to match backend error
-            busId: Number(routeForm.busId), // Changed from vehicleId to match backend error
+            driverId: Number(routeForm.driverId),
+            busId: Number(routeForm.busId),
             studentIds: selectedStudents.join(','),
+            pickupLat: pickupCoords?.lat != null ? Number(pickupCoords.lat) : null,
+            pickupLng: pickupCoords?.lng != null ? Number(pickupCoords.lng) : null,
+            dropoffLat: dropoffCoords?.lat != null ? Number(dropoffCoords.lat) : null,
+            dropoffLng: dropoffCoords?.lng != null ? Number(dropoffCoords.lng) : null,
         };
 
         try {
@@ -435,6 +441,18 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
             alert("Failed to create route");
         }
     };
+
+    // Buses filtered by selected driver (sirf us driver ki buses jo assign hain)
+    const busesForSelectedDriver = React.useMemo(() => {
+        if (!realBuses || realBuses.length === 0) return [];
+        const driverId = routeForm.driverId ? Number(routeForm.driverId) : null;
+        if (!driverId) return [];
+        return realBuses.filter((bus) => {
+            const busDriverId = bus.DriverId ?? bus.driverId ?? bus.AssignedDriverId ?? bus.assignedDriverId;
+            if (busDriverId == null) return false;
+            return Number(busDriverId) === driverId;
+        });
+    }, [realBuses, routeForm.driverId]);
 
     // Load schools, drivers and buses for dropdown on mount
     useEffect(() => {
@@ -1173,15 +1191,19 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                                         <Spinner className="h-4 w-4" />
                                                         <span className="ml-2">Loading buses...</span>
                                                     </MenuItem>
-                                                ) : realBuses && realBuses.length > 0 ? (
-                                                    realBuses.map((bus) => (
+                                                ) : !routeForm.driverId ? (
+                                                    <MenuItem disabled className="text-gray-500 italic">
+                                                        Select a driver first
+                                                    </MenuItem>
+                                                ) : busesForSelectedDriver.length > 0 ? (
+                                                    busesForSelectedDriver.map((bus) => (
                                                         <MenuItem key={bus.BusId || bus.id} onClick={() => handleSelectBus(bus)}>
-                                                            {bus.VehicleName || `Bus ${bus.BusId}`}
+                                                            {bus.VehicleName || bus.NumberPlate || `Bus ${bus.BusId || bus.id}`}
                                                         </MenuItem>
                                                     ))
                                                 ) : (
                                                     <MenuItem disabled className="text-red-500 font-bold italic">
-                                                        ⚠️ No buses found! Please add a bus in Vehicle Management first.
+                                                        No buses assigned to this driver. Assign in Vehicle Management.
                                                     </MenuItem>
                                                 )}
                                             </MenuList>

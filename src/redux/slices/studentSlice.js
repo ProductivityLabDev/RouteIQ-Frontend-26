@@ -88,6 +88,10 @@ const studentSlice = createSlice({
     clearStudentErrors: (state) => {
       state.error.creating = null;
     },
+    clearStudents: (state) => {
+      state.students = [];
+      state.error.fetching = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -142,6 +146,6 @@ const studentSlice = createSlice({
   },
 });
 
-export const { clearStudentErrors } = studentSlice.actions;
+export const { clearStudentErrors, clearStudents } = studentSlice.actions;
 export default studentSlice.reducer;
 

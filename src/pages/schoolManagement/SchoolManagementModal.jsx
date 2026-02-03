@@ -214,19 +214,24 @@ export function SchoolManagementModal({ open, handleOpen, editInstitute, editSch
                                     </label>
                                     <select
                                         name="terminal"
-                                        value={formData.terminal}
+                                        value={formData.terminal || ''}
                                         onChange={handleChange}
                                         className="w-full outline-none border border-gray-300 rounded-md py-2 px-3 bg-gray-50 focus:bg-white focus:border-[#C01824] transition-all"
                                     >
                                         <option value="">Select Terminal</option>
                                         {loading.terminals ? (
                                             <option className="text-gray-500">Loading...</option>
-                                        ) : terminals.length > 0 ? (
-                                            terminals.map((t) => (
-                                                <option key={t.id} value={t.id} className="text-black">
-                                                    {t.name} {t.code ? `(${t.code})` : ''}
-                                                </option>
-                                            ))
+                                        ) : terminals && terminals.length > 0 ? (
+                                            terminals.map((t) => {
+                                                const terminalId = t.TerminalId ?? t.id;
+                                                const terminalName = t.TerminalName ?? t.name ?? `Terminal ${terminalId ?? ''}`;
+                                                const code = t.code ?? t.Code ?? '';
+                                                return (
+                                                    <option key={terminalId} value={terminalId} className="text-black">
+                                                        {terminalName}{code ? ` (${code})` : ''}
+                                                    </option>
+                                                );
+                                            })
                                         ) : (
                                             <option>No terminals found</option>
                                         )}

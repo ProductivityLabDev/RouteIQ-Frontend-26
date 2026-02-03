@@ -5,19 +5,23 @@ export interface CreateRoutePayload {
   instituteId: number;
   routeNumber: string;
   routeName: string;
-  // UI field names
   pickup: string;
   dropoff: string;
-  routeDate: string; // YYYY-MM-DD
-  routeTime: string; // HH:mm
-  // UI field names
+  routeDate: string;
+  routeTime: string;
   driverId: number;
   busId: number;
   createdByUserId?: number;
-  studentIds: string; // Comma separated string e.g. '1,2,5'
+  studentIds: string;
+  /** For SP @PickupLat, @PickupLng - RouteStops Pickup */
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  /** For SP @DropoffLat, @DropoffLng - RouteStops Dropoff */
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
 }
 
-// Backend DTO expects these keys (forbidNonWhitelisted=true)
+// Backend DTO → sp_CreateRouteWithStudents (@PickupLat, @PickupLng, @DropoffLat, @DropoffLng, @DropoffTime)
 interface CreateRouteBackendDto {
   instituteId: number;
   routeNumber: string;
@@ -26,6 +30,12 @@ interface CreateRouteBackendDto {
   dropoffLocation: string;
   routeDate: string;
   routeTime: string;
+  pickupTime?: string;
+  dropoffTime?: string;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
   driverEmployeeId: number;
   vehicleId: number;
   studentIds: string;
@@ -215,6 +225,7 @@ export const routeService = {
    * Create a new route
    */
   createRoute: async (payload: CreateRoutePayload): Promise<ApiResponse<RouteResponse>> => {
+    const routeTime = String(payload.routeTime ?? "").trim();
     const body: CreateRouteBackendDto = {
       instituteId: Number(payload.instituteId),
       routeNumber: String(payload.routeNumber ?? ""),
@@ -222,7 +233,13 @@ export const routeService = {
       pickupLocation: String(payload.pickup ?? ""),
       dropoffLocation: String(payload.dropoff ?? ""),
       routeDate: String(payload.routeDate ?? ""),
-      routeTime: String(payload.routeTime ?? ""),
+      routeTime,
+      pickupTime: routeTime || undefined,
+      dropoffTime: routeTime || undefined,
+      pickupLat: payload.pickupLat != null ? Number(payload.pickupLat) : null,
+      pickupLng: payload.pickupLng != null ? Number(payload.pickupLng) : null,
+      dropoffLat: payload.dropoffLat != null ? Number(payload.dropoffLat) : null,
+      dropoffLng: payload.dropoffLng != null ? Number(payload.dropoffLng) : null,
       driverEmployeeId: Number(payload.driverId),
       vehicleId: Number(payload.busId),
       studentIds: String(payload.studentIds ?? ""),
