@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import MainLayout from '@/layouts/SchoolLayout';
 import { tripDetails, tripStages } from '@/data';
 import { ButtonGroup, Tab, Tabs, TabsBody, TabsHeader, Button, Spinner } from '@material-tailwind/react';
@@ -7,7 +7,31 @@ import { fetchTerminals, fetchSchoolManagementSummary } from '@/redux/slices/sch
 import { fetchStudentsByInstitute, clearStudents } from '@/redux/slices/studentSlice';
 import trackingService from '@/services/trackingService';
 import { toast } from 'react-hot-toast';
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, MarkerF, PolylineF } from '@react-google-maps/api';
+import { redbusicon } from '@/assets';
+
+// Polling interval (milliseconds)
+const POLLING_INTERVAL = 7000; // 7 seconds
+
+// Status color mapping for markers
+const getStatusColor = (status) => {
+  const s = (status || '').toLowerCase();
+  if (s.includes('transit') || s === 'in transit') return '#22c55e'; // green
+  if (s.includes('stop') || s === 'at stop') return '#f59e0b'; // yellow/orange
+  return '#9ca3af'; // gray for idle/unknown
+};
+
+// Get marker icon URL based on status
+const getMarkerIcon = (status, isDriver = false) => {
+  if (isDriver) {
+    return 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+  }
+  const color = getStatusColor(status);
+  // Use Google's colored markers
+  if (color === '#22c55e') return 'http://maps.google.com/mapfiles/ms/icons/green-dot.png';
+  if (color === '#f59e0b') return 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png';
+  return 'http://maps.google.com/mapfiles/ms/icons/grey-dot.png';
+};
 
 const tabsData = [
   { label: 'All Students', value: 'allstudents' },
@@ -37,6 +61,25 @@ const RealTimeTracking = () => {
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [map, setMap] = useState(null);
 
+  // ✅ NEW: All active vehicles (main map - page load + polling)
+  const [allActiveVehicles, setAllActiveVehicles] = useState([]);
+  const [loadingAllVehicles, setLoadingAllVehicles] = useState(false);
+
+  // ✅ NEW: Selected vehicle detail + polyline path
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [vehicleDetail, setVehicleDetail] = useState(null);
+  const [vehiclePath, setVehiclePath] = useState([]); // for polyline
+  const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
+
+  // ✅ NEW: Polling control + last update time
+  const [isPollingEnabled, setIsPollingEnabled] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const pollingRef = useRef(null);
+
+  // ✅ Track if initial fit bounds done (don't re-fit on polling)
+  const hasInitialFit = useRef(false);
+  const lastMarkerCount = useRef(0);
+
   // Google Maps API Loader
   const GOOGLE_LIBRARIES = ['places'];
   const { isLoaded: isMapLoaded, loadError: mapLoadError } = useJsApiLoader({
@@ -51,12 +94,40 @@ const RealTimeTracking = () => {
   // ---------- MARKERS ----------
   const mapMarkers = useMemo(() => {
     const markers = [];
+    const seenIds = new Set(); // ✅ Track seen IDs to prevent duplicates
+
+    // Helper to add marker only if not duplicate
+    const addMarker = (marker) => {
+      if (!seenIds.has(marker.id)) {
+        seenIds.add(marker.id);
+        markers.push(marker);
+      }
+    };
+
+    // ✅ Show ALL active vehicles when no terminal/school selected (default view)
+    if (selectedInfo === 'Track School' && !selectedTab && !selectedSchool && allActiveVehicles.length > 0) {
+      allActiveVehicles.forEach((vehicle) => {
+        if (vehicle.currentLocation?.latitude && vehicle.currentLocation?.longitude) {
+          addMarker({
+            id: `all-vehicle-${vehicle.vehicleId}`,
+            position: {
+              lat: vehicle.currentLocation.latitude,
+              lng: vehicle.currentLocation.longitude,
+            },
+            title: `${vehicle.vehicleName} - ${vehicle.numberPlate}`,
+            type: 'vehicle',
+            status: vehicle.status,
+            vehicleData: vehicle,
+          });
+        }
+      });
+    }
 
     // Terminal vehicles markers
     if (selectedTab && terminalVehicles.length > 0) {
       terminalVehicles.forEach((vehicle) => {
         if (vehicle.currentLocation?.latitude && vehicle.currentLocation?.longitude) {
-          markers.push({
+          addMarker({
             id: `vehicle-${vehicle.vehicleId}`,
             position: {
               lat: vehicle.currentLocation.latitude,
@@ -64,6 +135,8 @@ const RealTimeTracking = () => {
             },
             title: `${vehicle.vehicleName} - ${vehicle.numberPlate}`,
             type: 'vehicle',
+            status: vehicle.status,
+            vehicleData: vehicle,
           });
         }
       });
@@ -73,7 +146,7 @@ const RealTimeTracking = () => {
     if (selectedSchool?.instituteId && schoolVehicles.length > 0) {
       schoolVehicles.forEach((vehicle) => {
         if (vehicle.currentLocation?.latitude && vehicle.currentLocation?.longitude) {
-          markers.push({
+          addMarker({
             id: `school-vehicle-${vehicle.vehicleId}`,
             position: {
               lat: vehicle.currentLocation.latitude,
@@ -81,16 +154,18 @@ const RealTimeTracking = () => {
             },
             title: `${vehicle.vehicleName} - ${vehicle.numberPlate}`,
             type: 'vehicle',
+            status: vehicle.status,
+            vehicleData: vehicle,
           });
         }
       });
     }
 
-    // Active drivers markers
+    // Active drivers markers (Track Drivers mode)
     if (selectedInfo === 'Track Drivers' && activeDrivers.length > 0) {
       activeDrivers.forEach((driver) => {
         if (driver.currentLocation?.latitude && driver.currentLocation?.longitude) {
-          markers.push({
+          addMarker({
             id: `driver-${driver.driverId}`,
             position: {
               lat: driver.currentLocation.latitude,
@@ -98,13 +173,15 @@ const RealTimeTracking = () => {
             },
             title: `${driver.name} - ${driver.busNo}`,
             type: 'driver',
+            status: driver.currentLocation?.Status || 'Unknown',
+            vehicleData: driver,
           });
         }
       });
     }
 
     return markers;
-  }, [terminalVehicles, schoolVehicles, activeDrivers, selectedTab, selectedSchool, selectedInfo]);
+  }, [terminalVehicles, schoolVehicles, activeDrivers, allActiveVehicles, selectedTab, selectedSchool, selectedInfo]);
 
   const mapCenter = useMemo(() => {
     if (mapMarkers.length === 0) return defaultCenter;
@@ -119,9 +196,25 @@ const RealTimeTracking = () => {
     (mapInstance) => {
       setMap(mapInstance);
       if (mapMarkers.length > 0 && window.google?.maps?.LatLngBounds) {
-        const bounds = new window.google.maps.LatLngBounds();
-        mapMarkers.forEach((m) => bounds.extend(m.position));
-        mapInstance.fitBounds(bounds);
+        // ✅ For single/few markers - pan directly to marker position
+        if (mapMarkers.length <= 3) {
+          const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
+          const avgLng = mapMarkers.reduce((sum, m) => sum + m.position.lng, 0) / mapMarkers.length;
+          const targetCenter = mapMarkers.length === 1 ? mapMarkers[0].position : { lat: avgLat, lng: avgLng };
+          mapInstance.panTo(targetCenter);
+          mapInstance.setZoom(15);
+        } else {
+          // For many markers, use fitBounds
+          const bounds = new window.google.maps.LatLngBounds();
+          mapMarkers.forEach((m) => bounds.extend(m.position));
+          mapInstance.fitBounds(bounds, { top: 50, bottom: 80, left: 50, right: 50 });
+
+          window.google.maps.event.addListenerOnce(mapInstance, 'idle', () => {
+            const currentZoom = mapInstance.getZoom();
+            if (currentZoom > 17) mapInstance.setZoom(17);
+            if (currentZoom < 8) mapInstance.setZoom(10);
+          });
+        }
       }
     },
     [mapMarkers]
@@ -170,11 +263,46 @@ const RealTimeTracking = () => {
   }, [selectedRouteId, activeTab]);
 
   // ---------- FIT BOUNDS ----------
+  // ✅ Only fit bounds on initial load or when selection changes (NOT during polling)
   useEffect(() => {
-    if (map && mapMarkers.length > 0 && window.google?.maps?.LatLngBounds) {
+    if (!map || mapMarkers.length === 0 || !window.google?.maps?.LatLngBounds) return;
+
+    // Check if this is a significant change (initial load or marker count changed significantly)
+    const markerCountChanged = Math.abs(mapMarkers.length - lastMarkerCount.current) > 0;
+    const isInitialFit = !hasInitialFit.current;
+
+    // Only fit bounds if: first time OR markers appeared/disappeared (not just position updates)
+    if (!isInitialFit && !markerCountChanged) {
+      // Just a polling update with same markers - don't move the map
+      return;
+    }
+
+    // Update tracking refs
+    hasInitialFit.current = true;
+    lastMarkerCount.current = mapMarkers.length;
+
+    // Calculate center of all markers
+    const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
+    const avgLng = mapMarkers.reduce((sum, m) => sum + m.position.lng, 0) / mapMarkers.length;
+    const markersCenter = { lat: avgLat, lng: avgLng };
+
+    // For single marker or few markers - directly pan and zoom to marker position
+    if (mapMarkers.length <= 3) {
+      const targetCenter = mapMarkers.length === 1 ? mapMarkers[0].position : markersCenter;
+      map.panTo(targetCenter);
+      map.setZoom(15); // Street level zoom
+    } else {
+      // For many markers, use fitBounds
       const bounds = new window.google.maps.LatLngBounds();
       mapMarkers.forEach((m) => bounds.extend(m.position));
-      map.fitBounds(bounds);
+      map.fitBounds(bounds, { top: 50, bottom: 80, left: 50, right: 50 });
+
+      // Enforce zoom limits after fitBounds
+      window.google.maps.event.addListenerOnce(map, 'idle', () => {
+        const currentZoom = map.getZoom();
+        if (currentZoom > 17) map.setZoom(17);
+        if (currentZoom < 8) map.setZoom(10);
+      });
     }
   }, [map, mapMarkers]);
 
@@ -259,6 +387,115 @@ const RealTimeTracking = () => {
     }
   };
 
+  // ✅ NEW: Fetch ALL active vehicles (main map - page load + polling)
+  const fetchAllActiveVehicles = async (silent = false) => {
+    try {
+      if (!silent) setLoadingAllVehicles(true);
+      const response = await trackingService.getActiveVehicles();
+      if (response.ok && response.data) {
+        setAllActiveVehicles(response.data);
+        setLastUpdated(new Date());
+      }
+    } catch (error) {
+      console.error('Error fetching all active vehicles:', error);
+      if (!silent) toast.error('Error loading vehicles');
+    } finally {
+      if (!silent) setLoadingAllVehicles(false);
+    }
+  };
+
+  // ✅ NEW: Fetch single vehicle detail (on marker click)
+  const fetchVehicleDetail = async (vehicleId) => {
+    try {
+      setLoadingVehicleDetail(true);
+      const response = await trackingService.getVehicleLocation(vehicleId);
+      if (response.ok && response.data) {
+        setVehicleDetail(response.data);
+      }
+      // No error toast - we have fallback data from selectedVehicle
+    } catch (error) {
+      console.error('Error fetching vehicle detail:', error);
+      // No error toast - we have fallback data from selectedVehicle
+    } finally {
+      setLoadingVehicleDetail(false);
+    }
+  };
+
+  // ✅ NEW: Fetch vehicle path/history (for polyline)
+  const fetchVehiclePath = async (vehicleId) => {
+    try {
+      const response = await trackingService.getVehicleHistory(vehicleId, { limit: 200 });
+      if (response.ok && response.data) {
+        const historyData = response.data.data || response.data || [];
+        const path = historyData.map((point) => ({
+          lat: point.Latitude,
+          lng: point.Longitude,
+        }));
+        setVehiclePath(path);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle path:', error);
+      setVehiclePath([]);
+    }
+  };
+
+  // ✅ NEW: Handle vehicle marker click
+  const handleVehicleClick = async (vehicle) => {
+    const vehicleId = vehicle.vehicleId || vehicle.VehicleId;
+    
+    // Set selected vehicle immediately (so panel shows with existing data)
+    setSelectedVehicle(vehicle);
+    setSelectedStudent(null); // close student panel if open
+    setVehicleDetail(null); // reset previous detail
+    setVehiclePath([]); // reset previous path
+
+    if (!vehicleId) return;
+
+    // Try to fetch extra details (but don't block if it fails)
+    try {
+      await Promise.all([
+        fetchVehicleDetail(vehicleId).catch(() => {}), // silently fail
+        fetchVehiclePath(vehicleId).catch(() => {}),   // silently fail
+      ]);
+    } catch (err) {
+      // Panel will still show with selectedVehicle data
+      console.log('Extra details not available, showing basic info');
+    }
+  };
+
+  // ✅ NEW: Close vehicle detail panel
+  const handleCloseVehiclePanel = () => {
+    setSelectedVehicle(null);
+    setVehicleDetail(null);
+    setVehiclePath([]);
+  };
+
+  // ✅ NEW: Toggle polling
+  const togglePolling = () => {
+    setIsPollingEnabled((prev) => !prev);
+  };
+
+  // ---------- POLLING EFFECT ----------
+  useEffect(() => {
+    // Initial fetch on mount
+    fetchAllActiveVehicles();
+
+    // Setup polling interval
+    if (isPollingEnabled) {
+      pollingRef.current = setInterval(() => {
+        fetchAllActiveVehicles(true); // silent refresh (no loading spinner)
+      }, POLLING_INTERVAL);
+    }
+
+    // Cleanup on unmount or when polling disabled
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [isPollingEnabled]);
+
   // ---------- UI ACTIONS ----------
   const toggleStudentPanel = (studentOrDriver) => {
     setSelectedStudent(studentOrDriver);
@@ -267,6 +504,10 @@ const RealTimeTracking = () => {
 
   // ✅ School select => terminal auto-select + (polish) terminal vehicles sync
   const toggleSchoolPanel = (school) => {
+    // ✅ Reset fit bounds so new school gets proper zoom
+    hasInitialFit.current = false;
+    lastMarkerCount.current = 0;
+
     setSelectedSchool(school);
     setSelectedSchoolTab(false);
     setActiveTab('allstudents');
@@ -343,6 +584,10 @@ const RealTimeTracking = () => {
   const handleSelectedTabInfo = (tab) => {
     setSelectedInfo(tab);
 
+    // ✅ Reset fit bounds so new selection gets proper zoom
+    hasInitialFit.current = false;
+    lastMarkerCount.current = 0;
+
     // hard reset on every switch
     setSelectedStudent(null);
     setSelectedRouteId(null);
@@ -374,6 +619,10 @@ const RealTimeTracking = () => {
   const handleTerminalSelect = (terminalId) => {
     if (selectedInfo !== 'Track School') return;
 
+    // ✅ Reset fit bounds so new terminal gets proper zoom
+    hasInitialFit.current = false;
+    lastMarkerCount.current = 0;
+
     setSelectedTab(terminalId);
     setSelectedSchool(null);
     setSelectedSchoolTab(true);
@@ -388,7 +637,7 @@ const RealTimeTracking = () => {
   return (
     <MainLayout>
       <section className="w-full h-full">
-        <div className="mt-7 md:h-[750px] h-full relative overflow-hidden">
+        <div className="mt-7 md:min-h-[750px] h-auto relative">
           <ButtonGroup
             className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0 w-[30%]"
             variant="text"
@@ -445,8 +694,8 @@ const RealTimeTracking = () => {
             </div>
           )}
 
-          {/* ✅ Scroll fix: fixed height + overflow hidden */}
-          <div className="flex md:flex-row flex-col md:space-y-0 space-y-5 mt-6 border shadow-sm rounded-md space-x-1 relative h-[calc(100vh-220px)] overflow-hidden">
+          {/* ✅ Scroll fix: fixed height + overflow hidden - reduced height for status bar */}
+          <div className="flex md:flex-row flex-col md:space-y-0 space-y-5 mt-6 border shadow-sm rounded-md space-x-1 relative h-[calc(100vh-270px)] overflow-hidden">
             {/* ✅ Remount fix + scroll fix */}
             <div
               key={selectedInfo}
@@ -799,52 +1048,264 @@ const RealTimeTracking = () => {
               </div>
             )}
 
-            <div className="relative h-full md:h-full md:w-full w-auto overflow-hidden">
-              {mapLoadError ? (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 p-6 text-center">
-                  <p className="text-red-600 font-bold">Map Loading Error</p>
-                  <p className="text-gray-600 mt-2">Please check your Google Maps API key</p>
-                </div>
-              ) : !isMapLoaded ? (
-                <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                  <Spinner className="h-8 w-8" />
-                  <span className="ml-3 text-sm">Loading map...</span>
-                </div>
-              ) : (
-                <GoogleMap
-                  mapContainerStyle={{ width: '100%', height: '100%' }}
-                  center={mapCenter}
-                  zoom={defaultZoom}
-                  onLoad={onMapLoad}
-                  onUnmount={onMapUnmount}
-                  options={{
-                    disableDefaultUI: false,
-                    zoomControl: true,
-                    mapTypeControl: true,
-                    streetViewControl: false,
-                    fullscreenControl: true,
-                  }}
-                >
-                  {mapMarkers.map((marker) => {
-                    const iconConfig =
-                      marker.type === 'driver'
-                        ? {
-                            url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-                            scaledSize: window.google?.maps?.Size
-                              ? new window.google.maps.Size(40, 40)
-                              : undefined,
-                          }
-                        : {
-                            url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-                            scaledSize: window.google?.maps?.Size
-                              ? new window.google.maps.Size(40, 40)
-                              : undefined,
-                          };
+            {/* ✅ NEW: Vehicle Detail Panel (when marker clicked) */}
+            {selectedVehicle && (
+              <div className="absolute md:left-[18rem] left-0 w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-4 overflow-y-auto z-[500]">
+                {loadingVehicleDetail ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Spinner className="h-6 w-6" />
+                    <span className="ml-2 text-sm">Loading vehicle details...</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* ✅ Use vehicleDetail if available, otherwise fallback to selectedVehicle */}
+                    {(() => {
+                      // Merge data: prefer vehicleDetail, fallback to selectedVehicle
+                      const v = vehicleDetail || {};
+                      const sv = selectedVehicle || {};
+                      const loc = sv.currentLocation || {};
 
-                    return <MarkerF key={marker.id} position={marker.position} title={marker.title} icon={iconConfig} />;
+                      const vehicleName = v.VehicleName || sv.vehicleName || 'Unknown Vehicle';
+                      const numberPlate = v.NumberPlate || sv.numberPlate || 'N/A';
+                      const status = v.Status || sv.status || loc.Status || 'Unknown';
+                      const driverName = v.driverName || sv.driverName || 'N/A';
+                      const routeName = v.RouteName || sv.routeName;
+                      const lat = v.Latitude || loc.latitude;
+                      const lng = v.Longitude || loc.longitude;
+                      const speed = v.Speed ?? loc.speed;
+                      const timestamp = v.Timestamp || loc.timestamp;
+
+                      return (
+                        <>
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900">{vehicleName}</h3>
+                              <p className="text-sm text-gray-600">{numberPlate}</p>
+                            </div>
+                            <div
+                              className={`px-3 py-1 rounded-full text-xs font-bold text-white ${
+                                (status || '').toLowerCase().includes('transit')
+                                  ? 'bg-green-500'
+                                  : (status || '').toLowerCase().includes('stop')
+                                  ? 'bg-yellow-500'
+                                  : 'bg-gray-400'
+                              }`}
+                            >
+                              {status}
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                              <p className="text-xs font-medium text-gray-500 uppercase">Driver</p>
+                              <p className="text-sm font-bold text-gray-900">{driverName}</p>
+                            </div>
+
+                            {routeName && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs font-medium text-gray-500 uppercase">Route</p>
+                                <p className="text-sm font-bold text-gray-900">{routeName}</p>
+                              </div>
+                            )}
+
+                            {lat && lng && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs font-medium text-gray-500 uppercase">Current Location</p>
+                                <p className="text-sm font-bold text-gray-900">
+                                  {Number(lat).toFixed(6)}, {Number(lng).toFixed(6)}
+                                </p>
+                              </div>
+                            )}
+
+                            {speed !== undefined && speed !== null && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs font-medium text-gray-500 uppercase">Speed</p>
+                                <p className="text-sm font-bold text-gray-900">{speed} km/h</p>
+                              </div>
+                            )}
+
+                            {timestamp && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs font-medium text-gray-500 uppercase">Last Update</p>
+                                <p className="text-sm font-bold text-gray-900">
+                                  {new Date(timestamp).toLocaleString()}
+                                </p>
+                              </div>
+                            )}
+
+                            {sv.studentsOnBoard !== undefined && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs font-medium text-gray-500 uppercase">Students</p>
+                                <p className="text-sm font-bold text-gray-900">
+                                  {sv.studentsOnBoard || 0} / {sv.totalStudents || 0} on board
+                                </p>
+                              </div>
+                            )}
+
+                            {vehiclePath.length > 1 && (
+                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <p className="text-xs font-medium text-blue-600">
+                                  📍 Path history shown on map ({vehiclePath.length} points)
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+
+                <button
+                  className="absolute top-2 right-2 p-2 bg-gray-200 rounded-lg transition-all hover:bg-gray-300"
+                  onClick={handleCloseVehiclePanel}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            <div className="relative h-full md:h-full md:w-full w-auto overflow-hidden">
+                {mapLoadError ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 p-6 text-center">
+                    <p className="text-red-600 font-bold">Map Loading Error</p>
+                    <p className="text-gray-600 mt-2">Please check your Google Maps API key</p>
+                  </div>
+                ) : !isMapLoaded ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    <Spinner className="h-8 w-8" />
+                    <span className="ml-3 text-sm">Loading map...</span>
+                  </div>
+                ) : (
+                  <GoogleMap
+                    mapContainerStyle={{ width: '100%', height: '100%' }}
+                    center={mapCenter}
+                    zoom={defaultZoom}
+                    onLoad={onMapLoad}
+                    onUnmount={onMapUnmount}
+                    options={{
+                      disableDefaultUI: false,
+                      zoomControl: true,
+                      mapTypeControl: true,
+                      streetViewControl: false,
+                      fullscreenControl: true,
+                    }}
+                  >
+                  {/* ✅ Vehicle/Driver Markers with status-based colors */}
+                  {mapMarkers.map((marker) => {
+                    const isGoogleReady =
+                      !!window.google?.maps?.Size && !!window.google?.maps?.Point;
+
+                    // ✅ Status-based icon URL
+                    const iconUrl = getMarkerIcon(marker.status, marker.type === 'driver');
+
+                    const iconConfig = {
+                      url: iconUrl,
+                      scaledSize: isGoogleReady
+                        ? new window.google.maps.Size(36, 36)
+                        : undefined,
+                      anchor: isGoogleReady
+                        ? new window.google.maps.Point(18, 36)
+                        : undefined,
+                    };
+
+                    return (
+                      <MarkerF
+                        key={marker.id}
+                        position={marker.position}
+                        title={marker.title}
+                        icon={iconConfig}
+                        onClick={() => marker.vehicleData && handleVehicleClick(marker.vehicleData)}
+                      />
+                    );
                   })}
-                </GoogleMap>
-              )}
+
+                  {/* ✅ Vehicle Path Polyline (when vehicle selected) */}
+                  {vehiclePath.length > 1 && (
+                    <PolylineF
+                      path={vehiclePath}
+                      options={{
+                        strokeColor: '#3b82f6',
+                        strokeOpacity: 0.8,
+                        strokeWeight: 4,
+                        clickable: false,
+                        geodesic: true,
+                        zIndex: 5,
+                      }}
+                    />
+                  )}
+                  </GoogleMap>
+                )}
+            </div>
+          </div>
+
+          {/* ✅ Status Bar - OUTSIDE the main flex container */}
+          <div className="mt-2 bg-gray-100 border-2 border-gray-400 rounded-md px-4 py-3 shadow-md">
+            <div className="flex items-center justify-between">
+              {/* Vehicle Status Counts */}
+              <div className="flex items-center gap-4 text-sm">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                  <span className="font-medium">
+                    {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('transit')).length} In Transit
+                  </span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                  <span className="font-medium">
+                    {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('stop')).length} At Stop
+                  </span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+                  <span className="font-medium">
+                    {allActiveVehicles.filter((v) => {
+                      const s = (v.status || '').toLowerCase();
+                      return !s.includes('transit') && !s.includes('stop');
+                    }).length} Idle
+                  </span>
+                </span>
+              </div>
+
+              {/* Polling Status + Toggle */}
+              <div className="flex items-center gap-3">
+                {lastUpdated && (
+                  <span className="text-xs text-gray-500">
+                    Updated: {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+                <button
+                  onClick={togglePolling}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    isPollingEnabled
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${isPollingEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                  {isPollingEnabled ? 'Live' : 'Paused'}
+                </button>
+                <button
+                  onClick={() => fetchAllActiveVehicles()}
+                  disabled={loadingAllVehicles}
+                  className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium transition-colors disabled:opacity-50"
+                >
+                  {loadingAllVehicles ? (
+                    <Spinner className="h-3 w-3" />
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  Refresh
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import { LakeviewSchoolLogo, RosewoodSchoolLogo, SkylineSchoolLogo, SpringdaleSchoolLogo, calendar, driver, leftArrow, redbusicon, rightArrow } from '@/assets';
-import { ButtonGroup, Button, Input, Popover, PopoverContent, PopoverHandler, } from '@material-tailwind/react';
+import { ButtonGroup, Button, Input, Popover, PopoverContent, PopoverHandler, Typography } from '@material-tailwind/react';
 import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { studentsData } from '@/data/dummyData';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { fetchInstituteRoutes, fetchRouteStudents } from '@/redux/slices/routesSlice';
+import { routeService } from "@/services/routeService";
+import { toast } from "react-hot-toast";
 
 export default function SchoolList({ institutes = [], handleMapScreenClick, handleEditRoute }) {
     const [openSchoolId, setOpenSchoolId] = useState(null);
@@ -22,6 +24,12 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
     };
     const dispatch = useAppDispatch();
     const { routesByInstitute, loading, studentsByRoute, errors } = useAppSelector((state) => state.routes);
+    const [smartMatch, setSmartMatch] = useState({
+        routeId: null,
+        loading: false,
+        matchedStudents: [],
+        assigningStudentId: null,
+    });
 
     const displayInstitutes = useMemo(() => {
         if (Array.isArray(institutes) && institutes.length > 0) return institutes;
@@ -97,6 +105,244 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                 dispatch(fetchInstituteRoutes(inst.instituteId));
             }
             alert("No routes found for this school yet. Expand and load routes first.");
+        }
+    };
+
+    const getRouteId = (route) =>
+        route?.routeId || route?.RouteId || route?.routeID || route?.id;
+
+    const handleSmartMatchForRoute = async (inst, route) => {
+        const routeId = getRouteId(route);
+        const instituteId = inst?.instituteId;
+
+        if (!routeId || !instituteId) {
+            toast.error("Missing route or institute for Smart Match");
+            return;
+        }
+
+        // 1) Try route-level pickup
+        let pickupLocation =
+            route.pickupLocation ||
+            route.PickupLocation ||
+            route.routeStartAddress ||
+            route.RouteStartAddress ||
+            route.pickupAddress ||
+            route.PickupAddress ||
+            "";
+
+        let pickupLatitude =
+            route.pickupLat ??
+            route.pickupLatitude ??
+            route.PickupLatitude ??
+            null;
+        let pickupLongitude =
+            route.pickupLng ??
+            route.pickupLongitude ??
+            route.PickupLongitude ??
+            null;
+
+        // 2) Fallback: use first student on this route (they have pickup address/coords)
+        const existingStudents = Array.isArray(studentsByRoute?.[routeId])
+            ? studentsByRoute[routeId]
+            : [];
+        if (
+            (!pickupLocation || pickupLocation.trim() === "") &&
+            (pickupLatitude == null || pickupLongitude == null) &&
+            existingStudents.length > 0
+        ) {
+            const first = existingStudents[0];
+            pickupLocation =
+                pickupLocation ||
+                first.pickupAddress ||
+                first.PickupAddress ||
+                first.studentAddress ||
+                first.stopAddress ||
+                first.pickupLocation ||
+                first.PickupLocation ||
+                [first.pickupCity, first.pickupState].filter(Boolean).join(", ") ||
+                "";
+            if (pickupLatitude == null)
+                pickupLatitude =
+                    first.studentLatitude ??
+                    first.StudentLatitude ??
+                    first.latitude ??
+                    first.Latitude ??
+                    first.pickupLatitude ??
+                    first.PickupLatitude ??
+                    null;
+            if (pickupLongitude == null)
+                pickupLongitude =
+                    first.studentLongitude ??
+                    first.StudentLongitude ??
+                    first.longitude ??
+                    first.Longitude ??
+                    first.pickupLongitude ??
+                    first.PickupLongitude ??
+                    null;
+        }
+
+        if (!pickupLocation?.trim() && (pickupLatitude == null || pickupLongitude == null)) {
+            toast.error(
+                "This route has no pickup or student location. Add a stop with address/coordinates, or assign at least one student with pickup address, then try Smart Match again."
+            );
+            return;
+        }
+
+        try {
+            setSmartMatch({
+                routeId,
+                loading: true,
+                matchedStudents: [],
+                assigningStudentId: null,
+            });
+
+            const hasCoords =
+                pickupLatitude != null &&
+                !Number.isNaN(Number(pickupLatitude)) &&
+                pickupLongitude != null &&
+                !Number.isNaN(Number(pickupLongitude));
+
+            const payload = {
+                instituteId: Number(instituteId),
+                pickupLocation: String(pickupLocation || ""),
+                dropoffLocation: "", // not needed for now
+                ...(hasCoords
+                    ? {
+                          pickupLatitude: Number(pickupLatitude),
+                          pickupLongitude: Number(pickupLongitude),
+                          radiusKm: 0.5,
+                          matchType: "coordinate",
+                      }
+                    : {
+                          radiusMeters: 1000,
+                          matchType: "address",
+                      }),
+                maxResults: 100,
+            };
+
+            const res = await routeService.findStudentsByLocation(payload);
+
+            if (!res.ok) {
+                toast.error(res.message || "Smart Match failed");
+                setSmartMatch((prev) => ({ ...prev, loading: false }));
+                return;
+            }
+
+            const allMatched = res.data?.matchedStudents || [];
+
+            // Normalize ID so "57" and 57 match when excluding already-assigned students
+            const toId = (v) => {
+                if (v == null || v === "") return null;
+                const n = Number(v);
+                return Number.isNaN(n) ? String(v) : n;
+            };
+
+            // Use latest route students (refetch so DB-assigned like Alice are excluded)
+            let existing = Array.isArray(studentsByRoute?.[routeId])
+                ? studentsByRoute[routeId]
+                : [];
+            try {
+                const fetchResult = await dispatch(
+                    fetchRouteStudents({ routeId, type: "AM" })
+                ).unwrap();
+                if (Array.isArray(fetchResult?.data)) existing = fetchResult.data;
+            } catch (_) {
+                // keep existing from state if refetch fails
+            }
+
+            const existingIds = new Set(
+                existing
+                    .map((s) => toId(s.studentId || s.StudentId || s.id))
+                    .filter((x) => x != null && x !== "")
+            );
+
+            const filtered = allMatched.filter((s) => {
+                const id = toId(s.studentId || s.StudentId || s.id);
+                return id != null && id !== "" && !existingIds.has(id);
+            });
+
+            if (filtered.length === 0) {
+                toast("No new students found near this route");
+            } else {
+                toast.success(`Found ${filtered.length} students near this route`);
+            }
+
+            setSmartMatch({
+                routeId,
+                loading: false,
+                matchedStudents: filtered,
+                assigningStudentId: null,
+            });
+        } catch (error) {
+            console.error("Smart Match error:", error);
+            const message = error?.response?.data?.message || "Smart Match failed";
+            toast.error(message);
+            setSmartMatch((prev) => ({ ...prev, loading: false }));
+        }
+    };
+
+    const handleAddMatchedStudentToRoute = async (route, stu) => {
+        const routeId = getRouteId(route);
+        const studentId = stu?.studentId || stu?.StudentId || stu?.id;
+
+        if (!routeId || !studentId) {
+            toast.error("Missing route or student ID");
+            return;
+        }
+
+        try {
+            setSmartMatch((prev) => ({
+                ...prev,
+                assigningStudentId: studentId,
+            }));
+
+            const res = await routeService.assignStudentToRoute(
+                routeId,
+                studentId,
+                "SMART_MATCH"
+            );
+
+            if (res.ok && res.data?.Inserted) {
+                toast.success(
+                    `Student added to Route ${route.routeNumber || routeId}`
+                );
+                // Remove from suggestions and refresh table below so new student appears
+                setSmartMatch((prev) => ({
+                    ...prev,
+                    matchedStudents: prev.matchedStudents.filter(
+                        (s) =>
+                            (s.studentId || s.StudentId || s.id) !== studentId
+                    ),
+                    assigningStudentId: null,
+                }));
+                dispatch(fetchRouteStudents({ routeId, type: "AM" }));
+            } else if (res.data?.AlreadyAssigned) {
+                toast(`Student is already on this route`);
+                // Remove from suggestions so they don't keep showing
+                setSmartMatch((prev) => ({
+                    ...prev,
+                    matchedStudents: prev.matchedStudents.filter(
+                        (s) =>
+                            (s.studentId || s.StudentId || s.id) !== studentId
+                    ),
+                    assigningStudentId: null,
+                }));
+            } else {
+                toast.error(res.message || "Failed to assign student");
+                setSmartMatch((prev) => ({
+                    ...prev,
+                    assigningStudentId: null,
+                }));
+            }
+        } catch (error) {
+            console.error("Error assigning student to route:", error);
+            const message =
+                error?.response?.data?.message || "Failed to assign student";
+            toast.error(message);
+            setSmartMatch((prev) => ({
+                ...prev,
+                assigningStudentId: null,
+            }));
         }
     };
 
@@ -327,6 +573,100 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Header + Smart Match */}
+                                    <div className="flex items-center justify-between mb-3">
+                                        <Typography className="text-md font-semibold text-[#141516]">
+                                            Students on this Route
+                                        </Typography>
+                                        <Button
+                                            size="sm"
+                                            className="bg-[#C01824] text-white capitalize text-xs px-3 py-1 rounded-md"
+                                            onClick={() => handleSmartMatchForRoute(inst, route)}
+                                            disabled={
+                                                smartMatch.loading &&
+                                                smartMatch.routeId === getRouteId(route)
+                                            }
+                                        >
+                                            {smartMatch.loading &&
+                                            smartMatch.routeId === getRouteId(route)
+                                                ? "Finding..."
+                                                : "Smart Match Students"}
+                                        </Button>
+                                    </div>
+
+                                    {/* Smart Matched Students (not yet on this route) */}
+                                    {smartMatch.routeId === getRouteId(route) &&
+                                        smartMatch.matchedStudents.length > 0 && (
+                                            <div className="mb-4 border border-green-200 rounded-lg p-3 bg-green-50">
+                                                <Typography className="text-sm font-bold text-green-800 mb-1">
+                                                    Suggested Students Near This Route
+                                                </Typography>
+                                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                    {smartMatch.matchedStudents.map(
+                                                        (s, index) => {
+                                                            const studentId =
+                                                                s.studentId ||
+                                                                s.StudentId ||
+                                                                s.id ||
+                                                                index;
+                                                            const name =
+                                                                s.studentName ||
+                                                                s.StudentName ||
+                                                                `${s.firstName || ""} ${
+                                                                    s.lastName || ""
+                                                                }`.trim() ||
+                                                                `Student ${studentId}`;
+                                                            return (
+                                                                <div
+                                                                    key={studentId}
+                                                                    className="flex items-center justify-between bg-white border border-green-200 rounded-md px-2 py-1"
+                                                                >
+                                                                    <div>
+                                                                        <div className="text-xs font-semibold text-[#141516]">
+                                                                            {name}
+                                                                        </div>
+                                                                        {typeof s.distanceMeters ===
+                                                                            "number" && (
+                                                                            <div className="text-[10px] text-green-700">
+                                                                                {(s.distanceMeters /
+                                                                                    1000).toFixed(
+                                                                                    2
+                                                                                )}{" "}
+                                                                                km away
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="bg-[#C01824] text-white text-[10px] px-2 py-1 capitalize rounded-md"
+                                                                        onClick={() =>
+                                                                            handleAddMatchedStudentToRoute(
+                                                                                route,
+                                                                                s
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            smartMatch.assigningStudentId ===
+                                                                            (s.studentId ||
+                                                                                s.StudentId ||
+                                                                                s.id)
+                                                                        }
+                                                                    >
+                                                                        {smartMatch.assigningStudentId ===
+                                                                        (s.studentId ||
+                                                                            s.StudentId ||
+                                                                            s.id)
+                                                                            ? "Adding..."
+                                                                            : "Add to this route"}
+                                                                    </Button>
+                                                                </div>
+                                                            );
+                                                        }
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
 
                                     {/* Search Bar */}
                                     <div className="mb-4 relative">

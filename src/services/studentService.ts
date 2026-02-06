@@ -53,28 +53,23 @@ export const studentService = {
     };
   },
 
-  createStudent: async (payload: CreateStudentPayload): Promise<ApiResponse<any>> => {
+  createStudent: async (payload: CreateStudentPayload): Promise<any> => {
     const pickupLat = payload.pickupLatitude != null ? Number(payload.pickupLatitude) : null;
     const pickupLng = payload.pickupLongitude != null ? Number(payload.pickupLongitude) : null;
     const dropLat = payload.dropLatitude != null ? Number(payload.dropLatitude) : null;
     const dropLng = payload.dropLongitude != null ? Number(payload.dropLongitude) : null;
 
+    // Send only keys that backend DTO allows (camelCase). Backend maps these to sp_Student @PickupLatitude, @DropLatitude, etc.
     const body = {
       ...payload,
       pickupLatitude: pickupLat,
       pickupLongitude: pickupLng,
       dropLatitude: dropLat,
       dropLongitude: dropLng,
-      PickupLatitude: pickupLat,
-      PickupLongitude: pickupLng,
-      DropLatitude: dropLat,
-      DropLongitude: dropLng,
     };
     const response = await apiClient.post("/institute/create-student", body);
-    return {
-      ok: true,
-      data: response.data,
-    };
+    // Backend already returns { ok, message, data: { studentId, smartMatch, ... } }
+    return response.data;
   },
 };
 

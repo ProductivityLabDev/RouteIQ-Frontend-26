@@ -197,6 +197,19 @@ export interface FindStudentsByLocationResponse {
   };
 }
 
+export interface AssignStudentToRouteResponse {
+  ok: boolean;
+  message?: string;
+  data: {
+    routeId: number;
+    studentId: number;
+    assignmentType?: string;
+    Inserted?: number;
+    AlreadyAssigned?: number;
+    [key: string]: any;
+  };
+}
+
 export interface CreateRouteBasicPayload {
   instituteId: number;
   routeNumber: string;
@@ -466,6 +479,25 @@ export const routeService = {
       "/route-management/find-students-by-location",
       payload
     );
+    return response.data;
+  },
+
+  /**
+   * Assign a single student to an existing route (Smart Match / manual)
+   */
+  assignStudentToRoute: async (
+    routeId: number,
+    studentId: number,
+    assignmentType: string = "SMART_MATCH"
+  ): Promise<AssignStudentToRouteResponse> => {
+    const response = await apiClient.post<AssignStudentToRouteResponse>(
+      `/route-management/routes/${routeId}/assign-student`,
+      {
+        studentId,
+        assignmentType,
+      }
+    );
+
     return response.data;
   },
 

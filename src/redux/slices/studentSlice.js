@@ -62,7 +62,8 @@ export const createStudent = createAsyncThunk(
       };
 
       const response = await studentService.createStudent(payload);
-      return response.data;
+      // response is backend envelope: { ok, message, data: { studentId, smartMatch, ... } }
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to create student");
     }

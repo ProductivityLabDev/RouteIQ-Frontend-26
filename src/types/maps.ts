@@ -20,6 +20,8 @@ export interface MapMarker {
     phone?: string;
     status?: string;
     time?: string;
+    /** Student/child photo URL for map tooltip and marker */
+    imageUrl?: string;
   };
 }
 
