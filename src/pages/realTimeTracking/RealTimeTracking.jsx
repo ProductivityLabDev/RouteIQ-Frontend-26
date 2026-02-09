@@ -8,29 +8,17 @@ import { fetchStudentsByInstitute, clearStudents } from '@/redux/slices/studentS
 import trackingService from '@/services/trackingService';
 import { toast } from 'react-hot-toast';
 import { GoogleMap, useJsApiLoader, MarkerF, PolylineF } from '@react-google-maps/api';
-import { redbusicon } from '@/assets';
+import { redbusicon, greenbusicon, orangebusicon } from '@/assets';
 
 // Polling interval (milliseconds)
 const POLLING_INTERVAL = 7000; // 7 seconds
 
-// Status color mapping for markers
-const getStatusColor = (status) => {
+// Get bus icon based on status
+const getBusIcon = (status) => {
   const s = (status || '').toLowerCase();
-  if (s.includes('transit') || s === 'in transit') return '#22c55e'; // green
-  if (s.includes('stop') || s === 'at stop') return '#f59e0b'; // yellow/orange
-  return '#9ca3af'; // gray for idle/unknown
-};
-
-// Get marker icon URL based on status
-const getMarkerIcon = (status, isDriver = false) => {
-  if (isDriver) {
-    return 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
-  }
-  const color = getStatusColor(status);
-  // Use Google's colored markers
-  if (color === '#22c55e') return 'http://maps.google.com/mapfiles/ms/icons/green-dot.png';
-  if (color === '#f59e0b') return 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png';
-  return 'http://maps.google.com/mapfiles/ms/icons/grey-dot.png';
+  if (s.includes('transit') || s === 'in transit') return greenbusicon;  // 🟢 Green bus
+  if (s.includes('stop') || s === 'at stop') return orangebusicon;       // 🟠 Orange bus
+  return redbusicon;  // 🔴 Red bus for idle/unknown
 };
 
 const tabsData = [
@@ -1197,21 +1185,23 @@ const RealTimeTracking = () => {
                       fullscreenControl: true,
                     }}
                   >
-                  {/* ✅ Vehicle/Driver Markers with status-based colors */}
+                  {/* ✅ Vehicle/Driver Markers with beautiful bus icons */}
                   {mapMarkers.map((marker) => {
                     const isGoogleReady =
                       !!window.google?.maps?.Size && !!window.google?.maps?.Point;
 
-                    // ✅ Status-based icon URL
-                    const iconUrl = getMarkerIcon(marker.status, marker.type === 'driver');
+                    // 🚌 Beautiful Bus Icon based on status
+                    const busIcon = marker.type === 'driver' 
+                      ? 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' // Driver stays as dot
+                      : getBusIcon(marker.status);
 
                     const iconConfig = {
-                      url: iconUrl,
+                      url: busIcon,
                       scaledSize: isGoogleReady
-                        ? new window.google.maps.Size(36, 36)
+                        ? new window.google.maps.Size(40, 40)  // Slightly larger for bus
                         : undefined,
                       anchor: isGoogleReady
-                        ? new window.google.maps.Point(18, 36)
+                        ? new window.google.maps.Point(20, 40)
                         : undefined,
                     };
 
