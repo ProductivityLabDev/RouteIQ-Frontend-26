@@ -10,6 +10,8 @@ import schoolsReducer from "./slices/schoolSlice";
 import studentsReducer from "./slices/studentSlice";
 import routesReducer from "./slices/routesSlice";
 import repairScheduleReducer from "./slices/repairScheduleSlice";
+import notificationsReducer from "./slices/notificationsSlice";
+import chatReducer from "./slices/chatSlice";
 
 const persistConfig = {
   key: "root",
@@ -26,6 +28,8 @@ const rootReducer = combineReducers({
   students: studentsReducer,
   routes: routesReducer,
   repairSchedule: repairScheduleReducer,
+  notifications: notificationsReducer,
+  chat: chatReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -1,229 +1,345 @@
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
-    addfileicon,
-    darksearchicon,
-    sendicon
-} from '@/assets';
-import { driversData } from '@/data';
-import { Button, Tab, Tabs, TabsBody, TabsHeader } from '@material-tailwind/react';
-import { useState } from 'react';
-const ChatPanel = ({ nestedOpen }) => {
-    const [selectedBus, setSelectedBus] = useState('A');
-    const [activeTab, setActiveTab] = useState('allstudents');
-    const [selectedTab, setSelectedTab] = useState('Parent To School');
+  addfileicon,
+  darksearchicon,
+  sendicon,
+} from "@/assets";
+import { Button } from "@material-tailwind/react";
+import ChatItem from "@/components/ChatItem";
+import ChatMessage from "@/components/ChatMessage";
+import {
+  fetchConversations,
+  fetchMessages,
+  sendMessage,
+  markConversationRead,
+  setActiveConversation,
+  fetchMonitoringConversations,
+  fetchMonitoringMessages,
+  setActiveMonitoringConversation,
+} from "@/redux/slices/chatSlice";
+import { socketService } from "@/services/socketService";
 
-    const tabs = [
-        { label: 'Parent', value: 'allstudents' },
-        { label: 'School', value: 'drivers' },
-    ];
-    const Conditiontabs = [
-        { label: 'Parent', value: 'allstudents' },
-        { label: 'Driver', value: 'drivers' },
-    ];
-    const Conditiontabs2 = [
-        { label: 'School', value: 'allstudents' },
-        { label: 'Driver', value: 'drivers' },
-    ];
-    const currentData = activeTab === 'allstudents' ? Data[selectedBus] : driversData[selectedBus];
-    const renderTabs = () => {
-        if (nestedOpen === "School") {
-            return tabs.map(({ label, value }) => (
-                <Tab
-                    key={value}
-                    value={value}
-                    onClick={() => setActiveTab(value)}
-                    className={activeTab === value ? "font-bold text-[#C01824]" : ""}
-                >
-                    {label}
-                </Tab>
-            ));
-        } else if (nestedOpen === "Driver") {
-            return Conditiontabs.map(({ label, value }) => (
-                <Tab
-                    key={value}
-                    value={value}
-                    onClick={() => setActiveTab(value)}
-                    className={activeTab === value ? "font-bold text-[#C01824]" : ""}
-                >
-                    {label}
-                </Tab>
-            ));
-        } else {
-            return null;
-        }
-    };
-    // const renderTabs = () => {
-    //     if (nestedOpen === "School") {
-    //         return tabs.map(({ label, value }) => (
-    //             <Tab
-    //                 key={value}
-    //                 value={value}
-    //                 onClick={() => setActiveTab(value)}
-    //                 className={activeTab === value ? "font-bold text-[#C01824]" : ""}
-    //             >
-    //                 {label}
-    //             </Tab>
-    //         ));
-    //     } else if (nestedOpen === "Driver") {
-    //         return Conditiontabs.map(({ label, value }) => (
-    //             <Tab
-    //                 key={value}
-    //                 value={value}
-    //                 onClick={() => setActiveTab(value)}
-    //                 className={activeTab === value ? "font-bold text-[#C01824]" : ""}
-    //             >
-    //                 {label}
-    //             </Tab>
-    //         ));
-    //     } else if (nestedOpen === "School To Driver") {
-    //         return Conditiontabs2.map(({ label, value }) => (
-    //             <Tab
-    //                 key={value}
-    //                 value={value}
-    //                 onClick={() => setActiveTab(value)}
-    //                 className={activeTab === value ? "font-bold text-[#C01824]" : ""}
-    //             >
-    //                 {label}
-    //             </Tab>
-    //         ));
-    //     } else {
-    //         return null;
-    //     }
-    // };
-    return (
-        <div className='flex flex-row w-full space-y-4 mb-3 gap-5 h-[75vh]'>
-            <div className='bg-white w-full max-w-[300px] rounded-[12px] border shadow-sm pt-2 capitalize md:block hidden'>
-                <Tabs value={activeTab}>
-                    <TabsHeader
-                        className="rounded-none border-b border-blue-gray-50 bg-transparent p-0"
-                        indicatorProps={{
-                            className: "bg-transparent border-b-2 border-[#C01824] shadow-none rounded-none",
-                        }}
-                    >
-                        {renderTabs()}
-                    </TabsHeader>
-                    <div className="relative flex items-center">
-                        <img src={darksearchicon} alt='' className="absolute left-3 h-4 w-4" />
-                        <input
-                            className="bg-[#D2D2D2]/30 w-full pl-10 p-3 outline-none border-0"
-                            type="search"
-                            placeholder="Search"
-                        />
-                    </div>
-                    <TabsBody className='pt-2'>
-                        {currentData.map(({ name, busNo, imgSrc }, index) => (
-                            <div key={index}>
-                                <Button
-                                    variant='gradient'
-                                    className="flex items-center gap-3 py-3 pl-4 w-full bg-none shadow-none rounded-none hover:bg-[#F9E8E9] group transition-all"
-                                >
-                                    <img src={imgSrc} alt={name} className="rounded-full w-[42px] h-[42px]" />
-                                    <div className='text-start text-[#141516]'>
-                                        <h6 className="font-bold text-[13px] capitalize">{name}</h6>
-                                        <p className="font-medium pt-1 text-[#334E68] text-[13px] capitalize">{busNo}</p>
-                                    </div>
-                                </Button>
-                            </div>
-                        ))}
-                    </TabsBody>
-                </Tabs>
-            </div>
-            <div className='bg-white w-full rounded-[12px] border shadow-sm h-[97%]'>
-                <div className="flex-1 p:2 sm:p-6 justify-between flex flex-col h-[100%]">
-                    <div id="messages" className="flex flex-col space-y-4 p-3 overflow-y-auto scrollbar-thumb-blue scrollbar-thumb-rounded scrollbar-track-blue-lighter scrollbar-w-2 scrolling-touch">
-                        <p className='text-[14px] text-[#243B53] text-center font-medium'>Today 10:27am</p>
-                        <div className="chat-message">
-                            <div className="flex items-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-2 items-start">
-                                    <span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-[#F9E8E9] text-[#102A43]">Can be verified on any platform using docker</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="chat-message">
-                            <div className="flex items-end justify-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-1 items-end">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block rounded-br-none bg-[#C01824] text-white ">Your error message says permission denied, npm global installs must be given root privileges.</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="chat-message">
-                            <div className="flex items-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-2 text-[#102A43] items-start">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block bg-[#F9E8E9]">Command was run with root privileges. I'm sure about that.</span></div>
-                                    <div><span className="px-4 py-2 rounded-lg inline-block bg-[#F9E8E9]">I've update the description so it's more obviously now</span></div>
-                                    <div><span className="px-4 py-2 rounded-lg inline-block bg-[#F9E8E9]">FYI https://askubuntu.com/a/700266/510172</span></div>
-                                    <div>
-                                        <span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-[#F9E8E9] text-[#102A43]">
-                                            Check the line above (it ends with a # so, I'm running it as root )
-                                            <pre># npm install -g @vue/devtools</pre>
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="chat-message">
-                            <div className="flex items-end justify-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-1 items-end">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block rounded-br-none bg-[#C01824] text-white ">Any updates on this issue? I'm getting the same error when trying to install devtools. Thanks</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="chat-message">
-                            <div className="flex items-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-2 items-start">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-[#F9E8E9] text-[#102A43]">Thanks for your message David. I thought I'm alone with this issue. Please, ? the issue to support it :)</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="chat-message">
-                            <div className="flex items-end justify-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-1 items-end">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block bg-[#C01824] text-white ">Are you using sudo?</span></div>
-                                    <div><span className="px-4 py-2 rounded-lg inline-block rounded-br-none bg-[#C01824] text-white ">Run this command sudo chown -R whoami /Users/your_user_profile/.npm-global/ then install the package globally without using sudo</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="chat-message">
-                            <div className="flex items-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-2 items-start">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block bg-[#F9E8E9] text-[#102A43]">It seems like you are from Mac OS world. There is no /Users/ folder on linux ?</span></div>
-                                    <div><span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-[#F9E8E9] text-[#102A43]">I have no issue with any other packages installed with root permission globally.</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        {/* <p className='text-xs md:text-[14px] text-[#243B53] text-center font-medium'>Today 10:30am</p> */}
-                        <div className="chat-message">
-                            <div className="flex items-end justify-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-1 items-end">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block rounded-br-none bg-[#C01824] text-white ">yes, I have a mac. I never had issues with root permission as well, but this helped me to solve the problem</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="chat-message">
-                            <div className="flex items-end">
-                                <div className="flex flex-col space-y-2 text-xs md:text-[13.5px] max-w-sm mx-2 order-2 items-start">
-                                    <div><span className="px-4 py-2 rounded-lg inline-block bg-[#F9E8E9] text-[#102A43]">I get the same error on Arch Linux (also with sudo)</span></div>
-                                    <div><span className="px-4 py-2 rounded-lg inline-block bg-[#F9E8E9] text-[#102A43]">I also have this issue, Here is what I was doing until now: #1076</span></div>
-                                    <div><span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-[#F9E8E9] text-[#102A43]">even i am facing</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="border-t-2 border-gray-200 px-4 pt-4 mb-2 sm:mb-0">
-                        <div className="flex space-x-2">
-                            <button type="button" className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-200 focus:outline-none">
-                                <img src={addfileicon} alt='' className="md:h-[26px] md:w-[26px] text-[#102A43]" />
-                            </button>
-                            <input type="text" placeholder="Message" className="w-full focus:outline-none bg-[#F0F4F8] rounded-lg focus:placeholder-gray-400 text-[#102A43] placeholder-gray-500 pl-4 py-2" />
-                            <Button size='lg' type="submit" className="inline-flex ml-3 items-center justify-center rounded-md px-7 py-2 transition duration-500 ease-in-out text-white bg-[#C01824] hover:opacity-80 focus:outline-none">
-                                <span className="font-normal capitalize text-xs md:text-[12px]">Send</span>
-                                <img src={sendicon} alt='' className="h-[14px] w-[12px] transform" />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilters = {} }) => {
+  const dispatch = useDispatch();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [messageText, setMessageText] = useState("");
+  const [convPage, setConvPage] = useState(1);
+  const messagesEndRef = useRef(null);
+  const messagesTopRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+
+  const currentUser = useSelector((state) => state.user?.user);
+  const currentUserId = currentUser?.id || currentUser?.UserId;
+
+  const conversations = useSelector((state) =>
+    isMonitoring ? state.chat.monitoringConversations : state.chat.conversations
+  );
+  const activeId = useSelector((state) =>
+    isMonitoring
+      ? state.chat.activeMonitoringConversationId
+      : state.chat.activeConversationId
+  );
+  const allMessages = useSelector((state) =>
+    isMonitoring ? state.chat.monitoringMessages : state.chat.messages
+  );
+  const messages = activeId ? allMessages[activeId] || [] : [];
+  const typingUsers = useSelector(
+    (state) => (activeId && state.chat.typingUsers[activeId]) || []
+  );
+  const loading = useSelector((state) => state.chat.loading);
+  const monitoringPagination = useSelector(
+    (state) => state.chat.monitoringPagination
+  );
+  const monitoringMsgPagination = useSelector(
+    (state) => state.chat.monitoringMessagesPagination
+  );
+
+  const hasOlderMessages = isMonitoring && activeId && monitoringMsgPagination[activeId]?.hasMore;
+  const convTotalPages = monitoringPagination?.totalPages || 1;
+
+  // Fetch conversations on mount / when filters or page change
+  useEffect(() => {
+    if (isMonitoring) {
+      const params = { ...monitoringFilters, page: convPage, limit: 20 };
+      if (participantTypeFilter) params.type = participantTypeFilter;
+      dispatch(fetchMonitoringConversations(params));
+    } else {
+      dispatch(fetchConversations(participantTypeFilter));
+    }
+  }, [dispatch, participantTypeFilter, isMonitoring, monitoringFilters, convPage]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setConvPage(1);
+  }, [monitoringFilters]);
+
+  // Fetch messages when active conversation changes
+  useEffect(() => {
+    if (!activeId) return;
+    if (isMonitoring) {
+      dispatch(fetchMonitoringMessages({ conversationId: activeId }));
+    } else {
+      dispatch(fetchMessages({ conversationId: activeId }));
+      dispatch(markConversationRead(activeId));
+    }
+  }, [activeId, dispatch, isMonitoring]);
+
+  // Silent polling for monitoring (backend has no WebSocket for monitoring)
+  useEffect(() => {
+    if (!isMonitoring) return;
+    const interval = setInterval(() => {
+      const params = { ...monitoringFilters, page: convPage, limit: 20, silent: true };
+      if (participantTypeFilter) params.type = participantTypeFilter;
+      dispatch(fetchMonitoringConversations(params));
+      if (activeId) {
+        dispatch(fetchMonitoringMessages({ conversationId: activeId, silent: true }));
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isMonitoring, activeId, dispatch, monitoringFilters, convPage, participantTypeFilter]);
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSelectConversation = (convId) => {
+    if (isMonitoring) {
+      dispatch(setActiveMonitoringConversation(convId));
+    } else {
+      dispatch(setActiveConversation(convId));
+    }
+  };
+
+  const handleLoadOlder = () => {
+    if (!activeId || !messages.length) return;
+    const oldestMsg = messages[0];
+    dispatch(
+      fetchMonitoringMessages({
+        conversationId: activeId,
+        beforeMessageId: oldestMsg.id,
+        append: true,
+      })
+    );
+  };
+
+  const handleSend = () => {
+    const text = messageText.trim();
+    if (!text || !activeId) return;
+    dispatch(sendMessage({ conversationId: activeId, content: text }));
+    setMessageText("");
+    socketService.stopTyping(activeId);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleTyping = () => {
+    if (!activeId) return;
+    socketService.startTyping(activeId);
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socketService.stopTyping(activeId);
+    }, 2000);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeId) return;
+    dispatch(sendMessage({ conversationId: activeId, file }));
+    e.target.value = "";
+  };
+
+  const filteredConversations = conversations.filter((conv) => {
+    if (!searchQuery) return true;
+    const name =
+      conv.name ||
+      conv.participants?.find((p) => p.id !== currentUserId)?.name ||
+      "";
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  return (
+    <div className="flex flex-row w-full gap-5 h-[75vh]">
+      {/* Left sidebar - Conversation list */}
+      <div className="bg-white w-full max-w-[300px] rounded-[12px] border shadow-sm pt-2 capitalize md:block hidden flex-shrink-0">
+        <div className="relative flex items-center">
+          <img
+            src={darksearchicon}
+            alt=""
+            className="absolute left-3 h-4 w-4"
+          />
+          <input
+            className="bg-[#D2D2D2]/30 w-full pl-10 p-3 outline-none border-0"
+            type="search"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-    )
-}
+        <div className="pt-2 overflow-y-auto" style={{ maxHeight: isMonitoring && convTotalPages > 1 ? "calc(75vh - 100px)" : "calc(75vh - 60px)" }}>
+          {loading.conversations || loading.monitoringConversations ? (
+            <p className="text-center text-gray-500 text-sm py-4">
+              Loading...
+            </p>
+          ) : filteredConversations.length === 0 ? (
+            <p className="text-center text-gray-500 text-sm py-4">
+              No conversations
+            </p>
+          ) : (
+            filteredConversations.map((conv) => (
+              <ChatItem
+                key={conv.id}
+                conversation={conv}
+                isActive={conv.id === activeId}
+                onClick={() => handleSelectConversation(conv.id)}
+                currentUserId={currentUserId}
+              />
+            ))
+          )}
+        </div>
+        {/* Conversation pagination for monitoring */}
+        {isMonitoring && convTotalPages > 1 && (
+          <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-200 text-xs">
+            <button
+              onClick={() => setConvPage((p) => Math.max(1, p - 1))}
+              disabled={convPage <= 1 || loading.monitoringConversations}
+              className="px-2 py-1 rounded text-[#C01824] hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <span className="text-gray-500">
+              {convPage}/{convTotalPages}
+            </span>
+            <button
+              onClick={() => setConvPage((p) => Math.min(convTotalPages, p + 1))}
+              disabled={convPage >= convTotalPages || loading.monitoringConversations}
+              className="px-2 py-1 rounded text-[#C01824] hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
 
-export default ChatPanel
+      {/* Right panel - Messages */}
+      <div className="bg-white w-full rounded-[12px] border shadow-sm flex flex-col">
+        {!activeId ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            Select a conversation to start chatting
+          </div>
+        ) : (
+          <>
+            <div
+              className="flex-1 flex flex-col space-y-2 p-4 overflow-y-auto"
+            >
+              {/* Load older messages button for monitoring */}
+              {hasOlderMessages && !loading.monitoringMessages && (
+                <button
+                  onClick={handleLoadOlder}
+                  className="self-center text-sm text-[#C01824] hover:underline py-1 px-3 rounded bg-red-50 hover:bg-red-100 transition-colors mb-2"
+                >
+                  Load older messages
+                </button>
+              )}
+              <div ref={messagesTopRef} />
+              {loading.messages || loading.monitoringMessages ? (
+                <p className="text-center text-gray-500 text-sm py-4">
+                  Loading messages...
+                </p>
+              ) : messages.length === 0 ? (
+                <p className="text-center text-gray-500 text-sm py-4">
+                  No messages yet
+                </p>
+              ) : (
+                messages.map((msg) => (
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg}
+                    isOwnMessage={(msg.senderId || msg.sender?.id) === currentUserId}
+                    showSenderName={isMonitoring}
+                  />
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Typing indicator */}
+            {typingUsers.length > 0 && (
+              <div className="px-4 pb-1 text-xs text-gray-500 italic">
+                {typingUsers.map((u) => u.name).join(", ")}{" "}
+                {typingUsers.length === 1 ? "is" : "are"} typing...
+              </div>
+            )}
+
+            {/* Input bar - hidden in monitoring mode */}
+            {!isMonitoring && (
+              <div className="border-t-2 border-gray-200 px-4 pt-4 pb-3">
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-200 focus:outline-none flex-shrink-0"
+                  >
+                    <img
+                      src={addfileicon}
+                      alt=""
+                      className="md:h-[26px] md:w-[26px]"
+                    />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Message"
+                    className="w-full focus:outline-none bg-[#F0F4F8] rounded-lg focus:placeholder-gray-400 text-[#102A43] placeholder-gray-500 pl-4 py-2"
+                    value={messageText}
+                    onChange={(e) => {
+                      setMessageText(e.target.value);
+                      handleTyping();
+                    }}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <Button
+                    size="lg"
+                    onClick={handleSend}
+                    disabled={loading.send}
+                    className="inline-flex ml-3 items-center justify-center rounded-md px-7 py-2 transition duration-500 ease-in-out text-white bg-[#C01824] hover:opacity-80 focus:outline-none flex-shrink-0"
+                  >
+                    <span className="font-normal capitalize text-xs md:text-[12px]">
+                      Send
+                    </span>
+                    <img
+                      src={sendicon}
+                      alt=""
+                      className="h-[14px] w-[12px] ml-1"
+                    />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Read-only indicator for monitoring */}
+            {isMonitoring && (
+              <div className="border-t border-gray-200 px-4 py-3 text-center text-sm text-gray-500 bg-gray-50 rounded-b-[12px]">
+                Read-only monitoring mode
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ChatPanel;

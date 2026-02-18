@@ -1,4 +1,14 @@
 /**
+ * Pagination metadata from API responses
+ */
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/**
  * Standard API Response structure
  */
 export interface ApiResponse<T = any> {
@@ -6,6 +16,7 @@ export interface ApiResponse<T = any> {
   ok: boolean;
   message?: string;
   status?: number;
+  pagination?: PaginationMeta;
 }
 
 /**

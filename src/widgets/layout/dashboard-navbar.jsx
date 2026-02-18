@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   Navbar,
   Typography,
   IconButton,
-  Input,
   Menu,
   MenuHandler,
   MenuList,
@@ -13,20 +12,16 @@ import {
 } from "@material-tailwind/react";
 import {
   UserCircleIcon,
-  Cog6ToothIcon,
-  ClockIcon,
-  CreditCardIcon,
   Bars3Icon,
 } from "@heroicons/react/24/solid";
 import {
   useMaterialTailwindController,
   setOpenSidenav,
 } from "@/context";
-import { Chat, chevroncircleicon, GrNotification, notificationicon, PiChatCircleTextBold, profileavatar } from '@/assets';
+import { chevroncircleicon, GrNotification, PiChatCircleTextBold, profileavatar } from '@/assets';
 import { FiSearch } from 'react-icons/fi'
 import { useDispatch, useSelector } from "react-redux";
-import { logoutUser } from "@/redux/slices/userSlice";
-import Cookies from "js-cookie";
+import { fetchUnreadCount } from "@/redux/slices/notificationsSlice";
 
 export function DashboardNavbar({ user }) {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -53,8 +48,16 @@ export function DashboardNavbar({ user }) {
 
   const dispatchUser = useDispatch();
   const { user: loggedInUser } = useSelector((state) => state.user);
+  const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0);
 
-  console.log("this is user", loggedInUser)
+
+  useEffect(() => {
+    // Vendor bell badge should stay live; light polling keeps UI in sync.
+    if (!user) return;
+    dispatchUser(fetchUnreadCount());
+    const timer = setInterval(() => dispatchUser(fetchUnreadCount()), 30000);
+    return () => clearInterval(timer);
+  }, [dispatchUser, user]);
 
   const handleLogout = async () => {
     navigate("/logout")
@@ -102,92 +105,26 @@ export function DashboardNavbar({ user }) {
           >
             <Bars3Icon strokeWidth={3} className="h-8 w-8 text-blue-gray-500" />
           </IconButton>
-          <Menu>
-            {user &&
-              <div className="relative inline-block">
-                <button className="h-14 w-15 flex items-center justify-center focus:outline-none" onClick={handleVendorChatClick}>
-                  <PiChatCircleTextBold size={30} color="black" />
-                </button>
-                <span className="absolute top-3 right-0 inline-flex items-center justify-center w-3 h-3 bg-red-500 rounded-full"></span>
-              </div>
-            }
-            {user ?
-              <div className="relative inline-block">
-                <button className="h-14 w-16 flex items-center justify-center focus:outline-none" onClick={handleNotificationClick}>
-                  <GrNotification size={25} color="black" />
-                </button>
-                <span className="absolute top-3 right-4 inline-flex items-center justify-center w-3 h-3 bg-red-500 rounded-full"></span>
-              </div>
-              :
-              <MenuHandler>
-                <IconButton variant="text" className="h-14 w-16">
-                  <img src={notificationicon} alt='' />
-                </IconButton>
-              </MenuHandler>
-            }
-
-            <MenuList className="w-max border-0">
-              <MenuItem className="flex items-center gap-3">
-
-                <div>
-                  <Typography
-                    variant="small"
-                    color="blue-gray"
-                    className="mb-1 font-normal"
-                  >
-                    <strong>New message</strong> from Laur
-                  </Typography>
-                  <Typography
-                    variant="small"
-                    color="blue-gray"
-                    className="flex items-center gap-1 text-xs font-normal opacity-60"
-                  >
-                    <ClockIcon className="h-3.5 w-3.5" /> 13 minutes ago
-                  </Typography>
-                </div>
-              </MenuItem>
-              <MenuItem className="flex items-center gap-4">
-
-                <div>
-                  <Typography
-                    variant="small"
-                    color="blue-gray"
-                    className="mb-1 font-normal"
-                  >
-                    <strong>New album</strong> by Travis Scott99999999999
-                  </Typography>
-                  <Typography
-                    variant="small"
-                    color="blue-gray"
-                    className="flex items-center gap-1 text-xs font-normal opacity-60"
-                  >
-                    <ClockIcon className="h-3.5 w-3.5" /> 1 day ago
-                  </Typography>
-                </div>
-              </MenuItem>
-              <MenuItem className="flex items-center gap-4">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-tr from-blue-gray-800 to-blue-gray-900">
-                  <CreditCardIcon className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <Typography
-                    variant="small"
-                    color="blue-gray"
-                    className="mb-1 font-normal"
-                  >
-                    Payment successfully completed
-                  </Typography>
-                  <Typography
-                    variant="small"
-                    color="blue-gray"
-                    className="flex items-center gap-1 text-xs font-normal opacity-60"
-                  >
-                    <ClockIcon className="h-3.5 w-3.5" /> 2 days ago
-                  </Typography>
-                </div>
-              </MenuItem>
-            </MenuList>
-          </Menu>
+          {user && (
+            <div className="relative inline-block">
+              <button className="h-14 w-15 flex items-center justify-center focus:outline-none" onClick={handleVendorChatClick}>
+                <PiChatCircleTextBold size={30} color="black" />
+              </button>
+              <span className="absolute top-3 right-0 inline-flex items-center justify-center w-3 h-3 bg-red-500 rounded-full"></span>
+            </div>
+          )}
+          {user && (
+            <div className="relative inline-block">
+              <button className="h-14 w-16 flex items-center justify-center focus:outline-none" onClick={handleNotificationClick}>
+                <GrNotification size={25} color="black" />
+              </button>
+              {Number(unreadCount) > 0 && (
+                <span className="absolute -top-0.5 right-2 inline-flex items-center justify-center min-w-5 h-5 px-1 text-[11px] font-bold text-white bg-red-500 rounded-full">
+                  {Number(unreadCount) > 99 ? "99+" : Number(unreadCount)}
+                </span>
+              )}
+            </div>
+          )}
           <Menu>
             <MenuHandler>
               <div className="flex justify-end items-center w-full md:max-w-[170px] sm:max-w-[60px] max-w-[40px] cursor-pointer">

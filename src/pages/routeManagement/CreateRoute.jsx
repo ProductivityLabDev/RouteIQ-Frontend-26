@@ -15,8 +15,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { createRoute } from "@/redux/slices/routesSlice";
 import { fetchSchoolManagementSummary } from "@/redux/slices/schoolSlice";
 import { fetchStudentsByInstitute } from "@/redux/slices/studentSlice";
-import { fetchEmployees } from "@/redux/slices/employeSlices";
-import { fetchBuses } from "@/redux/slices/busesSlice";
+import { fetchBuses, fetchDrivers } from "@/redux/slices/busesSlice";
 import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
 import { routeService } from "@/services/routeService";
 import { toast } from "react-hot-toast";
@@ -29,8 +28,11 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
     const { creating } = useAppSelector((state) => state.routes);
     const { schoolManagementSummary } = useAppSelector((state) => state.schools);
     const { students, loading: studentsLoading } = useAppSelector((state) => state.students);
-    const { employees: realDrivers, loading: employeesLoading } = useAppSelector((state) => state.employees);
-    const { buses: realBuses, loading: busesLoading } = useAppSelector((state) => state.buses);
+    const {
+        drivers: realDrivers,
+        buses: realBuses,
+        loading: { drivers: driversLoading, buses: busesLoading }
+    } = useAppSelector((state) => state.buses);
 
     const GOOGLE_LIBRARIES = ["places"];
     // 🔐 Load Google Maps API for Autocomplete
@@ -125,14 +127,39 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         }));
     };
 
+    const normalizedDrivers = React.useMemo(() => {
+        if (!Array.isArray(realDrivers)) return [];
+        return realDrivers
+            .map((driver) => {
+                const id =
+                    driver?.DriverId ??
+                    driver?.EmployeeId ??
+                    driver?.EmpId ??
+                    driver?.id ??
+                    driver?.ID;
+                const name =
+                    driver?.DriverName ??
+                    driver?.Name ??
+                    driver?.name ??
+                    driver?.EmployeeName ??
+                    "";
+                return {
+                    ...driver,
+                    __id: id != null ? Number(id) : null,
+                    __name: String(name || "").trim(),
+                };
+            })
+            .filter((driver) => Number.isFinite(driver.__id) && driver.__name);
+    }, [realDrivers]);
+
     const handleSelectDriver = (driver) => {
-        const id = driver.EmpId || driver.EmployeeId;
+        const id = driver?.__id ?? driver?.EmployeeId ?? driver?.EmpId;
         setRouteForm((prev) => ({
             ...prev,
             driverId: id ? parseInt(id, 10) : null,
             busId: "", // reset bus when driver changes
         }));
-        setSelectedDriverName(driver.Name);
+        setSelectedDriverName(driver?.__name || driver?.Name || "");
         setSelectedBusName(""); // clear bus name so user picks from driver's buses only
     };
 
@@ -457,7 +484,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
     // Load schools, drivers and buses for dropdown on mount
     useEffect(() => {
         dispatch(fetchSchoolManagementSummary());
-        dispatch(fetchEmployees());
+        dispatch(fetchDrivers());
         dispatch(fetchBuses());
     }, [dispatch]);
 
@@ -1151,15 +1178,15 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
                                         </div>
                                     </MenuHandler>
                                             <MenuList className="max-h-72 overflow-y-auto">
-                                                {employeesLoading?.employees ? (
+                                                {driversLoading ? (
                                                     <MenuItem disabled className="flex items-center justify-center">
                                                         <Spinner className="h-4 w-4" />
                                                         <span className="ml-2">Loading drivers...</span>
                                                     </MenuItem>
-                                                ) : realDrivers && realDrivers.length > 0 ? (
-                                                    realDrivers.map((driver) => (
-                                                        <MenuItem key={driver.EmpId || driver.EmployeeId} onClick={() => handleSelectDriver(driver)}>
-                                                            {driver.Name}
+                                                ) : normalizedDrivers.length > 0 ? (
+                                                    normalizedDrivers.map((driver) => (
+                                                        <MenuItem key={driver.__id} onClick={() => handleSelectDriver(driver)}>
+                                                            {driver.__name}
                                                         </MenuItem>
                                                     ))
                                                 ) : (

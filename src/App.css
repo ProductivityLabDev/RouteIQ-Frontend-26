@@ -124,3 +124,7 @@
 .custom-range:focus::-webkit-slider-runnable-track {
   background: #ccc;
 }
+
+.w-100{
+  width: 100% !important;
+}

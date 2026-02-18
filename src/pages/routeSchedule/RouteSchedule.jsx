@@ -29,6 +29,7 @@ import SchoolList from "../routeManagement/SchoolList";
 import SchoolRouteTable from "@/components/SchoolRouteTable";
 import { useNavigate } from "react-router-dom";
 import CreateTripForm from '../../components/CreateTripForm';
+import { apiClient } from "@/configs/api";
 
 const RouteSchedule = () => {
   const [selectedTab, setSelectedTab] = useState("Trip Schedules");
@@ -50,7 +51,39 @@ const RouteSchedule = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
    const [addtrip, setAddTrip] = useState(false);
-  
+  const [terminals, setTerminals] = useState([]);
+  const [terminalsLoading, setTerminalsLoading] = useState(false);
+  const [institutesByTerminal, setInstitutesByTerminal] = useState({});
+  const [institutesLoadingByTerminal, setInstitutesLoadingByTerminal] = useState({});
+  const [routesByInstitute, setRoutesByInstitute] = useState({});
+  const [routesLoadingByInstitute, setRoutesLoadingByInstitute] = useState({});
+  const [mapMarkers, setMapMarkers] = useState([]);
+  const [mapCenter, setMapCenter] = useState(undefined);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchSchedulingTerminals = async () => {
+      try {
+        setTerminalsLoading(true);
+        const response = await apiClient.get("/route-scheduling/terminals");
+        const terminalList = Array.isArray(response?.data?.data)
+          ? response.data.data
+          : Array.isArray(response?.data)
+          ? response.data
+          : [];
+        if (isMounted) setTerminals(terminalList);
+      } catch (error) {
+        console.error("Failed to fetch terminals:", error);
+        if (isMounted) setTerminals([]);
+      } finally {
+        if (isMounted) setTerminalsLoading(false);
+      }
+    };
+    fetchSchedulingTerminals();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSort = (column) => {
     if (sortColumn === column) {
@@ -98,8 +131,126 @@ const RouteSchedule = () => {
     setIsEditable(true);
     setOpen(!open);
   };
-  const handleMapScreenClick = () => {
+  const handleMapScreenClick = async (payload) => {
+    // Supports:
+    // 1) routeId (number|string) -> legacy behavior
+    // 2) student row object -> show only that student's pickup/drop + best-route polyline
     setOpenMapScreen(true);
+
+    const isStudentPayload = payload && typeof payload === "object";
+
+    // Student-specific map: show ONLY this student's pickup/drop markers + directions polyline
+    if (isStudentPayload) {
+      const studentName = payload.studentName || payload.StudentName || "Student";
+      const pickupLat = payload.pickupLat ?? payload.PickupLatitude ?? payload.PickupLat;
+      const pickupLng = payload.pickupLng ?? payload.PickupLongitude ?? payload.PickupLng;
+      const dropLat = payload.dropLat ?? payload.DropLatitude ?? payload.DropLat ?? payload.dropoffLat;
+      const dropLng = payload.dropLng ?? payload.DropLongitude ?? payload.DropLng ?? payload.dropoffLng;
+
+      const pickupOk = Number.isFinite(Number(pickupLat)) && Number.isFinite(Number(pickupLng));
+      const dropOk = Number.isFinite(Number(dropLat)) && Number.isFinite(Number(dropLng));
+
+      const markers = [];
+      if (pickupOk) {
+        markers.push({
+          id: `student-pickup-${studentName}`,
+          type: "pickup",
+          stopRole: "start",
+          order: 1,
+          title: `${studentName} (Pickup)`,
+          position: { lat: Number(pickupLat), lng: Number(pickupLng) },
+        });
+      }
+      if (dropOk) {
+        markers.push({
+          id: `student-dropoff-${studentName}`,
+          type: "dropoff",
+          stopRole: "end",
+          order: 2,
+          title: `${studentName} (Dropoff)`,
+          position: { lat: Number(dropLat), lng: Number(dropLng) },
+        });
+      }
+
+      setMapMarkers(markers);
+      setIsRouteMap(true); // enable directions polyline in MapComponent
+
+      if (markers.length > 0) {
+        const sum = markers.reduce(
+          (acc, m) => ({ lat: acc.lat + m.position.lat, lng: acc.lng + m.position.lng }),
+          { lat: 0, lng: 0 }
+        );
+        setMapCenter({ lat: sum.lat / markers.length, lng: sum.lng / markers.length });
+      } else {
+        setMapCenter(undefined);
+      }
+
+      return;
+    }
+
+    // Legacy: routeId-based (kept for compatibility)
+    const routeIdNum = payload != null && payload !== "" ? Number(payload) : null;
+    if (!routeIdNum || Number.isNaN(routeIdNum)) return;
+
+    try {
+      const response = await apiClient.get(`/route-scheduling/routes/${routeIdNum}/students`);
+      const list = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : Array.isArray(response?.data)
+        ? response.data
+        : [];
+
+      const markers = (Array.isArray(list) ? list : [])
+        .flatMap((s, idx) => {
+          const studentId = s?.StudentId ?? s?.studentId ?? idx;
+          const studentName = s?.StudentName ?? s?.studentName ?? `Student ${studentId}`;
+
+          const pickupLat = s?.PickupLatitude ?? s?.pickupLatitude;
+          const pickupLng = s?.PickupLongitude ?? s?.pickupLongitude;
+          const dropLat = s?.DropLatitude ?? s?.dropLatitude ?? s?.DropoffLatitude ?? s?.dropoffLatitude;
+          const dropLng = s?.DropLongitude ?? s?.dropLongitude ?? s?.DropoffLongitude ?? s?.dropoffLongitude;
+
+          const pickupOk = Number.isFinite(Number(pickupLat)) && Number.isFinite(Number(pickupLng));
+          const dropOk = Number.isFinite(Number(dropLat)) && Number.isFinite(Number(dropLng));
+
+          const out = [];
+          if (pickupOk) {
+            out.push({
+              id: `route-${routeIdNum}-student-${studentId}-pickup`,
+              type: "student",
+              title: `${studentName} (Pickup)`,
+              position: { lat: Number(pickupLat), lng: Number(pickupLng) },
+            });
+          }
+          if (dropOk) {
+            out.push({
+              id: `route-${routeIdNum}-student-${studentId}-dropoff`,
+              type: "student",
+              title: `${studentName} (Dropoff)`,
+              position: { lat: Number(dropLat), lng: Number(dropLng) },
+            });
+          }
+          return out;
+        })
+        .filter(Boolean);
+
+      setMapMarkers(markers);
+      setIsRouteMap(false); // keep old route-schedule behavior
+
+      if (markers.length > 0) {
+        const sum = markers.reduce(
+          (acc, m) => ({ lat: acc.lat + m.position.lat, lng: acc.lng + m.position.lng }),
+          { lat: 0, lng: 0 }
+        );
+        setMapCenter({ lat: sum.lat / markers.length, lng: sum.lng / markers.length });
+      } else {
+        setMapCenter(undefined);
+      }
+    } catch (e) {
+      console.error("Failed to load map students:", e);
+      setMapMarkers([]);
+      setMapCenter(undefined);
+    }
   };
 
   const handleBackClick = () => {
@@ -125,6 +276,67 @@ const RouteSchedule = () => {
     setShowCard(false);
   };
 
+  const getTerminalId = (terminal) =>
+    terminal?.TerminalId ?? terminal?.terminalId ?? terminal?.id ?? null;
+
+  const handleTerminalToggle = async (index, terminal) => {
+    const nextOpen = index === isOpen ? null : index;
+    setIsOpen(nextOpen);
+
+    if (nextOpen === null || selectedTab !== "School Routes") return;
+
+    const terminalId = getTerminalId(terminal);
+    if (!terminalId || institutesByTerminal[terminalId]) return;
+
+    try {
+      setInstitutesLoadingByTerminal((prev) => ({ ...prev, [terminalId]: true }));
+      const response = await apiClient.get(
+        `/route-scheduling/terminals/${terminalId}/institutes`
+      );
+      const institutes = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : Array.isArray(response?.data)
+        ? response.data
+        : [];
+      setInstitutesByTerminal((prev) => ({ ...prev, [terminalId]: institutes }));
+
+      // Prefetch routes for loaded institutes (per institute endpoint)
+      institutes.forEach(async (inst) => {
+        const instituteId =
+          inst?.InstituteId ??
+          inst?.instituteId ??
+          inst?.InstituteID ??
+          inst?.instituteID ??
+          inst?.id ??
+          null;
+        if (!instituteId || routesByInstitute[instituteId]) return;
+
+        try {
+          setRoutesLoadingByInstitute((prev) => ({ ...prev, [instituteId]: true }));
+          const routeRes = await apiClient.get(
+            `/route-scheduling/institutes/${instituteId}/routes`
+          );
+          const routeList = Array.isArray(routeRes?.data?.data)
+            ? routeRes.data.data
+            : Array.isArray(routeRes?.data)
+            ? routeRes.data
+            : [];
+          setRoutesByInstitute((prev) => ({ ...prev, [instituteId]: routeList }));
+        } catch (error) {
+          console.error("Failed to fetch routes by institute:", error);
+          setRoutesByInstitute((prev) => ({ ...prev, [instituteId]: [] }));
+        } finally {
+          setRoutesLoadingByInstitute((prev) => ({ ...prev, [instituteId]: false }));
+        }
+      });
+    } catch (error) {
+      console.error("Failed to fetch institutes:", error);
+      setInstitutesByTerminal((prev) => ({ ...prev, [terminalId]: [] }));
+    } finally {
+      setInstitutesLoadingByTerminal((prev) => ({ ...prev, [terminalId]: false }));
+    }
+  };
+
 
 
   const tabs = [
@@ -141,6 +353,8 @@ const RouteSchedule = () => {
           isRouteMap={isRouteMap}
           closeCard={closeCard}
           showCard={showCard}
+          markers={mapMarkers}
+          center={mapCenter}
         />
       ) : isCreateTrip  ? (
          <CreateTripForm handleCancel={handleCancel}/>
@@ -195,7 +409,7 @@ const RouteSchedule = () => {
 
           </div>
           <div className="w-full space-y-4">
-            {[...Array(4)].map((_, index) => (
+            {(terminals.length > 0 ? terminals : [...Array(4)].map(() => ({}))).map((terminal, index) => (
               <div className="w-full bg-white border-b border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between px-4 py-2">
                   <div className="flex items-center space-x-3">
@@ -216,11 +430,11 @@ const RouteSchedule = () => {
                       </svg>
                     </button>
                     <h2 className="font-medium text-gray-800 text-lg">
-                      Terminal 1
+                      {terminal?.TerminalName || terminal?.terminalName || "Terminal 1"}
                     </h2>
                     <button
                       className="text-gray-600 hover:text-gray-800"
-                      onClick={() => setIsOpen(index === isOpen ? null : index)}
+                      onClick={() => handleTerminalToggle(index, terminal)}
                     >
                       <svg
                         width="20"
@@ -239,7 +453,7 @@ const RouteSchedule = () => {
 
                   <div className="flex items-center space-x-4">
                     <button
-                      onClick={() => setIsOpen(index === isOpen ? null : index)}
+                      onClick={() => handleTerminalToggle(index, terminal)}
                       className="text-black hover:text-gray-800"
                     >
                       <svg
@@ -507,7 +721,13 @@ const RouteSchedule = () => {
                     </div>
                   ) : (
                     <div className="w-full bg-white border-t border-gray-200 shadow-sm">
-                      <SchoolRouteTable handleMapScreenClick={handleMapScreenClick}/>
+                      <SchoolRouteTable
+                        handleMapScreenClick={handleMapScreenClick}
+                        institutes={institutesByTerminal[getTerminalId(terminal)] || []}
+                        loading={institutesLoadingByTerminal[getTerminalId(terminal)] || false}
+                        routesByInstitute={routesByInstitute}
+                        routesLoadingByInstitute={routesLoadingByInstitute}
+                      />
                     </div>
                   ))}
               </div>
