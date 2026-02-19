@@ -67,6 +67,21 @@ export const notificationService = {
     return { ok: true, data: response.data };
   },
 
+  getRecipients: async (
+    audience: "Driver" | "Parent" | "Vendor" | "Institute"
+  ): Promise<ApiResponse<{ id: number; name: string }[]>> => {
+    const response = await apiClient.get("/notifications/recipients", {
+      params: { audience },
+    });
+    const raw = response.data;
+    const recipients = Array.isArray(raw?.recipients)
+      ? raw.recipients
+      : Array.isArray(raw?.data)
+      ? raw.data
+      : [];
+    return { ok: true, data: recipients };
+  },
+
   getSent: async (params?: {
     limit?: number;
     offset?: number;

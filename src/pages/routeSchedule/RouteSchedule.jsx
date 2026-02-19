@@ -136,6 +136,7 @@ const RouteSchedule = () => {
     // 1) routeId (number|string) -> legacy behavior
     // 2) student row object -> show only that student's pickup/drop + best-route polyline
     setOpenMapScreen(true);
+    setShowCard(true); // reset card visibility every time map opens
 
     const isStudentPayload = payload && typeof payload === "object";
 
@@ -409,8 +410,8 @@ const RouteSchedule = () => {
 
           </div>
           <div className="w-full space-y-4">
-            {(terminals.length > 0 ? terminals : [...Array(4)].map(() => ({}))).map((terminal, index) => (
-              <div className="w-full bg-white border-b border-gray-200 shadow-sm">
+            {(terminals.length > 0 ? terminals : [...Array(4)].map((_, i) => ({ _placeholder: i }))).map((terminal, index) => (
+              <div key={terminal?.TerminalId ?? terminal?.terminalId ?? terminal?._placeholder ?? index} className="w-full bg-white border-b border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between px-4 py-2">
                   <div className="flex items-center space-x-3">
                     <button className="text-gray-600 hover:text-gray-800">

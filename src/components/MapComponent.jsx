@@ -5,6 +5,7 @@ import {
   GoogleMap,
   useJsApiLoader,
   MarkerF,
+  InfoWindowF,
   PolylineF,
   DirectionsRenderer,
 } from "@react-google-maps/api";
@@ -51,6 +52,7 @@ const MapComponent = ({
 }) => {
   const [distance, setDistance] = useState(0);
   const [map, setMap] = useState(null);
+  const [selectedMarker, setSelectedMarker] = useState(null);
 
   const [directionsResult, setDirectionsResult] = useState(null);
   const [animatedPath, setAnimatedPath] = useState([]);
@@ -237,6 +239,7 @@ const MapComponent = ({
           position={marker.position}
           title={marker.title}
           icon={icon}
+          onClick={() => setSelectedMarker(marker)}
         />
       );
     });
@@ -310,6 +313,48 @@ const MapComponent = ({
         >
           {/* Saare stops ke liye sirf markers (pins) — unke beech extra lines nahi */}
           {renderedMarkers}
+
+          {/* InfoWindow popup — marker click pe chhota popup */}
+          {selectedMarker && (
+            <InfoWindowF
+              position={selectedMarker.position}
+              onCloseClick={() => setSelectedMarker(null)}
+              options={{ pixelOffset: window.google?.maps?.Size ? new window.google.maps.Size(0, -40) : undefined }}
+            >
+              <div className="min-w-[160px] max-w-[220px] text-sm font-sans">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                  <div className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{
+                      backgroundColor:
+                        (selectedMarker.type || "").toLowerCase() === "pickup" ? "#16a34a" :
+                        (selectedMarker.type || "").toLowerCase() === "dropoff" ? "#dc2626" : "#2563eb"
+                    }}
+                  />
+                  <span className="font-bold text-gray-900 text-[13px] leading-tight">{selectedMarker.title}</span>
+                </div>
+                {selectedMarker.type && (
+                  <p className="text-gray-500 text-[11px] mb-1 capitalize">
+                    {selectedMarker.type === "pickup" ? "Pickup Location" :
+                     selectedMarker.type === "dropoff" ? "Drop-off Location" :
+                     selectedMarker.type === "student" ? "Student Stop" : selectedMarker.type}
+                  </p>
+                )}
+                <div className="bg-[#C01824] text-white rounded-md px-2 py-1 flex items-center gap-1 mt-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span className="text-[11px] font-bold">
+                    {typeof durationMinutes === "number" ? `Est. ${durationMinutes} min` : "Estimated time N/A"}
+                  </span>
+                </div>
+                {selectedMarker.position && (
+                  <p className="text-gray-400 text-[10px] mt-1">
+                    {Number(selectedMarker.position.lat).toFixed(5)}, {Number(selectedMarker.position.lng).toFixed(5)}
+                  </p>
+                )}
+              </div>
+            </InfoWindowF>
+          )}
 
           {/* Route-map: sirf ek polyline (overview_path), koi manual/extra routes nahi */}
           {isRouteMap ? (

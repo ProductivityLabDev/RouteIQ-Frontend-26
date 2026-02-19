@@ -25,13 +25,13 @@ import {
     fetchMyNotifications,
     fetchUnreadCount,
     fetchSentNotifications,
+    fetchRecipients,
     markAllNotificationsRead,
     markNotificationRead,
     sendNotification,
 } from '@/redux/slices/notificationsSlice'
 import { fetchTerminals } from '@/redux/slices/busesSlice'
 import { fetchSchoolManagementSummary } from '@/redux/slices/schoolSlice'
-import { fetchUsers } from '@/redux/slices/usersSlice'
 
 const NOTIFICATION_TYPE_COLORS = {
     alert: { bg: "#FEE2E2", text: "#DC2626" },
@@ -64,7 +64,8 @@ const Notification = () => {
 
     const terminals = useSelector((state) => state.buses?.terminals || [])
     const institutes = useSelector((state) => state.schools?.schoolManagementSummary || [])
-    const users = useSelector((state) => state.users?.users || [])
+    const recipients = useSelector((state) => state.notifications?.recipients || [])
+    const loadingRecipients = useSelector((state) => state.notifications?.loading?.recipients)
 
     const [activeTab, setActiveTab] = useState("inbox") // inbox | sent
     const [expandedId, setExpandedId] = useState(null)
@@ -148,7 +149,10 @@ const Notification = () => {
         setSendOpen(true)
         dispatch(fetchTerminals())
         dispatch(fetchSchoolManagementSummary())
-        dispatch(fetchUsers())
+        const aud = form.audience || "driver"
+        if (["driver", "parent", "vendor", "institute"].includes(aud)) {
+            dispatch(fetchRecipients(aud))
+        }
     }
     const handleCloseSend = () => {
         setSendOpen(false)
@@ -416,7 +420,14 @@ const Notification = () => {
                                 <Select
                                     value={form.audience}
                                     label="Audience"
-                                    onChange={(e) => updateForm("audience", e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value
+                                        updateForm("audience", val)
+                                        updateForm("userId", "")
+                                        if (["driver", "parent", "vendor", "institute"].includes(val)) {
+                                            dispatch(fetchRecipients(val))
+                                        }
+                                    }}
                                 >
                                     <MenuItem value="general">General (Everyone)</MenuItem>
                                     <MenuItem value="parent">Parents</MenuItem>
@@ -427,7 +438,7 @@ const Notification = () => {
                                 </Select>
                             </FormControl>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <FormControl fullWidth>
+                                <FormControl fullWidth disabled={!form.audience || ["general", "admin"].includes(form.audience)}>
                                     <InputLabel>User (optional)</InputLabel>
                                     <Select
                                         value={form.userId}
@@ -437,14 +448,15 @@ const Notification = () => {
                                         <MenuItem value="">
                                             <em>None - broadcast to audience</em>
                                         </MenuItem>
-                                        {users.map((u) => {
-                                            const uid = u?.id || u?.UserId
-                                            return (
-                                                <MenuItem key={uid} value={uid}>
-                                                    {u?.username || u?.email || `User #${uid}`} ({u?.role || "N/A"})
+                                        {loadingRecipients ? (
+                                            <MenuItem disabled>Loading...</MenuItem>
+                                        ) : (
+                                            recipients.map((r, idx) => (
+                                                <MenuItem key={`recipient-${r.id}-${idx}`} value={r.id}>
+                                                    {r.name} ({r.id})
                                                 </MenuItem>
-                                            )
-                                        })}
+                                            ))
+                                        )}
                                     </Select>
                                 </FormControl>
                                 <FormControl fullWidth>

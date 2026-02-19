@@ -57,6 +57,20 @@ export const markAllNotificationsRead = createAsyncThunk(
   }
 );
 
+export const fetchRecipients = createAsyncThunk(
+  "notifications/fetchRecipients",
+  async (audience, { rejectWithValue }) => {
+    try {
+      const res = await notificationService.getRecipients(audience);
+      return res.data || [];
+    } catch (error) {
+      const msg = error?.response?.data?.message;
+      const normalized = Array.isArray(msg) ? msg.join(", ") : msg || "Failed to fetch recipients";
+      return rejectWithValue(normalized);
+    }
+  }
+);
+
 export const fetchSentNotifications = createAsyncThunk(
   "notifications/fetchSentNotifications",
   async ({ limit = 50, offset = 0 } = {}, { rejectWithValue }) => {
@@ -88,6 +102,7 @@ export const sendNotification = createAsyncThunk(
 const initialState = {
   items: [],
   sentItems: [],
+  recipients: [],
   unreadCount: 0,
   loading: {
     list: false,
@@ -96,6 +111,7 @@ const initialState = {
     markAll: false,
     sent: false,
     send: false,
+    recipients: false,
   },
   error: null,
 };
@@ -168,6 +184,17 @@ const notificationsSlice = createSlice({
       })
       .addCase(markAllNotificationsRead.rejected, (state) => {
         state.loading.markAll = false;
+      })
+      .addCase(fetchRecipients.pending, (state) => {
+        state.loading.recipients = true;
+      })
+      .addCase(fetchRecipients.fulfilled, (state, action) => {
+        state.loading.recipients = false;
+        state.recipients = action.payload || [];
+      })
+      .addCase(fetchRecipients.rejected, (state) => {
+        state.loading.recipients = false;
+        state.recipients = [];
       })
       .addCase(fetchSentNotifications.pending, (state) => {
         state.loading.sent = true;
