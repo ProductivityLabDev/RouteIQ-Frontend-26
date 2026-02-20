@@ -5,14 +5,21 @@ import { EmployeeDashboardUser } from '@/assets';
 import { MdKeyboardArrowDown } from 'react-icons/md';
 import { FaRegUser } from 'react-icons/fa';
 import { IoMdLogOut } from 'react-icons/io';
+import Cookies from 'js-cookie';
 
 const EmployeeHeaderNav = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
+  const employeeUser = JSON.parse(localStorage.getItem('employeeUser') || '{}');
+  const displayName = employeeUser?.username || employeeUser?.name || 'Employee';
+
   const toggleDropdown = () => setIsOpen(!isOpen);
 
   const handleLogout = () => {
+    localStorage.removeItem('employeeUser');
+    localStorage.removeItem('token');
+    Cookies.remove('token');
     navigate('/EmployeeDashboard');
   };
 
@@ -27,7 +34,7 @@ const EmployeeHeaderNav = () => {
             alt='User'
           />
           <div>
-            <p className='text-sm font-semibold text-gray-900'>John Doe</p>
+            <p className='text-sm font-semibold text-gray-900'>{displayName}</p>
           </div>
           <MdKeyboardArrowDown color={colors.blackColor} className='ml-2 text-lg' />
         </div>

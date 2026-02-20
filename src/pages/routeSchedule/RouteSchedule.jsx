@@ -59,6 +59,7 @@ const RouteSchedule = () => {
   const [routesLoadingByInstitute, setRoutesLoadingByInstitute] = useState({});
   const [mapMarkers, setMapMarkers] = useState([]);
   const [mapCenter, setMapCenter] = useState(undefined);
+  const [mapCardInfo, setMapCardInfo] = useState({});
 
   React.useEffect(() => {
     let isMounted = true;
@@ -176,6 +177,23 @@ const RouteSchedule = () => {
       setMapMarkers(markers);
       setIsRouteMap(true); // enable directions polyline in MapComponent
 
+      // ── Card info: student ka schedule, driver (contact), destination ──
+      const pickupAddr  = payload.pickup  || payload.PickupAddress  || payload.pickupLocation  || "";
+      const dropoffAddr = payload.dropoff || payload.DropoffAddress || payload.dropoffLocation || "";
+      const driverName  = payload.driverName  || payload.DriverName  || "";
+      const dateVal     = payload.date    || payload.Date    || "";
+      const timeVal     = payload.pickupTime || payload.PickupTime || "";
+      const scheduleStr = [dateVal, timeVal].filter(Boolean).join(" • ") || "";
+
+      setMapCardInfo({
+        cardTitle:          studentName,
+        scheduleText:       scheduleStr || (pickupAddr ? `Pickup: ${pickupAddr}` : ""),
+        contactText:        driverName || "Driver",
+        destinationName:    dropoffAddr ? "Drop-off" : "",
+        destinationAddress: dropoffAddr,
+        destinationLatLng:  dropOk ? { lat: Number(dropLat), lng: Number(dropLng) } : null,
+      });
+
       if (markers.length > 0) {
         const sum = markers.reduce(
           (acc, m) => ({ lat: acc.lat + m.position.lat, lng: acc.lng + m.position.lng }),
@@ -190,6 +208,7 @@ const RouteSchedule = () => {
     }
 
     // Legacy: routeId-based (kept for compatibility)
+    setMapCardInfo({ cardTitle: "Route", scheduleText: "", contactText: "", destinationName: "", destinationAddress: "" });
     const routeIdNum = payload != null && payload !== "" ? Number(payload) : null;
     if (!routeIdNum || Number.isNaN(routeIdNum)) return;
 
@@ -356,6 +375,12 @@ const RouteSchedule = () => {
           showCard={showCard}
           markers={mapMarkers}
           center={mapCenter}
+          cardTitle={mapCardInfo.cardTitle}
+          scheduleText={mapCardInfo.scheduleText}
+          contactText={mapCardInfo.contactText}
+          destinationName={mapCardInfo.destinationName}
+          destinationAddress={mapCardInfo.destinationAddress}
+          destinationLatLng={mapCardInfo.destinationLatLng}
         />
       ) : isCreateTrip  ? (
          <CreateTripForm handleCancel={handleCancel}/>

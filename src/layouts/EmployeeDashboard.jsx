@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Login from "@/pages/EmployeeDashboard/auth/Login";
 import ProfileInformation from "@/pages/EmployeeDashboard/auth/ProfileInformation";
 import Designation from "@/pages/EmployeeDashboard/auth/Designation";
@@ -9,18 +9,29 @@ import Information from "@/pages/EmployeeDashboard/information/Information";
 import Document from "@/pages/EmployeeDashboard/document/Document";
 import Schedule from "@/pages/EmployeeDashboard/schedule/Schedule";
 
+const EmployeeProtectedRoute = () => {
+    const employeeUser = localStorage.getItem('employeeUser');
+    const token = localStorage.getItem('token');
+    if (!employeeUser || !token) {
+        return <Navigate to="/EmployeeDashboard" replace />;
+    }
+    return <Outlet />;
+};
+
 const EmployeeManagementRoutes = () => {
     return (
         <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/profileInformation" element={<ProfileInformation />} />
-            <Route path="/designation" element={<Designation />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/employeePayroll" element={<EmployeePayroll />} />
-            <Route path="/timeOffRequest" element={<TimeOffRequest />} />
-            <Route path="/schedule" element={<Schedule />} />
-            <Route path="/information" element={<Information />} />
-            <Route path="/document" element={<Document />} />
+            <Route element={<EmployeeProtectedRoute />}>
+                <Route path="/profileInformation" element={<ProfileInformation />} />
+                <Route path="/designation" element={<Designation />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/employeePayroll" element={<EmployeePayroll />} />
+                <Route path="/timeOffRequest" element={<TimeOffRequest />} />
+                <Route path="/schedule" element={<Schedule />} />
+                <Route path="/information" element={<Information />} />
+                <Route path="/document" element={<Document />} />
+            </Route>
         </Routes>
     );
 };

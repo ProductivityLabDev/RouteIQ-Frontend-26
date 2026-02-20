@@ -63,15 +63,13 @@ function App() {
       <Route path="/account/*" element={<Auth />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
-      {/* <Route path="/LoginAsVendor" element={<LoginAsVendor />} /> */}
+      {/* Employee Dashboard — public (has its own login screen) */}
+      <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
 
-      <Route path="/unauthorized/*" element={<Unauthorized
-      />} />
-      {/* <Route path="/School-dashboard" element={<SchoolDashboard />} /> */}
+      <Route path="/unauthorized/*" element={<Unauthorized />} />
       {/* ---------- PRIVATE (GUARDED) ---------- */}
       <Route element={<ProtectedRoute />}>
       <Route path="/dashboard/*" element={<Dashboard />} />
-      <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
       <Route path="/dashboard" element={<SchoolDashboard />} />
       {/* <Route path="/school_dashboard" element={<SchoolDashboard />} /> */}
       <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
