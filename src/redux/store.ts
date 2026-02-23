@@ -12,11 +12,21 @@ import routesReducer from "./slices/routesSlice";
 import repairScheduleReducer from "./slices/repairScheduleSlice";
 import notificationsReducer from "./slices/notificationsSlice";
 import chatReducer from "./slices/chatSlice";
+import employeeDashboardReducer from "./slices/employeeDashboardSlice";
+import vendorDashboardReducer from "./slices/vendorDashboardSlice";
 
 const persistConfig = {
   key: "root",
   storage,
   whitelist: ["user"],
+};
+
+// Employee dashboard ke liye alag persist config
+// Sirf dashboardData aur lastPunchStatus save hoga — loading/error nahi
+const employeeDashboardPersistConfig = {
+  key: "employeeDashboard",
+  storage,
+  whitelist: ["dashboardData", "lastPunchStatus"],
 };
 
 const rootReducer = combineReducers({
@@ -30,6 +40,8 @@ const rootReducer = combineReducers({
   repairSchedule: repairScheduleReducer,
   notifications: notificationsReducer,
   chat: chatReducer,
+  employeeDashboard: persistReducer(employeeDashboardPersistConfig, employeeDashboardReducer),
+  vendorDashboard: vendorDashboardReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

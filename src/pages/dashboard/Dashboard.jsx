@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Grid, Typography } from "@mui/material";
 import MainLayout from "@/layouts/SchoolLayout";
 import CustomCardComponent from "@/components/customCards/CustomCard";
@@ -12,11 +12,23 @@ import EditDashboard from "./EditDashboard";
 import { editIcon, linkIcon } from "@/assets";
 import GlobalModal from "@/components/Modals/GlobalModal";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchVendorStats } from "@/redux/slices/vendorDashboardSlice";
 
 const SchoolDashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { stats, loading } = useSelector((s) => s.vendorDashboard);
+  const rawName = useSelector((s) => s.user?.user?.name || s.user?.user?.email || '');
+  const vendorName = rawName.includes('@')
+    ? rawName.split('@')[0].split('.')[0].replace(/^\w/, (c) => c.toUpperCase())
+    : rawName;
+
+  useEffect(() => {
+    dispatch(fetchVendorStats());
+  }, [dispatch]);
 
   const handleEditClick = () => {
     setIsEditing(true);
@@ -46,7 +58,7 @@ const SchoolDashboard = () => {
               className="text-[23px] md:text-[38px] mt-5 ps-2"
               sx={{ fontSize: { xs: '23px', md: '20px'}, fontWeight: 700 }}
             >
-              Good Morning, Moni Roy
+              Good Morning, {vendorName}
             </Typography>
 
             <div className="flex flex-row gap-6 md:gap-5">
@@ -86,22 +98,22 @@ const SchoolDashboard = () => {
             <Grid item xs={12} md={4}>
               <CustomCardComponent
                 title="No. Of Vehicle"
-                value="437"
-                change="24 Vehicles Inactive"
+                value={loading.stats ? "..." : (stats?.vehicles?.total ?? "--")}
+                change={stats ? `${stats.vehicles.inactive} Vehicles Inactive` : ""}
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <CustomCardComponent
                 title="No. Of Schools"
-                value="256"
-                change="14 Schools Pending"
+                value={loading.stats ? "..." : (stats?.schools?.total ?? "--")}
+                change={stats ? `${stats.schools.pending} Schools Pending` : ""}
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <CustomCardComponent
                 title="Total Trips"
-                value="1256"
-                change="56 Pending Trips"
+                value={loading.stats ? "..." : (stats?.trips?.total ?? "--")}
+                change={stats ? `${stats.trips.pending} Pending Trips` : ""}
               />
             </Grid>
           </Grid>

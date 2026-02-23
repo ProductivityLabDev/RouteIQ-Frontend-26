@@ -139,6 +139,7 @@ export function SignInVendor() {
 
       // Create user object
       const realUser = {
+        name: decoded.name || decoded.fullName || decoded.firstName || decoded.username || decoded.email,
         email: decoded.email || decoded.username,
         role: decoded.role || "VENDOR",
         modules: modulesMap,
