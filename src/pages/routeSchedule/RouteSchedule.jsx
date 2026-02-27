@@ -9,7 +9,6 @@ import {
 import MapComponent from "@/components/MapComponent";
 import VendorApprovedCard from "@/components/vendorRoutesCard/VendorApprovedCard";
 import { tripsData } from "@/data";
-import { busTrips, busTripsScheduling } from "@/data/dummyData";
 import MainLayout from "@/layouts/SchoolLayout";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import {
@@ -30,6 +29,7 @@ import SchoolRouteTable from "@/components/SchoolRouteTable";
 import { useNavigate } from "react-router-dom";
 import CreateTripForm from '../../components/CreateTripForm';
 import { apiClient } from "@/configs/api";
+import { routeSchedulingService } from "@/services/routeSchedulingService";
 
 const RouteSchedule = () => {
   const [selectedTab, setSelectedTab] = useState("Trip Schedules");
@@ -60,6 +60,34 @@ const RouteSchedule = () => {
   const [mapMarkers, setMapMarkers] = useState([]);
   const [mapCenter, setMapCenter] = useState(undefined);
   const [mapCardInfo, setMapCardInfo] = useState({});
+  const [tripsByTerminal, setTripsByTerminal] = useState({});
+  const [tripsLoadingByTerminal, setTripsLoadingByTerminal] = useState({});
+
+  // Refetch trips when status filter (activeTab) changes and a terminal is expanded in Trip Schedules
+  React.useEffect(() => {
+    if (selectedTab !== "Trip Schedules" || isOpen == null || typeof isOpen !== "number") return;
+    const terminal = terminals[isOpen];
+    if (!terminal) return;
+    const tid = terminal?.TerminalId ?? terminal?.terminalId ?? terminal?.id ?? null;
+    if (!tid) return;
+    const statusFilter = activeTab === "All" ? undefined : activeTab;
+    let cancelled = false;
+    setTripsLoadingByTerminal((prev) => ({ ...prev, [tid]: true }));
+    routeSchedulingService.getTripsByTerminal(tid, statusFilter)
+      .then((res) => {
+        if (!cancelled) setTripsByTerminal((prev) => ({ ...prev, [tid]: res?.data || [] }));
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Failed to fetch trips:", err);
+          setTripsByTerminal((prev) => ({ ...prev, [tid]: [] }));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setTripsLoadingByTerminal((prev) => ({ ...prev, [tid]: false }));
+      });
+    return () => { cancelled = true; };
+  }, [activeTab, selectedTab, isOpen, terminals]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -299,13 +327,36 @@ const RouteSchedule = () => {
   const getTerminalId = (terminal) =>
     terminal?.TerminalId ?? terminal?.terminalId ?? terminal?.id ?? null;
 
+  const fetchTripsForTerminal = async (terminalId, statusFilter) => {
+    if (!terminalId) return;
+    try {
+      setTripsLoadingByTerminal((prev) => ({ ...prev, [terminalId]: true }));
+      const res = await routeSchedulingService.getTripsByTerminal(
+        terminalId,
+        statusFilter === "All" || !statusFilter ? undefined : statusFilter
+      );
+      setTripsByTerminal((prev) => ({ ...prev, [terminalId]: res?.data || [] }));
+    } catch (err) {
+      console.error("Failed to fetch trips:", err);
+      setTripsByTerminal((prev) => ({ ...prev, [terminalId]: [] }));
+    } finally {
+      setTripsLoadingByTerminal((prev) => ({ ...prev, [terminalId]: false }));
+    }
+  };
+
   const handleTerminalToggle = async (index, terminal) => {
     const nextOpen = index === isOpen ? null : index;
     setIsOpen(nextOpen);
 
+    const terminalId = getTerminalId(terminal);
+
+    if (selectedTab === "Trip Schedules" && nextOpen !== null && terminalId) {
+      fetchTripsForTerminal(terminalId, activeTab);
+      return;
+    }
+
     if (nextOpen === null || selectedTab !== "School Routes") return;
 
-    const terminalId = getTerminalId(terminal);
     if (!terminalId || institutesByTerminal[terminalId]) return;
 
     try {
@@ -502,6 +553,34 @@ const RouteSchedule = () => {
                 {isOpen === index &&
                   (selectedTab === "Trip Schedules" ? (
                     <div className="w-full">
+                      {(() => {
+                        const tid = getTerminalId(terminal);
+                        const trips = tripsByTerminal[tid] || [];
+                        const tripsLoading = tripsLoadingByTerminal[tid];
+                        const toRow = (t) => ({
+                          id: t.id ?? t.TripId ?? t.tripId,
+                          flag: t.flag,
+                          tripNo: t.tripNo ?? t.TripNumber ?? t.tripNumber ?? t.TripNo ?? "-",
+                          date: t.date ?? t.StartTime ?? t.startTime ? format(new Date(t.StartTime || t.startTime), "M/d/yy") : "-",
+                          startTime: t.startTime ?? t.StartTime ? format(new Date(t.StartTime || t.startTime), "H:mm") : "-",
+                          endTime: t.endTime ?? t.EndTime ? format(new Date(t.EndTime || t.endTime), "H:mm") : "-",
+                          busNo: t.busNo ?? t.BusNumber ?? t.BusNo ?? "-",
+                          driverName: t.driverName ?? t.DriverName ?? "-",
+                          contactName: t.contactName ?? t.ContactName ?? t.Contact ?? "-",
+                          pickup: t.pickup ?? t.PickupLocation ?? t.Pickup ?? "-",
+                          pickupTime: t.pickupTime ?? t.PickupTime ?? "-",
+                          dropoff: t.dropoff ?? t.DropoffLocation ?? t.Dropoff ?? "-",
+                          dropoffTime: t.dropoffTime ?? t.DropoffTime ?? "-",
+                          dropoffAddress: t.dropoffAddress ?? t.DropoffAddress ?? "",
+                          glCode: t.glCode ?? t.GLCode ?? "-",
+                          status: t.status ?? t.Status ?? "-",
+                          numberOfPersons: t.numberOfPersons ?? t.NoOfPersons ?? t.NoOfPassengers ?? "-",
+                        });
+                        const rows = trips.map(toRow);
+                        return tripsLoading ? (
+                          <div className="p-8 text-center text-gray-500">Loading trips...</div>
+                        ) : (
+                    <>
                       {humburgerBar ? (
                         <div className="flex justify-end items-center pt-3 mb-0 px-7 py-1  border-t border-[#D5D5D5]">
                           <div
@@ -592,13 +671,13 @@ const RouteSchedule = () => {
                             </thead>
 
                             <tbody>
-                              {busTripsScheduling?.map((trip) => (
+                              {rows?.map((trip) => (
                                 <tr
                                   key={trip.id}
                                   className="border-t border-gray-200 hover:bg-gray-50"
                                 >
                                   <td className="px-6 py-4 text-sm text-[#141516]">
-                                    <img src={trip.flag} alt="flag" />
+                                    {trip.flag ? <img src={trip.flag} alt="flag" /> : <span className="w-6 h-4 block bg-gray-200 rounded" />}
                                   </td>
                                   <td className="px-6 py-4 text-sm text-[#141516]">
                                     {trip.tripNo}
@@ -651,10 +730,14 @@ const RouteSchedule = () => {
                                     <div
                                       className={`w-[100px] text-center justify-center items-center flex h-[35px] rounded 
                                       ${
-                                      trip.status === "Approved"
-                                        ? "bg-[#CCFAEB] text-[#0BA071]"
-                                        : "bg-[#F6DCDE] text-[#C01824]"
-                                    }`}
+                                        trip.status === "Approved"
+                                          ? "bg-[#CCFAEB] text-[#0BA071]"
+                                          : trip.status === "Pending"
+                                          ? "bg-[#FEF3C7] text-[#D97706]"
+                                          : trip.status === "Canceled"
+                                          ? "bg-gray-200 text-gray-600"
+                                          : "bg-[#F6DCDE] text-[#C01824]"
+                                      }`}
                                     >
                                       {trip.status}
                                     </div>
@@ -744,6 +827,9 @@ const RouteSchedule = () => {
                           <img src={rightArrow} />
                         </button>
                       </div>
+                    </>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="w-full bg-white border-t border-gray-200 shadow-sm">

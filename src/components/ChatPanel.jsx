@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector, shallowEqual } from "react-redux";
+
+const EMPTY_ARRAY = []; // stable reference — avoids new [] on every render
 import {
   addfileicon,
   darksearchicon,
@@ -30,6 +32,11 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
+  // Stable key for object dependency — avoids infinite re-renders from new object refs
+  const monitoringFiltersKey = JSON.stringify(monitoringFilters);
+  const monitoringFiltersRef = useRef(monitoringFilters);
+  monitoringFiltersRef.current = monitoringFilters;
+
   const currentUser = useSelector((state) => state.user?.user);
   const currentUserId = currentUser?.id || currentUser?.UserId;
 
@@ -46,7 +53,8 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
   );
   const messages = activeId ? allMessages[activeId] || [] : [];
   const typingUsers = useSelector(
-    (state) => (activeId && state.chat.typingUsers[activeId]) || []
+    (state) => state.chat.typingUsers?.[activeId] ?? EMPTY_ARRAY,
+    shallowEqual
   );
   const loading = useSelector((state) => state.chat.loading);
   const monitoringPagination = useSelector(
@@ -62,18 +70,19 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
   // Fetch conversations on mount / when filters or page change
   useEffect(() => {
     if (isMonitoring) {
-      const params = { ...monitoringFilters, page: convPage, limit: 20 };
+      const params = { ...monitoringFiltersRef.current, page: convPage, limit: 20 };
       if (participantTypeFilter) params.type = participantTypeFilter;
       dispatch(fetchMonitoringConversations(params));
     } else {
       dispatch(fetchConversations(participantTypeFilter));
     }
-  }, [dispatch, participantTypeFilter, isMonitoring, monitoringFilters, convPage]);
+  }, [dispatch, participantTypeFilter, isMonitoring, monitoringFiltersKey, convPage]);
 
-  // Reset page to 1 when filters change
+  // Reset page to 1 when filters change — only relevant in monitoring mode
   useEffect(() => {
+    if (!isMonitoring) return;
     setConvPage(1);
-  }, [monitoringFilters]);
+  }, [monitoringFiltersKey, isMonitoring]);
 
   // Fetch messages when active conversation changes
   useEffect(() => {
@@ -90,7 +99,7 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
   useEffect(() => {
     if (!isMonitoring) return;
     const interval = setInterval(() => {
-      const params = { ...monitoringFilters, page: convPage, limit: 20, silent: true };
+      const params = { ...monitoringFiltersRef.current, page: convPage, limit: 20, silent: true };
       if (participantTypeFilter) params.type = participantTypeFilter;
       dispatch(fetchMonitoringConversations(params));
       if (activeId) {
@@ -98,7 +107,7 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [isMonitoring, activeId, dispatch, monitoringFilters, convPage, participantTypeFilter]);
+  }, [isMonitoring, activeId, dispatch, monitoringFiltersKey, convPage, participantTypeFilter]);
 
   // Auto-scroll on new messages
   useEffect(() => {

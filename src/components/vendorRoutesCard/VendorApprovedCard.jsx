@@ -42,10 +42,10 @@ export function VendorApprovedCard({
       <div className='border-4 border-[#28A745] rounded-md p-3 md:p-4 mb-4'>
         <div className='flex justify-between items-center'>
           <p className='text-black text-md md:text-[16px] font-semibold'>
-            Trip Name: {trip?.tripname}
+            Trip Name: {trip?.tripName ?? '--'}
           </p>
           <p className='text-black text-md md:text-[16px] font-semibold'>
-            Trip No: {trip?.tripno}
+            Trip No: {trip?.tripNumber ?? trip?.id ?? '--'}
           </p>
         </div>
 
@@ -53,15 +53,15 @@ export function VendorApprovedCard({
           <div className='flex space-x-4 items-center'>
             <img src={redbusicon} alt='not found' />
             <p className='text-black text-md md:text-[22px] font-semibold'>
-              {trip?.busNumber || trips[0]?.busNumber}
+              {trip?.busNumber ?? '--'}
             </p>
             <p className='text-xs md:text-[12px] text-white font-medium bg-[#28A745] px-2 py-1 rounded-[4px]'>
-              {trip?.status || trips[0]?.status}
+              {trip?.status ?? '--'}
             </p>
           </div>
           <div>
             <p className='font-semibold text-xs md:text-[14px] text-[#141516]/80 md:pt-0 pt-3'>
-              {trip?.time || trips[0]?.time}
+              {trip?.startTime ? new Date(trip.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
             </p>
           </div>
         </div>
@@ -82,10 +82,10 @@ export function VendorApprovedCard({
                 />
                 <div className='text-black'>
                   <h6 className='text-xs md:text-[14px] font-semibold'>
-                    {trip?.pickup?.location || trips[0]?.location}
+                    {trip?.pickup ?? '--'}
                   </h6>
                   <p className='font-normal text-[12px]'>
-                    {trip?.pickup?.address || trips[0]?.pickup?.address}
+                    {trip?.pickupAddress ?? ''}
                   </p>
                 </div>
               </div>
@@ -97,10 +97,10 @@ export function VendorApprovedCard({
                 />
                 <div className='text-black'>
                   <h6 className='text-[14px] font-semibold'>
-                    {trip?.dropoff?.location || trips[0]?.dropoff?.location}
+                    {trip?.dropoff ?? '--'}
                   </h6>
                   <p className='font-normal text-[12px]'>
-                    {trip?.dropoff?.address || trips[0]?.dropoff?.address}
+                    {trip?.dropoffAddress ?? ''}
                   </p>
                 </div>
               </div>
@@ -112,18 +112,20 @@ export function VendorApprovedCard({
               <div className='bg-[#fff] flex flex-col justify-end p-1.5 h-[75px] w-[120px] rounded-md text-center shadow-xl text-white'>
                 <p className='text-[11px] font-[600] text-[#000]'>Driver</p>
                 <p className='text-[12.5px] font-[700] text-[#000]'>
-                  {trip?.driver?.name || trips[0]?.driver?.name}
+                  {trip?.driverName ?? trip?.driver?.name ?? '--'}
                 </p>
-                <img
-                  src={trip?.driver?.image || trips[0]?.driver?.image}
-                  className='rounded-full w-14 h-14 object-cover absolute -top-8 left-8'
-                  alt='not found'
-                />
+                {(trip?.driverPhoto ?? trip?.driver?.image) && (
+                  <img
+                    src={trip?.driverPhoto ?? trip?.driver?.image}
+                    className='rounded-full w-14 h-14 object-cover absolute -top-8 left-8'
+                    alt='driver'
+                  />
+                )}
               </div>
               <p className='text-[#565656] text-[14px] font-medium pt-2'>
                 No. of Persons:{' '}
                 <span className='text-black font-semibold'>
-                  {trip?.noOfPersons || trips[0]?.noOfPersons}
+                  {trip?.noOfPersons ?? '--'}
                 </span>
               </p>
             </div>
@@ -196,11 +198,11 @@ export function VendorApprovedCard({
         <div className='flex justify-between items-center mt-5 px-1'>
           <p className='text-[13px] font-medium text-[#333]'>
             <span className='font-semibold text-[14px] text-[#000]'>Trip Start Time:</span>{' '}
-            {trip?.startTime || trips[0]?.startTime || 'N/A'}
+            {trip?.startTime ? new Date(trip.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
           </p>
           <p className='text-[13px] font-medium text-[#333]'>
             <span className='font-semibold text-[14px] text-[#000]'>Trip End Time:</span>{' '}
-            {trip?.endTime || trips[0]?.endTime || 'N/A'}
+            {trip?.endTime ? new Date(trip.endTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
           </p>
         </div>
       </div>

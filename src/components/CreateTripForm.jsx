@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
+import { schoolDashboardService } from '@/services/schoolDashboardService';
+import { Toaster, toast } from 'react-hot-toast';
 
- const TripBookingForm = ({ handleCancel }) => {
-  
-  
-    const [formData, setFormData] = useState({
+const TripBookingForm = ({ handleCancel }) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [buses, setBuses] = useState([]);
+  const [formData, setFormData] = useState({
     companyGroupName: '',
     phoneNumber: '',
     emailAddress: '',
@@ -12,7 +14,7 @@ import { MapPin } from 'lucide-react';
     noOfBuses: '',
     noOfPassengers: '',
     wheelchairRequired: '',
-    busType: '',
+    vehicleId: '',
     pickupDate: '',
     pickupTime: '',
     returnDate: '',
@@ -34,6 +36,12 @@ import { MapPin } from 'lucide-react';
     termsAccepted: false
   });
 
+  useEffect(() => {
+    schoolDashboardService.getBuses().then((res) => {
+      setBuses(Array.isArray(res?.data) ? res.data : []);
+    }).catch(() => {});
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -42,14 +50,66 @@ import { MapPin } from 'lucide-react';
     }));
   };
 
-  const handleSubmit = (e) => {
+  const toISO = (dateStr, timeStr) => {
+    if (!dateStr) return null;
+    const date = dateStr;
+    const time = timeStr || '00:00';
+    return new Date(`${date}T${time}:00.000Z`).toISOString();
+  };
+
+  const num = (v) => {
+    if (v === '' || v == null) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  const str = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : undefined);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
+    const startTime = toISO(formData.pickupDate, formData.pickupTime);
+    const pickupLocation = str(formData.pickupLocation);
+    const dropoffLocation = str(formData.destinationLocation);
+    if (!startTime || !pickupLocation || !dropoffLocation) {
+      toast.error('Pickup date/time, Pickup Location and Destination Location are required.');
+      return;
+    }
+    const dto = {
+      tripName: str(formData.companyGroupName) || str(formData.name) || 'School Trip',
+      startTime,
+      pickupLocation,
+      dropoffLocation,
+      ...(str(formData.pickupAddress) && { pickupAddress: formData.pickupAddress }),
+      ...(str(formData.destinationAddress) && { dropoffAddress: formData.destinationAddress }),
+      ...(num(formData.noOfPassengers) != null && { noOfPersons: num(formData.noOfPassengers) }),
+      ...(str(formData.instructions) && { specialInstructions: formData.instructions }),
+    };
+    setSubmitting(true);
+    try {
+      const res = await schoolDashboardService.createTrip(dto);
+      const tripNumber = res?.data?.data?.tripNumber ?? res?.data?.tripNumber;
+      toast.success(tripNumber ? `Trip created: ${tripNumber}` : 'Trip created successfully.');
+      handleCancel();
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message;
+      const msgStr = Array.isArray(msg) ? msg.join(', ') : msg;
+      if (status === 403) {
+        toast.error(msgStr || 'No terminal access.');
+      } else if (status === 400) {
+        toast.error(msgStr || 'Invalid data. Check required fields.');
+      } else {
+        toast.error(msgStr || 'Failed to create trip.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
  
 
   return (
+    <>
     <div className="p-6 w-[100%]">
         {/* Header */}
         <div className="flex justify-between items-center  border-b border-gray-200">
@@ -59,8 +119,7 @@ import { MapPin } from 'lucide-react';
           </select>
         </div>
         <div className="bg-white rounded-lg shadow-sm mt-8">
-        {/* Form */}
-        <div className="p-6 w-[100%]">
+        <form onSubmit={handleSubmit} className="p-6 w-[100%]">
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
@@ -167,18 +226,21 @@ import { MapPin } from 'lucide-react';
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">
-                Bus Type
+                Select Bus <span className="text-red-500">*</span>
               </label>
               <select
-                name="busType"
-                value={formData.busType}
+                name="vehicleId"
+                value={formData.vehicleId}
                 onChange={handleInputChange}
+                required
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">Select bus type</option>
-                <option value="standard">Standard</option>
-                <option value="luxury">Luxury</option>
-                <option value="mini">Mini Bus</option>
+                <option value="">Select a bus</option>
+                {buses.map((bus) => (
+                  <option key={bus.id} value={bus.id}>
+                    {bus.numberPlate ?? bus.name} {bus.name && bus.numberPlate ? `(${bus.name})` : ''}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -473,21 +535,24 @@ import { MapPin } from 'lucide-react';
             <button
               type="button"
               onClick={handleCancel}
-              className="px-6 py-2 border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              disabled={submitting}
+              className="px-6 py-2 border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-               onClick={handleCancel}
-              className="px-6 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              disabled={submitting}
+              className="px-6 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              Submit
+              {submitting ? 'Creating...' : 'Submit'}
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
+    <Toaster position="top-right" reverseOrder={false} toastOptions={{ duration: 4000 }} />
+    </>
   );
 }
 

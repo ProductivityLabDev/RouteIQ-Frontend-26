@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@material-tailwind/react';
 import { useNavigate } from 'react-router-dom';
+import { schoolDashboardService } from '@/services/schoolDashboardService';
 
 export function CreateAnnouncement() {
     const navigate = useNavigate();
@@ -8,22 +9,37 @@ export function CreateAnnouncement() {
     const [description, setDescription] = useState('');
     const [image, setImage] = useState(null);
     const [imageName, setImageName] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('description', description);
-        if (image) {
-            formData.append('image', image);
-        }
+        if (!title.trim() || !description.trim()) return;
 
-        navigate('/dashboard/announcements');
+        setSubmitting(true);
+        setError('');
+        try {
+            const formData = new FormData();
+            formData.append('title', title.trim());
+            formData.append('content', description.trim());
+            if (image) formData.append('image', image);
+
+            await schoolDashboardService.createAnnouncement(formData);
+            navigate('/dashboard/announcements');
+        } catch (err) {
+            const msg = err?.response?.data?.message;
+            setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Failed to create announcement.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleImageChange = (e) => {
-        setImage(e.target.files[0]);
-        setImageName(e.target.files[0].name);
+        const file = e.target.files[0];
+        if (file) {
+            setImage(file);
+            setImageName(file.name);
+        }
     };
 
     return (
@@ -32,6 +48,7 @@ export function CreateAnnouncement() {
                 Create Announcement
             </h1>
             <form onSubmit={handleSubmit} className='bg-white w-full h-[80vh] rounded-md mt-1 p-3 md:p-8'>
+                {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
                 <div className="md:w-[500px]">
                     <h6 className="block antialiased tracking-normal mb-4 text-[14px] font-bold leading-[1.3] text-inherit">
                         Title
@@ -48,26 +65,11 @@ export function CreateAnnouncement() {
                     </h6>
                     <div className='flex items-center bg-[#F5F6FA] border border-[#D5D5D5] pl-2 py-0.5 rounded-lg'>
                         <label className="flex justify-center w-[150px] md:w-[14rem] font-normal text-[14px] text-white items-center gap-3 bg-[#C01824] cursor-pointer p-2 rounded-lg">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={2}
-                                stroke="currentColor"
-                                className="h-7 w-7 text-white"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
-                                />
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-7 w-7 text-white">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                             </svg>
                             Upload Image
-                            <input
-                                type="file"
-                                className="hidden"
-                                onChange={handleImageChange}
-                            />
+                            <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                         </label>
                         {imageName && <span className="ml-4 text-gray-700">{imageName}</span>}
                     </div>
@@ -85,20 +87,22 @@ export function CreateAnnouncement() {
                         />
                     </div>
                 </div>
-                 <Button
+                <Button
                     onClick={() => navigate('/dashboard/announcements')}
                     type="button"
+                    disabled={submitting}
                     className="mt-6 bg-[#C01824] capitalize font-medium text-[18px] w-[180px] rounded-lg opacity-100 py-3"
-                    >
+                >
                     Cancel
                 </Button>
                 &nbsp;
                 <Button
-                  type="submit"
-                   className="mt-6 bg-[#C01824] capitalize font-medium text-[18px] w-[180px] rounded-lg opacity-100 py-3"
+                    type="submit"
+                    disabled={submitting}
+                    className="mt-6 bg-[#C01824] capitalize font-medium text-[18px] w-[180px] rounded-lg opacity-100 py-3"
                 >
-                 Create
-              </Button>
+                    {submitting ? 'Creating...' : 'Create'}
+                </Button>
             </form>
         </section>
     );

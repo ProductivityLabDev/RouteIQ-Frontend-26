@@ -25,18 +25,15 @@ import { EditStudent } from "@/components/Modals/EditStudent";
 import { DrivingLicense } from "@/components/Modals/DrivingLicense";
 import {
   DRIVERS_TABLE_HEAD,
-  DRIVERS_TABLE_ROWS,
   STUDENTS_TABLE_HEAD,
   STUDENTS_TABLE_ROWS,
   STUDENTS_TABS,
 } from "@/data";
 import { EditDriver } from "@/components/Modals/EditDriverModal";
 import { RiDeleteBin6Line } from "react-icons/ri";
-import axios from "axios";
+import { apiClient } from "@/configs/api";
 
 export function Manage() {
-  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-  const token = localStorage.getItem("token");
 
   const [selectedTab, setSelectedTab] = useState("Students");
   const [selectedOption, setSelectedOption] = useState("");
@@ -48,7 +45,10 @@ export function Manage() {
   const [active, setActive] = useState(1);
   const [openLicense, setOpenLicense] = useState(false);
   const [students, setStudents] = useState([]);
+  const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [driversLoading, setDriversLoading] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState(null);
   const location = useLocation();
   const handleOpenNote = () => setOpenNote(!openNote);
   const handleOpenAddStudent = () => setOpenAddStudent(!openAddStudent);
@@ -116,95 +116,67 @@ export function Manage() {
 
   const getStudents = async () => {
     try {
-      // Try to resolve instituteId (from localStorage or stored user)
-      let instituteId = null;
-      const storedInstituteId = localStorage.getItem('instituteId');
-      const storedUser = localStorage.getItem('user');
-      if (storedInstituteId) {
-        instituteId = storedInstituteId;
-      } else if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          if (user.instituteId) instituteId = user.instituteId;
-          else if (user.InstituteId) instituteId = user.InstituteId;
-        } catch (e) {
-          console.warn('Could not parse stored user for instituteId', e);
-        }
-      }
+      const res = await apiClient.get('/school/students');
+      const studentsArray = Array.isArray(res?.data?.data)
+        ? res.data.data
+        : Array.isArray(res?.data) ? res.data : [];
 
-      if (!instituteId) {
-        console.warn('No instituteId found in localStorage/user — requesting without instituteId may fail');
-      }
-
-      const apiUrl = instituteId
-        ? `${BASE_URL}/school/GetStudents?InstituteId=${instituteId}`
-        : `${BASE_URL}/school/GetStudents`;
-
-      console.log('[getStudents] Requesting students from', apiUrl);
-
-      const res = await axios.get(apiUrl, {
-        withCredentials: true,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      console.log("✅ Students fetched:", res.data);
-      console.log("📋 Raw API response structure:", JSON.stringify(res.data, null, 2));
-
-      // Handle different response formats
-      const studentsArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
-
-      console.log("📊 Students array:", studentsArray);
-      if (studentsArray.length > 0) {
-        console.log("🔍 First student object:", studentsArray[0]);
-        console.log("🔍 First student keys:", Object.keys(studentsArray[0]));
-      }
-
-      // Map API response to table format
-      const mappedStudents = studentsArray.map((student, index) => {
-        // Use FirstName and LastName directly from API response
-        const firstName = student.FirstName || student.firstName || "";
-        const lastName = student.LastName || student.lastName || "";
-        
-        return {
-          id: student.StudentId || student.studentId || student.id || index + 1,
-          name: firstName,
-          lastname: lastName,
-          grade: student.Grade || student.grade || "N/A",
-          contact: student.ContactPhone || student.contactPhone || student.EmergencyContact || student.emergencyContact || "N/A",
-          enrollment: student.EnrollmentNumber || student.enrollmentNumber || student.Enrollment || student.enrollment || "N/A",
-          address: student.Address || student.address || "N/A",
-          present: student.present !== undefined ? student.present : (student.attendanceStatus === "Present" || student.AttendanceStatus === "Present") || false,
-          pickupLocation: student.pickupLocation || student.PickupLocation || student.PickUp_Location || "N/A",
-          dropLocation: student.dropLocation || student.DropLocation || student.Drop_Location || "N/A",
-          guardian1: student.Guardian1 || student.guardian1 || "N/A",
-          guardian2: student.Guardian2 || student.guardian2 || "N/A",
-          busNo: student.BusNo || student.busNo || "N/A",
-          // Static defaults for fields not in API response
-          drivername: "Jhon Michael",
-          busanimalam: "N/A",
-          busnoam: "N/A",
-          busanimalpm: "N/A",
-          busnopm: "N/A",
-        };
-      });
-
-      console.log("✅ Mapped students:", mappedStudents);
-      if (mappedStudents.length > 0) {
-        console.log("🔍 First mapped student:", mappedStudents[0]);
-      }
+      const mappedStudents = studentsArray.map((student, index) => ({
+        id: student.id || index + 1,
+        name: student.firstName || '',
+        lastname: student.lastName || '',
+        grade: student.grade || 'N/A',
+        contact: student.emergencyContact || 'N/A',
+        enrollment: student.enrollmentNo || student.enrollmentNumber || 'N/A',
+        address: student.address || 'N/A',
+        present: student.present ?? (student.attendanceStatus === 'Present') ?? false,
+        pickupLocation: student.pickupLocation || 'N/A',
+        dropLocation: student.dropLocation || 'N/A',
+        guardian1: student.guardian1 || 'N/A',
+        guardian2: student.guardian2 || 'N/A',
+        busNo: student.busNo || 'N/A',
+        drivername: 'N/A',
+        busanimalam: 'N/A',
+        busnoam: 'N/A',
+        busanimalpm: 'N/A',
+        busnopm: 'N/A',
+      }));
 
       setStudents(mappedStudents);
       setSelectedRows(mappedStudents.map(() => false));
     } catch (err) {
-      console.error("❌ Error fetching students:", err);
+      console.error('Failed to load students:', err);
       setStudents([]);
       setSelectedRows([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getDrivers = async () => {
+    setDriversLoading(true);
+    try {
+      const res = await apiClient.get('/school/drivers');
+      const list = Array.isArray(res?.data?.data)
+        ? res.data.data
+        : Array.isArray(res?.data) ? res.data : [];
+
+      setDrivers(list.map((d, i) => ({
+        id: d.id ?? i,
+        name: d.name || '--',
+        phone: d.phoneNumber || d.phone || '--',
+        contactone: d.email || '--',
+        contacttwo: d.licenseNumber || '--',
+        email: d.email || '--',
+        present: d.attendanceStatus === 'Present' || d.status === 'active' || d.status === 'Active',
+        drivingLicense: d.drivingLicense || '',
+        profilePhoto: d.profilePhoto || '',
+      })));
+    } catch (err) {
+      console.error('Failed to load drivers:', err);
+      setDrivers([]);
+    } finally {
+      setDriversLoading(false);
     }
   };
 
@@ -252,13 +224,15 @@ export function Manage() {
 
   useEffect(() => {
     const fetchStudents = async () => {
-      if (token && selectedTab === "Students") {
+      if (selectedTab === "Students") {
         await getStudents();
+      } else if (selectedTab === "Drivers") {
+        await getDrivers();
       }
     };
     fetchStudents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, selectedTab]);
+  }, [selectedTab]);
   return (
     <section className="rounded-md mt-5 h-full bg-white p-3">
       <CardHeader
@@ -335,20 +309,25 @@ export function Manage() {
           )}
 
           {selectedTab === "Drivers" && (
-            <Button
-              onClick={handleOpenLicense}
-              variant="text"
-              className="flex py-2 px-4 rounded-[6px] space-x-3 items-center border-[1px] border-[#DDDDE1]"
-            >
-              <img
-                src={licenseimg}
-                className="w-full max-w-[40px]"
-                alt="License Icon"
-              />
-              <p className="text-[14px] text-[#141516] font-bold capitalize">
-                View Driving Licenses
-              </p>
-            </Button>
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                onClick={() => { if (selectedDriver) handleOpenLicense(); }}
+                disabled={!selectedDriver}
+                variant="text"
+                className={`flex py-2 px-4 rounded-[6px] space-x-3 items-center border-[1px] border-[#DDDDE1] ${!selectedDriver ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <img src={licenseimg} className="w-full max-w-[40px]" alt="License Icon" />
+                <p className="text-[14px] text-[#141516] font-bold capitalize">
+                  View Driving Licenses
+                </p>
+              </Button>
+              {!selectedDriver && (
+                <p className="text-[11px] text-gray-400">Select a driver row to view license</p>
+              )}
+              {selectedDriver && (
+                <p className="text-[11px] text-[#C01824] font-medium">{selectedDriver.name} selected</p>
+              )}
+            </div>
           )}
         </div>
       </CardHeader>
@@ -376,7 +355,7 @@ export function Manage() {
             </tr>
           </thead>
           <tbody>
-            {loading && selectedTab === "Students" ? (
+            {(loading && selectedTab === "Students") || (driversLoading && selectedTab === "Drivers") ? (
               <tr>
                 <td colSpan={STUDENTS_TABLE_HEAD.length + 1} className="px-4 py-8 text-center">
                   <div className="flex flex-col items-center justify-center">
@@ -387,7 +366,7 @@ export function Manage() {
               </tr>
             ) : (selectedTab === "Students"
               ? students
-              : DRIVERS_TABLE_ROWS
+              : drivers
             ).length === 0 && selectedTab === "Students" ? (
               <tr>
                 <td colSpan={STUDENTS_TABLE_HEAD.length + 1} className="px-4 py-8 text-center">
@@ -397,20 +376,25 @@ export function Manage() {
             ) : (
               (selectedTab === "Students"
                 ? students
-                : DRIVERS_TABLE_ROWS
+                : drivers
               ).map((row, index) => {
                 const isLast =
                   index ===
                   (selectedTab === "Students"
                     ? students
-                    : DRIVERS_TABLE_ROWS
+                    : drivers
                   ).length -
                     1;
               const classes = isLast
                 ? "px-4 py-1"
                 : "px-4 py-1 border-b border-[#D9D9D9]";
+              const isDriverSelected = selectedTab === "Drivers" && selectedDriver?.id === row.id;
               return (
-                <tr key={row.id}>
+                <tr
+                  key={row.id}
+                  onClick={selectedTab === "Drivers" ? () => setSelectedDriver(row) : undefined}
+                  className={selectedTab === "Drivers" ? `cursor-pointer ${isDriverSelected ? 'bg-[#FEF2F2]' : 'hover:bg-gray-50'}` : ''}
+                >
                   <td className={classes}>
                     <Checkbox
                       checked={selectedRows[index]}
@@ -617,7 +601,7 @@ export function Manage() {
       <AddStudent open={openAddStudent} handleOpen={handleOpenAddStudent} refreshStudents={getStudents} />
       <EditDriver open={openEditDriver} handleOpen={handleOpenEditDriver} />
       <EditStudent open={openEditStudent} handleOpen={handleOpenEditStudent} />
-      <DrivingLicense open={openLicense} handleOpen={handleOpenLicense} />
+      <DrivingLicense open={openLicense} handleOpen={handleOpenLicense} driver={selectedDriver} />
     </section>
   );
 }

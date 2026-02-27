@@ -305,7 +305,7 @@ export function SignIn() {
               disabled={loading}
             // onClick={handleSchoolLogin}
             >
-              {loading ? 'Logging in...' : 'LOG IN'}
+              {loading ? 'Logging in...' : 'LOG IN AS A SCHOOL'}
             </Button>
             <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleEmployeeLogin}            >
               LOGIN AS A EMPLOYEE
