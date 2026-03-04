@@ -76,8 +76,8 @@ const RealTimeTracking = () => {
     libraries: GOOGLE_LIBRARIES,
   });
 
-  const defaultCenter = { lat: 41.8781, lng: -87.6298 }; // Chicago default
-  const defaultZoom = 12;
+  const defaultCenter = { lat: 20, lng: 0 }; // world view — vehicles load hone par auto-zoom hoga
+  const defaultZoom = 3;
 
   // ---------- MARKERS ----------
   const mapMarkers = useMemo(() => {
@@ -305,7 +305,6 @@ const RealTimeTracking = () => {
         toast.error('Failed to fetch terminal vehicles');
       }
     } catch (error) {
-      console.error('Error fetching terminal vehicles:', error);
       toast.error('Error loading terminal vehicles');
     } finally {
       setLoadingVehicles(false);
@@ -322,7 +321,6 @@ const RealTimeTracking = () => {
         toast.error('Failed to fetch school vehicles');
       }
     } catch (error) {
-      console.error('Error fetching school vehicles:', error);
       toast.error('Error loading school vehicles');
     } finally {
       setLoadingVehicles(false);
@@ -334,24 +332,31 @@ const RealTimeTracking = () => {
       setLoadingDrivers(true);
       const response = await trackingService.getActiveVehicles();
       if (response.ok && response.data) {
-        const driversList = response.data.map((vehicle) => ({
-          name: vehicle.driverName || 'Unknown Driver',
-          busNo: vehicle.numberPlate || vehicle.vehicleName,
-          imgSrc: '',
-          role: 'driver',
-          driverId: vehicle.driverId,
-          vehicleId: vehicle.vehicleId,
-          vehicleName: vehicle.vehicleName,
-          currentLocation: vehicle.currentLocation,
-          routeId: vehicle.routeId,
-          routeName: vehicle.routeName,
-        }));
+        const seen = new Set();
+        const driversList = response.data
+          .filter((vehicle) => {
+            const id = vehicle.driverId;
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          })
+          .map((vehicle) => ({
+            name: vehicle.driverName || 'Unknown Driver',
+            busNo: vehicle.numberPlate || vehicle.vehicleName,
+            imgSrc: '',
+            role: 'driver',
+            driverId: vehicle.driverId,
+            vehicleId: vehicle.vehicleId,
+            vehicleName: vehicle.vehicleName,
+            currentLocation: vehicle.currentLocation,
+            routeId: vehicle.routeId,
+            routeName: vehicle.routeName,
+          }));
         setActiveDrivers(driversList);
       } else {
         toast.error('Failed to fetch active drivers');
       }
     } catch (error) {
-      console.error('Error fetching active drivers:', error);
       toast.error('Error loading drivers');
     } finally {
       setLoadingDrivers(false);
@@ -368,14 +373,13 @@ const RealTimeTracking = () => {
         toast.error('Failed to fetch students on board');
       }
     } catch (error) {
-      console.error('Error fetching students on board:', error);
       toast.error('Error loading students');
     } finally {
       setLoadingStudents(false);
     }
   };
 
-  // ✅ NEW: Fetch ALL active vehicles (main map - page load + polling)
+  // ✅ Fetch ALL active vehicles (main map - page load + polling)
   const fetchAllActiveVehicles = async (silent = false) => {
     try {
       if (!silent) setLoadingAllVehicles(true);
@@ -385,14 +389,13 @@ const RealTimeTracking = () => {
         setLastUpdated(new Date());
       }
     } catch (error) {
-      console.error('Error fetching all active vehicles:', error);
       if (!silent) toast.error('Error loading vehicles');
     } finally {
       if (!silent) setLoadingAllVehicles(false);
     }
   };
 
-  // ✅ NEW: Fetch single vehicle detail (on marker click)
+  // ✅ Fetch single vehicle detail (on marker click)
   const fetchVehicleDetail = async (vehicleId) => {
     try {
       setLoadingVehicleDetail(true);
@@ -400,16 +403,14 @@ const RealTimeTracking = () => {
       if (response.ok && response.data) {
         setVehicleDetail(response.data);
       }
-      // No error toast - we have fallback data from selectedVehicle
     } catch (error) {
-      console.error('Error fetching vehicle detail:', error);
-      // No error toast - we have fallback data from selectedVehicle
+      // silently fail — fallback to selectedVehicle data
     } finally {
       setLoadingVehicleDetail(false);
     }
   };
 
-  // ✅ NEW: Fetch vehicle path/history (for polyline)
+  // ✅ Fetch vehicle path/history (for polyline)
   const fetchVehiclePath = async (vehicleId) => {
     try {
       const response = await trackingService.getVehicleHistory(vehicleId, { limit: 200 });
@@ -422,7 +423,6 @@ const RealTimeTracking = () => {
         setVehiclePath(path);
       }
     } catch (error) {
-      console.error('Error fetching vehicle path:', error);
       setVehiclePath([]);
     }
   };
@@ -440,15 +440,10 @@ const RealTimeTracking = () => {
     if (!vehicleId) return;
 
     // Try to fetch extra details (but don't block if it fails)
-    try {
-      await Promise.all([
-        fetchVehicleDetail(vehicleId).catch(() => {}), // silently fail
-        fetchVehiclePath(vehicleId).catch(() => {}),   // silently fail
-      ]);
-    } catch (err) {
-      // Panel will still show with selectedVehicle data
-      console.log('Extra details not available, showing basic info');
-    }
+    await Promise.all([
+      fetchVehicleDetail(vehicleId).catch(() => {}),
+      fetchVehiclePath(vehicleId).catch(() => {}),
+    ]);
   };
 
   // ✅ NEW: Close vehicle detail panel
@@ -567,6 +562,10 @@ const RealTimeTracking = () => {
 
     return [];
   };
+
+  const filteredStudentsList = useMemo(() => filterStudents(), [
+    selectedInfo, activeTab, studentsOnBoard, students, selectedSchool,
+  ]);
 
   // ✅ Main fix: tab switch pe hard reset (mix + stale list khatam)
   const handleSelectedTabInfo = (tab) => {
@@ -802,8 +801,8 @@ const RealTimeTracking = () => {
                         <Spinner className="h-6 w-6" />
                         <span className="ml-2 text-sm">Loading students...</span>
                       </div>
-                    ) : filterStudents().length > 0 ? (
-                      filterStudents().map((student, index) => (
+                    ) : filteredStudentsList.length > 0 ? (
+                      filteredStudentsList.map((student, index) => (
                         <div key={`student-${student.studentId}-${index}`}>
                           <Button
                             className={`flex items-center gap-3 py-3 pl-4 w-full rounded-none bg-[#fff] transition-all ${

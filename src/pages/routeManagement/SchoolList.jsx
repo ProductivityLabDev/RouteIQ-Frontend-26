@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { format } from "date-fns";
-import { DayPicker } from "react-day-picker";
-import { LakeviewSchoolLogo, RosewoodSchoolLogo, SkylineSchoolLogo, SpringdaleSchoolLogo, calendar, driver, leftArrow, redbusicon, rightArrow } from '@/assets';
-import { ButtonGroup, Button, Input, Popover, PopoverContent, PopoverHandler, Typography } from '@material-tailwind/react';
-import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/24/outline";
-import { studentsData } from '@/data/dummyData';
+import { LakeviewSchoolLogo, RosewoodSchoolLogo, SkylineSchoolLogo, SpringdaleSchoolLogo, driver, leftArrow, redbusicon, rightArrow } from '@/assets';
+import { Button, ButtonGroup, Typography } from '@material-tailwind/react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { fetchInstituteRoutes, fetchRouteStudents } from '@/redux/slices/routesSlice';
 import { routeService } from "@/services/routeService";
@@ -13,9 +9,10 @@ import { toast } from "react-hot-toast";
 export default function SchoolList({ institutes = [], handleMapScreenClick, handleEditRoute }) {
     const [openSchoolId, setOpenSchoolId] = useState(null);
     const [expandedRoutes, setExpandedRoutes] = useState({});
-    const [selectedTabTime, setSelectedTabTime] = useState('AM');
-    const [date, setDate] = useState();
+    const [routeTabTime, setRouteTabTime] = useState({}); // { [routeKey]: 'AM' | 'PM' }
     const [currentPage, setCurrentPage] = useState(1);
+
+    const getTabTime = (routeKey) => routeTabTime[routeKey] ?? 'AM';
     const toggleRoute = (routeId) => {
         setExpandedRoutes(prev => ({
             ...prev,
@@ -85,13 +82,23 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
 
     const handleRouteToggle = (route) => {
         const routeId = route?.routeId || route?.RouteId || route?.routeID || route?.id;
-        toggleRoute(`route-${routeId || route?.routeName || "unknown"}`);
+        const routeKey = `route-${routeId || route?.routeName || "unknown"}`;
+        toggleRoute(routeKey);
         if (!routeId) return;
+        const type = getTabTime(routeKey);
         const already = Array.isArray(studentsByRoute?.[routeId]) && studentsByRoute[routeId].length > 0;
         const isLoading = loading?.routeStudents?.[routeId];
         if (!already && !isLoading) {
-            dispatch(fetchRouteStudents({ routeId, type: "AM" }));
+            dispatch(fetchRouteStudents({ routeId, type }));
         }
+    };
+
+    const handleTabTimeChange = (route, ridx, newType) => {
+        const routeId = route?.routeId || route?.RouteId || route?.routeID || route?.id;
+        const routeKey = `route-${routeId || ridx}`;
+        setRouteTabTime((prev) => ({ ...prev, [routeKey]: newType }));
+        if (!routeId) return;
+        dispatch(fetchRouteStudents({ routeId, type: newType }));
     };
 
     const handleSchoolMap = (inst) => {
@@ -104,7 +111,7 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
             if (!loading?.instituteRoutes?.[inst.instituteId]) {
                 dispatch(fetchInstituteRoutes(inst.instituteId));
             }
-            alert("No routes found for this school yet. Expand and load routes first.");
+            toast.error("No routes found for this school yet. Expand and load routes first.");
         }
     };
 
@@ -444,69 +451,17 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                                     </button>
                                 </div>
                                 <div className='flex items-center gap-5'>
-                                        {/* <div className="md:w-[250px]">
-                                            <Popover placement="bottom">
-                                                <PopoverHandler>
-                                                    <div className="relative">
-                                                        <Input
-                                                            label="Select a Date"
-                                                            onChange={() => null}
-                                                            value={date ? format(date, "PPP") : ""}
-                                                        />
-                                                        <img src={calendar} alt='' className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
-                                                    </div>
-                                                </PopoverHandler>
-                                                <PopoverContent>
-                                                    <DayPicker
-                                                        mode="single"
-                                                        selected={date}
-                                                        onSelect={setDate}
-                                                        showOutsideDays
-                                                        className="border-0"
-                                                        classNames={{
-                                                            caption: "flex justify-center py-1 relative items-center",
-                                                            caption_label: "text-sm font-medium text-gray-900",
-                                                            nav: "flex items-center",
-                                                            nav_button: "h-6 w-6 bg-transparent hover:bg-blue-gray-50 p-1 rounded-md transition-colors duration-300",
-                                                            nav_button_previous: "absolute left-1.5",
-                                                            nav_button_next: "absolute right-1.5",
-                                                            table: "w-full border-collapse",
-                                                            head_row: "flex font-medium text-gray-900",
-                                                            head_cell: "m-0.5 w-9 font-normal text-sm",
-                                                            row: "flex w-full mt-2",
-                                                            cell: "text-gray-600 rounded-md h-9 w-9 text-center text-sm p-0 m-0.5 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-gray-900/20 [&:has([aria-selected].day-outside)]:text-white [&:has([aria-selected])]:bg-gray-900/50 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                                                            day: "h-9 w-9 p-0 font-normal",
-                                                            day_range_end: "day-range-end",
-                                                            day_selected: "rounded-md bg-[#C01824] text-white hover:bg-[#C01824]/90 hover:text-white focus:bg-[#C01824] focus:text-white",
-                                                            day_today: "rounded-md bg-gray-200 text-gray-900",
-                                                            day_outside: "day-outside text-gray-500 opacity-50 aria-selected:bg-gray-500 aria-selected:text-gray-900 aria-selected:bg-opacity-10",
-                                                            day_disabled: "text-gray-500 opacity-50",
-                                                            day_hidden: "invisible",
-                                                        }}
-                                                        components={{
-                                                            IconLeft: ({ ...props }) => (
-                                                                <ChevronLeftIcon {...props} className="h-4 w-4 stroke-2" />
-                                                            ),
-                                                            IconRight: ({ ...props }) => (
-                                                                <ChevronRightIcon {...props} className="h-4 w-4 stroke-2" />
-                                                            ),
-                                                        }}
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-
-                                        </div> */}
-                                    {/* <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='sm'>
-                                        {['AM', 'PM'].map(tab => (
+                                    <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text" size='sm'>
+                                        {['AM', 'PM', 'All'].map(tab => (
                                             <Button
                                                 key={tab}
-                                                className={selectedTabTime === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-2 lg:text-[10px] capitalize font-bold' : 'bg-white px-6 py-2 capitalize font-bold'}
-                                                onClick={() => setSelectedTabTime(tab)}
+                                                className={getTabTime(`route-${route.routeId || ridx}`) === tab ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white px-6 py-2 lg:text-[10px] capitalize font-bold' : 'bg-white px-6 py-2 capitalize font-bold'}
+                                                onClick={(e) => { e.stopPropagation(); handleTabTimeChange(route, ridx, tab); }}
                                             >
                                                 {tab}
                                             </Button>
                                         ))}
-                                    </ButtonGroup> */}
+                                    </ButtonGroup>
                                     <button onClick={() => handleRouteToggle(route)}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${expandedRoutes[`route-${route.routeId || ridx}`] ? 'rotate-180' : ''}`}>
                                             <polyline points="6 9 12 15 18 9"></polyline>
@@ -688,9 +643,9 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                                                 <tr className="bg-gray-100">
                                                     <th className="p-3 text-left font-bold text-[#141516] text-[14]">Route ID</th>
                                                     <th className="p-3 text-left font-bold text-[#141516] text-[14]">Route Animal Icon</th>
-                                                    <th className="p-3 text-left font-bold text-[#141516] text-[14]">Student Name(AM)</th>
+                                                    <th className="p-3 text-left font-bold text-[#141516] text-[14]">Student Name ({getTabTime(`route-${route.routeId || ridx}`)})</th>
                                                     <th className="p-3 text-left font-bold text-[#141516] text-[14]">Time</th>
-                                                    <th className="p-3 text-left font-bold text-[#141516] text-[14]">Pick-up Address(AM)</th>
+                                                    <th className="p-3 text-left font-bold text-[#141516] text-[14]">Pick-up Address ({getTabTime(`route-${route.routeId || ridx}`)})</th>
                                                 </tr>
                                             </thead>
                                             <tbody>

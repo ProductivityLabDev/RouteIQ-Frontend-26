@@ -51,6 +51,15 @@ import {
 } from "@/redux/slices/routesSlice";
 import { fetchStates, fetchCities } from "@/redux/slices/employeSlices";
 
+const INITIAL_TERMINAL_FORM = {
+  name: "",
+  code: "",
+  address: "",
+  city: "",
+  state: "",
+  zipCode: "",
+};
+
 const RouteManagement = () => {
   const dispatch = useAppDispatch();
 
@@ -80,11 +89,7 @@ const RouteManagement = () => {
 
   const [showCard, setShowCard] = useState(true);
 
-  const [currentPage, setCurrentPage] = useState(1);
   const [humburgerBar, setHamburgerBar] = useState(false);
-
-  const [sortColumn, setSortColumn] = useState(null);
-  const [sortDirection, setSortDirection] = useState("asc");
 
   const [modalPosition, setModalPosition] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,14 +98,6 @@ const RouteManagement = () => {
 
   // Add terminal modal
   const [isAddTerminalModalOpen, setIsAddTerminalModalOpen] = useState(false);
-  const INITIAL_TERMINAL_FORM = {
-    name: "",
-    code: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-  };
   const [terminalForm, setTerminalForm] = useState(INITIAL_TERMINAL_FORM);
   const [citySearch, setCitySearch] = useState("");
 
@@ -173,16 +170,6 @@ const RouteManagement = () => {
     }
   };
 
-  const formatTextWithLineBreaks = (text) => {
-    const t = String(text || "");
-    return t.split("\n").map((line, index) => (
-      <React.Fragment key={index}>
-        {line}
-        {index < t.split("\n").length - 1 && <br />}
-      </React.Fragment>
-    ));
-  };
-
   const handleEllipsisClick = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     setModalPosition({
@@ -218,7 +205,6 @@ const RouteManagement = () => {
     const resolvedId = resolveRouteId(routeOrTrip);
 
     if (!resolvedId) {
-      console.warn("⚠️ Route ID not found for map call", routeOrTrip);
       toast.error("Route ID not found");
       return;
     }
@@ -455,7 +441,7 @@ const RouteManagement = () => {
       <Toaster position="top-right" reverseOrder={false} toastOptions={{ duration: 3000 }} />
 
       {openMapScreen ? (
-        routesLoading?.mapView ? (
+        mapView?.loading ? (
           <div className="flex flex-col items-center justify-center h-full py-12">
             <Spinner className="h-10 w-10 text-[#C01824]" />
             <Typography className="mt-3 text-gray-600 font-medium">Loading map data...</Typography>
