@@ -25,6 +25,16 @@ const VehicleManagement = () => {
     const { terminals, buses, loading } = useSelector((state) => state.buses);
     const isLoadingBuses = loading?.buses || false;
 
+    // Grid view needs buses grouped by terminal; list view uses flat array
+    const busesGrouped = Array.isArray(buses)
+        ? buses.reduce((acc, bus) => {
+            const key = bus.TerminalName || bus.terminalName || 'Unknown';
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(bus);
+            return acc;
+          }, {})
+        : (buses && typeof buses === 'object' ? buses : {});
+
     const [isNavigate, setIsNavigate] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
     const [isSeeMoreInfo, setIsSeeMoreInfo] = useState(false);
@@ -308,12 +318,12 @@ const VehicleManagement = () => {
                                 <p className="text-sm mt-1">Use “Add Bus” to create the first vehicle.</p>
                             </div>
                         ) : toogle ? (
-                            <div className={`flex flex-wrap justify-center gap-6 px-2 ${buses.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
-                                {Object.keys(buses).map((terminal) => (
+                            <div className={`flex flex-wrap justify-center gap-6 px-2 ${Array.isArray(buses) && buses.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
+                                {Object.keys(busesGrouped).map((terminal) => (
                                     <div key={terminal} className="mb-6">
                                         <Typography className="text-[16px] font-extrabold text-black mb-2">{terminal}</Typography>
                                         <div className="flex flex-wrap justify-center gap-6">
-                                            {buses[terminal].map((vehicle) => (
+                                            {busesGrouped[terminal].map((vehicle) => (
                                                 <Card key={vehicle.id} className="w-[330px] h-[330px] shadow-2xl rounded-[16px] mt-4 overflow-hidden p-2 flex flex-col">
                                                     <div className="flex justify-end items-end px-3 py-2">
                                                         <div className="relative">

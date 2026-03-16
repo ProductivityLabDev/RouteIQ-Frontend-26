@@ -146,6 +146,146 @@ export interface EmployeeDocument {
   uploadedAt: string;
 }
 
+// ─── Insights Types ──────────────────────────────────────────────────────────
+
+export interface InsightsData {
+  takeHome: number;
+  ytd: number;
+  payRate: {
+    hourlyRate: number;
+    payTypeId: number;
+    payCycleId: number;
+    positionType: number;
+  };
+  pto: {
+    allowanceDays: number;
+    usedDays: number;
+    availableDays: number;
+    pendingCount: number;
+  };
+  ytdTrips: {
+    trips: number;
+    hours: number;
+    days: number;
+  };
+}
+
+// ─── Payroll Types ────────────────────────────────────────────────────────────
+
+export interface PayrollEmployee {
+  employeeId: number;
+  name: string;
+  email: string;
+  phone: string;
+  ssn: string;
+  payGrade: string;
+  payCycle: string;
+  payType: string;
+  position: string;
+  terminal: string;
+}
+
+export interface PayrollPrevNext {
+  payrollId: number;
+  netSalary: number;
+  grossPay: number;
+  periodStart: string;
+  periodEnd: string;
+  status: string;
+}
+
+export interface PayrollData {
+  hasPayroll: boolean;
+  payrollId: number;
+  voucherNo: string;
+  employee: PayrollEmployee;
+  period: {
+    start: string;
+    end: string;
+    presentDays: number;
+    absentDays: number;
+    workingDays: number;
+    totalHours: number;
+  };
+  earnings: { routeRate: number; totalHours: number; grossPay: number };
+  withholdings: {
+    federal: { amount: number; rate: number };
+    state: { amount: number; rate: number };
+    local: { amount: number; rate: number };
+    medicare: { amount: number; rate: number };
+    socialSecurity: { amount: number; rate: number };
+    totalWithheld: number;
+  };
+  benefits: {
+    plan401K: number;
+    companyMatch: number;
+    healthInsurance: string;
+    savingsAccount: number;
+    reimbursement: number;
+    reimbursementNote: string;
+    ptoAllowanceDays: number;
+    totalBenefits: number;
+  };
+  summary: {
+    grossPay: number;
+    totalDeductions: number;
+    totalTaxes: number;
+    totalBenefits: number;
+    netPay: number;
+    paymentMethod: string;
+  };
+  previousPayroll: PayrollPrevNext | null;
+  upcomingPayroll: PayrollPrevNext | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface PayrollHistoryItem {
+  payrollId: number;
+  periodStart: string;
+  periodEnd: string;
+  grossPay: number;
+  taxes: number;
+  deductions: number;
+  netSalary: number;
+  status: string;
+  createdAt: string;
+}
+
+// ─── Insights Service ─────────────────────────────────────────────────────────
+
+export const employeeInsightsService = {
+  getInsights: async (month?: number, year?: number): Promise<ApiResponse<InsightsData>> => {
+    const params: Record<string, number> = {};
+    if (month !== undefined) params.month = month;
+    if (year !== undefined) params.year = year;
+    const response = await apiClient.get("/employee/dashboard/insights", { params });
+    return { ok: true, data: response.data?.data };
+  },
+};
+
+// ─── Payroll Service ──────────────────────────────────────────────────────────
+
+export const employeePayrollService = {
+  getPayroll: async (payrollId?: number): Promise<ApiResponse<PayrollData>> => {
+    const params = payrollId ? { payrollId } : {};
+    const response = await apiClient.get("/employee/payroll", { params });
+    return { ok: true, data: response.data?.data };
+  },
+
+  getPayrollHistory: async (): Promise<ApiResponse<PayrollHistoryItem[]>> => {
+    const response = await apiClient.get("/employee/payroll/history");
+    return { ok: true, data: response.data?.data };
+  },
+
+  getDailyEarnings: async (employeeId: number, startDate: string, endDate: string) => {
+    const response = await apiClient.get(`/payroll/driver/${employeeId}/daily-earnings`, {
+      params: { startDate, endDate },
+    });
+    return { ok: true, data: response.data?.data };
+  },
+};
+
 // ─── Employee Module Service (Time-off, Schedule, Profile, Documents) ─────────
 
 export const employeeModuleService = {

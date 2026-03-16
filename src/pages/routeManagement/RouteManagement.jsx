@@ -99,6 +99,7 @@ const RouteManagement = () => {
   // Add terminal modal
   const [isAddTerminalModalOpen, setIsAddTerminalModalOpen] = useState(false);
   const [terminalForm, setTerminalForm] = useState(INITIAL_TERMINAL_FORM);
+  const [terminalErrors, setTerminalErrors] = useState({});
   const [citySearch, setCitySearch] = useState("");
 
   // ---------------------------
@@ -121,6 +122,7 @@ const RouteManagement = () => {
   // ---------------------------
   const resetTerminalForm = () => {
     setTerminalForm(INITIAL_TERMINAL_FORM);
+    setTerminalErrors({});
     setCitySearch("");
   };
 
@@ -132,21 +134,31 @@ const RouteManagement = () => {
   const handleTerminalFormChange = (e) => {
     const { name, value } = e.target;
     setTerminalForm((prev) => ({ ...prev, [name]: value }));
+    if (terminalErrors[name]) setTerminalErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleCreateTerminalSubmit = async () => {
+    const name = String(terminalForm.name || "").trim();
+    const code = String(terminalForm.code || "").trim();
+
+    const errs = {};
+    if (!name) errs.name = "Terminal Name is required";
+    if (!code) errs.code = "Terminal Code is required";
+
+    if (Object.keys(errs).length > 0) {
+      setTerminalErrors(errs);
+      return;
+    }
+
     try {
       const payload = {
-        name: String(terminalForm.name || "").trim(),
-        code: String(terminalForm.code || "").trim(),
+        name,
+        code,
         address: terminalForm.address ? String(terminalForm.address).trim() : undefined,
         city: terminalForm.city ? String(terminalForm.city).trim() : undefined,
         state: terminalForm.state ? String(terminalForm.state).trim() : undefined,
         zipCode: terminalForm.zipCode ? String(terminalForm.zipCode).trim() : undefined,
       };
-
-      if (!payload.name) return toast.error("Terminal Name is required");
-      if (!payload.code) return toast.error("Terminal Code is required");
 
       const result = await dispatch(createTerminal(payload));
       if (createTerminal.fulfilled.match(result)) {
@@ -157,8 +169,7 @@ const RouteManagement = () => {
         toast.error(String(result.payload || "Failed to create terminal"));
       }
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to create terminal");
+      toast.error(err?.message || "Failed to create terminal");
     }
   };
 
@@ -671,7 +682,7 @@ const RouteManagement = () => {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col">
             <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
-              Terminal Name
+              Terminal Name <span className="text-red-500">*</span>
             </Typography>
             <Input
               size="lg"
@@ -679,14 +690,16 @@ const RouteManagement = () => {
               name="name"
               value={terminalForm.name}
               onChange={handleTerminalFormChange}
-              className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+              error={!!terminalErrors.name}
+              className={terminalErrors.name ? "!border-red-400 focus:!border-red-500" : "!border-t-blue-gray-200 focus:!border-t-gray-900"}
               labelProps={{ className: "before:content-none after:content-none" }}
             />
+            {terminalErrors.name && <p className="text-red-500 text-xs mt-1">{terminalErrors.name}</p>}
           </div>
 
           <div className="flex flex-col">
             <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
-              Terminal Code
+              Terminal Code <span className="text-red-500">*</span>
             </Typography>
             <Input
               size="lg"
@@ -694,9 +707,11 @@ const RouteManagement = () => {
               name="code"
               value={terminalForm.code}
               onChange={handleTerminalFormChange}
-              className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+              error={!!terminalErrors.code}
+              className={terminalErrors.code ? "!border-red-400 focus:!border-red-500" : "!border-t-blue-gray-200 focus:!border-t-gray-900"}
               labelProps={{ className: "before:content-none after:content-none" }}
             />
+            {terminalErrors.code && <p className="text-red-500 text-xs mt-1">{terminalErrors.code}</p>}
           </div>
 
           <div className="flex flex-col">
@@ -714,7 +729,7 @@ const RouteManagement = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col">
               <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
                 City
@@ -802,7 +817,7 @@ const RouteManagement = () => {
               </select>
             </div>
 
-            <div className="flex flex-col">
+            <div className="flex flex-col md:col-span-2">
               <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
                 Zip Code
               </Typography>

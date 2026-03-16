@@ -1,127 +1,121 @@
-import React from 'react'
+import React, { useEffect } from 'react';
+import dayjs from 'dayjs';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchDriverTimeOff, approveTimeOffRequest, rejectTimeOffRequest } from '@/redux/slices/payrollSlice';
 
-const RequestModal = ({ closeModal }) => {
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white w-full max-w-5xl p-6 rounded-md shadow-lg relative">
-                <button
-                    onClick={closeModal}
-                    className="absolute top-4 right-4 text-gray-700 text-2xl font-bold"
-                >
-                    ✕
-                </button>
+const fmtDate = (val) => val ? dayjs(val).format('MMM DD, YYYY') : '—';
 
-                <h2 className="text-2xl font-bold mb-6">Time-Off Request</h2>
+export default function RequestModal({ employeeId, closeModal }) {
+  const dispatch = useDispatch();
+  const { driverTimeOff, loading } = useSelector((s) => s.payroll);
 
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Date</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punch In</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punched Out</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Work Hours</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td className="border border-gray-200 py-3 px-3">6/19/14</td>
-                                <td className="border border-gray-200 py-3 px-3">01:11</td>
-                                <td className="border border-gray-200 py-3 px-3">00:36</td>
-                                <td className="border border-gray-200 py-3 px-3">15h 40m</td>
-                                <td className="border border-gray-200 py-3 px-3">
-                                    <div className="flex gap-2">
-                                        <button className="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>
-                                        <button className="bg-red-600 text-white px-3 py-1 rounded text-sm">Reject</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="border border-gray-200 py-3 px-3">10/28/12</td>
-                                <td className="border border-gray-200 py-3 px-3">08:00</td>
-                                <td className="border border-gray-200 py-3 px-3">12:34</td>
-                                <td className="border border-gray-200 py-3 px-3">11h 45m</td>
-                                <td className="border border-gray-200 py-3 px-3">
-                                    <div className="flex gap-2">
-                                        <button className="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>
-                                        <button className="bg-red-600 text-white px-3 py-1 rounded text-sm">Reject</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="border border-gray-200 py-3 px-3">2/11/12</td>
-                                <td className="border border-gray-200 py-3 px-3">02:45</td>
-                                <td className="border border-gray-200 py-3 px-3">05:12</td>
-                                <td className="border border-gray-200 py-3 px-3">10h 25m</td>
-                                <td className="border border-gray-200 py-3 px-3">
-                                    <div className="flex gap-2">
-                                        <button className="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>
-                                        <button className="bg-red-600 text-white px-3 py-1 rounded text-sm">Reject</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+  useEffect(() => {
+    if (!employeeId) return;
+    dispatch(fetchDriverTimeOff(employeeId));
+  }, [dispatch, employeeId]);
 
-                {/* Attendance Request */}
-                <h2 className="text-2xl font-bold my-6">Approval History</h2>
+  // Combine both arrays — API sometimes returns pending items inside approvalHistory
+  const allRequests = [
+    ...(driverTimeOff?.pending || []),
+    ...(driverTimeOff?.approvalHistory || []),
+  ];
+  const pending = allRequests.filter((r) => (r.status || '').toLowerCase() === 'pending');
+  const history = allRequests.filter((r) => (r.status || '').toLowerCase() !== 'pending');
 
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Date</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punch In</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punched Out</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Work Hours</th>
-                                <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td className="border border-gray-200 py-3 px-3">6/19/14</td>
-                                <td className="border border-gray-200 py-3 px-3">01:11</td>
-                                <td className="border border-gray-200 py-3 px-3">00:36</td>
-                                <td className="border border-gray-200 py-3 px-3">15h 40m</td>
-                                <td className="border border-gray-200 py-3 px-3">
-                                    <div className="flex gap-2">
-                                        <button className="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>
-                                        <button className="bg-red-600 text-white px-3 py-1 rounded text-sm">Reject</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="border border-gray-200 py-3 px-3">10/28/12</td>
-                                <td className="border border-gray-200 py-3 px-3">08:00</td>
-                                <td className="border border-gray-200 py-3 px-3">12:34</td>
-                                <td className="border border-gray-200 py-3 px-3">11h 45m</td>
-                                <td className="border border-gray-200 py-3 px-3">
-                                    <div className="flex gap-2">
-                                        <button className="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>
-                                        <button className="bg-red-600 text-white px-3 py-1 rounded text-sm">Reject</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="border border-gray-200 py-3 px-3">2/11/12</td>
-                                <td className="border border-gray-200 py-3 px-3">02:45</td>
-                                <td className="border border-gray-200 py-3 px-3">05:12</td>
-                                <td className="border border-gray-200 py-3 px-3">10h 25m</td>
-                                <td className="border border-gray-200 py-3 px-3">
-                                    <div className="flex gap-2">
-                                        <button className="bg-green-500 text-white px-3 py-1 rounded text-sm">Approve</button>
-                                        <button className="bg-red-600 text-white px-3 py-1 rounded text-sm">Reject</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+  const refreshTimeOff = () => {
+    if (!employeeId) return;
+    dispatch(fetchDriverTimeOff(employeeId));
+  };
+
+  const handleApprove = async (requestId) => {
+    await dispatch(approveTimeOffRequest({ requestId, note: 'Approved' }));
+    refreshTimeOff();
+  };
+
+  const handleReject = async (requestId) => {
+    await dispatch(rejectTimeOffRequest({ requestId, note: 'Rejected' }));
+    refreshTimeOff();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[9999]">
+      <div className="bg-white w-full max-w-5xl p-6 rounded-md shadow-lg relative max-h-[90vh] overflow-y-auto">
+        <button
+          onClick={closeModal}
+          className="absolute top-4 right-4 text-gray-700 text-2xl font-bold"
+        >
+          ✕
+        </button>
+
+        <h2 className="text-2xl font-bold mb-6">Time-Off Request</h2>
+
+        {loading.timeOff ? (
+          <div className="py-12 text-center text-gray-500">Loading...</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto mb-8">
+              <h3 className="text-lg font-semibold mb-3">Pending</h3>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Date</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punch In</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punched Out</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Work Hours</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Reason</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pending.length === 0 ? (
+                    <tr><td colSpan={6} className="border border-gray-200 py-4 text-center text-gray-500">No pending requests.</td></tr>
+                  ) : pending.map((r) => (
+                    <tr key={r.requestId}>
+                      <td className="border border-gray-200 py-3 px-3">{fmtDate(r.requestDate)}</td>
+                      <td className="border border-gray-200 py-3 px-3">{r.punchIn}</td>
+                      <td className="border border-gray-200 py-3 px-3">{r.punchOut}</td>
+                      <td className="border border-gray-200 py-3 px-3">{r.workHours}h</td>
+                      <td className="border border-gray-200 py-3 px-3">{r.reason}</td>
+                      <td className="border border-gray-200 py-3 px-3">
+                        <div className="flex gap-2">
+                          <button className="bg-green-500 text-white px-3 py-1 rounded text-sm" onClick={() => handleApprove(r.requestId)} disabled={loading.approveReject}>Approve</button>
+                          <button className="bg-red-600 text-white px-3 py-1 rounded text-sm" onClick={() => handleReject(r.requestId)} disabled={loading.approveReject}>Reject</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-        </div>
-    )
-}
 
-export default RequestModal
+            <h3 className="text-lg font-semibold mb-3">Approval History</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Request ID</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Status</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Approved By</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Approved At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.length === 0 ? (
+                    <tr><td colSpan={4} className="border border-gray-200 py-4 text-center text-gray-500">No history.</td></tr>
+                  ) : history.map((h) => (
+                    <tr key={h.requestId}>
+                      <td className="border border-gray-200 py-3 px-3">{h.requestId}</td>
+                      <td className="border border-gray-200 py-3 px-3">{h.status}</td>
+                      <td className="border border-gray-200 py-3 px-3">{h.approvedBy}</td>
+                      <td className="border border-gray-200 py-3 px-3">{fmtDate(h.approvedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

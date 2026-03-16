@@ -52,10 +52,18 @@ const Login = () => {
 
             const decoded = jwtDecode(token)
 
+            // Role check on login — sirf DRIVER allow
+            if (decoded.role?.toUpperCase() !== 'DRIVER') {
+                setError('Access denied. This portal is for employees only.')
+                setLoading(false)
+                return
+            }
+
             // Store basic employee info
             const employeeUser = {
                 username: decoded.username || email,
-                role: decoded.role || 'employee',
+                role: decoded.role,
+                employeeId: decoded.employeeId ?? null,
                 modules: {},
                 control: 'READ_ONLY',
             }

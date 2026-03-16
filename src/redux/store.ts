@@ -15,6 +15,7 @@ import chatReducer from "./slices/chatSlice";
 import employeeDashboardReducer from "./slices/employeeDashboardSlice";
 import vendorDashboardReducer from "./slices/vendorDashboardSlice";
 import schoolDashboardReducer from "./slices/schoolDashboardSlice";
+import payrollReducer from "./slices/payrollSlice";
 
 const persistConfig = {
   key: "root",
@@ -44,6 +45,7 @@ const rootReducer = combineReducers({
   employeeDashboard: persistReducer(employeeDashboardPersistConfig, employeeDashboardReducer),
   vendorDashboard: vendorDashboardReducer,
   schoolDashboard: schoolDashboardReducer,
+  payroll: payrollReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

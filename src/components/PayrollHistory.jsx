@@ -1,9 +1,13 @@
 import { moneyBag } from '@/assets';
-import { payrollData } from '@/data/dummyData';
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
+import dayjs from 'dayjs';
 
 const PayrollHistory = () => {
     const [selectedImage, setSelectedImage] = useState(null);
+    const payrollHistory = useSelector((state) => state.employeeDashboard.payrollHistory);
+
+    const fmt = (v) => v == null ? '--' : `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     return (
         <div className="bg-white rounded-lg shadow-sm p-6 mt-5">
@@ -25,12 +29,14 @@ const PayrollHistory = () => {
                 </div>
                 </div>
 
-                {payrollData.map((item) => (
-                    <div key={item.id} className="grid grid-cols-3 py-3 px-4">
-                        <div className="text-sm text-[#0A0A0A] font-normal">{item.date}</div>
-                        <div className="text-sm text-[#0A0A0A] font-normal">{item.amount}</div>
+                {payrollHistory.map((item) => (
+                    <div key={item.payrollId} className="grid grid-cols-3 py-3 px-4">
+                        <div className="text-sm text-[#0A0A0A] font-normal">
+                            {dayjs(item.periodStart).format('MMM D')} – {dayjs(item.periodEnd).format('MMM D, YYYY')}
+                        </div>
+                        <div className="text-sm text-[#0A0A0A] font-normal">{fmt(item.netSalary)}</div>
                         <div>
-                            <button onClick={() => setSelectedImage(item.invoiceImage)} className="flex items-center text-sm text-[#C01824] text-bold bg-white border border-gray-200 rounded-md px-3 py-1">
+                            <button onClick={() => setSelectedImage(item.fileUrl ?? null)} className="flex items-center text-sm text-[#C01824] text-bold bg-white border border-gray-200 rounded-md px-3 py-1">
                                 <img src={moneyBag} />
                                 <span>View Pay Stub</span>
                             </button>

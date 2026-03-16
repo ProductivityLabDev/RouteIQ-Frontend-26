@@ -14,7 +14,6 @@ import { Toaster, toast } from 'react-hot-toast';
 const AccessManagement = () => {
     const dispatch = useAppDispatch();
     const { deleting } = useAppSelector((state) => state.users);
-console.log("Google Maps API Key:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
     const [createAccess, setCreateAccess] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -23,13 +22,11 @@ console.log("Google Maps API Key:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
     const [editUser, setEditUser] = useState(null); // User data for editing
 
     const handleOpenDeleteModal = (userId) => {
-        console.log("🗑️ Opening delete modal for user ID:", userId);
         setSelectedUserId(userId);
         setIsDeleteModalOpen(true);
     };
 
     const handleEditUser = (user) => {
-        console.log("✏️ Opening edit form for user:", user);
         setEditUser(user);
         setCreateAccess(true);
     };
@@ -43,15 +40,12 @@ console.log("Google Maps API Key:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
     // DELETE API - Called when user clicks "Yes, Delete" in modal
     const handleDeleteUser = async () => {
         if (!selectedUserId) {
-            console.error("❌ No user ID selected for deletion");
             toast.error("No user selected for deletion")
             setIsDeleteModalOpen(false);
             return;
         }
 
         try {
-            console.log("🗑️ [Redux] Attempting to delete user with ID:", selectedUserId);
-
             const result = await dispatch(deleteUser(selectedUserId));
 
             if (deleteUser.fulfilled.match(result)) {
@@ -67,7 +61,6 @@ console.log("Google Maps API Key:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
                 toast.error(`Error: ${errorMessage}`);
             }
         } catch (err) {
-            console.error("❌ [Redux] Delete error:", err);
             toast.error(err.message || "Failed to delete user")
         }
     };

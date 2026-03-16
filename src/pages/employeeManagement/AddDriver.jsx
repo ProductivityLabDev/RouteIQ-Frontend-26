@@ -1,297 +1,161 @@
 import { pickFileIcon } from '@/assets';
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { fetchPayTypes, fetchPayCycles, fetchTerminals, fetchStates, fetchCities, createEmployee } from '@/redux/slices/employeSlices';
 
+// ── Reusable helpers ────────────────────────────────────────────────────────
+const Field = ({ label, required, error, touched, children }) => (
+    <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium text-black">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        {children}
+        {error && touched && <p className="text-red-500 text-xs">{error}</p>}
+    </div>
+);
+
+const inputCls = (err, touch) =>
+    `outline-none border rounded-md py-2.5 px-4 bg-[#F5F6FA] w-full text-sm ${err && touch ? 'border-red-500' : 'border-[#D5D5D5]'}`;
+
+const SectionTitle = ({ children }) => (
+    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide col-span-2 border-b pb-1 mb-1">{children}</h3>
+);
+
+// ── File upload box ─────────────────────────────────────────────────────────
+const FileUpload = ({ label, file, fileRef, onChange, onRemove }) => (
+    <div>
+        <label className="text-sm font-medium text-black">{label}</label>
+        {!file ? (
+            <div className="mt-1 border border-dashed border-[#EBB7BB] rounded-lg h-24 flex items-center justify-center gap-3 relative hover:border-[#C01824] transition-colors cursor-pointer">
+                <input
+                    type="file"
+                    ref={fileRef}
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={onChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <img src={pickFileIcon} className="w-8 h-8" alt="upload" />
+                <p className="text-sm text-red-600">Drag & drop or click to upload</p>
+            </div>
+        ) : (
+            <div className="mt-1 border-2 border-green-500 rounded-lg p-3 bg-green-50 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                    <svg className="w-6 h-6 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                        <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                </div>
+                <button type="button" onClick={onRemove} className="text-red-500 hover:text-red-700 ml-4 shrink-0">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        )}
+    </div>
+);
+
+// ── Validation ──────────────────────────────────────────────────────────────
+const INITIAL_FORM = {
+    name: '', address: '', city: '', stateId: '', zipCode: '',
+    dateOfBirth: '', joiningDate: '', positionType: '', email: '',
+    payGrade: '', routeRate: '', payCycle: '', payTypeId: '',
+    fuelCardCode: '', terminalAssigned: '', phone: '',
+    socialSecurityNo: '', accountNumber: '', routingNo: '',
+};
+
+const validateField = (name, value) => {
+    const str = value == null ? '' : String(value).trim();
+    switch (name) {
+        case 'name':
+            if (!str) return 'Name is required';
+            if (str.length < 2) return 'Minimum 2 characters';
+            break;
+        case 'address':
+            if (!str) return 'Address is required';
+            break;
+        case 'city':
+            if (!str) return 'City is required';
+            break;
+        case 'stateId':
+            if (!str) return 'State is required';
+            break;
+        case 'zipCode':
+            if (!str) return 'Zip code is required';
+            if (!/^\d{5}(-\d{4})?$/.test(str)) return 'Invalid zip code (e.g. 12345)';
+            break;
+        case 'dateOfBirth': {
+            if (!str) return 'Date of birth is required';
+            const age = new Date().getFullYear() - new Date(str).getFullYear();
+            if (age < 18 || age > 100) return 'Age must be between 18–100';
+            break;
+        }
+        case 'joiningDate':
+            if (!str) return 'Start date is required';
+            if (new Date(str) > new Date()) return 'Cannot be in the future';
+            break;
+        case 'email':
+            if (!str) return 'Email is required';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return 'Invalid email address';
+            break;
+        case 'phone':
+            if (str) {
+                const digits = str.replace(/[\s\-()]/g, '');
+                if (digits.length < 10 || digits.length > 15) return 'Must be 10–15 digits';
+            }
+            break;
+        case 'payCycle':
+            if (!str) return 'Pay cycle is required';
+            break;
+        case 'payTypeId':
+            if (!str) return 'Pay type is required';
+            break;
+        case 'terminalAssigned':
+            if (!str) return 'Terminal is required';
+            break;
+        case 'routeRate':
+            if (str && (isNaN(parseFloat(str)) || parseFloat(str) < 0)) return 'Must be a positive number';
+            break;
+        default:
+            break;
+    }
+    return '';
+};
+
+const REQUIRED = ['name', 'address', 'city', 'stateId', 'zipCode', 'dateOfBirth', 'joiningDate', 'email', 'payCycle', 'payTypeId', 'terminalAssigned'];
+
+// ── Component ───────────────────────────────────────────────────────────────
 const AddDriver = ({ handleCancel }) => {
     const dispatch = useDispatch();
-    const { payTypes, payCycles, terminals, states, cities, loading, error } = useSelector((state) => state.employees);
+    const { payTypes, payCycles, terminals, states, cities, loading } = useSelector((s) => s.employees);
 
-    const [submitting, setSubmitting] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [errors, setErrors] = useState({});
-    const [touched, setTouched] = useState({});
-    const [selectedFile, setSelectedFile] = useState(null); // general filePath
-    const [formData, setFormData] = useState({
-        name: "",
-        adress: "",
-        city: "",
-        stateId: "",
-        zipCode: "",
-        dop: "",
-        joiningDate: "",
-        positionType: "",
-        email: "",
-        payGrade: "",
-        routeRate: "",
-        payCycle: "",
-        payType: "",
-        fuelCardCode: "",
-        terminalAssigmed: "",
-        phone: "",
-        payTypeId: "",
-    });
-    
-    // File ref for file upload
-    const fileRef = useRef(null); // general filePath
+    const [formData, setFormData] = useState(INITIAL_FORM);
+    const [errors, setErrors]     = useState({});
+    const [touched, setTouched]   = useState({});
 
-    // Additional file uploaders
+    // Photo upload
+    const fileRef = useRef(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+
+    // License upload (Driver only)
+    const licenseRef = useRef(null);
     const [licenseFile, setLicenseFile] = useState(null);
-    const [certificateFile, setCertificateFile] = useState(null);
-    const licenseFileRef = useRef(null);
-    const certificateFileRef = useRef(null);
 
-    // City dropdown (searchable) state
-    const [citySearchTerm, setCitySearchTerm] = useState("");
-    const [showCityDropdown, setShowCityDropdown] = useState(false);
-    const [selectedCityName, setSelectedCityName] = useState("");
+    // Certificate upload
+    const certRef = useRef(null);
+    const [certFile, setCertFile] = useState(null);
+
+    // City searchable dropdown
     const cityDropdownRef = useRef(null);
-
-    // Validation function
-    const validateForm = () => {
-        const newErrors = {};
-
-        // Required fields validation
-        if (!formData.name || formData.name.trim() === "") {
-            newErrors.name = "Name is required";
-        } else if (formData.name.trim().length < 2) {
-            newErrors.name = "Name must be at least 2 characters";
-        }
-
-        if (!formData.adress || formData.adress.trim() === "") {
-            newErrors.adress = "Address is required";
-        }
-
-        if (!formData.city || formData.city.trim() === "") {
-            newErrors.city = "City is required";
-        }
-
-        if (!formData.stateId || formData.stateId === "") {
-            newErrors.stateId = "State is required";
-        }
-
-        if (!formData.zipCode || formData.zipCode.trim() === "") {
-            newErrors.zipCode = "Zip Code is required";
-        } else {
-            const zipRegex = /^\d{5}(-\d{4})?$/;
-            if (!zipRegex.test(formData.zipCode.trim())) {
-                newErrors.zipCode = "Please enter a valid zip code (e.g., 12345 or 12345-6789)";
-            }
-        }
-
-        if (!formData.dop || formData.dop.trim() === "") {
-            newErrors.dop = "Date of Birth is required";
-        } else {
-            const dob = new Date(formData.dop);
-            const today = new Date();
-            const age = today.getFullYear() - dob.getFullYear();
-            if (age < 18 || age > 100) {
-                newErrors.dop = "Date of Birth must be valid (age 18-100)";
-            }
-        }
-
-        if (!formData.joiningDate || formData.joiningDate.trim() === "") {
-            newErrors.joiningDate = "Start Date is required";
-        } else {
-            const joinDate = new Date(formData.joiningDate);
-            const today = new Date();
-            if (joinDate > today) {
-                newErrors.joiningDate = "Start Date cannot be in the future";
-            }
-        }
-
-        if (!formData.email || formData.email.trim() === "") {
-            newErrors.email = "Email is required";
-        } else {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(formData.email.trim())) {
-                newErrors.email = "Please enter a valid email address";
-            }
-        }
-
-        // Phone validation (if phone field exists in formData)
-        if (formData.phone) {
-            const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
-            if (cleanPhone.length < 10 || cleanPhone.length > 15) {
-                newErrors.phone = "Phone number must be between 10-15 digits";
-            }
-        }
-
-        // Position Type validation (if field exists in form)
-        // Note: If positionType field is not in the form, remove this validation
-        // if (!formData.positionType || formData.positionType.trim() === "") {
-        //     newErrors.positionType = "Position Type is required";
-        // }
-
-        if (!formData.payCycle || formData.payCycle.trim() === "") {
-            newErrors.payCycle = "Pay Cycle is required";
-        }
-
-        if (!formData.payTypeId || formData.payTypeId === "" || formData.payTypeId === 0) {
-            newErrors.payTypeId = "Pay Type is required";
-        }
-
-        if (!formData.terminalAssigmed || formData.terminalAssigmed === "" || formData.terminalAssigmed === 0) {
-            newErrors.terminalAssigmed = "Terminal Assigned is required";
-        }
-
-        // Validate routeRate if provided (should be a number)
-        if (formData.routeRate && formData.routeRate.trim() !== "") {
-            if (isNaN(parseFloat(formData.routeRate)) || parseFloat(formData.routeRate) < 0) {
-                newErrors.routeRate = "Route Rate must be a positive number";
-            }
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleBlur = (fieldName) => {
-        setTouched(prev => ({ ...prev, [fieldName]: true }));
-        // Validate single field on blur
-        validateForm();
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-        // Clear error when user starts typing
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: "" }));
-        }
-    };
-
-    const handleFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-        }
-    };
-
-    const handleRemoveFile = () => {
-        setSelectedFile(null);
-        if (fileRef.current) {
-            fileRef.current.value = "";
-        }
-    };
-
-    const handleLicenseFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setLicenseFile(file);
-        }
-    };
-
-    const handleRemoveLicenseFile = () => {
-        setLicenseFile(null);
-        if (licenseFileRef.current) {
-            licenseFileRef.current.value = "";
-        }
-    };
-
-    const handleCertificateFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setCertificateFile(file);
-        }
-    };
-
-    const handleRemoveCertificateFile = () => {
-        setCertificateFile(null);
-        if (certificateFileRef.current) {
-            certificateFileRef.current.value = "";
-        }
-    };
-
-    // ---------- CREATE EMPLOYEE ----------
-
-    const handleSubmitEmployee = async (e) => {
-        e.preventDefault();
-
-        // Validate form before submitting
-        if (!validateForm()) {
-            const errorMessages = Object.values(errors).filter(msg => msg);
-            errorMessages.forEach(error => {
-                toast.error(error);
-            });
-            return;
-        }
-
-        try {
-            // Collect files from refs
-            const file = fileRef.current?.files?.[0] || selectedFile || null;
-            const license = licenseFileRef.current?.files?.[0] || licenseFile || null;
-            const certificate = certificateFileRef.current?.files?.[0] || certificateFile || null;
-
-            // Prepare employee data with files
-            const employeeData = {
-                ...formData,
-                status: "Active",
-                filePath: file,
-                drivingLicenses: license,
-                certificates: certificate,
-                emergencyContact: formData.phone || "", // Map phone to emergencyContact
-            };
-            
-            console.log("📤 [AddDriver] Submitting employee data:", {
-                ...employeeData,
-                filePath: file ? file.name : "No file",
-                drivingLicenses: license ? license.name : "No license file",
-                certificates: certificate ? certificate.name : "No certificate file",
-                payTypeId: employeeData.payTypeId,
-            });
-
-            const result = await dispatch(createEmployee(employeeData));
-
-            if (createEmployee.fulfilled.match(result)) {
-                toast.success(result.payload?.message || "Employee created successfully!");
-                // Reset form
-                setFormData({
-                    name: "",
-                    adress: "",
-                    city: "",
-                    zipCode: "",
-                    dop: "",
-                    joiningDate: "",
-                    positionType: "",
-                    email: "",
-                    payGrade: "",
-                    routeRate: "",
-                    payCycle: "",
-                    payType: "",
-                    fuelCardCode: "",
-                    terminalAssigmed: "",
-                    phone: "",
-                    payTypeId: "",
-                });
-                // Reset file inputs
-                setSelectedFile(null);
-                setLicenseFile(null);
-                setCertificateFile(null);
-                if (fileRef.current) fileRef.current.value = "";
-                if (licenseFileRef.current) licenseFileRef.current.value = "";
-                if (certificateFileRef.current) certificateFileRef.current.value = "";
-                
-                if (handleCancel) {
-                    handleCancel();
-                }
-            } else {
-                toast.error(result.payload || "Failed to create employee");
-            }
-        } catch (err) {
-            console.error("Error creating employee:", err);
-            toast.error(err.message || "Failed to create employee");
-        }
-    };
-
-
+    const [citySearch, setCitySearch]         = useState('');
+    const [showCityDropdown, setShowCityDropdown] = useState(false);
+    const [selectedCityName, setSelectedCityName] = useState('');
 
     useEffect(() => {
-        // Fetch all required data on component mount
         dispatch(fetchPayTypes());
         dispatch(fetchPayCycles());
         dispatch(fetchTerminals());
@@ -299,640 +163,336 @@ const AddDriver = ({ handleCancel }) => {
         dispatch(fetchCities());
     }, [dispatch]);
 
-    // Clear validation errors when clicking anywhere on the screen (except form elements)
+    // Close city dropdown on outside click
     useEffect(() => {
-        const handleClickAnywhere = (event) => {
-            // Check if click is on a form element (input, select, textarea, button, label)
-            const isFormElement = event.target.closest('input, select, textarea, button, label');
-
-            // If clicking anywhere except form elements, clear errors
-            if (!isFormElement) {
-                setErrors({});
-                setTouched({});
-            }
-        };
-
-        // Add event listener to document
-        document.addEventListener('click', handleClickAnywhere);
-
-        // Cleanup on unmount
-        return () => {
-            document.removeEventListener('click', handleClickAnywhere);
-        };
-    }, []);
-
-    // Close city dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target)) {
+        const handler = (e) => {
+            if (cityDropdownRef.current && !cityDropdownRef.current.contains(e.target))
                 setShowCityDropdown(false);
-            }
         };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const filteredCities = (cities || []).filter((city) =>
-        city.CityName?.toLowerCase().includes(citySearchTerm.toLowerCase())
+    const filteredCities = (cities || []).filter((c) =>
+        c.CityName?.toLowerCase().includes(citySearch.toLowerCase())
     );
 
+    // ── Handlers ───────────────────────────────────────────────────────────
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((p) => ({ ...p, [name]: value }));
+        if (errors[name]) setErrors((p) => ({ ...p, [name]: '' }));
+    };
+
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        setTouched((p) => ({ ...p, [name]: true }));
+        setErrors((p) => ({ ...p, [name]: validateField(name, value) }));
+    };
+
     const handleCitySelect = (city) => {
-        setFormData((prev) => ({
-            ...prev,
-            // store CityId for API (must be integer), and show name separately
-            city: city.CityId != null ? String(city.CityId) : "",
-        }));
-        setSelectedCityName(city.CityName || "");
-        setCitySearchTerm("");
+        setFormData((p) => ({ ...p, city: city.CityId != null ? String(city.CityId) : '' }));
+        setSelectedCityName(city.CityName || '');
+        setCitySearch('');
         setShowCityDropdown(false);
-        if (errors.city) {
-            setErrors((prev) => ({ ...prev, city: "" }));
+        setErrors((p) => ({ ...p, city: '' }));
+    };
+
+    const makeFileHandler = (setter, ref) => ({
+        onChange: (e) => { const f = e.target.files?.[0]; if (f) setter(f); },
+        onRemove: () => { setter(null); if (ref.current) ref.current.value = ''; },
+    });
+
+    const photoHandlers  = makeFileHandler(setSelectedFile, fileRef);
+    const licenseHandlers = makeFileHandler(setLicenseFile, licenseRef);
+    const certHandlers   = makeFileHandler(setCertFile, certRef);
+
+    // ── Submit ─────────────────────────────────────────────────────────────
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        const newTouched = {};
+        const newErrors  = {};
+        REQUIRED.forEach((key) => {
+            newTouched[key] = true;
+            newErrors[key]  = validateField(key, formData[key]);
+        });
+        ['phone', 'routeRate'].forEach((key) => {
+            if (formData[key]) newErrors[key] = validateField(key, formData[key]);
+        });
+
+        setTouched((p) => ({ ...p, ...newTouched }));
+        setErrors((p)  => ({ ...p, ...newErrors }));
+
+        if (Object.values(newErrors).some(Boolean)) {
+            toast.error('Please fix all errors before submitting');
+            return;
+        }
+
+        try {
+            const result = await dispatch(createEmployee({
+                ...formData,
+                status: 'Active',
+                filePath: fileRef.current?.files?.[0] || selectedFile || null,
+                drivingLicenses: licenseRef.current?.files?.[0] || licenseFile || null,
+                certificates: certRef.current?.files?.[0] || certFile || null,
+                emergencyContact: formData.phone || '',
+            }));
+
+            if (createEmployee.fulfilled.match(result)) {
+                toast.success(result.payload?.message || 'Employee created successfully!');
+                handleCancel?.();
+            } else {
+                toast.error(result.payload || 'Failed to create employee');
+            }
+        } catch (err) {
+            toast.error(err.message || 'Failed to create employee');
         }
     };
 
+    const isDriver = Number(formData.positionType) === 1;
+
+    // ── Render ─────────────────────────────────────────────────────────────
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white w-full rounded-lg">
-            <form className="w-full">
-                <div className="flex flex-row w-full gap-6 p-6">
-                    {/* First column */}
-                    <div className="mb-4 w-full">
-                        {/* Position Type dropdown BEFORE Name */}
-                        <label className="block text-sm font-medium text-black mb-1">
-                            Position Type
-                        </label>
+        <div className="bg-white w-full rounded-lg border shadow-sm">
+            <form onSubmit={handleSubmit} noValidate>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5 p-6">
+
+                    {/* ── Personal Information ── */}
+                    <SectionTitle>Personal Information</SectionTitle>
+
+                    <Field label="Position Type" error={errors.positionType} touched={touched.positionType}>
                         <select
                             name="positionType"
                             value={formData.positionType}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                setFormData(prev => ({
-                                    ...prev,
-                                    positionType: value ? Number(value) : ""
-                                }));
-                            }}
-                            className="outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full"
+                            onChange={(e) => setFormData((p) => ({ ...p, positionType: e.target.value ? Number(e.target.value) : '' }))}
+                            onBlur={handleBlur}
+                            className={inputCls(errors.positionType, touched.positionType)}
                         >
-                            <option value="">Select</option>
+                            <option value="">Select position</option>
                             <option value={1}>Driver</option>
                             <option value={2}>Mechanic</option>
                             <option value={3}>Manager</option>
                             <option value={4}>Accountant</option>
                             <option value={5}>Terminal Manager</option>
                         </select>
+                    </Field>
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('name')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.name && touched.name ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        />
-                        {errors.name && touched.name && (
-                            <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-                        )}
+                    <Field label="Full Name" required error={errors.name} touched={touched.name}>
+                        <input type="text" name="name" value={formData.name}
+                            onChange={handleChange} onBlur={handleBlur}
+                            placeholder="Employee full name"
+                            className={inputCls(errors.name, touched.name)} />
+                    </Field>
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Zip <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name='zipCode'
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.zipCode && touched.zipCode ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                            value={formData.zipCode}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('zipCode')}
-                        />
-                        {errors.zipCode && touched.zipCode && (
-                            <p className="text-red-500 text-xs mt-1">{errors.zipCode}</p>
-                        )}
+                    <Field label="Date of Birth" required error={errors.dateOfBirth} touched={touched.dateOfBirth}>
+                        <input type="date" name="dateOfBirth" value={formData.dateOfBirth}
+                            onChange={handleChange} onBlur={handleBlur}
+                            className={inputCls(errors.dateOfBirth, touched.dateOfBirth)} />
+                    </Field>
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Start Date <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="date"
-                            name="joiningDate"
-                            value={formData.joiningDate}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('joiningDate')}
-                            className={`outline-none border rounded-[6px] w-full py-3 px-6 bg-[#F5F6FA] text-gray-900 ${errors.joiningDate && touched.joiningDate ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        />
-                        {errors.joiningDate && touched.joiningDate && (
-                            <p className="text-red-500 text-xs mt-1">{errors.joiningDate}</p>
-                        )}
+                    <Field label="Phone" error={errors.phone} touched={touched.phone}>
+                        <input type="tel" name="phone" value={formData.phone}
+                            onChange={handleChange} onBlur={handleBlur}
+                            placeholder="e.g. 555-0101"
+                            className={inputCls(errors.phone, touched.phone)} />
+                    </Field>
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Email <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="email"
-                            name="email"
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.email && touched.email ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                            value={formData.email}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('email')}
-                        />
-                        {errors.email && touched.email && (
-                            <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-                        )}
+                    <Field label="Email" required error={errors.email} touched={touched.email}>
+                        <input type="email" name="email" value={formData.email}
+                            onChange={handleChange} onBlur={handleBlur}
+                            placeholder="employee@example.com"
+                            className={inputCls(errors.email, touched.email)} />
+                    </Field>
 
+                    <Field label="Address" required error={errors.address} touched={touched.address}>
+                        <input type="text" name="address" value={formData.address}
+                            onChange={handleChange} onBlur={handleBlur}
+                            placeholder="Street address"
+                            className={inputCls(errors.address, touched.address)} />
+                    </Field>
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Pay Rate changes
-                        </label>
-                        <input
-                            type="text"
-                            name="routeRate"
-                            value={formData.routeRate}
-                            onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        />
-
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Pay Cycle <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                            <select
-                                name="payCycle"
-                                value={formData.payCycle}
-                                onChange={(e) => {
-                                    const selectedId = e.target.value;
-                                    setFormData((prev) => ({ ...prev, payCycle: selectedId }));
-                                    if (errors.payCycle) {
-                                        setErrors(prev => ({ ...prev, payCycle: "" }));
-                                    }
-                                }}
-                                onBlur={() => handleBlur('payCycle')}
-                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.payCycle && touched.payCycle ? 'border-red-500' : 'border-[#D5D5D5]'
-                                    }`}
-                            >
-                                <option value="">Select</option>
-                                {loading.payCycles ? (
-                                    <option className="text-gray-500">Loading...</option>
-                                ) : payCycles.length > 0 ? (
-                                    payCycles.map((cycle) => (
-                                        <option key={cycle.PayCycleId} value={cycle.PayCycleId} className="text-black">
-                                            {cycle.PayCycleName}
-                                        </option>
-                                    ))
-                                ) : (
-                                    <option>No pay cycles found</option>
-                                )}
-                            </select>
-                        </div>
-                        {errors.payCycle && touched.payCycle && (
-                            <p className="text-red-500 text-xs mt-1">{errors.payCycle}</p>
-                        )}
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Add Social Security #</label>
-                        <input
-                            type="number"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        />
-                    </div>
-
-
-                    {/* Second column */}
-                    <div className="mb-4 w-full">
-                        <label className="block text-sm font-medium text-black mb-1">
-                            Address <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="adress"
-                            value={formData.adress}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('adress')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.adress && touched.adress ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        />
-                        {errors.adress && touched.adress && (
-                            <p className="text-red-500 text-xs mt-1">{errors.adress}</p>
-                        )}
-
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            State <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            name="stateId"
-                            value={formData.stateId}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                setFormData((prev) => ({ ...prev, stateId: value }));
-                                if (errors.stateId) {
-                                    setErrors(prev => ({ ...prev, stateId: "" }));
-                                }
-                            }}
-                            onBlur={() => handleBlur('stateId')}
-                            className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.stateId && touched.stateId ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        >
-                            <option value="">Select State</option>
-                            {loading.states ? (
-                                <option className="text-gray-500">Loading...</option>
-                            ) : states.length > 0 ? (
-                                states.map((state) => (
-                                    <option key={state.StateId} value={state.StateId} className="text-black">
-                                        {state.StateName}
-                                    </option>
-                                ))
-                            ) : (
-                                <option>No states found</option>
-                            )}
+                    <Field label="State" required error={errors.stateId} touched={touched.stateId}>
+                        <select name="stateId" value={formData.stateId}
+                            onChange={handleChange} onBlur={handleBlur}
+                            className={inputCls(errors.stateId, touched.stateId)}>
+                            <option value="">Select state</option>
+                            {loading.states ? <option disabled>Loading...</option>
+                                : states.map((s) => <option key={s.StateId} value={s.StateId}>{s.StateName}</option>)}
                         </select>
-                        {errors.stateId && touched.stateId && (
-                            <p className="text-red-500 text-xs mt-1">{errors.stateId}</p>
-                        )}
+                    </Field>
 
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            City <span className="text-red-500">*</span>
-                        </label>
+                    {/* City searchable dropdown */}
+                    <Field label="City" required error={errors.city} touched={touched.city}>
                         <div className="relative" ref={cityDropdownRef}>
                             <input
                                 type="text"
-                                name="citySearch"
-                                value={citySearchTerm || selectedCityName}
-                                onChange={(e) => {
-                                    setCitySearchTerm(e.target.value);
-                                    setShowCityDropdown(true);
-                                    if (!e.target.value) {
-                                        setFormData((prev) => ({ ...prev, city: "" }));
-                                    }
-                                }}
-                                onFocus={() => {
-                                    setShowCityDropdown(true);
-                                    if (!selectedCityName) {
-                                        setCitySearchTerm("");
-                                    }
-                                }}
-                                onBlur={() => handleBlur('city')}
-                                placeholder={loading.cities ? "Loading cities..." : "Search city..."}
-                                className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.city && touched.city ? 'border-red-500' : 'border-[#D5D5D5]'
-                                    }`}
+                                value={citySearch || selectedCityName}
+                                onChange={(e) => { setCitySearch(e.target.value); setShowCityDropdown(true); if (!e.target.value) { setFormData((p) => ({ ...p, city: '' })); setSelectedCityName(''); } }}
+                                onFocus={() => { setShowCityDropdown(true); if (selectedCityName) setCitySearch(''); }}
+                                onBlur={() => { setTouched((p) => ({ ...p, city: true })); setErrors((p) => ({ ...p, city: validateField('city', formData.city) })); }}
+                                placeholder={loading.cities ? 'Loading cities...' : 'Search city...'}
+                                className={inputCls(errors.city, touched.city)}
                             />
                             {showCityDropdown && !loading.cities && (
-                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                    {filteredCities.length > 0 ? (
-                                        filteredCities.map((city) => (
-                                            <div
-                                                key={city.CityId}
-                                                onClick={() => handleCitySelect(city)}
-                                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                            >
-                                                {city.CityName}
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-52 overflow-y-auto">
+                                    {filteredCities.length > 0
+                                        ? filteredCities.map((c) => (
+                                            <div key={c.CityId} onClick={() => handleCitySelect(c)}
+                                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm">
+                                                {c.CityName}
                                             </div>
                                         ))
-                                    ) : (
-                                        <div className="px-4 py-2 text-sm text-gray-500">
-                                            {citySearchTerm ? "No cities found" : "Start typing to search..."}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        {errors.city && touched.city && (
-                            <p className="text-red-500 text-xs mt-1">{errors.city}</p>
-                        )}
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Grade</label>
-                        <input
-                            type="text"
-                            name='payGrade'
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                            value={formData.payGrade}
-                            onChange={handleChange}
-                        />
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Terminal Assigned To <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            name="terminalAssigmed"
-                            value={formData.terminalAssigmed}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('terminalAssigmed')}
-                            className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.terminalAssigmed && touched.terminalAssigmed ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        >
-                            <option value="">Select</option>
-                            {loading.terminals ? (
-                                <option className="text-gray-500">Loading...</option>
-                            ) : terminals.length > 0 ? (
-                                terminals.map((t) => (
-                                    <option key={t.TerminalId || t.id} value={t.TerminalId || t.id} className="text-black">
-                                        {t.TerminalName || t.name || "N/A"}
-                                    </option>
-                                ))
-                            ) : (
-                                <option>No terminals found</option>
-                            )}
-                        </select>
-                        {errors.terminalAssigmed && touched.terminalAssigmed && (
-                            <p className="text-red-500 text-xs mt-1">{errors.terminalAssigmed}</p>
-                        )}
-
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Employee Account #</label>
-                        <input
-                            type="number"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        />
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Routing #</label>
-                        <input
-                            type="number"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        />
-                    </div>
-
-                    {/* Third column */}
-                    <div className="mb-4 w-full">
-                        <label className="block text-sm font-medium text-black mb-1">
-                            Date of Birth <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="date"
-                            name="dop"
-                            value={formData.dop || ""}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('dop')}
-                            className={`outline-none border w-full rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.dop && touched.dop ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        />
-                        {errors.dop && touched.dop && (
-                            <p className="text-red-500 text-xs mt-1">{errors.dop}</p>
-                        )}
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">
-                            Pay Type <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                            <select
-                                name="payTypeId"
-                                value={formData.payTypeId !== undefined && formData.payTypeId !== null && formData.payTypeId !== "" ? String(formData.payTypeId) : ""}
-                                onChange={(e) => {
-                                    const selectedId = e.target.value;
-                                    const selected = payTypes.find((p) => String(p.PayTypeId) === selectedId);
-                                    // Store as number to match the ID
-                                    const payTypeIdValue = selected ? Number(selected.PayTypeId) : "";
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        payTypeId: payTypeIdValue,
-                                    }));
-                                    if (errors.payTypeId) {
-                                        setErrors(prev => ({ ...prev, payTypeId: "" }));
+                                        : <div className="px-4 py-2 text-sm text-gray-400">{citySearch ? 'No cities found' : 'Start typing...'}</div>
                                     }
-                                }}
-                                onBlur={() => handleBlur('payTypeId')}
-                                className={`outline-none border text-black rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-full ${errors.payTypeId && touched.payTypeId ? 'border-red-500' : 'border-[#D5D5D5]'
-                                    }`}
-                            >
-                                <option value="">Select</option>
-                                {loading.payTypes ? (
-                                    <option className="text-gray-500">Loading...</option>
-                                ) : payTypes.length > 0 ? (
-                                    payTypes.map((type) => (
-                                        <option key={type.PayTypeId} value={String(type.PayTypeId)} className="text-black">
-                                            {type.PayTypeName}
-                                        </option>
-                                    ))
-                                ) : (
-                                    <option>No pay types found</option>
-                                )}
-                            </select>
-                        </div>
-                        {errors.payTypeId && touched.payTypeId && (
-                            <p className="text-red-500 text-xs mt-1">{errors.payTypeId}</p>
-                        )}
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Pay Rate</label>
-                        <input
-                            type="text"
-                            name="routeRate"
-                            value={formData.routeRate || ""}
-                            onChange={handleChange}
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                        />
-
-
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Fuel Card Code</label>
-                        <input
-                            type="text"
-                            className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA]"
-                            value={formData.fuelCardCode}
-                            name='fuelCardCode'
-                            onChange={handleChange}
-                        />
-                        <label className="block text-sm font-medium text-black mt-4 mb-1">Phone #</label>
-                        <input
-                            type="number"
-                            name="phone"
-                            value={formData.phone || ""}
-                            onChange={handleChange}
-                            onBlur={() => handleBlur('phone')}
-                            className={`outline-none border rounded-[6px] py-3 px-6 bg-[#F5F6FA] ${errors.phone && touched.phone ? 'border-red-500' : 'border-[#D5D5D5]'
-                                }`}
-                        />
-                        {errors.phone && touched.phone && (
-                            <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
-                        )}
-
-                    </div>
-                </div>
-
-                {/* File upload: General filePath */}
-                <div className="p-6">
-                    <label className="block text-sm font-medium text-black mb-2">File Upload</label>
-                    {!selectedFile ? (
-                        <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-6 text-center w-full h-32 flex flex-row gap-3 items-center justify-center relative hover:border-[#C01824] transition-colors">
-                            <input
-                                type="file"
-                                ref={fileRef}
-                                id="file"
-                                accept="image/*,.pdf,.doc,.docx"
-                                onChange={handleFileChange}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <div className="flex justify-center">
-                                <img src={pickFileIcon} className="w-10 h-10" alt="Upload file" />
-                            </div>
-                            <p className="mt-1 text-sm text-red-600">Drag and Drop Files or Click to Upload</p>
-                        </div>
-                    ) : (
-                        <div className="mt-2 border-2 border-green-500 rounded-lg p-4 bg-green-50">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 flex-1">
-                                    <div className="flex-shrink-0">
-                                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">{selectedFile.name}</p>
-                                        <p className="text-xs text-gray-500">
-                                            {(selectedFile.size / 1024).toFixed(2)} KB
-                                            {selectedFile.type && ` • ${selectedFile.type.split('/')[1]?.toUpperCase() || 'FILE'}`}
-                                        </p>
-                                    </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleRemoveFile}
-                                    className="ml-4 flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
-                                    title="Remove file"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
+                            )}
                         </div>
+                    </Field>
+
+                    <Field label="Zip Code" required error={errors.zipCode} touched={touched.zipCode}>
+                        <input type="text" name="zipCode" value={formData.zipCode}
+                            onChange={handleChange} onBlur={handleBlur}
+                            placeholder="e.g. 12345"
+                            className={inputCls(errors.zipCode, touched.zipCode)} />
+                    </Field>
+
+                    {/* ── Employment ── */}
+                    <SectionTitle>Employment</SectionTitle>
+
+                    <Field label="Start Date" required error={errors.joiningDate} touched={touched.joiningDate}>
+                        <input type="date" name="joiningDate" value={formData.joiningDate}
+                            onChange={handleChange} onBlur={handleBlur}
+                            className={inputCls(errors.joiningDate, touched.joiningDate)} />
+                    </Field>
+
+                    <Field label="Terminal Assigned" required error={errors.terminalAssigned} touched={touched.terminalAssigned}>
+                        <select name="terminalAssigned" value={formData.terminalAssigned}
+                            onChange={handleChange} onBlur={handleBlur}
+                            className={inputCls(errors.terminalAssigned, touched.terminalAssigned)}>
+                            <option value="">Select terminal</option>
+                            {loading.terminals ? <option disabled>Loading...</option>
+                                : terminals.map((t) => <option key={t.TerminalId || t.id} value={t.TerminalId || t.id}>{t.TerminalName || t.name || 'N/A'}</option>)}
+                        </select>
+                    </Field>
+
+                    <Field label="Pay Grade" error={errors.payGrade} touched={touched.payGrade}>
+                        <input type="text" name="payGrade" value={formData.payGrade}
+                            onChange={handleChange} placeholder="e.g. G3"
+                            className={inputCls()} />
+                    </Field>
+
+                    <Field label="Pay Type" required error={errors.payTypeId} touched={touched.payTypeId}>
+                        <select name="payTypeId"
+                            value={formData.payTypeId !== '' ? String(formData.payTypeId) : ''}
+                            onChange={(e) => {
+                                const sel = payTypes.find((p) => String(p.PayTypeId) === e.target.value);
+                                setFormData((p) => ({ ...p, payTypeId: sel ? Number(sel.PayTypeId) : '' }));
+                                setErrors((p) => ({ ...p, payTypeId: '' }));
+                            }}
+                            onBlur={handleBlur}
+                            className={inputCls(errors.payTypeId, touched.payTypeId)}>
+                            <option value="">Select pay type</option>
+                            {loading.payTypes ? <option disabled>Loading...</option>
+                                : payTypes.map((t) => <option key={t.PayTypeId} value={String(t.PayTypeId)}>{t.PayTypeName}</option>)}
+                        </select>
+                    </Field>
+
+                    <Field label="Pay Cycle" required error={errors.payCycle} touched={touched.payCycle}>
+                        <select name="payCycle" value={formData.payCycle}
+                            onChange={(e) => { setFormData((p) => ({ ...p, payCycle: e.target.value })); setErrors((p) => ({ ...p, payCycle: '' })); }}
+                            onBlur={handleBlur}
+                            className={inputCls(errors.payCycle, touched.payCycle)}>
+                            <option value="">Select pay cycle</option>
+                            {loading.payCycles ? <option disabled>Loading...</option>
+                                : payCycles.map((c) => <option key={c.PayCycleId} value={c.PayCycleId}>{c.PayCycleName}</option>)}
+                        </select>
+                    </Field>
+
+                    <Field label="Route Rate" error={errors.routeRate} touched={touched.routeRate}>
+                        <input type="number" name="routeRate" value={formData.routeRate}
+                            onChange={handleChange} onBlur={handleBlur}
+                            placeholder="e.g. 25.00" min={0} step="0.01"
+                            className={inputCls(errors.routeRate, touched.routeRate)} />
+                    </Field>
+
+                    <Field label="Fuel Card Code">
+                        <input type="text" name="fuelCardCode" value={formData.fuelCardCode}
+                            onChange={handleChange} placeholder="Optional"
+                            className={inputCls()} />
+                    </Field>
+
+                    {/* ── Financial ── */}
+                    <SectionTitle>Financial Information</SectionTitle>
+
+                    <Field label="Social Security No">
+                        <input type="password" name="socialSecurityNo" value={formData.socialSecurityNo}
+                            onChange={handleChange} placeholder="XXX-XX-XXXX"
+                            className={inputCls()} />
+                    </Field>
+
+                    <Field label="Account Number">
+                        <input type="text" name="accountNumber" value={formData.accountNumber}
+                            onChange={handleChange} placeholder="Bank account number"
+                            className={inputCls()} />
+                    </Field>
+
+                    <Field label="Routing Number">
+                        <input type="text" name="routingNo" value={formData.routingNo}
+                            onChange={handleChange} placeholder="Bank routing number"
+                            className={inputCls()} />
+                    </Field>
+
+                    {/* ── Documents ── */}
+                    <SectionTitle>Documents</SectionTitle>
+
+                    <FileUpload
+                        label="Profile Photo"
+                        file={selectedFile}
+                        fileRef={fileRef}
+                        onChange={photoHandlers.onChange}
+                        onRemove={photoHandlers.onRemove}
+                    />
+
+                    {isDriver && (
+                        <FileUpload
+                            label="Driving License (Driver only)"
+                            file={licenseFile}
+                            fileRef={licenseRef}
+                            onChange={licenseHandlers.onChange}
+                            onRemove={licenseHandlers.onRemove}
+                        />
                     )}
+
+                    <FileUpload
+                        label="Certificates (optional)"
+                        file={certFile}
+                        fileRef={certRef}
+                        onChange={certHandlers.onChange}
+                        onRemove={certHandlers.onRemove}
+                    />
                 </div>
 
-                {/* File upload: Driving License (only when Position Type is Driver) */}
-                {formData.positionType === 1 && (
-                    <div className="px-6 pb-2">
-                        <label className="block text-sm font-medium text-black mb-2">Driving License Upload</label>
-                        {!licenseFile ? (
-                            <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-4 text-center w-full h-28 flex flex-row gap-3 items-center justify-center relative hover:border-[#C01824] transition-colors">
-                                <input
-                                    type="file"
-                                    ref={licenseFileRef}
-                                    id="licenseFile"
-                                    accept="image/*,.pdf,.doc,.docx"
-                                    onChange={handleLicenseFileChange}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div className="flex justify-center">
-                                    <img src={pickFileIcon} className="w-8 h-8" alt="Upload license" />
-                                </div>
-                                <p className="mt-1 text-sm text-red-600">Upload driving license (Driver only)</p>
-                            </div>
-                        ) : (
-                            <div className="mt-2 border-2 border-green-500 rounded-lg p-3 bg-green-50">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <div className="flex-shrink-0">
-                                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">{licenseFile.name}</p>
-                                            <p className="text-xs text-gray-500">
-                                                {(licenseFile.size / 1024).toFixed(2)} KB
-                                                {licenseFile.type && ` • ${licenseFile.type.split('/')[1]?.toUpperCase() || 'FILE'}`}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleRemoveLicenseFile}
-                                        className="ml-4 flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
-                                        title="Remove file"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* File upload: Certificates */}
-                <div className="px-6 pb-6">
-                    <label className="block text-sm font-medium text-black mb-2">Certificates Upload</label>
-                    {!certificateFile ? (
-                        <div className="mt-2 border border-dashed border-[#EBB7BB] rounded-lg p-4 text-center w-full h-28 flex flex-row gap-3 items-center justify-center relative hover:border-[#C01824] transition-colors">
-                            <input
-                                type="file"
-                                ref={certificateFileRef}
-                                id="certificateFile"
-                                accept="image/*,.pdf,.doc,.docx"
-                                onChange={handleCertificateFileChange}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <div className="flex justify-center">
-                                <img src={pickFileIcon} className="w-8 h-8" alt="Upload certificates" />
-                            </div>
-                            <p className="mt-1 text-sm text-red-600">Upload certificates (optional)</p>
-                        </div>
-                    ) : (
-                        <div className="mt-2 border-2 border-green-500 rounded-lg p-3 bg-green-50">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 flex-1">
-                                    <div className="flex-shrink-0">
-                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">{certificateFile.name}</p>
-                                        <p className="text-xs text-gray-500">
-                                            {(certificateFile.size / 1024).toFixed(2)} KB
-                                            {certificateFile.type && ` • ${certificateFile.type.split('/')[1]?.toUpperCase() || 'FILE'}`}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleRemoveCertificateFile}
-                                    className="ml-4 flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
-                                    title="Remove file"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                {/* Buttons */}
-                <div className="mt-6 flex justify-start space-x-4 p-6">
+                {/* Footer */}
+                <div className="flex items-center gap-3 px-6 pb-6">
+                    <button
+                        type="submit"
+                        disabled={loading.creating}
+                        className="px-10 py-2.5 bg-[#C01824] text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loading.creating ? 'Submitting...' : 'Add Employee'}
+                    </button>
                     <button
                         type="button"
                         onClick={handleCancel}
-                        className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded"
+                        className="px-10 py-2.5 border border-gray-300 text-sm text-gray-600 rounded-md hover:bg-gray-50"
                     >
                         Cancel
                     </button>
-                    {/* <button
-                        type="button"
-                        onSubmit={handleSubmitEmployee}
-                        className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded"
-                    >
-                        {submitting ? 'Submitting…' : 'Submit'}
-                    </button> */}
-
-
-                    <button
-                        type="submit"
-                        onClick={handleSubmitEmployee}
-                        disabled={loading.creating}
-                        className="px-8 py-2 border border-[#C01824] w-[45%] text-red-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading.creating ? 'Submitting…' : 'Submit'}
-                    </button>
-
                 </div>
             </form>
         </div>
     );
 };
 
-export default AddDriver
+export default AddDriver;

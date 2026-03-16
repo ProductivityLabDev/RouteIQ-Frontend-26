@@ -15,11 +15,17 @@ export default function EmployeeInsights() {
     const [year, setYear] = useState(dayjs().year().toString());
     const [month, setMonth] = useState(dayjs().format('MMMM'));
 
-    const { dashboardData } = useSelector((state) => state.employeeDashboard);
+    const { dashboardData, insights } = useSelector((state) => state.employeeDashboard);
     const monthly = dashboardData?.monthly;
 
     const totalHours = monthly?.totalHours ?? 0;
-    const totalDays = monthly?.totalDays ?? 0;
+
+    const takeHome   = insights?.takeHome  ?? null;
+    const ytd        = insights?.ytd       ?? null;
+    const pto        = insights?.pto       ?? null;
+    const ytdTrips   = insights?.ytdTrips  ?? null;
+
+    const fmt = (v) => v == null ? '--' : `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     // Donut chart: filled vs empty based on hours worked this month (max ~160h)
     const hoursUsed = Math.min(totalHours, 160);
@@ -57,7 +63,7 @@ export default function EmployeeInsights() {
                 <div className="bg-white rounded-lg p-4 shadow-sm">
                     <p className="text-sm font-bold text-gray-600 mb-2">Take Home</p>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-3xl font-bold xl:text-[22px]">--</h2>
+                        <h2 className="text-3xl font-bold xl:text-[22px]">{fmt(takeHome)}</h2>
                         <div className="w-24 h-24">
                             <PieChart width={96} height={96}>
                                 <Pie
@@ -83,7 +89,7 @@ export default function EmployeeInsights() {
                 <div className="bg-white rounded-lg p-4 shadow-sm">
                     <p className="text-sm font-bold text-gray-600 mb-2">YTD</p>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-3xl xl:text-[22px] font-bold">{totalHours}h</h2>
+                        <h2 className="text-3xl xl:text-[22px] font-bold">{fmt(ytd)}</h2>
                         <div className="w-24 h-24">
                             <PieChart width={96} height={96}>
                                 <Pie
@@ -110,9 +116,9 @@ export default function EmployeeInsights() {
                     <p className="text-sm font-bold text-gray-600 mb-2">Total PTO</p>
                     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                         <div>
-                            <p className="text-sm mb-1">-- Hours Available</p>
-                            <p className="text-sm mb-1">-- Hours Used</p>
-                            <p className="text-sm">-- Total</p>
+                            <p className="text-sm mb-1">{pto?.availableDays ?? '--'} Days Available</p>
+                            <p className="text-sm mb-1">{pto?.usedDays ?? '--'} Days Used</p>
+                            <p className="text-sm">{pto?.allowanceDays ?? '--'} Total</p>
                         </div>
                         <div className="w-full lg:w-40 h-[100px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -130,8 +136,8 @@ export default function EmployeeInsights() {
                     <p className="text-sm font-bold text-gray-600 mb-2">YTD # of Trips</p>
                     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                         <div>
-                            <p className="text-sm mb-1">{totalHours} Trip Hours</p>
-                            <p className="text-sm mb-1">{totalDays} # of Days</p>
+                            <p className="text-sm mb-1">{ytdTrips?.hours ?? '--'} Trip Hours</p>
+                            <p className="text-sm mb-1">{ytdTrips?.days ?? '--'} # of Days</p>
                         </div>
                         <div className="w-full lg:w-40 h-[100px]">
                             <ResponsiveContainer width="100%" height="100%">

@@ -48,7 +48,12 @@ const CalendarView = () => {
     <div className="bg-white p-6 rounded-lg shadow-sm">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <div className="font-bold bg-white border shadow p-3 py-2 rounded-2xl">Today</div>
+        <button
+          onClick={() => setWeekStart(getMondayOf(dayjs()))}
+          className="font-bold bg-white border shadow p-3 py-2 rounded-2xl hover:bg-gray-50"
+        >
+          Today
+        </button>
 
         <div className="flex items-center space-x-4">
           <button

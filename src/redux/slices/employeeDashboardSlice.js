@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { employeeDashboardService, employeeModuleService } from "@/services/employeeService";
+import { employeeDashboardService, employeeModuleService, employeeInsightsService, employeePayrollService } from "@/services/employeeService";
 import toast from "react-hot-toast";
 
 // POST action → resulting punchStatus mapping (API returns these exact values)
@@ -109,6 +109,66 @@ export const cancelTimeOffRequest = createAsyncThunk(
   }
 );
 
+// ─── Async Thunks — Insights ───────────────────────────────────────────────
+
+export const fetchInsights = createAsyncThunk(
+  "employeeDashboard/fetchInsights",
+  async ({ month, year } = {}, { rejectWithValue }) => {
+    try {
+      const response = await employeeInsightsService.getInsights(month, year);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch insights"
+      );
+    }
+  }
+);
+
+// ─── Async Thunks — Payroll ────────────────────────────────────────────────
+
+export const fetchPayroll = createAsyncThunk(
+  "employeeDashboard/fetchPayroll",
+  async (payrollId, { rejectWithValue }) => {
+    try {
+      const response = await employeePayrollService.getPayroll(payrollId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch payroll"
+      );
+    }
+  }
+);
+
+export const fetchDailyEarnings = createAsyncThunk(
+  "employeeDashboard/fetchDailyEarnings",
+  async ({ employeeId, startDate, endDate }, { rejectWithValue }) => {
+    try {
+      const response = await employeePayrollService.getDailyEarnings(employeeId, startDate, endDate);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch daily earnings"
+      );
+    }
+  }
+);
+
+export const fetchPayrollHistory = createAsyncThunk(
+  "employeeDashboard/fetchPayrollHistory",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await employeePayrollService.getPayrollHistory();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch payroll history"
+      );
+    }
+  }
+);
+
 // ─── Async Thunks — Schedule ──────────────────────────────────────────────
 
 export const fetchSchedule = createAsyncThunk(
@@ -196,6 +256,8 @@ const initialState = {
   dashboardData:    null,
   attendanceReport: null,
   lastPunchStatus:  null,
+  // Insights
+  insights: null,
   // Time Off
   timeOffRequests: [],
   timeOffTotal:    0,
@@ -205,15 +267,21 @@ const initialState = {
   profile: null,
   // Documents
   documents: [],
+  // Payroll
+  payroll: null,
+  payrollHistory: [],
+  dailyEarnings: null,
   // Loading & Error
   loading: {
     dashboard: false, punch: false, report: false,
     timeOff: false, schedule: false, profile: false,
     documents: false, submitting: false,
+    insights: false, payroll: false, payrollHistory: false, dailyEarnings: false,
   },
   error: {
     dashboard: null, punch: null, report: null,
     timeOff: null, schedule: null, profile: null, documents: null,
+    insights: null, payroll: null, payrollHistory: null, dailyEarnings: null,
   },
 };
 
@@ -320,9 +388,20 @@ const employeeDashboardSlice = createSlice({
         state.error.timeOff   = null;
       })
       .addCase(fetchTimeOff.fulfilled, (state, action) => {
-        state.loading.timeOff   = false;
-        state.timeOffRequests   = action.payload.data;
-        state.timeOffTotal      = action.payload.total;
+        state.loading.timeOff = false;
+        const raw = Array.isArray(action.payload.data) ? action.payload.data : [];
+        state.timeOffRequests = raw.map((r) => ({
+          id:          r.id          ?? r.Id          ?? r.timeOffId   ?? r.TimeOffId,
+          submittedAt: r.submittedAt ?? r.SubmittedAt ?? r.createdAt   ?? r.CreatedAt,
+          leaveType:   r.leaveType   ?? r.LeaveType,
+          startDate:   r.startDate   ?? r.StartDate,
+          endDate:     r.endDate     ?? r.EndDate,
+          totalDays:   r.totalDays   ?? r.TotalDays,
+          approvedBy:  r.approvedBy  ?? r.ApprovedBy,
+          reason:      r.reason      ?? r.Reason,
+          status:      r.status      ?? r.Status,
+        }));
+        state.timeOffTotal = action.payload.total;
       })
       .addCase(fetchTimeOff.rejected, (state, action) => {
         state.loading.timeOff = false;
@@ -341,11 +420,7 @@ const employeeDashboardSlice = createSlice({
       })
 
       // ── cancelTimeOffRequest ─────────────────────────────────────────────
-      .addCase(cancelTimeOffRequest.fulfilled, (state, action) => {
-        // Optimistically mark as cancelled in local state
-        const req = state.timeOffRequests.find(r => r.id === action.payload);
-        if (req) req.status = "CANCELLED";
-      })
+      // thunk already dispatches fetchTimeOff() on success — no local mutation needed
 
       // ── fetchSchedule ────────────────────────────────────────────────────
       .addCase(fetchSchedule.pending, (state) => {
@@ -409,6 +484,62 @@ const employeeDashboardSlice = createSlice({
       })
       .addCase(uploadEmployeeDocument.rejected, (state) => {
         state.loading.submitting = false;
+      })
+
+      // ── fetchInsights ────────────────────────────────────────────────────
+      .addCase(fetchInsights.pending, (state) => {
+        state.loading.insights = true;
+        state.error.insights   = null;
+      })
+      .addCase(fetchInsights.fulfilled, (state, action) => {
+        state.loading.insights = false;
+        state.insights         = action.payload;
+      })
+      .addCase(fetchInsights.rejected, (state, action) => {
+        state.loading.insights = false;
+        state.error.insights   = action.payload;
+      })
+
+      // ── fetchPayroll ─────────────────────────────────────────────────────
+      .addCase(fetchPayroll.pending, (state) => {
+        state.loading.payroll = true;
+        state.error.payroll   = null;
+      })
+      .addCase(fetchPayroll.fulfilled, (state, action) => {
+        state.loading.payroll = false;
+        state.payroll         = action.payload;
+      })
+      .addCase(fetchPayroll.rejected, (state, action) => {
+        state.loading.payroll = false;
+        state.error.payroll   = action.payload;
+      })
+
+      // ── fetchDailyEarnings ───────────────────────────────────────────────
+      .addCase(fetchDailyEarnings.pending, (state) => {
+        state.loading.dailyEarnings = true;
+        state.error.dailyEarnings   = null;
+      })
+      .addCase(fetchDailyEarnings.fulfilled, (state, action) => {
+        state.loading.dailyEarnings = false;
+        state.dailyEarnings         = action.payload;
+      })
+      .addCase(fetchDailyEarnings.rejected, (state, action) => {
+        state.loading.dailyEarnings = false;
+        state.error.dailyEarnings   = action.payload;
+      })
+
+      // ── fetchPayrollHistory ──────────────────────────────────────────────
+      .addCase(fetchPayrollHistory.pending, (state) => {
+        state.loading.payrollHistory = true;
+        state.error.payrollHistory   = null;
+      })
+      .addCase(fetchPayrollHistory.fulfilled, (state, action) => {
+        state.loading.payrollHistory = false;
+        state.payrollHistory         = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(fetchPayrollHistory.rejected, (state, action) => {
+        state.loading.payrollHistory = false;
+        state.error.payrollHistory   = action.payload;
       });
   },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTimeOff, cancelTimeOffRequest } from '@/redux/slices/employeeDashboardSlice';
 import dayjs from 'dayjs';
@@ -20,15 +20,15 @@ const LEAVE_LABEL = {
 const TimeOffRequestTable = () => {
   const dispatch = useDispatch();
   const { timeOffRequests, loading } = useSelector((s) => s.employeeDashboard);
+  const [confirmId, setConfirmId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchTimeOff());
   }, [dispatch]);
 
   const handleCancel = (id) => {
-    if (window.confirm('Cancel this request?')) {
-      dispatch(cancelTimeOffRequest(id));
-    }
+    dispatch(cancelTimeOffRequest(id));
+    setConfirmId(null);
   };
 
   return (
@@ -57,18 +57,20 @@ const TimeOffRequestTable = () => {
               timeOffRequests.map((entry) => (
                 <tr key={entry.id}>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
-                    {dayjs(entry.submittedAt).format('MMM D, YYYY')}
+                    {entry.submittedAt ? dayjs(entry.submittedAt).format('MMM D, YYYY') : '--'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
-                    {LEAVE_LABEL[entry.leaveType] || entry.leaveType}
+                    {LEAVE_LABEL[entry.leaveType] || entry.leaveType || '--'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
-                    {entry.startDate === entry.endDate
-                      ? entry.startDate
-                      : `${entry.startDate} – ${entry.endDate}`}
+                    {entry.startDate && entry.endDate
+                      ? entry.startDate === entry.endDate
+                        ? entry.startDate
+                        : `${entry.startDate} – ${entry.endDate}`
+                      : '--'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
-                    {entry.totalDays}d
+                    {entry.totalDays != null ? `${entry.totalDays}d` : '--'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
                     {entry.approvedBy || '--'}
@@ -78,17 +80,25 @@ const TimeOffRequestTable = () => {
                   </td>
                   <td className="px-6 py-4 border-r border-gray-200">
                     <span className={`px-2 py-1 inline-flex text-xs font-medium rounded-md ${STATUS_STYLE[entry.status] || STATUS_STYLE.CANCELLED}`}>
-                      {entry.status}
+                      {entry.status || '--'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     {entry.status === 'PENDING' && (
-                      <button
-                        onClick={() => handleCancel(entry.id)}
-                        className="text-xs text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Cancel
-                      </button>
+                      confirmId === entry.id ? (
+                        <span className="flex items-center gap-2 text-xs">
+                          <span className="text-gray-600">Cancel?</span>
+                          <button onClick={() => handleCancel(entry.id)} className="text-red-600 font-semibold hover:text-red-800">Yes</button>
+                          <button onClick={() => setConfirmId(null)} className="text-gray-500 hover:text-gray-700">No</button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmId(entry.id)}
+                          className="text-xs text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Cancel
+                        </button>
+                      )
                     )}
                   </td>
                 </tr>

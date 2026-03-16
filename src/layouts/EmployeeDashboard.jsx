@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 import Login from "@/pages/EmployeeDashboard/auth/Login";
 import ProfileInformation from "@/pages/EmployeeDashboard/auth/ProfileInformation";
 import Designation from "@/pages/EmployeeDashboard/auth/Designation";
@@ -10,11 +11,38 @@ import Document from "@/pages/EmployeeDashboard/document/Document";
 import Schedule from "@/pages/EmployeeDashboard/schedule/Schedule";
 
 const EmployeeProtectedRoute = () => {
-    const employeeUser = localStorage.getItem('employeeUser');
     const token = localStorage.getItem('token');
-    if (!employeeUser || !token) {
+    const employeeUser = localStorage.getItem('employeeUser');
+
+    // Token ya user missing
+    if (!token || !employeeUser) {
         return <Navigate to="/EmployeeDashboard" replace />;
     }
+
+    // Token validate karo — expiry + signature
+    try {
+        const decoded = jwtDecode(token);
+        const now = Date.now() / 1000;
+
+        // Expired token
+        if (decoded.exp && decoded.exp < now) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('employeeUser');
+            return <Navigate to="/EmployeeDashboard" replace />;
+        }
+
+        // Role check — sirf DRIVER role allow karo (employee portal)
+        const role = decoded.role?.toUpperCase();
+        if (role && role !== 'DRIVER') {
+            return <Navigate to="/EmployeeDashboard" replace />;
+        }
+    } catch {
+        // Malformed / fake token
+        localStorage.removeItem('token');
+        localStorage.removeItem('employeeUser');
+        return <Navigate to="/EmployeeDashboard" replace />;
+    }
+
     return <Outlet />;
 };
 
