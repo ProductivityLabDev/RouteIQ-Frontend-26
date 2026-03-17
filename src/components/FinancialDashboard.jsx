@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
     FaCaretDown,
     FaChevronDown,
@@ -6,7 +7,8 @@ import {
     FaSave,
     FaTimes,
     FaPlus,
-    FaTrash
+    FaTrash,
+    FaCheck
 } from 'react-icons/fa';
 import {
     Bar,
@@ -19,166 +21,137 @@ import {
     XAxis,
     YAxis
 } from 'recharts';
+import {
+    fetchBalanceSheet,
+    fetchBalanceSheetSummary,
+    fetchBalanceSheetChart,
+    addBalanceSheetEntry,
+    updateBalanceSheetEntry,
+    deleteBalanceSheetEntry,
+} from '@/redux/slices/balanceSheetSlice';
 
 export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
-    const [year, setYear] = useState('2024');
+    const dispatch = useDispatch();
+    const { sections, summary, chartData, loading } = useSelector((state) => state.balanceSheet);
+
+    const [year, setYear] = useState('2026');
     const [month, setMonth] = useState('August');
-    
-    // Edit mode state
     const [isEditMode, setIsEditMode] = useState(false);
-    
+
+    const [yearOpen, setYearOpen] = useState(false);
+    const [monthOpen, setMonthOpen] = useState(false);
+
+    const yearOptions = ['2022', '2023', '2024', '2025', '2026', '2027'];
+    const monthOptions = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthMap = { January: 1, February: 2, March: 3, April: 4, May: 5, June: 6, July: 7, August: 8, September: 9, October: 10, November: 11, December: 12 };
+
     // Dropdown states
     const [dateOverviewOpen1, setDateOverviewOpen1] = useState(false);
     const [dateOverviewOpen2, setDateOverviewOpen2] = useState(false);
     const [reportTypeLineOpen, setReportTypeLineOpen] = useState(false);
     const [reportTypeBarOpen, setReportTypeBarOpen] = useState(false);
-    
-    // Selected values
     const [selectedDateOverview1, setSelectedDateOverview1] = useState('Overview');
     const [selectedDateOverview2, setSelectedDateOverview2] = useState('Overview');
     const [selectedReportTypeLine, setSelectedReportTypeLine] = useState('Lines');
     const [selectedReportTypeBar, setSelectedReportTypeBar] = useState('Bars');
 
-    // Balance Sheet Data State
-    const [balanceSheetData, setBalanceSheetData] = useState({
-        currentAssets: [
-            { name: 'GLR-101-01. Marketable securities', value: 30816, isEditing: false },
-            { name: 'GLR-101-02. Cash and cash equivalents', value: 25000, isEditing: false },
-            { name: 'GLR-101-03. Accounts receivable', value: 18500, isEditing: false },
-            { name: 'GLR-101-04. Inventory', value: 22000, isEditing: false },
-            { name: 'GLR-101-05. Prepaid expenses', value: 15000, isEditing: false },
-            { name: 'GLR-101-06. Short-term investments', value: 32397, isEditing: false }
-        ],
-        nonCurrentAssets: [
-            { name: 'GLR-201-01. Property, plant & equipment', value: 85000, isEditing: false },
-            { name: 'GLR-201-02. Intangible assets', value: 45000, isEditing: false },
-            { name: 'GLR-201-03. Long-term investments', value: 35000, isEditing: false },
-            { name: 'GLR-201-04. Goodwill', value: 25000, isEditing: false },
-            { name: 'GLR-201-05. Deferred tax assets', value: 12000, isEditing: false }
-        ],
-        currentLiabilities: [
-            { name: 'GLR-301-01. Accounts payable', value: 18000, isEditing: false },
-            { name: 'GLR-301-02. Short-term debt', value: 25000, isEditing: false },
-            { name: 'GLR-301-03. Accrued liabilities', value: 12000, isEditing: false },
-            { name: 'GLR-301-04. Current portion of long-term debt', value: 15000, isEditing: false },
-            { name: 'GLR-301-05. Taxes payable', value: 8000, isEditing: false }
-        ],
-        nonCurrentLiabilities: [
-            { name: 'GLR-401-01. Long-term debt', value: 95000, isEditing: false },
-            { name: 'GLR-401-02. Deferred tax liabilities', value: 18000, isEditing: false },
-            { name: 'GLR-401-03. Pension obligations', value: 22000, isEditing: false }
-        ]
-    });
+    // Edit state
+    const [editingId, setEditingId] = useState(null);
+    const [editLabel, setEditLabel] = useState('');
+    const [editAmount, setEditAmount] = useState('');
 
-    // Options for dropdowns
+    // Add entry state
+    const [addingSection, setAddingSection] = useState(null);
+    const [newLabel, setNewLabel] = useState('');
+    const [newAmount, setNewAmount] = useState('');
+
+    useEffect(() => {
+        dispatch(fetchBalanceSheet());
+        dispatch(fetchBalanceSheetChart({ year: parseInt(year) }));
+    }, [dispatch]);
+
+    useEffect(() => {
+        const m = monthMap[month];
+        const startDate = `${year}-${String(m).padStart(2, '0')}-01`;
+        const lastDay = new Date(parseInt(year), m, 0).getDate();
+        const endDate = `${year}-${String(m).padStart(2, '0')}-${lastDay}`;
+        dispatch(fetchBalanceSheetSummary({ startDate, endDate }));
+    }, [year, month]);
+
+    useEffect(() => {
+        dispatch(fetchBalanceSheetChart({ year: parseInt(year) }));
+    }, [year]);
+
     const dateOptions = ['Overview', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
     const reportTypeOptions = ['Lines', 'Bars', 'Area', 'Pie', 'Scatter'];
 
-    // Sample data for charts
-    const lineChartData = [
-        { name: 'Jan', value: 20000 },
-        { name: 'Feb', value: 15000 },
-        { name: 'Mar', value: 30000 },
-        { name: 'Apr', value: 27000 },
-        { name: 'May', value: 18000 },
-        { name: 'Jun', value: 23000 },
-        { name: 'Jul', value: 34000 },
-        { name: 'Aug', value: 41210 },
-        { name: 'Sep', value: 30000 },
-        { name: 'Oct', value: 25000 },
-        { name: 'Nov', value: 39000 },
-        { name: 'Dec', value: 24000 },
-    ];
+    // Map API chart data → recharts format
+    const mappedChartData = Array.isArray(chartData)
+        ? chartData.map((item) => ({
+              month: item.month || item.name || '',
+              revenue: item.income || item.revenue || 0,
+              expenses: item.expenses || 0,
+          }))
+        : [];
 
-    const barChartData = [
-        { month: 'JAN', revenue: 20000, expenses: 15000 },
-        { month: 'FEB', revenue: 38000, expenses: 25000 },
-        { month: 'MAR', revenue: 45000, expenses: 38000 },
-        { month: 'APR', revenue: 40000, expenses: 30000 },
-        { month: 'MAY', revenue: 18000, expenses: 12000 },
-        { month: 'JUN', revenue: 42000, expenses: 30000 },
-    ];
+    const lineChartData = mappedChartData.map((item) => ({
+        name: item.month,
+        value: item.revenue,
+    }));
 
-    // Calculate totals
-    const totalCurrentAssets = balanceSheetData.currentAssets.reduce((sum, item) => sum + item.value, 0);
-    const totalNonCurrentAssets = balanceSheetData.nonCurrentAssets.reduce((sum, item) => sum + item.value, 0);
-    const totalCurrentLiabilities = balanceSheetData.currentLiabilities.reduce((sum, item) => sum + item.value, 0);
-    const totalNonCurrentLiabilities = balanceSheetData.nonCurrentLiabilities.reduce((sum, item) => sum + item.value, 0);
+    // Summary values
+    const grossIncome = summary?.grossIncome ?? summary?.gross_income ?? 0;
+    const netIncome = summary?.netIncome ?? summary?.net_income ?? 0;
+    const changePercent = summary?.change ?? summary?.percentChange ?? 0;
+    const walletBalance = summary?.walletBalance ?? summary?.wallet_balance ?? 0;
 
-    // Handle individual item edit
-    const handleItemEdit = (section, index, field, value) => {
-        setBalanceSheetData(prev => ({
-            ...prev,
-            [section]: prev[section].map((item, i) => 
-                i === index ? { ...item, [field]: value } : item
-            )
+    // Totals
+    const totalCurrentAssets = (sections.CurrentAssets || []).reduce((s, i) => s + (i.amount || 0), 0);
+    const totalNonCurrentAssets = (sections.NonCurrentAssets || []).reduce((s, i) => s + (i.amount || 0), 0);
+    const totalCurrentLiabilities = (sections.CurrentLiabilities || []).reduce((s, i) => s + (i.amount || 0), 0);
+    const totalNonCurrentLiabilities = (sections.NonCurrentLiabilities || []).reduce((s, i) => s + (i.amount || 0), 0);
+
+    const formatCurrency = (value) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+    // Handlers
+    const startEdit = (item) => {
+        setEditingId(item.id);
+        setEditLabel(item.label);
+        setEditAmount(item.amount);
+    };
+
+    const handleSaveEntry = (item, section) => {
+        dispatch(updateBalanceSheetEntry({
+            id: item.id,
+            section,
+            label: editLabel,
+            amount: parseFloat(editAmount) || 0,
         }));
+        setEditingId(null);
     };
 
-    // Handle input changes
-    const handleInputChange = (section, index, newValue) => {
-        const value = parseFloat(newValue.replace(/[^0-9.-]+/g, '')) || 0;
-        handleItemEdit(section, index, 'value', value);
+    const handleDeleteEntry = (item, section) => {
+        dispatch(deleteBalanceSheetEntry({ id: item.id, section }));
     };
 
-    // Handle name changes
-    const handleNameChange = (section, index, newName) => {
-        handleItemEdit(section, index, 'name', newName);
-    };
-
-    // Toggle individual item edit mode
-    const toggleItemEdit = (section, index) => {
-        setBalanceSheetData(prev => ({
-            ...prev,
-            [section]: prev[section].map((item, i) => 
-                i === index ? { ...item, isEditing: !item.isEditing } : item
-            )
+    const handleAddEntry = (section) => {
+        if (!newLabel.trim()) return;
+        dispatch(addBalanceSheetEntry({
+            section,
+            label: newLabel.trim(),
+            amount: parseFloat(newAmount) || 0,
+            sortOrder: (sections[section] || []).length,
         }));
+        setNewLabel('');
+        setNewAmount('');
+        setAddingSection(null);
     };
 
-    // Add new item
-    const addNewItem = (section) => {
-        const newItem = {
-            name: 'New Item',
-            value: 0,
-            isEditing: true
-        };
-        setBalanceSheetData(prev => ({
-            ...prev,
-            [section]: [...prev[section], newItem]
-        }));
-    };
-
-    // Delete item
-    const deleteItem = (section, index) => {
-        setBalanceSheetData(prev => ({
-            ...prev,
-            [section]: prev[section].filter((_, i) => i !== index)
-        }));
-    };
-
-    // Format currency
-    const formatCurrency = (value) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(value);
-    };
-
-    // Toggle edit mode
     const toggleEditMode = () => {
-        setIsEditMode(!isEditMode);
-        // Reset all individual edit states when toggling main edit mode
-        if (isEditMode) {
-            setBalanceSheetData(prev => ({
-                currentAssets: prev.currentAssets.map(item => ({ ...item, isEditing: false })),
-                nonCurrentAssets: prev.nonCurrentAssets.map(item => ({ ...item, isEditing: false })),
-                currentLiabilities: prev.currentLiabilities.map(item => ({ ...item, isEditing: false })),
-                nonCurrentLiabilities: prev.nonCurrentLiabilities.map(item => ({ ...item, isEditing: false }))
-            }));
-        }
+        setIsEditMode((prev) => !prev);
+        setEditingId(null);
+        setAddingSection(null);
     };
 
     // Dropdown component
@@ -191,20 +164,14 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                 <span className="truncate">{label}: {selected}</span>
                 <FaChevronDown className={`ml-1 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} size={10} />
             </button>
-            
             {isOpen && (
                 <div className="absolute right-0 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg z-10">
                     <div className="py-1">
                         {options.map((option) => (
                             <button
                                 key={option}
-                                onClick={() => {
-                                    setSelected(option);
-                                    setIsOpen(false);
-                                }}
-                                className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-100 ${
-                                    selected === option ? 'bg-gray-100 font-medium' : ''
-                                }`}
+                                onClick={() => { setSelected(option); setIsOpen(false); }}
+                                className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-100 ${selected === option ? 'bg-gray-100 font-medium' : ''}`}
                             >
                                 {option}
                             </button>
@@ -215,80 +182,114 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
         </div>
     );
 
-    // Render editable item
-    const renderEditableItem = (item, index, section) => (
-        <div key={`${section}-${index}`} className="flex justify-between items-center py-1 px-2 bg-gray-100 group">
-            <div className="flex-1 mr-2">
-                {item.isEditing ? (
-                    <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) => handleNameChange(section, index, e.target.value)}
-                        className="w-full text-sm text-[#141516] font-semibold border border-gray-300 rounded px-2 py-1"
-                        autoFocus
-                    />
-                ) : (
-                    <div className="text-sm text-[#141516] font-semibold">{item.name}</div>
-                )}
-            </div>
-            <div className="flex items-center space-x-2">
-                <div className="text-sm text-[#141516] font-semibold">
-                    {item.isEditing ? (
+    const renderEditableItem = (item, section) => {
+        const isEditing = editingId === item.id;
+        return (
+            <div key={item.id} className="flex justify-between items-center py-1 px-2 bg-gray-100 group">
+                <div className="flex-1 mr-2">
+                    {isEditing ? (
                         <input
                             type="text"
-                            value={formatCurrency(item.value)}
-                            onChange={(e) => handleInputChange(section, index, e.target.value)}
+                            value={editLabel}
+                            onChange={(e) => setEditLabel(e.target.value)}
+                            className="w-full text-sm text-[#141516] font-semibold border border-gray-300 rounded px-2 py-1"
+                            autoFocus
+                        />
+                    ) : (
+                        <div className="text-sm text-[#141516] font-semibold">{item.label}</div>
+                    )}
+                </div>
+                <div className="flex items-center space-x-2">
+                    {isEditing ? (
+                        <input
+                            type="number"
+                            value={editAmount}
+                            onChange={(e) => setEditAmount(e.target.value)}
                             className="w-24 text-right border border-gray-300 rounded px-1 py-0.5 text-xs"
                         />
                     ) : (
-                        formatCurrency(item.value)
+                        <div className="text-sm text-[#141516] font-semibold">{formatCurrency(item.amount || 0)}</div>
+                    )}
+                    {isEditMode && (
+                        <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                onClick={() => isEditing ? handleSaveEntry(item, section) : startEdit(item)}
+                                className="p-1 text-blue-600 hover:text-blue-800"
+                            >
+                                {isEditing ? <FaSave size={12} /> : <FaEdit size={12} />}
+                            </button>
+                            <button
+                                onClick={() => handleDeleteEntry(item, section)}
+                                disabled={loading.deleteEntry}
+                                className="p-1 text-red-600 hover:text-red-800"
+                            >
+                                <FaTrash size={12} />
+                            </button>
+                        </div>
                     )}
                 </div>
-                {isEditMode && (
-                    <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            </div>
+        );
+    };
+
+    const renderSection = (title, sectionKey) => {
+        const items = sections[sectionKey] || [];
+        return (
+            <div>
+                <div className="bg-gray-200 p-2 mb-1 flex justify-between items-center">
+                    <div className="font-bold text-[#141516]">{title}</div>
+                    {isEditMode && (
                         <button
-                            onClick={() => toggleItemEdit(section, index)}
-                            className="p-1 text-blue-600 hover:text-blue-800"
+                            onClick={() => setAddingSection(sectionKey)}
+                            className="text-green-600 hover:text-green-800 flex items-center space-x-1"
                         >
-                            {item.isEditing ? <FaSave size={12} /> : <FaEdit size={12} />}
+                            <FaPlus size={12} />
+                            <span className="text-xs">Add</span>
+                        </button>
+                    )}
+                </div>
+                {items.map((item) => renderEditableItem(item, sectionKey))}
+                {addingSection === sectionKey && (
+                    <div className="flex gap-2 p-2 bg-gray-50 border border-dashed border-gray-300">
+                        <input
+                            className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none"
+                            placeholder="Label"
+                            value={newLabel}
+                            onChange={(e) => setNewLabel(e.target.value)}
+                            autoFocus
+                        />
+                        <input
+                            type="number"
+                            className="w-24 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none"
+                            placeholder="Amount"
+                            value={newAmount}
+                            onChange={(e) => setNewAmount(e.target.value)}
+                        />
+                        <button
+                            onClick={() => handleAddEntry(sectionKey)}
+                            disabled={loading.addEntry}
+                            className="text-green-600 hover:text-green-800"
+                        >
+                            <FaCheck size={12} />
                         </button>
                         <button
-                            onClick={() => deleteItem(section, index)}
-                            className="p-1 text-red-600 hover:text-red-800"
+                            onClick={() => { setAddingSection(null); setNewLabel(''); setNewAmount(''); }}
+                            className="text-gray-400 hover:text-gray-600"
                         >
-                            <FaTrash size={12} />
+                            <FaTimes size={12} />
                         </button>
                     </div>
                 )}
             </div>
-        </div>
-    );
-
-    // Render section with add button
-    const renderSection = (title, items, section) => (
-        <div>
-            <div className="bg-gray-200 p-2 mb-1 flex justify-between items-center">
-                <div className="font-bold text-[#141516]">{title}</div>
-                {isEditMode && (
-                    <button
-                        onClick={() => addNewItem(section)}
-                        className="text-green-600 hover:text-green-800 flex items-center space-x-1"
-                    >
-                        <FaPlus size={12} />
-                        <span className="text-xs">Add</span>
-                    </button>
-                )}
-            </div>
-            {items.map((item, index) => renderEditableItem(item, index, section))}
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="p-4 min-h-screen bg-gray-50">
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                {/* Year Selector */}
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-8">
+                {/* Year */}
+                <div className="relative bg-white p-4 rounded-lg shadow-sm flex items-center gap-8 cursor-pointer" onClick={() => { setYearOpen((p) => !p); setMonthOpen(false); }}>
                     <div className="bg-[#C01824] text-white p-2 rounded mr-3">
                         <div className="w-[30px] h-[30px] bg-white rounded flex items-center justify-center">
                             <span className="text-[#C01824] font-bold text-sm">📅</span>
@@ -297,26 +298,52 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     <div>
                         <div className="text-xs text-[#565656] text-[14px] font-bold">Year</div>
                         <div className="flex items-center">
-                            <span className="font-medium text-[#141516] text-[33px]">2024</span>
+                            <span className="font-medium text-[#141516] text-[33px]">{year}</span>
                             <FaCaretDown className="ml-1 text-gray-600" />
                         </div>
                     </div>
+                    {yearOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                            {yearOptions.map((y) => (
+                                <button
+                                    key={y}
+                                    onClick={(e) => { e.stopPropagation(); setYear(y); setYearOpen(false); }}
+                                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${year === y ? 'font-bold text-[#C01824]' : ''}`}
+                                >
+                                    {y}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                {/* Month Selector */}
-                <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-8">
+                {/* Month */}
+                <div className="relative bg-white p-4 rounded-lg shadow-sm flex items-center gap-8 cursor-pointer" onClick={() => { setMonthOpen((p) => !p); setYearOpen(false); }}>
                     <div className="bg-[#C01824] text-red-600 p-2 rounded mr-3">
                         <div className="w-[30px] h-[30px] bg-white rounded flex items-center justify-center">
-                            <span className="text-[#C01824] font-bold text-xs">JAN</span>
+                            <span className="text-[#C01824] font-bold text-xs">{month.slice(0, 3).toUpperCase()}</span>
                         </div>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <div className="text-[#565656] text-[14px] font-bold">Month</div>
                         <div className="flex items-center">
-                            <span className="font-medium text-[#141516] text-[33px]">August</span>
-                            <FaCaretDown className="ml-1 text-gray-600" />
+                            <span className="font-medium text-[#141516] text-[28px] truncate">{month}</span>
+                            <FaCaretDown className="ml-1 text-gray-600 flex-shrink-0" />
                         </div>
                     </div>
+                    {monthOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-56 overflow-y-auto">
+                            {monthOptions.map((m) => (
+                                <button
+                                    key={m}
+                                    onClick={(e) => { e.stopPropagation(); setMonth(m); setMonthOpen(false); }}
+                                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${month === m ? 'font-bold text-[#C01824]' : ''}`}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Gross Income */}
@@ -329,9 +356,15 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     <div>
                         <div className="flex items-center">
                             <div className="text-[#565656] text-[14px] font-bold">Gross Income</div>
-                            <span className="text-xs ml-2 px-1 bg-green-100 text-green-600 rounded">+10%</span>
+                            {changePercent !== 0 && (
+                                <span className={`text-xs ml-2 px-1 rounded ${changePercent >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                    {changePercent >= 0 ? '+' : ''}{changePercent}%
+                                </span>
+                            )}
                         </div>
-                        <div className="font-medium text-[#141516] text-[33px]">$41,210</div>
+                        <div className="font-medium text-[#141516] text-[33px]">
+                            {loading.summary ? '...' : formatCurrency(grossIncome)}
+                        </div>
                     </div>
                 </div>
 
@@ -345,70 +378,57 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     <div>
                         <div className="flex items-center">
                             <div className="text-[14px] text-[#565656] font-bold">Net Income</div>
-                            <span className="text-xs ml-2 px-1 bg-red-100 text-red-600 rounded">-2%</span>
                         </div>
-                        <div className="font-medium text-[#141516] text-[33px]">$41,210</div>
+                        <div className="font-medium text-[#141516] text-[33px]">
+                            {loading.summary ? '...' : formatCurrency(netIncome)}
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Main Content */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Balance Sheet */}
                 <div className="bg-white p-4 rounded-lg shadow-sm w-full mt-6 mx-auto max-h-[665px] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
                         <h1 className="text-lg font-bold text-center flex-grow">CONSOLIDATED BALANCE SHEET</h1>
-                        <button 
+                        <button
                             onClick={toggleEditMode}
-                            className={`text-sm flex items-center transition-colors px-3 py-1 rounded ${
-                                isEditMode 
-                                    ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                                    : 'bg-red-100 text-red-500 hover:bg-red-200'
-                            }`}
+                            className={`text-sm flex items-center transition-colors px-3 py-1 rounded ${isEditMode ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-100 text-red-500 hover:bg-red-200'}`}
                         >
                             {isEditMode ? <FaSave className="mr-1" /> : <FaEdit className="mr-1" />}
-                            {isEditMode ? 'Save Changes' : 'Edit Mode'}
+                            {isEditMode ? 'Done' : 'Edit Mode'}
                         </button>
                     </div>
 
-                    {/* ASSETS Section */}
+                    {loading.sections && <p className="text-center text-gray-400 py-4">Loading...</p>}
+
                     <div className="text-center font-bold bg-white py-2 mb-2 text-[#141516] text-[18px]">ASSETS</div>
-
-                    {/* Current Assets */}
-                    {renderSection('Current assets', balanceSheetData.currentAssets, 'currentAssets')}
-
+                    {renderSection('Current assets', 'CurrentAssets')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                         <div>Total current assets</div>
                         <div>{formatCurrency(totalCurrentAssets)}</div>
                     </div>
 
-                    {/* Non-Current Assets */}
-                    {renderSection('Non-Current assets', balanceSheetData.nonCurrentAssets, 'nonCurrentAssets')}
-
+                    {renderSection('Non-Current assets', 'NonCurrentAssets')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                         <div>Total Non-Current assets</div>
                         <div>{formatCurrency(totalNonCurrentAssets)}</div>
                     </div>
 
-                    {/* LIABILITIES AND SHAREHOLDERS EQUITY Section */}
                     <div className="text-center font-bold bg-white py-2 mb-2 mt-4">LIABILITIES AND SHAREHOLDERS EQUITY</div>
-
-                    {/* Current Liabilities */}
-                    {renderSection('Current Liabilities', balanceSheetData.currentLiabilities, 'currentLiabilities')}
-
+                    {renderSection('Current Liabilities', 'CurrentLiabilities')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                         <div>Total Current Liabilities</div>
                         <div>{formatCurrency(totalCurrentLiabilities)}</div>
                     </div>
 
-                    {/* Non-Current Liabilities */}
-                    {renderSection('Non-Current Liabilities', balanceSheetData.nonCurrentLiabilities, 'nonCurrentLiabilities')}
-
+                    {renderSection('Non-Current Liabilities', 'NonCurrentLiabilities')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
                         <div>Total Non-Current Liabilities</div>
                         <div>{formatCurrency(totalNonCurrentLiabilities)}</div>
                     </div>
 
-                    {/* Total Assets and Equity */}
                     <div className="mt-4 pt-2 border-t-2 border-gray-300">
                         <div className="flex justify-between py-2 px-2 font-bold text-[#C01824] text-lg">
                             <div>TOTAL ASSETS</div>
@@ -421,28 +441,12 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     </div>
                 </div>
 
-                {/* Charts Section */}
+                {/* Charts */}
                 <div className="flex flex-col gap-4">
-                    {/* Overview Line Chart */}
+                    {/* Line Chart */}
                     <div className="flex items-end justify-end space-x-2">
-                        <Dropdown
-                            isOpen={dateOverviewOpen1}
-                            setIsOpen={setDateOverviewOpen1}
-                            selected={selectedDateOverview1}
-                            setSelected={setSelectedDateOverview1}
-                            options={dateOptions}
-                            label="Select Date"
-                            width="w-40"
-                        />
-                        <Dropdown
-                            isOpen={reportTypeLineOpen}
-                            setIsOpen={setReportTypeLineOpen}
-                            selected={selectedReportTypeLine}
-                            setSelected={setSelectedReportTypeLine}
-                            options={reportTypeOptions}
-                            label="Report Type"
-                            width="w-40"
-                        />
+                        <Dropdown isOpen={dateOverviewOpen1} setIsOpen={setDateOverviewOpen1} selected={selectedDateOverview1} setSelected={setSelectedDateOverview1} options={dateOptions} label="Select Date" width="w-40" />
+                        <Dropdown isOpen={reportTypeLineOpen} setIsOpen={setReportTypeLineOpen} selected={selectedReportTypeLine} setSelected={setSelectedReportTypeLine} options={reportTypeOptions} label="Report Type" width="w-40" />
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4">
                         <div className="flex justify-between items-center mb-4">
@@ -458,75 +462,45 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                                 </div>
                             </div>
                         </div>
-
                         <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={lineChartData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                    <YAxis axisLine={false} tickLine={false} />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="value"
-                                        stroke="#EF4444"
-                                        strokeWidth={2}
-                                        dot={false}
-                                        activeDot={{ r: 6 }}
-                                    />
-                                    <ReferenceLine
-                                        x="Aug"
-                                        stroke="#EF4444"
-                                        label={{
-                                            value: "$41,210",
-                                            position: "top",
-                                            fill: "#EF4444",
-                                            fontSize: 12,
-                                            fontWeight: "bold",
-                                            dy: -8
-                                        }}
-                                        strokeDasharray="3 3"
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
+                            {loading.chartData ? (
+                                <div className="flex items-center justify-center h-full text-gray-400">Loading chart...</div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={lineChartData.length > 0 ? lineChartData : []}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                                        <YAxis axisLine={false} tickLine={false} />
+                                        <Line type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
                     </div>
 
-                    {/* Revenue Bar Chart */}
+                    {/* Bar Chart */}
                     <div className="flex items-end justify-end space-x-2">
-                        <Dropdown
-                            isOpen={dateOverviewOpen2}
-                            setIsOpen={setDateOverviewOpen2}
-                            selected={selectedDateOverview2}
-                            setSelected={setSelectedDateOverview2}
-                            options={dateOptions}
-                            label="Select Date"
-                            width="w-40"
-                        />
-                        <Dropdown
-                            isOpen={reportTypeBarOpen}
-                            setIsOpen={setReportTypeBarOpen}
-                            selected={selectedReportTypeBar}
-                            setSelected={setSelectedReportTypeBar}
-                            options={reportTypeOptions}
-                            label="Report Type"
-                            width="w-40"
-                        />
+                        <Dropdown isOpen={dateOverviewOpen2} setIsOpen={setDateOverviewOpen2} selected={selectedDateOverview2} setSelected={setSelectedDateOverview2} options={dateOptions} label="Select Date" width="w-40" />
+                        <Dropdown isOpen={reportTypeBarOpen} setIsOpen={setReportTypeBarOpen} selected={selectedReportTypeBar} setSelected={setSelectedReportTypeBar} options={reportTypeOptions} label="Report Type" width="w-40" />
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4">
                         <div className="flex justify-between items-center mb-4">
                             <div className="font-medium text-gray-700">Total Revenue</div>
                         </div>
-
                         <div className="h-48">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={barChartData} barGap={4}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                                    <YAxis axisLine={false} tickLine={false} />
-                                    <Bar dataKey="revenue" fill="#EF4444" radius={[2, 2, 0, 0]} />
-                                    <Bar dataKey="expenses" fill="#6B7280" radius={[2, 2, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            {loading.chartData ? (
+                                <div className="flex items-center justify-center h-full text-gray-400">Loading chart...</div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={mappedChartData.length > 0 ? mappedChartData : []} barGap={4}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                                        <YAxis axisLine={false} tickLine={false} />
+                                        <Bar dataKey="revenue" fill="#EF4444" radius={[2, 2, 0, 0]} />
+                                        <Bar dataKey="expenses" fill="#6B7280" radius={[2, 2, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
                     </div>
                 </div>

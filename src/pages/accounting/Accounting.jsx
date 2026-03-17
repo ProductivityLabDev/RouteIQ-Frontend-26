@@ -15,6 +15,15 @@ import { addExpense } from "@/redux/slices/accountsPayableSlice";
 import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivableSlice";
 import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
 import { fetchTripInvoiceTerminals, fetchTripInvoices, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
+import { fetchGenerateReport } from "@/redux/slices/reportsSlice";
+import {
+  fetchTerminalSummary,
+  fetchTerminalList,
+  fetchTerminalInvoices,
+  createTerminalInvoice,
+  deleteTerminalInvoice,
+  fetchTerminalTrack,
+} from "@/redux/slices/terminalTabSlice";
 import {
   Button,
   ButtonGroup,
@@ -84,12 +93,36 @@ const Accounting = () => {
   const [accountsPayable, setaccountsPayable] = useState("Accounts Payable");
   const [accountsReceivable, setaccountsReceivable] = useState("accountsReceivable");
 
+  // Generate Report filters
+  const [grSearch, setGrSearch] = useState('');
+  const [grSortBy, setGrSortBy] = useState('name');
+  const [grYear, setGrYear] = useState(new Date().getFullYear());
+  const [grMonth, setGrMonth] = useState(new Date().getMonth() + 1);
+  const [grSortOpen, setGrSortOpen] = useState(false);
+  const [grYearOpen, setGrYearOpen] = useState(false);
+  const [grMonthOpen, setGrMonthOpen] = useState(false);
+
+  const grMonthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const grYearOptions = [2022,2023,2024,2025,2026,2027];
+  const grSortOptions = [{ label: 'Name', value: 'name' }, { label: 'Invoice Total', value: 'invoiceTotal' }, { label: 'Work Hours', value: 'workHours' }];
+
+  // Terminal Tab states
+  const [trackTerminalId, setTrackTerminalId] = useState(null);
+  const [trackYear, setTrackYear] = useState(new Date().getFullYear());
+  const [createInvoiceTerminalId, setCreateInvoiceTerminalId] = useState(null);
+  const [createInvoiceForm, setCreateInvoiceForm] = useState({
+    description: '', glCodeId: '', quantity: 1, unitPrice: '',
+  });
+  const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
+
   const dispatch = useDispatch();
   const { glCodes, loading, error } = useSelector((state) => state.payroll);
   const { loading: apLoading, error: apError } = useSelector((state) => state.accountsPayable);
   const { invoices, loading: arLoading, error: arError } = useSelector((state) => state.accountsReceivable);
   const { terminals, schools: siSchools, invoices: siInvoices, loading: siLoading } = useSelector((state) => state.schoolInvoices);
   const { terminals: tripTerminals, invoices: tripInvoices, loading: tiLoading } = useSelector((state) => state.tripInvoices);
+  const { generateReport, loading: grLoading } = useSelector((state) => state.reports);
+  const { summary: termSummary, list: termList, invoices: termInvoices, trackData: termTrackData, loading: termLoading } = useSelector((state) => state.terminalTab);
   const filteredGlCodes = glCodes.filter((item) => {
     const search = glCodeSearch.trim().toLowerCase();
     if (!search) return true;
@@ -125,6 +158,54 @@ const Accounting = () => {
       dispatch(fetchSchoolInvoices({ instituteId: selectedInstituteId, limit: 20, offset: 0 }));
     }
   }, [dispatch, selectedInstituteId]);
+
+  useEffect(() => {
+    if (selectedTab === 'Generate Report') {
+      dispatch(fetchGenerateReport({ year: grYear, month: grMonth, search: grSearch || undefined, sortBy: grSortBy, limit: 20, offset: 0 }));
+    }
+  }, [dispatch, selectedTab, grYear, grMonth, grSearch, grSortBy]);
+
+  useEffect(() => {
+    if (selectedTab === 'Terminal') {
+      dispatch(fetchTerminalSummary());
+      dispatch(fetchTerminalList());
+    }
+  }, [dispatch, selectedTab]);
+
+  useEffect(() => {
+    if (selectedTab === 'Terminal' && selectedTerminalTab === 'Terminal Invoices') {
+      dispatch(fetchTerminalInvoices({ limit: 20, offset: 0 }));
+    }
+  }, [dispatch, selectedTab, selectedTerminalTab]);
+
+  useEffect(() => {
+    if (isTerminal !== null && isTerminal !== false) {
+      const terminal = termList[isTerminal];
+      if (terminal) {
+        const tId = terminal.id || terminal.terminalId;
+        dispatch(fetchTerminalInvoices({ terminalId: tId, limit: 20, offset: 0 }));
+        dispatch(fetchTerminalTrack({ terminalId: tId, year: trackYear }));
+        setTrackTerminalId(tId);
+      }
+    }
+  }, [dispatch, isTerminal, trackYear, termList]);
+
+  const handleCreateTerminalInvoice = async (terminalId) => {
+    if (!createInvoiceForm.description || !createInvoiceForm.unitPrice) return;
+    const result = await dispatch(createTerminalInvoice({
+      terminalId,
+      lineItems: [{
+        glCodeId: parseInt(createInvoiceForm.glCodeId) || 0,
+        description: createInvoiceForm.description,
+        quantity: parseInt(createInvoiceForm.quantity) || 1,
+        unitPrice: parseFloat(createInvoiceForm.unitPrice),
+      }],
+    }));
+    if (result.meta.requestStatus === 'fulfilled') {
+      setCreateInvoiceOpen(false);
+      setCreateInvoiceForm({ description: '', glCodeId: '', quantity: 1, unitPrice: '' });
+    }
+  };
 
   const importInputRef = React.useRef(null);
   const handleImportFile = (e) => {
@@ -1336,47 +1417,94 @@ const Accounting = () => {
             {selectedTab === "Generate Report" && (
               <div>
                 <div className="flex flex-wrap gap-3 mb-6">
+                  {/* Search */}
                   <div className="relative">
                     <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
                       placeholder="Search"
+                      value={grSearch}
+                      onChange={(e) => setGrSearch(e.target.value)}
                       className="pl-10 pr-4 py-2 rounded-md border border-[#D9D9D9] w-52 outline-0"
                     />
                   </div>
 
+                  {/* Data Type (static) */}
                   <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
-                    <span className="text-gray-500 text-sm mr-1">
-                      Data Type :{" "}
-                    </span>
+                    <span className="text-gray-500 text-sm mr-1">Data Type : </span>
                     <span className="font-medium">Table</span>
                     <FaChevronDown className="ml-auto text-gray-500" />
                   </div>
 
-                  <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
-                    <span className="text-gray-500 text-sm mr-1">
-                      Short by :{" "}
-                    </span>
-                    <span className="font-medium">Newest</span>
-                    <FaChevronDown className="ml-auto text-gray-500" />
+                  {/* Sort By */}
+                  <div className="relative">
+                    <button
+                      onClick={() => { setGrSortOpen((p) => !p); setGrYearOpen(false); setGrMonthOpen(false); }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52"
+                    >
+                      <span className="text-gray-500 text-sm mr-1">Sort by : </span>
+                      <span className="font-medium">{grSortOptions.find(o => o.value === grSortBy)?.label}</span>
+                      <FaChevronDown className="ml-auto text-gray-500" />
+                    </button>
+                    {grSortOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        {grSortOptions.map((opt) => (
+                          <button key={opt.value} onClick={() => { setGrSortBy(opt.value); setGrSortOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grSortBy === opt.value ? 'font-bold text-[#C01824]' : ''}`}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
-                    <span className="text-gray-500 text-sm mr-1">Year : </span>
-                    <span className="font-medium">2024</span>
-                    <FaChevronDown className="ml-auto text-gray-500" />
+                  {/* Year */}
+                  <div className="relative">
+                    <button
+                      onClick={() => { setGrYearOpen((p) => !p); setGrSortOpen(false); setGrMonthOpen(false); }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52"
+                    >
+                      <span className="text-gray-500 text-sm mr-1">Year : </span>
+                      <span className="font-medium">{grYear}</span>
+                      <FaChevronDown className="ml-auto text-gray-500" />
+                    </button>
+                    {grYearOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        {grYearOptions.map((y) => (
+                          <button key={y} onClick={() => { setGrYear(y); setGrYearOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grYear === y ? 'font-bold text-[#C01824]' : ''}`}>
+                            {y}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
-                    <span className="text-gray-500 text-sm mr-1">Month : </span>
-                    <span className="font-medium">August</span>
-                    <FaChevronDown className="ml-auto text-gray-500" />
+                  {/* Month */}
+                  <div className="relative">
+                    <button
+                      onClick={() => { setGrMonthOpen((p) => !p); setGrSortOpen(false); setGrYearOpen(false); }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52"
+                    >
+                      <span className="text-gray-500 text-sm mr-1">Month : </span>
+                      <span className="font-medium">{grMonthNames[grMonth - 1]}</span>
+                      <FaChevronDown className="ml-auto text-gray-500" />
+                    </button>
+                    {grMonthOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-20 max-h-56 overflow-y-auto">
+                        {grMonthNames.map((m, i) => (
+                          <button key={m} onClick={() => { setGrMonth(i + 1); setGrMonthOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grMonth === i + 1 ? 'font-bold text-[#C01824]' : ''}`}>
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
+                  {/* Category (static) */}
                   <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
-                    <span className="text-gray-500 text-sm mr-1">
-                      Category :{" "}
-                    </span>
+                    <span className="text-gray-500 text-sm mr-1">Category : </span>
                     <span className="font-medium">Employees</span>
                     <FaChevronDown className="ml-auto text-gray-500" />
                   </div>
@@ -1384,76 +1512,53 @@ const Accounting = () => {
 
                 {/* Data Table */}
                 <div className="bg-white rounded-lg shadow overflow-hidden">
-                  {/* Table Header */}
                   <div className="grid grid-cols-8 bg-[#EEEEEE] text-gray-800 font-medium text-sm">
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      Date
-                    </div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      GL Code
-                    </div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      Working Days
-                    </div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      Work Hours
-                    </div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      Present Days
-                    </div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      Absent Days
-                    </div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      Leaves
-                    </div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">
-                      Invoice Total
-                    </div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Name</div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">GL Code</div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Working Days</div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Work Hours</div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Present Days</div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Absent Days</div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Leaves</div>
+                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Invoice Total</div>
                   </div>
 
-                  {/* Table Body */}
-                  {generateReportEmployeesData.map((employee, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-8 border-t border-[#D9D9D9]"
-                    >
+                  {grLoading.generateReport && (
+                    <div className="py-8 text-center text-gray-400">Loading...</div>
+                  )}
+                  {!grLoading.generateReport && (generateReport.items || []).length === 0 && (
+                    <div className="py-8 text-center text-gray-400">No records found</div>
+                  )}
+
+                  {(generateReport.items || []).map((employee) => (
+                    <div key={employee.employeeId} className="grid grid-cols-8 border-t border-[#D9D9D9]">
                       <div className="py-4 px-6 flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-gray-200 mr-3 overflow-hidden">
-                          <img
-                            src={employee.image}
-                            alt={employee.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="w-8 h-8 rounded-full bg-gray-200 mr-3 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
+                          {employee.name?.charAt(0) || '?'}
                         </div>
-                        <span className="text-[#141516] text-[14px] font-semibold">
-                          {employee.name}
-                        </span>
+                        <span className="text-[#141516] text-[14px] font-semibold">{employee.name}</span>
                       </div>
                       <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
                         {employee.glCode}
+                        <div className="text-xs text-gray-400">{employee.glCodeName}</div>
                       </div>
+                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.workingDays}</div>
+                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.workHours}</div>
+                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.presentDays}</div>
+                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.absentDays}</div>
+                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.leaves}</div>
                       <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        {employee.workingDays}
-                      </div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        {employee.workHours}
-                      </div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        {employee.presentDays}
-                      </div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        {employee.absentDays}
-                      </div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        {employee.leaves}
-                      </div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        {employee.invoiceTotal}
+                        ${Number(employee.invoiceTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {generateReport.total > 0 && (
+                  <div className="mt-3 text-sm text-gray-500 text-right">
+                    Total: {generateReport.total} record{generateReport.total !== 1 ? 's' : ''}
+                  </div>
+                )}
               </div>
             )}
             {selectedTab === "Terminal" && (
@@ -1485,440 +1590,292 @@ const Accounting = () => {
                 {selectedTerminalTab === "Terminals Details" && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 mt-5">
-                      {/* Year Selector */}
                       <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
                         <div className="bg-[#C01824] text-white p-2 rounded mr-3">
                           <img src={busIcon} />
                         </div>
                         <div>
-                          <div className="text-xs text-gray-500">
-                            Total # of Open Trips
-                          </div>
+                          <div className="text-xs text-gray-500">Total # of Open Trips</div>
                           <div className="flex items-center">
-                            <span className="font-medium text-black">7852</span>
+                            <span className="font-medium text-black">
+                              {termLoading.summary ? '...' : (termSummary?.openTripsCount ?? 0).toLocaleString()}
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Month Selector */}
                       <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
                         <div className="bg-[#C01824] text-[#C01824] p-2 rounded mr-3">
                           <img src={moneyWallet} />
                         </div>
                         <div>
-                          <div className="text-xs text-gray-500">
-                            Total $ of Open Trips
-                          </div>
+                          <div className="text-xs text-gray-500">Total $ of Open Trips</div>
                           <div className="flex items-center">
                             <span className="font-medium text-black">
-                              $41,210
+                              {termLoading.summary ? '...' : `$${Number(termSummary?.openTripsAmount ?? 0).toLocaleString()}`}
                             </span>
                           </div>
                         </div>
                       </div>
-                      {/* Gross Income */}
+
                       <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
                         <div className="bg-[#C01824] text-green-600 p-2 rounded mr-3">
                           <img src={busIcon} />
                         </div>
                         <div>
-                          <div className="flex items-center">
-                            <div className="text-xs text-gray-500">
-                              Total # of Completed Trips(within current month)
-                            </div>
+                          <div className="text-xs text-gray-500">Total # of Completed Trips(within current month)</div>
+                          <div className="font-medium">
+                            {termLoading.summary ? '...' : (termSummary?.completedTripsCount ?? 0).toLocaleString()}
                           </div>
-                          <div className="font-medium">5610</div>
                         </div>
                       </div>
 
-                      {/* Net Income */}
                       <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
                         <div className="bg-[#C01824] text-[#C01824] p-2 rounded mr-3">
                           <img src={moneyWallet} />
                         </div>
                         <div>
-                          <div className="flex items-center">
-                            <div className="text-xs text-gray-500">
-                              Total $ of Completed Trips(within current month)
-                            </div>
+                          <div className="text-xs text-gray-500">Total $ of Completed Trips(within current month)</div>
+                          <div className="font-medium">
+                            {termLoading.summary ? '...' : `$${Number(termSummary?.completedTripsAmount ?? 0).toLocaleString()}`}
                           </div>
-                          <div className="font-medium">$41,210</div>
                         </div>
                       </div>
                     </div>
                     <div className="w-full space-y-4">
-                      {[...Array(4)].map((_, index) => {
-                        if (index === 0) {
-                          return (
-                            <div
-                              key={index}
-                              className="w-full bg-white border-b border-[#D9D9D9] shadow-sm"
-                            >
-                              <div className="flex items-center justify-between px-4 py-2">
-                                <div className="flex items-center space-x-3">
-                                  <button className="text-black hover:text-gray-800">
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-6 w-6"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                      />
-                                    </svg>
-                                  </button>
-                                  <h2 className="font-medium text-black text-lg">
-                                    Terminal {index + 1}
-                                  </h2>
+                      {termLoading.list ? (
+                        <div className="py-6 text-center text-gray-500 text-sm">Loading terminals...</div>
+                      ) : termList.length === 0 ? (
+                        <div className="py-6 text-center text-gray-400 text-sm">No terminals found.</div>
+                      ) : termList.map((terminal, index) => {
+                        const tId = terminal.id || terminal.terminalId;
+                        const tTrack = termTrackData[tId] || {};
+                        const tInvoices = termInvoices[tId] || { total: 0, items: [] };
+                        const isExpanded = isTerminal === index;
+                        return (
+                          <div key={tId || index} className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
+                            <div className="flex items-center justify-between px-4 py-2">
+                              <div className="flex items-center space-x-3">
+                                <button className="text-black hover:text-gray-800">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                  </svg>
+                                </button>
+                                <h2 className="font-medium text-black text-lg">
+                                  {terminal.name || terminal.terminalName || `Terminal ${index + 1}`}
+                                </h2>
+                                <button className="text-black hover:text-gray-800">
+                                  <svg width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3.78252 17.6688C3.51253 17.6688 3.28464 17.5774 3.09882 17.3945C2.91315 17.2114 2.82031 16.9869 2.82031 16.7209V14.5905C2.82031 14.3384 2.86853 14.0975 2.96496 13.8678C3.06125 13.6382 3.19878 13.4354 3.37754 13.2595L13.9759 2.83425C14.1519 2.67147 14.3471 2.54674 14.5617 2.46008C14.7762 2.37341 15.0012 2.33008 15.237 2.33008C15.4693 2.33008 15.6963 2.37341 15.9179 2.46008C16.1394 2.54674 16.3344 2.67675 16.503 2.85008L17.8835 4.21591C18.0595 4.37869 18.1888 4.57008 18.2714 4.79008C18.354 5.00994 18.3953 5.2307 18.3953 5.45237C18.3953 5.68459 18.354 5.90716 18.2714 6.12008C18.1888 6.33313 18.0595 6.52633 17.8835 6.69966L7.30629 17.1199C7.12767 17.296 6.92176 17.4315 6.68858 17.5263C6.45554 17.6213 6.21107 17.6688 5.95519 17.6688H3.78252ZM15.231 6.61404L16.4153 5.45237L15.226 4.2757L14.0366 5.44237L15.231 6.61404Z" fill="#1C1B1F" />
+                                  </svg>
+                                </button>
+                              </div>
+                              <div className="flex items-center space-x-4">
+                                {terminal.managerName && (
+                                  <div className="flex items-center justify-center self-center">
+                                    <img src={avatar} className="mr-1" />
+                                    <p className="font-medium text-[#565656] text-sm">Terminal Manager:</p>
+                                    <p className="font-bold text-black text-md ml-1">{terminal.managerName}</p>
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => setIsTerminal(isExpanded ? null : index)}
+                                  className="text-gray-600 hover:text-gray-800"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                            {isExpanded && (
+                              <div className="w-full">
+                                <div className="p-4 w-full">
+                                  <div className="flex space-x-2 mb-2">
+                                    <div className="w-[300px] px-2 mb-4">
+                                      <div className="border border-[#D9D9D9] rounded p-3 bg-white">
+                                        <div className="flex items-start">
+                                          <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
+                                          <div>
+                                            <div className="text-xs text-gray-600">YTD Revenue</div>
+                                            <div className="font-medium">${Number(tTrack.ytdRevenue ?? 0).toLocaleString()}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="w-[300px] px-2 mb-4">
+                                      <div className="border border-[#D9D9D9] rounded p-3 bg-white">
+                                        <div className="flex items-start">
+                                          <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
+                                          <div>
+                                            <div className="text-xs text-gray-600">Total # of Open Trips</div>
+                                            <div className="font-medium">{tTrack.openTripsCount ?? 0}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="w-[300px] px-2 mb-4">
+                                      <div className="border border-[#D9D9D9] rounded p-3 bg-white">
+                                        <div className="flex items-start">
+                                          <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
+                                          <div>
+                                            <div className="text-xs text-gray-600">Total # of Completed Trips<div className="text-xs text-gray-500">(within current month)</div></div>
+                                            <div className="font-medium">{tTrack.completedTripsCount ?? 0}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col w-[400px] gap-6 items-end justify-end">
+                                      <button
+                                        className="bg-[#C01824] w-[50%] text-white py-2 rounded mr-0 text-sm"
+                                        onClick={() => { setCreateInvoiceTerminalId(tId); setCreateInvoiceOpen(true); }}
+                                      >
+                                        Create Invoice
+                                      </button>
+                                      <button className="bg-[#C01824] w-[50%] text-white py-2 rounded text-sm">
+                                        Terminal Invoice
+                                      </button>
+                                    </div>
+                                  </div>
 
-                                  <button className="text-black hover:text-gray-800">
-                                    <svg
-                                      width="21"
-                                      height="20"
-                                      viewBox="0 0 21 20"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                      <path
-                                        d="M3.78252 17.6688C3.51253 17.6688 3.28464 17.5774 3.09882 17.3945C2.91315 17.2114 2.82031 16.9869 2.82031 16.7209V14.5905C2.82031 14.3384 2.86853 14.0975 2.96496 13.8678C3.06125 13.6382 3.19878 13.4354 3.37754 13.2595L13.9759 2.83425C14.1519 2.67147 14.3471 2.54674 14.5617 2.46008C14.7762 2.37341 15.0012 2.33008 15.237 2.33008C15.4693 2.33008 15.6963 2.37341 15.9179 2.46008C16.1394 2.54674 16.3344 2.67675 16.503 2.85008L17.8835 4.21591C18.0595 4.37869 18.1888 4.57008 18.2714 4.79008C18.354 5.00994 18.3953 5.2307 18.3953 5.45237C18.3953 5.68459 18.354 5.90716 18.2714 6.12008C18.1888 6.33313 18.0595 6.52633 17.8835 6.69966L7.30629 17.1199C7.12767 17.296 6.92176 17.4315 6.68858 17.5263C6.45554 17.6213 6.21107 17.6688 5.95519 17.6688H3.78252ZM15.231 6.61404L16.4153 5.45237L15.226 4.2757L14.0366 5.44237L15.231 6.61404Z"
-                                        fill="#1C1B1F"
-                                      />
-                                    </svg>
-                                  </button>
-                                </div>
-                                <div className="flex items-center space-x-4">
-                                  {index > 0 && (
-                                    <Button
-                                      className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                                      variant="filled"
-                                      size="lg"
-                                    >
-                                      Create Invoice
-                                    </Button>
-                                  )}
-                                  {index === 0 && (
-                                    <div className="flex items-center justify-center self-center">
-                                      <img src={avatar} className="mr-1" />
-                                      <p className="font-medium text-[#565656] text-sm">
-                                        Terminal Manager:
-                                      </p>
-                                      <p className="font-bold text-black text-md">
-                                        David John
-                                      </p>
+                                  <div className="flex flex-wrap mx-1">
+                                    <div className="w-[300px] px-2">
+                                      <div className="border border-[#D9D9D9] rounded p-3 bg-white">
+                                        <div className="flex items-start">
+                                          <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
+                                          <div>
+                                            <div className="text-xs text-gray-600">YTD Trips</div>
+                                            <div className="font-medium">{tTrack.ytdTrips ?? 0}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="w-[300px] px-2">
+                                      <div className="border border-[#D9D9D9] rounded p-3 bg-white">
+                                        <div className="flex items-start">
+                                          <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
+                                          <div>
+                                            <div className="text-xs text-gray-600">Total $ of Open Trips</div>
+                                            <div className="font-medium">${Number(tTrack.openTripsAmount ?? 0).toLocaleString()}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="w-[300px] px-2">
+                                      <div className="border border-[#D9D9D9] rounded p-3 bg-white">
+                                        <div className="flex items-start">
+                                          <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
+                                          <div>
+                                            <div className="text-xs text-gray-600">Total $ of Completed Trips<div className="text-xs text-gray-500">(within current month)</div></div>
+                                            <div className="font-medium">${Number(tTrack.completedTripsAmount ?? 0).toLocaleString()}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Invoices for this terminal */}
+                                  {tInvoices.items.length > 0 && (
+                                    <div className="mt-4">
+                                      <div className="text-sm font-semibold text-gray-700 mb-2">Invoices</div>
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-100">
+                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Date</th>
+                                            <th className="p-2 text-left border-b border-[#D9D9D9]">GL Code</th>
+                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Type</th>
+                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Invoice Total</th>
+                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Action</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {tInvoices.items.map((inv) => (
+                                            <tr key={inv.id}>
+                                              <td className="p-2 border-b border-[#D9D9D9]">{inv.date || inv.createdAt || '—'}</td>
+                                              <td className="p-2 border-b border-[#D9D9D9]">{inv.glCode || '—'}</td>
+                                              <td className="p-2 border-b border-[#D9D9D9]">{inv.type || inv.status || '—'}</td>
+                                              <td className="p-2 border-b border-[#D9D9D9]">${Number(inv.invoiceTotal || inv.total || 0).toLocaleString()}</td>
+                                              <td className="p-2 border-b border-[#D9D9D9]">
+                                                <button
+                                                  onClick={() => dispatch(deleteTerminalInvoice({ id: inv.id, terminalId: tId }))}
+                                                  className="text-red-500"
+                                                >
+                                                  <FaRegTrashAlt className="w-4 h-4 text-[#C01824]" />
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
                                     </div>
                                   )}
-                                  {index === 0 && (
-                                    <button
-                                      onClick={() =>
-                                        setIsTerminal(
-                                          index === isTerminal ? null : index
-                                        )
-                                      }
-                                      className="text-gray-600 hover:text-gray-800"
-                                    >
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className={`h-6 w-6 transition-transform duration-200 ${
-                                          isOpen ? "rotate-180" : ""
-                                        }`}
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M19 9l-7 7-7-7"
-                                        />
-                                      </svg>
-                                    </button>
-                                  )}
+                                </div>
+
+                                <div className="px-4 pb-3">
+                                  <div className="flex items-center text-[#C01824] font-medium">
+                                    <span>Overview</span>
+                                    <FaChevronDown className="ml-1" />
+                                    <div className="border-t border-gray-300 flex-grow ml-2" />
+                                  </div>
                                 </div>
                               </div>
-                              {isTerminal === index && (
-                                <div className="w-full">
-                                  <div className="p-4 w-full">
-                                    {/* Top Row Cards */}
-                                    <div className="flex space-x-2 mb-2">
-                                      {/* YTD Revenue Card */}
-                                      <div className="w-[300px] px-2 mb-4">
-                                        <div className="border border-[#D9D9D9] rounded p-3 bg-white">
-                                          <div className="flex items-start">
-                                            <div className="bg-[#C01824] p-2 rounded text-white mr-3">
-                                              <img src={busIcon} />
-                                            </div>
-                                            <div>
-                                              <div className="text-xs text-gray-600">
-                                                YTD Revenue
-                                              </div>
-                                              <div className="font-medium">
-                                                $ 240,000
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Total # of Open Trips Card */}
-                                      <div className="w-[300px] px-2 mb-4">
-                                        <div className="border border-[#D9D9D9] rounded p-3 bg-white">
-                                          <div className="flex items-start">
-                                            <div className="bg-[#C01824] p-2 rounded text-white mr-3">
-                                              <img src={busIcon} />
-                                            </div>
-                                            <div>
-                                              <div className="text-xs text-gray-600">
-                                                Total # of Open Trips
-                                              </div>
-                                              <div className="font-medium">
-                                                102
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Total # of Completed Trips Card */}
-                                      <div className="w-[300px] px-2 mb-4">
-                                        <div className="border border-[#D9D9D9] rounded p-3 bg-white">
-                                          <div className="flex items-start">
-                                            <div className="bg-[#C01824] p-2 rounded text-white mr-3">
-                                              <img src={busIcon} />
-                                            </div>
-                                            <div>
-                                              <div className="text-xs text-gray-600">
-                                                Total # of Completed Trips
-                                                <div className="text-xs text-gray-500">
-                                                  (within current month)
-                                                </div>
-                                              </div>
-                                              <div className="font-medium">
-                                                524
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="flex flex-col w-[400px] gap-6 items-end justify-end">
-                                        <button
-                                          className="bg-[#C01824] w-[50%] text-white  py-2 rounded mr-0 text-sm"
-                                          onClick={() => setCreateInvoice(true)}
-                                        >
-                                          Create Invoice
-                                        </button>
-                                        <button className="bg-[#C01824] w-[50%] text-white  py-2 rounded text-sm">
-                                          Terminal Invoice
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Bottom Row Cards */}
-                                    <div className="flex flex-wrap mx-1">
-                                      {/* YTD Trips Card */}
-                                      <div className="w-[300px] px-2">
-                                        <div className="border border-[#D9D9D9] rounded p-3 bg-white">
-                                          <div className="flex items-start">
-                                            <div className="bg-[#C01824] p-2 rounded text-white mr-3">
-                                              <img src={busIcon} />
-                                            </div>
-                                            <div>
-                                              <div className="text-xs text-gray-600">
-                                                YTD Trips
-                                              </div>
-                                              <div className="font-medium">
-                                                450
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Total $ of Open Trips Card */}
-                                      <div className="w-[300px] px-2">
-                                        <div className="border border-[#D9D9D9] rounded p-3 bg-white">
-                                          <div className="flex items-start">
-                                            <div className="bg-[#C01824] p-2 rounded text-white mr-3">
-                                              <img src={busIcon} />
-                                            </div>
-                                            <div>
-                                              <div className="text-xs text-gray-600">
-                                                Total $ of Open Trips
-                                              </div>
-                                              <div className="font-medium">
-                                                $ 5200
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Total $ of Completed Trips Card */}
-                                      <div className="w-[300px] px-2">
-                                        <div className="border border-[#D9D9D9] rounded p-3 bg-white">
-                                          <div className="flex items-start">
-                                            <div className="bg-[#C01824] p-2 rounded text-white mr-3">
-                                              <img src={busIcon} />
-                                            </div>
-                                            <div>
-                                              <div className="text-xs text-gray-600">
-                                                Total $ of Completed Trips
-                                                <div className="text-xs text-gray-500">
-                                                  (within current month)
-                                                </div>
-                                              </div>
-                                              <div className="font-medium">
-                                                $ 5200
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="px-4 pb-3">
-                                    <div className="flex items-center text-[#C01824] font-medium">
-                                      <span>Overview</span>
-                                      <FaChevronDown className="ml-1" />
-                                      <div className="border-t border-gray-300 flex-grow ml-2" />
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        } else {
-                          return null;
-                        }
-                      })}
-                      {[...Array(3)].map((_, index) => (
-                        <div className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
-                          <div className="flex items-center justify-between px-4 py-2">
-                            <div className="flex items-center space-x-3">
-                              <button className="text-black hover:text-gray-800">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-6 w-6"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 6h16M4 12h16M4 18h16"
-                                  />
-                                </svg>
-                              </button>
-                              <h2 className="font-medium text-black text-lg">
-                                Terminal {index + 2}
-                              </h2>
-                              <button className="text-black hover:text-gray-800">
-                                <svg
-                                  width="21"
-                                  height="20"
-                                  viewBox="0 0 21 20"
-                                  fill="none"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                >
-                                  <path
-                                    d="M3.78252 17.6688C3.51253 17.6688 3.28464 17.5774 3.09882 17.3945C2.91315 17.2114 2.82031 16.9869 2.82031 16.7209V14.5905C2.82031 14.3384 2.86853 14.0975 2.96496 13.8678C3.06125 13.6382 3.19878 13.4354 3.37754 13.2595L13.9759 2.83425C14.1519 2.67147 14.3471 2.54674 14.5617 2.46008C14.7762 2.37341 15.0012 2.33008 15.237 2.33008C15.4693 2.33008 15.6963 2.37341 15.9179 2.46008C16.1394 2.54674 16.3344 2.67675 16.503 2.85008L17.8835 4.21591C18.0595 4.37869 18.1888 4.57008 18.2714 4.79008C18.354 5.00994 18.3953 5.2307 18.3953 5.45237C18.3953 5.68459 18.354 5.90716 18.2714 6.12008C18.1888 6.33313 18.0595 6.52633 17.8835 6.69966L7.30629 17.1199C7.12767 17.296 6.92176 17.4315 6.68858 17.5263C6.45554 17.6213 6.21107 17.6688 5.95519 17.6688H3.78252ZM15.231 6.61404L16.4153 5.45237L15.226 4.2757L14.0366 5.44237L15.231 6.61404Z"
-                                    fill="#1C1B1F"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                              {/* <Button
-                                className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                                variant="filled"
-                                size="lg"
-                              >
-                                Create Invoice
-                              </Button> */}
-                            </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 )}
                 {selectedTerminalTab === "Terminal Invoices" && (
-                  <div className="bg-white rounded-lg shadow-md p-4 mt-4 w-[100%] h-[60%]">
-                    <table className="w-[100%] border-collapse">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="p-3 border-b border-[#D9D9D9]">
-                            <input type="checkbox" className="w-4 h-4" />
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Date
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            GL Code#
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Type
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Invoice Total
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Invoice
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schoolInvoices.map((invoice, index) => (
-                          <tr key={index} className="bg-whit">
-                            <td className="p-5 border-b mb-[-1px] flex justify-center items-center border-[#D9D9D9]">
-                              <input type="checkbox" className="w-4 h-4" />
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.date}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.glCode}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.type}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.invoiceTotal}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              <a
-                                className="text-[#C01824] font-bold cursor-pointer"
-                                onClick={handleInvoiceList}
-                              >
-                                View
-                              </a>
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              <button
-                                className="text-red-500"
-                                aria-label="Delete"
-                              >
-                                <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
-                              </button>
-                            </td>
+                  <div className="bg-white rounded-lg shadow-md p-4 mt-4 w-[100%]">
+                    {termLoading.invoices ? (
+                      <div className="py-6 text-center text-gray-500 text-sm">Loading invoices...</div>
+                    ) : (
+                      <table className="w-[100%] border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="p-3 border-b border-[#D9D9D9]"><input type="checkbox" className="w-4 h-4" /></th>
+                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Date</th>
+                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">GL Code#</th>
+                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Type</th>
+                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Invoice Total</th>
+                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Action</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {(termInvoices['all']?.items || []).length === 0 ? (
+                            <tr><td colSpan={6} className="p-4 text-center text-gray-400 text-sm">No invoices found.</td></tr>
+                          ) : (termInvoices['all']?.items || []).map((invoice) => (
+                            <tr key={invoice.id}>
+                              <td className="p-3 border-b border-[#D9D9D9] text-center"><input type="checkbox" className="w-4 h-4" /></td>
+                              <td className="p-3 border-b border-[#D9D9D9]">{invoice.date || invoice.createdAt || '—'}</td>
+                              <td className="p-3 border-b border-[#D9D9D9]">{invoice.glCode || '—'}</td>
+                              <td className="p-3 border-b border-[#D9D9D9]">{invoice.type || invoice.status || '—'}</td>
+                              <td className="p-3 border-b border-[#D9D9D9]">${Number(invoice.invoiceTotal || invoice.total || 0).toLocaleString()}</td>
+                              <td className="p-3 border-b border-[#D9D9D9]">
+                                <button
+                                  onClick={() => dispatch(deleteTerminalInvoice({ id: invoice.id, terminalId: undefined }))}
+                                  className="text-red-500"
+                                  aria-label="Delete"
+                                >
+                                  <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 )}
-                {selectedTerminalTab === "Track Terminal" && (
+                {selectedTerminalTab === "Track Terminal" && (() => {
+                  const activeTrackId = trackTerminalId || (termList[0]?.id || termList[0]?.terminalId);
+                  const activeTrack = termTrackData[activeTrackId] || {};
+                  const quarterlyData = activeTrack.quarterly || [];
+                  const activeTerminalName = activeTrackId
+                    ? (termList.find(t => (t.id || t.terminalId) === activeTrackId)?.name || `Terminal`)
+                    : 'Terminal';
+                  return (
                   <div className="flex items-center gap-5">
                     <div className="bg-white rounded-lg shadow-md p-6 w-[45%] mt-4">
                       {/* Top Cards */}
@@ -1929,17 +1886,22 @@ const Accounting = () => {
                             <img src={busIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Select Terminal
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Select Terminal</div>
                             <div className="flex items-center">
-                              <span className="font-medium text-[#141516] text-[24px]">
-                                Terminal 1
-                              </span>
-                              <FaChevronDown
-                                className="ml-1 text-[#141516]"
-                                size={12}
-                              />
+                              <select
+                                className="font-medium text-[#141516] text-base bg-transparent border-none outline-none cursor-pointer"
+                                value={activeTrackId || ''}
+                                onChange={(e) => {
+                                  const newId = parseInt(e.target.value);
+                                  setTrackTerminalId(newId);
+                                  dispatch(fetchTerminalTrack({ terminalId: newId, year: trackYear }));
+                                }}
+                              >
+                                {termList.map(t => {
+                                  const tid = t.id || t.terminalId;
+                                  return <option key={tid} value={tid}>{t.name || t.terminalName || `Terminal ${tid}`}</option>;
+                                })}
+                              </select>
                             </div>
                           </div>
                         </div>
@@ -1950,12 +1912,10 @@ const Accounting = () => {
                             <img src={moneyWallet} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Income
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Income</div>
                             <div className="flex items-center">
                               <span className="font-medium text-[#141516] text-[24px]">
-                                $41,210
+                                ${Number(activeTrack.income ?? 0).toLocaleString()}
                               </span>
                             </div>
                           </div>
@@ -1967,12 +1927,10 @@ const Accounting = () => {
                             <img src={marketIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Expenses
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Expenses</div>
                             <div className="flex items-center">
                               <span className="font-medium text-[#141516] text-[24px]">
-                                $41,210
+                                ${Number(activeTrack.expenses ?? 0).toLocaleString()}
                               </span>
                             </div>
                           </div>
@@ -1986,12 +1944,10 @@ const Accounting = () => {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Savings
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Savings</div>
                             <div className="flex items-center">
                               <span className="font-medium text-[#141516] text-[24px]">
-                                $41,210
+                                ${Number(activeTrack.savings ?? 0).toLocaleString()}
                               </span>
                             </div>
                           </div>
@@ -2001,74 +1957,56 @@ const Accounting = () => {
                       {/* Sales Section */}
                       <div className="mb-6 border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-[26px] font-bold text-[#475569]">
-                            Sales
-                          </h2>
+                          <h2 className="text-[26px] font-bold text-[#475569]">Sales</h2>
                           <div className="text-sm text-gray-500 flex items-center">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
+                            {trackYear}
                           </div>
                         </div>
                         <div className="text-[26px] font-bold mb-4 text-[#475569]">
-                          $15,940.65
+                          ${Number(activeTrack.income ?? 0).toLocaleString()}
                         </div>
-
-                        {/* Sales Chart */}
                         <div className="relative h-32">
-                          {/* Y-axis labels */}
                           <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-[#475569]">
-                            <div>$15k</div>
-                            <div>$10k</div>
-                            <div>$5k</div>
-                            <div>$0k</div>
+                            <div>$15k</div><div>$10k</div><div>$5k</div><div>$0k</div>
                           </div>
-
-                          {/* Chart lines */}
                           <div className="ml-8 h-full flex flex-col justify-between">
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                           </div>
-
-                          {/* Chart line */}
-                          <svg
-                            className="absolute top-0 left-10 w-5/6 h-full"
-                            viewBox="0 0 300 100"
-                            preserveAspectRatio="none"
-                          >
-                            <polyline
-                              points="0,40 100,60 200,80 300,20"
-                              fill="none"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="0"
-                              cy="40"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="100"
-                              cy="60"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle cx="200" cy="80" r="5" fill="#C01824" />
-                            <circle cx="300" cy="20" r="5" fill="#C01824" />
-                          </svg>
-
-                          {/* X-axis labels */}
+                          {quarterlyData.length > 0 ? (
+                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
+                              <polyline
+                                points={quarterlyData.map((q, i) => {
+                                  const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
+                                  const x = (i / (quarterlyData.length - 1)) * 300;
+                                  const y = 100 - ((q.amount || 0) / max) * 90;
+                                  return `${x},${y}`;
+                                }).join(' ')}
+                                fill="none" stroke="#C01824" strokeWidth="2"
+                              />
+                              {quarterlyData.map((q, i) => {
+                                const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
+                                const x = (i / (quarterlyData.length - 1)) * 300;
+                                const y = 100 - ((q.amount || 0) / max) * 90;
+                                return <circle key={i} cx={x} cy={y} r="5" fill="#C01824" />;
+                              })}
+                            </svg>
+                          ) : (
+                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
+                              <polyline points="0,40 100,60 200,80 300,20" fill="none" stroke="#C01824" strokeWidth="2" />
+                              <circle cx="0" cy="40" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
+                              <circle cx="100" cy="60" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
+                              <circle cx="200" cy="80" r="5" fill="#C01824" />
+                              <circle cx="300" cy="20" r="5" fill="#C01824" />
+                            </svg>
+                          )}
                           <div className="absolute bottom-0 left-10 w-5/6 flex justify-between text-xs text-gray-500">
-                            <div>Q1</div>
-                            <div>Q2</div>
-                            <div>Q3</div>
-                            <div>Q4</div>
+                            {quarterlyData.length > 0
+                              ? quarterlyData.map((q, i) => <div key={i}>{q.quarter || `Q${i+1}`}</div>)
+                              : ['Q1','Q2','Q3','Q4'].map(q => <div key={q}>{q}</div>)
+                            }
                           </div>
                         </div>
                       </div>
@@ -2076,53 +2014,31 @@ const Accounting = () => {
                       {/* Profit & Loss Section */}
                       <div className="border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">
-                            Profit & Loss
-                          </h2>
-                          <div className="text-sm text-gray-500 flex items-center text-[#475569]">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
-                          </div>
+                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">Profit & Loss</h2>
+                          <div className="text-sm text-gray-500 flex items-center text-[#475569]">{trackYear}</div>
                         </div>
-
                         <div className="mb-4">
                           <div className="text-2xl font-bold text-[#475569]">
-                            $20,000
+                            ${Number((activeTrack.income ?? 0) - (activeTrack.expenses ?? 0)).toLocaleString()}
                           </div>
-                          <div className="text-sm text-[#475569]">
-                            Net income for March
-                          </div>
+                          <div className="text-sm text-[#475569]">Net income</div>
                         </div>
-
-                        {/* Income Bar */}
                         <div className="mb-3">
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">
-                              $100,000
-                            </span>
+                            <span className="font-semibold text-[#475569]">${Number(activeTrack.income ?? 0).toLocaleString()}</span>
                             <span className="text-[#475569]">Income</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "60%" }}
-                            ></div>
+                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.income / (activeTrack.income + activeTrack.expenses)) * 100) : 60}%` }}></div>
                           </div>
                         </div>
-
-                        {/* Expenses Bar */}
                         <div>
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569">
-                              $80,000
-                            </span>
+                            <span className="font-semibold text-[#475569]">${Number(activeTrack.expenses ?? 0).toLocaleString()}</span>
                             <span className="text-[#475569]">Expenses</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "80%" }}
-                            ></div>
+                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.expenses / (activeTrack.income + activeTrack.expenses)) * 100) : 80}%` }}></div>
                           </div>
                         </div>
                       </div>
@@ -2130,62 +2046,42 @@ const Accounting = () => {
                     <div className="bg-white rounded-lg shadow-md p-6 w-[45%] mt-4">
                       {/* Top Cards */}
                       <div className="grid grid-cols-2 gap-4 mb-6">
-                        {/* Terminal Selection Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center ">
+                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <img src={busIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Select Terminal
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Terminal</div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                Terminal 1
-                              </span>
-                              <FaChevronDown
-                                className="ml-1 text-[#141516]"
-                                size={12}
-                              />
+                              <span className="font-bold text-[#141516] text-[24px]">{activeTerminalName}</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Income Card */}
                         <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <img src={moneyWallet} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Income
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Income</div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
+                              <span className="font-bold text-[#141516] text-[24px]">${Number(activeTrack.income ?? 0).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Expenses Card */}
                         <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <img src={marketIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Expenses
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Expenses</div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
+                              <span className="font-bold text-[#141516] text-[24px]">${Number(activeTrack.expenses ?? 0).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Savings Card */}
                         <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <div className="bg-white rounded-full p-1 shadow-md flex items-center justify-center">
@@ -2193,13 +2089,9 @@ const Accounting = () => {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Savings
-                            </div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">Savings</div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
+                              <span className="font-bold text-[#141516] text-[24px]">${Number(activeTrack.savings ?? 0).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -2208,74 +2100,71 @@ const Accounting = () => {
                       {/* Sales Section */}
                       <div className="mb-6 border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-[#475569]">
-                            Sales
-                          </h2>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
+                          <h2 className="text-lg font-semibold text-[#475569]">Sales</h2>
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <select
+                              className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer"
+                              value={trackYear}
+                              onChange={(e) => {
+                                const yr = parseInt(e.target.value);
+                                setTrackYear(yr);
+                                if (activeTrackId) dispatch(fetchTerminalTrack({ terminalId: activeTrackId, year: yr }));
+                              }}
+                            >
+                              {[2022,2023,2024,2025,2026,2027].map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
                           </div>
                         </div>
                         <div className="text-2xl font-bold mb-4 text-[#475569]">
-                          $15,940.65
+                          ${Number(activeTrack.income ?? 0).toLocaleString()}
                         </div>
 
                         {/* Sales Chart */}
                         <div className="relative h-32">
-                          {/* Y-axis labels */}
                           <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500">
                             <div>$15k</div>
                             <div>$10k</div>
                             <div>$5k</div>
                             <div>$0k</div>
                           </div>
-
-                          {/* Chart lines */}
                           <div className="ml-8 h-full flex flex-col justify-between">
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                           </div>
-
-                          {/* Chart line */}
-                          <svg
-                            className="absolute top-0 left-10 w-5/6 h-full"
-                            viewBox="0 0 300 100"
-                            preserveAspectRatio="none"
-                          >
-                            <polyline
-                              points="0,40 100,60 200,80 300,20"
-                              fill="none"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="0"
-                              cy="40"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="100"
-                              cy="60"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle cx="200" cy="80" r="5" fill="#C01824" />
-                            <circle cx="300" cy="20" r="5" fill="#C01824" />
-                          </svg>
-
-                          {/* X-axis labels */}
+                          {quarterlyData.length > 0 ? (
+                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
+                              <polyline
+                                points={quarterlyData.map((q, i) => {
+                                  const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
+                                  const x = (i / (quarterlyData.length - 1)) * 300;
+                                  const y = 100 - ((q.amount || 0) / max) * 90;
+                                  return `${x},${y}`;
+                                }).join(' ')}
+                                fill="none" stroke="#C01824" strokeWidth="2"
+                              />
+                              {quarterlyData.map((q, i) => {
+                                const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
+                                const x = (i / (quarterlyData.length - 1)) * 300;
+                                const y = 100 - ((q.amount || 0) / max) * 90;
+                                return <circle key={i} cx={x} cy={y} r="5" fill="#C01824" />;
+                              })}
+                            </svg>
+                          ) : (
+                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
+                              <polyline points="0,40 100,60 200,80 300,20" fill="none" stroke="#C01824" strokeWidth="2" />
+                              <circle cx="0" cy="40" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
+                              <circle cx="100" cy="60" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
+                              <circle cx="200" cy="80" r="5" fill="#C01824" />
+                              <circle cx="300" cy="20" r="5" fill="#C01824" />
+                            </svg>
+                          )}
                           <div className="absolute bottom-0 left-10 w-5/6 flex justify-between text-xs text-gray-500">
-                            <div>Q1</div>
-                            <div>Q2</div>
-                            <div>Q3</div>
-                            <div>Q4</div>
+                            {quarterlyData.length > 0
+                              ? quarterlyData.map((q, i) => <div key={i}>{q.quarter || `Q${i+1}`}</div>)
+                              : ['Q1','Q2','Q3','Q4'].map(q => <div key={q}>{q}</div>)
+                            }
                           </div>
                         </div>
                       </div>
@@ -2283,64 +2172,113 @@ const Accounting = () => {
                       {/* Profit & Loss Section */}
                       <div className="border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">
-                            Profit & Loss
-                          </h2>
+                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">Profit & Loss</h2>
                           <div className="text-sm text-gray-500 flex items-center text-[#475569]">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
+                            {trackYear}
                           </div>
                         </div>
-
                         <div className="mb-4">
                           <div className="text-2xl font-bold text-[#475569]">
-                            $20,000
+                            ${Number((activeTrack.income ?? 0) - (activeTrack.expenses ?? 0)).toLocaleString()}
                           </div>
-                          <div className="text-sm text-[#475569]">
-                            Net income for March
-                          </div>
+                          <div className="text-sm text-[#475569]">Net income</div>
                         </div>
-
                         {/* Income Bar */}
                         <div className="mb-3">
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">
-                              $100,000
-                            </span>
+                            <span className="font-semibold text-[#475569]">${Number(activeTrack.income ?? 0).toLocaleString()}</span>
                             <span className="text-[#475569]">Income</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "60%" }}
-                            ></div>
+                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.income / (activeTrack.income + activeTrack.expenses)) * 100) : 60}%` }}></div>
                           </div>
                         </div>
-
                         {/* Expenses Bar */}
                         <div>
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569">
-                              $80,000
-                            </span>
+                            <span className="font-semibold text-[#475569]">${Number(activeTrack.expenses ?? 0).toLocaleString()}</span>
                             <span className="text-[#475569]">Expenses</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "80%" }}
-                            ></div>
+                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.expenses / (activeTrack.income + activeTrack.expenses)) * 100) : 80}%` }}></div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
             {selectedTab === "KPI" && <KPIScreen />}
           </>
         )}
+        {/* Create Terminal Invoice Modal */}
+        {createInvoiceOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-[420px]">
+              <h3 className="text-lg font-semibold mb-4">Create Invoice</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Description</label>
+                  <input
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
+                    value={createInvoiceForm.description}
+                    onChange={e => setCreateInvoiceForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Invoice description"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-600 mb-1">Quantity</label>
+                    <input
+                      type="number" min="1"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
+                      value={createInvoiceForm.quantity}
+                      onChange={e => setCreateInvoiceForm(f => ({ ...f, quantity: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-600 mb-1">Unit Price ($)</label>
+                    <input
+                      type="number" min="0" step="0.01"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
+                      value={createInvoiceForm.unitPrice}
+                      onChange={e => setCreateInvoiceForm(f => ({ ...f, unitPrice: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">GL Code ID (optional)</label>
+                  <input
+                    type="number"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
+                    value={createInvoiceForm.glCodeId}
+                    onChange={e => setCreateInvoiceForm(f => ({ ...f, glCodeId: e.target.value }))}
+                    placeholder="GL Code ID"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-5">
+                <button
+                  className="px-4 py-2 text-sm rounded border border-gray-300 text-gray-700"
+                  onClick={() => { setCreateInvoiceOpen(false); setCreateInvoiceForm({ description: '', glCodeId: '', quantity: 1, unitPrice: '' }); }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 text-sm rounded bg-[#C01824] text-white disabled:opacity-60"
+                  disabled={termLoading.createInvoice}
+                  onClick={() => handleCreateTerminalInvoice(createInvoiceTerminalId)}
+                >
+                  {termLoading.createInvoice ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <GLCodesModal
           isOpen={gLCodeModalOpen}
           onClose={() => setGLCodeModalOpen(false)}

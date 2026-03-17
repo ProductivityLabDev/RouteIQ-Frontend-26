@@ -20,6 +20,9 @@ import accountsPayableReducer from "./slices/accountsPayableSlice";
 import accountsReceivableReducer from "./slices/accountsReceivableSlice";
 import schoolInvoicesReducer from "./slices/schoolInvoicesSlice";
 import tripInvoicesReducer from "./slices/tripInvoicesSlice";
+import balanceSheetReducer from "./slices/balanceSheetSlice";
+import reportsReducer from "./slices/reportsSlice";
+import terminalTabReducer from "./slices/terminalTabSlice";
 
 const persistConfig = {
   key: "root",
@@ -54,6 +57,9 @@ const rootReducer = combineReducers({
   accountsReceivable: accountsReceivableReducer,
   schoolInvoices: schoolInvoicesReducer,
   tripInvoices: tripInvoicesReducer,
+  balanceSheet: balanceSheetReducer,
+  reports: reportsReducer,
+  terminalTab: terminalTabReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
