@@ -5,7 +5,8 @@ export const tripInvoicesService = {
 
   getTerminals: async () => {
     const response = await apiClient.get("/trip-invoices/terminals");
-    return { ok: true, data: response.data?.data };
+    const raw = response.data?.data?.items ?? response.data?.data ?? [];
+    return { ok: true, data: Array.isArray(raw) ? raw : [] };
   },
 
   getInvoices: async (params?: {
@@ -16,8 +17,18 @@ export const tripInvoicesService = {
     offset?: number;
   }) => {
     const response = await apiClient.get("/trip-invoices", { params });
-    const raw = response.data?.data?.invoices ?? response.data?.data;
-    return { ok: true, data: { total: response.data?.data?.total, data: Array.isArray(raw) ? raw : [] } };
+    const raw =
+      response.data?.data?.items ??
+      response.data?.data?.invoices ??
+      response.data?.data?.rows ??
+      response.data?.data;
+    return {
+      ok: true,
+      data: {
+        total: response.data?.data?.total ?? (Array.isArray(raw) ? raw.length : 0),
+        data: Array.isArray(raw) ? raw : [],
+      },
+    };
   },
 
   createInvoice: async (data: any) => {

@@ -25,6 +25,18 @@ export const fetchTripInvoices = createAsyncThunk(
   }
 );
 
+export const createTripInvoice = createAsyncThunk(
+  "tripInvoices/createInvoice",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await tripInvoicesService.createInvoice(data);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to create invoice");
+    }
+  }
+);
+
 export const sendTripInvoice = createAsyncThunk(
   "tripInvoices/sendInvoice",
   async (id, { rejectWithValue }) => {
@@ -96,8 +108,8 @@ const tripInvoicesSlice = createSlice({
   initialState: {
     terminals: [],
     invoices: { total: 0, data: [] },
-    loading: { terminals: false, invoices: false, send: false, delete: false, export: false, import: false },
-    error: { terminals: null, invoices: null },
+    loading: { terminals: false, invoices: false, create: false, batch: false, send: false, delete: false, export: false, import: false },
+    error: { terminals: null, invoices: null, create: null, batch: null },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -112,11 +124,22 @@ const tripInvoicesSlice = createSlice({
       .addCase(fetchTripInvoices.rejected, (state, action) => { state.loading.invoices = false; state.error.invoices = action.payload; });
 
     builder
+      .addCase(createTripInvoice.pending, (state) => { state.loading.create = true; state.error.create = null; })
+      .addCase(createTripInvoice.fulfilled, (state, action) => {
+        state.loading.create = false;
+        if (action.payload) {
+          state.invoices.data = [action.payload, ...state.invoices.data];
+          state.invoices.total += 1;
+        }
+      })
+      .addCase(createTripInvoice.rejected, (state, action) => { state.loading.create = false; state.error.create = action.payload; });
+
+    builder
       .addCase(sendTripInvoice.pending, (state) => { state.loading.send = true; })
       .addCase(sendTripInvoice.fulfilled, (state, action) => {
         state.loading.send = false;
-        const inv = state.invoices.data.find((i) => i.invoiceId === action.payload);
-        if (inv) inv.status = "Invoice Sent";
+        const inv = state.invoices.data.find((i) => (i.invoiceId ?? i.InvoiceId ?? i.id) === action.payload);
+        if (inv) inv.status = "Sent";
       })
       .addCase(sendTripInvoice.rejected, (state) => { state.loading.send = false; });
 
@@ -124,7 +147,8 @@ const tripInvoicesSlice = createSlice({
       .addCase(deleteTripInvoice.pending, (state) => { state.loading.delete = true; })
       .addCase(deleteTripInvoice.fulfilled, (state, action) => {
         state.loading.delete = false;
-        state.invoices.data = state.invoices.data.filter((i) => i.invoiceId !== action.payload);
+        state.invoices.data = state.invoices.data.filter((i) => (i.invoiceId ?? i.InvoiceId ?? i.id) !== action.payload);
+        state.invoices.total = Math.max(0, state.invoices.total - 1);
       })
       .addCase(deleteTripInvoice.rejected, (state) => { state.loading.delete = false; });
 
@@ -137,6 +161,11 @@ const tripInvoicesSlice = createSlice({
       .addCase(importTripInvoices.pending, (state) => { state.loading.import = true; })
       .addCase(importTripInvoices.fulfilled, (state) => { state.loading.import = false; })
       .addCase(importTripInvoices.rejected, (state) => { state.loading.import = false; });
+
+    builder
+      .addCase(batchTripInvoice.pending, (state) => { state.loading.batch = true; state.error.batch = null; })
+      .addCase(batchTripInvoice.fulfilled, (state) => { state.loading.batch = false; })
+      .addCase(batchTripInvoice.rejected, (state, action) => { state.loading.batch = false; state.error.batch = action.payload; });
   },
 });
 

@@ -14,7 +14,7 @@ import { fetchGlCodes } from "@/redux/slices/payrollSlice";
 import { addExpense } from "@/redux/slices/accountsPayableSlice";
 import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivableSlice";
 import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
-import { fetchTripInvoiceTerminals, fetchTripInvoices, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
+import { fetchTripInvoiceTerminals, fetchTripInvoices, createTripInvoice, batchTripInvoice, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
 import { fetchGenerateReport } from "@/redux/slices/reportsSlice";
 import {
   fetchTerminalSummary,
@@ -90,6 +90,22 @@ const Accounting = () => {
   const [batchInvoice, setBatchInvoice] = useState(false);
   const [createBatchInvoice, setCreateBatchInvoice] = useState(false);
   const [createInvoice, setCreateInvoice] = useState(false);
+  const [selectedTripInvoiceIds, setSelectedTripInvoiceIds] = useState([]);
+  const [activeTripTerminalId, setActiveTripTerminalId] = useState("");
+  const [tripExportFormat, setTripExportFormat] = useState("pdf");
+  const [tripBatchNotes, setTripBatchNotes] = useState("");
+  const [tripInvoiceForm, setTripInvoiceForm] = useState({
+    terminalId: "",
+    glCodeId: "",
+    invoiceDate: new Date().toISOString().slice(0, 10),
+    dueDate: new Date().toISOString().slice(0, 10),
+    billFrom: "RouteIQ Inc",
+    billTo: "",
+    subTotal: "",
+    taxAmount: "",
+    notes: "",
+    lineItems: [{ id: 1, itemDescription: "", quantity: "", unitPrice: "", totalAmount: "", tripId: "", glCodeId: "" }],
+  });
   const [addVendor, setAddVendor] = useState(false);
   const [addExpense, setAddExpense] = useState(false);
   const [expandedVendor, setExpandedVendor] = useState("Ronald Richards");
@@ -224,6 +240,14 @@ const dispatch = useDispatch();
   }, [dispatch, selectedInstituteId]);
 
   useEffect(() => {
+    if (tripTerminals.length > 0 && !tripInvoiceForm.terminalId) {
+      const firstTerminal = tripTerminals[0];
+      const terminalId = String(firstTerminal?.TerminalId || firstTerminal?.terminalId || firstTerminal?.id || "");
+      setTripInvoiceForm((prev) => ({ ...prev, terminalId }));
+    }
+  }, [tripTerminals, tripInvoiceForm.terminalId]);
+
+  useEffect(() => {
     if (selectedTab === 'Terminal') {
       dispatch(fetchTerminalSummary());
       dispatch(fetchTerminalList());
@@ -333,6 +357,11 @@ const dispatch = useDispatch();
     setSelectedInvoiceData(null);
   };
   const handleExport = () => {
+    if (selectedTab === "Trip invoices" && selectedTripInvoiceIds.length > 0) {
+      dispatch(exportTripInvoice({ id: selectedTripInvoiceIds[0], format: tripExportFormat }));
+      closeModal();
+      return;
+    }
     closeModal();
     setSelectedTab("Trip invoices");
     setSchoolData(false);
@@ -359,6 +388,24 @@ const dispatch = useDispatch();
     setSelectedInvoiceData(nextInvoice);
     setSchoolInvoice(true);
     setInvoiceForm(true);
+  };
+  const handleTripInvoiceFormChange = (field, value) => {
+    setTripInvoiceForm((prev) => ({ ...prev, [field]: value }));
+  };
+  const resetTripInvoiceDraft = () => {
+    setTripInvoiceForm((prev) => ({
+      terminalId: prev.terminalId || activeTripTerminalId || "",
+      glCodeId: "",
+      invoiceDate: new Date().toISOString().slice(0, 10),
+      dueDate: new Date().toISOString().slice(0, 10),
+      billFrom: "RouteIQ Inc",
+      billTo: "",
+      subTotal: "",
+      taxAmount: "",
+      notes: "",
+      lineItems: [{ id: 1, itemDescription: "", quantity: "", unitPrice: "", totalAmount: "", tripId: "", glCodeId: "" }],
+    }));
+    setTripBatchNotes("");
   };
   const handleBatchInvoice = () => {
     setEditInvoice(true);
@@ -429,17 +476,96 @@ const dispatch = useDispatch();
   };
   const handleCreateBatchInvoice = () => {
     setCreateBatchInvoice(true);
+    setCreateInvoice(false);
     setBatchInvoice(true);
+    setTripBatchNotes("");
   };
   const backCreateBatchInvoice = () => {
     setCreateBatchInvoice(false);
+    setBatchInvoice(false);
   };
   const handleCreateInvoice = () => {
     setEditInvoice(true);
     setCreateInvoice(true);
+    setCreateBatchInvoice(false);
+    setBatchInvoice(false);
+    setTripInvoiceForm((prev) => ({
+      ...prev,
+      terminalId: activeTripTerminalId || prev.terminalId,
+    }));
   };
   const handlebackCreateInvoice = () => {
     setCreateInvoice(false);
+    setEditInvoice(false);
+  };
+  const handleTripInvoiceSelection = (invoiceId, checked) => {
+    setSelectedTripInvoiceIds((prev) =>
+      checked ? [...new Set([...prev, invoiceId])] : prev.filter((id) => id !== invoiceId)
+    );
+  };
+  const handleTripSelectAll = (items, checked) => {
+    const itemIds = items
+      .map((invoice) => invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id)
+      .filter(Boolean);
+    setSelectedTripInvoiceIds(checked ? itemIds : []);
+  };
+  const submitTripInvoiceCreate = async () => {
+    const normalizedLineItems = (tripInvoiceForm.lineItems || [])
+      .map((item) => {
+        const quantity = Number(item.quantity || 0);
+        const unitPrice = Number(item.unitPrice || 0);
+        const totalAmount = Number(item.totalAmount || quantity * unitPrice || 0);
+        return {
+          itemDescription: item.itemDescription || "",
+          quantity,
+          unitPrice,
+          totalAmount,
+          tripId: item.tripId ? Number(item.tripId) : undefined,
+          glCodeId: Number(item.glCodeId || tripInvoiceForm.glCodeId || 0),
+        };
+      })
+      .filter((item) => item.itemDescription || item.tripId || item.quantity || item.unitPrice || item.totalAmount);
+
+    const computedSubTotal = normalizedLineItems.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+    const subTotal = Number(tripInvoiceForm.subTotal || computedSubTotal || 0);
+    const taxAmount = Number(tripInvoiceForm.taxAmount || 0);
+
+    const payload = {
+      terminalId: Number(tripInvoiceForm.terminalId || activeTripTerminalId || 0),
+      glCodeId: Number(tripInvoiceForm.glCodeId || normalizedLineItems[0]?.glCodeId || 0),
+      invoiceDate: tripInvoiceForm.invoiceDate,
+      dueDate: tripInvoiceForm.dueDate,
+      billFrom: tripInvoiceForm.billFrom,
+      billTo: tripInvoiceForm.billTo,
+      subTotal,
+      taxAmount,
+      totalAmount: subTotal + taxAmount,
+      notes: tripInvoiceForm.notes,
+      lineItems: normalizedLineItems,
+    };
+
+    const result = await dispatch(createTripInvoice(payload));
+    if (result.meta.requestStatus === "fulfilled") {
+      setCreateInvoice(false);
+      setEditInvoice(false);
+      resetTripInvoiceDraft();
+      if (payload.terminalId) {
+        dispatch(fetchTripInvoices({ terminalId: payload.terminalId, limit: 20, offset: 0 }));
+      }
+    }
+  };
+  const submitTripBatchInvoice = async () => {
+    if (selectedTripInvoiceIds.length === 0) return;
+    const result = await dispatch(batchTripInvoice({ invoiceIds: selectedTripInvoiceIds, notes: tripBatchNotes }));
+    if (result.meta.requestStatus === "fulfilled") {
+      setCreateBatchInvoice(false);
+      setBatchInvoice(false);
+      setEditInvoice(false);
+    }
+  };
+  const handleSendTripInvoices = async () => {
+    if (selectedTripInvoiceIds.length === 0) return;
+    await Promise.all(selectedTripInvoiceIds.map((invoiceId) => dispatch(sendTripInvoice(invoiceId))));
   };
   const toggleExpand = (name) => {
     if (expandedVendor === name) {
@@ -470,11 +596,14 @@ const dispatch = useDispatch();
                     className="border border-[#C01824] bg-transparent text-[#C01824] px-12 py-2 rounded-[4px]"
                     variant="outlined"
                     size="lg"
-                    onClick={
-                      createInvoice
-                        ? handlebackCreateInvoice
-                        : backCreateBatchInvoice
-                    }
+                    onClick={() => {
+                      if (createInvoice) {
+                        handlebackCreateInvoice();
+                      } else {
+                        backCreateBatchInvoice();
+                      }
+                      setEditInvoice(false);
+                    }}
                   >
                     Cancel
                   </Button>
@@ -482,18 +611,36 @@ const dispatch = useDispatch();
                     className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
                     variant="filled"
                     size="lg"
-                    onClick={
-                      createInvoice
-                        ? handlebackCreateInvoice
-                        : backCreateBatchInvoice
-                    }
+                    onClick={() => {
+                      if (selectedTab === "Trip invoices") {
+                        if (createInvoice) {
+                          submitTripInvoiceCreate();
+                        } else {
+                          submitTripBatchInvoice();
+                        }
+                        return;
+                      }
+                      if (createInvoice) {
+                        handlebackCreateInvoice();
+                      } else {
+                        backCreateBatchInvoice();
+                      }
+                    }}
                   >
-                    Save Invoice
+                    {selectedTab === "Trip invoices" && (tiLoading.create || tiLoading.batch) ? "Saving..." : "Save Invoice"}
                   </Button>
                 </div>
               </div>
             </div>
-            <EditInvoiceForm batchInvoice={batchInvoice} />
+            <EditInvoiceForm
+              batchInvoice={batchInvoice}
+              terminals={tripTerminals}
+              selectedInvoiceIds={selectedTripInvoiceIds}
+              batchNotes={tripBatchNotes}
+              onBatchNotesChange={setTripBatchNotes}
+              formData={tripInvoiceForm}
+              onFormChange={handleTripInvoiceFormChange}
+            />
           </div>
         ) : invoiceForm ? (
           <InvoiceForm
@@ -888,7 +1035,16 @@ const dispatch = useDispatch();
                           {
                             const next = index === isTripInvoice ? null : index;
                             setIsTripInvoice(next);
-                            if (next !== null) dispatch(fetchTripInvoices({ terminalId: terminal.TerminalId, limit: 20, offset: 0 }));
+                            if (next !== null) {
+                              setActiveTripTerminalId(String(terminal.TerminalId || terminal.terminalId || terminal.id || ""));
+                              setTripInvoiceForm((prev) => ({
+                                ...prev,
+                                terminalId: String(terminal.TerminalId || terminal.terminalId || terminal.id || prev.terminalId || ""),
+                                billTo: prev.billTo || terminal.TerminalName || terminal.terminalName || "",
+                              }));
+                              setSelectedTripInvoiceIds([]);
+                              dispatch(fetchTripInvoices({ terminalId: terminal.TerminalId, limit: 20, offset: 0 }));
+                            }
                           }}
                           className="text-black"
                         >
@@ -915,10 +1071,22 @@ const dispatch = useDispatch();
                       <div className="w-full overflow-x-auto">
                         <input ref={tripImportInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleTripImportFile} />
                         <div className="flex flex-row items-center flex-wrap gap-4 p-3 justify-end">
-                          <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm">
-                            Send
+                          <Button
+                            className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
+                            variant="filled"
+                            size="sm"
+                            onClick={handleSendTripInvoices}
+                            disabled={tiLoading.send || selectedTripInvoiceIds.length === 0}
+                          >
+                            {tiLoading.send ? "Sending..." : "Send"}
                           </Button>
-                          <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm" onClick={openModal}>
+                          <Button
+                            className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
+                            variant="filled"
+                            size="sm"
+                            onClick={openModal}
+                            disabled={selectedTripInvoiceIds.length === 0}
+                          >
                             Export Invoice
                           </Button>
                           <Button
@@ -929,7 +1097,13 @@ const dispatch = useDispatch();
                           >
                             {tiLoading.import ? 'Importing...' : 'Import Invoice'}
                           </Button>
-                          <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm" onClick={handleCreateBatchInvoice}>
+                          <Button
+                            className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
+                            variant="filled"
+                            size="sm"
+                            onClick={handleCreateBatchInvoice}
+                            disabled={selectedTripInvoiceIds.length === 0}
+                          >
                             Create Batch Invoice
                           </Button>
                           <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm" onClick={handleCreateInvoice}>
@@ -939,7 +1113,18 @@ const dispatch = useDispatch();
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="bg-gray-100">
-                              <th className="p-3 border-b border-[#EEEEEE]"><input type="checkbox" className="w-4 h-4" /></th>
+                              <th className="p-3 border-b border-[#EEEEEE]">
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4"
+                                  checked={
+                                    (Array.isArray(tripInvoices?.data) ? tripInvoices.data : []).length > 0 &&
+                                    (Array.isArray(tripInvoices?.data) ? tripInvoices.data : [])
+                                      .every((invoice) => selectedTripInvoiceIds.includes(invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id))
+                                  }
+                                  onChange={(e) => handleTripSelectAll(Array.isArray(tripInvoices?.data) ? tripInvoices.data : [], e.target.checked)}
+                                />
+                              </th>
                               <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Date</th>
                               <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Invoice#</th>
                               <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Bill To</th>
@@ -959,20 +1144,35 @@ const dispatch = useDispatch();
                               <tr><td colSpan={10} className="py-6 text-center text-gray-400">No invoices found</td></tr>
                             )}
                             {(Array.isArray(tripInvoices?.data) ? tripInvoices.data : []).map((invoice, idx) => (
-                              <tr key={invoice.invoiceId ?? idx} className="bg-white">
-                                <td className="p-8 border-b flex justify-center items-center border-[#D9D9D9]"><input type="checkbox" className="w-4 h-4" /></td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}</td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceNumber ?? '-'}</td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.billTo ?? '-'}</td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.glCode ?? '-'}</td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.type ?? '-'}</td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.milesPerRate ?? '-'}</td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceTotal != null ? `$${invoice.invoiceTotal}` : '-'}</td>
-                                <td className="p-3 border-b border-[#D9D9D9]">
-                                  <a className="text-[#C01824] font-bold cursor-pointer" onClick={handleInvoiceList}>View</a>
+                              <tr key={invoice.invoiceId ?? invoice.InvoiceId ?? idx} className="bg-white">
+                                <td className="p-8 border-b flex justify-center items-center border-[#D9D9D9]">
+                                  <input
+                                    type="checkbox"
+                                    className="w-4 h-4"
+                                    checked={selectedTripInvoiceIds.includes(invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id)}
+                                    onChange={(e) => handleTripInvoiceSelection(invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id, e.target.checked)}
+                                  />
+                                </td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
+                                  {invoice.invoiceDate || invoice.InvoiceDate || invoice.date
+                                    ? new Date(invoice.invoiceDate || invoice.InvoiceDate || invoice.date).toLocaleDateString()
+                                    : '-'}
+                                </td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceNumber ?? invoice.InvoiceNumber ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.billTo ?? invoice.BillTo ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.glCode ?? invoice.GLCode ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceMode ?? invoice.InvoiceMode ?? invoice.type ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.milesPerRate ?? invoice.MilesPerRate ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
+                                  {(invoice.totalAmount ?? invoice.TotalAmount ?? invoice.invoiceTotal) != null
+                                    ? `$${invoice.totalAmount ?? invoice.TotalAmount ?? invoice.invoiceTotal}`
+                                    : '-'}
                                 </td>
                                 <td className="p-3 border-b border-[#D9D9D9]">
-                                  <button aria-label="Delete" onClick={() => dispatch(deleteTripInvoice(invoice.invoiceId))} disabled={tiLoading.delete}>
+                                  <a className="text-[#C01824] font-bold cursor-pointer" onClick={() => handleInvoiceList(invoice)}>View</a>
+                                </td>
+                                <td className="p-3 border-b border-[#D9D9D9]">
+                                  <button aria-label="Delete" onClick={() => dispatch(deleteTripInvoice(invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id))} disabled={tiLoading.delete}>
                                     <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
                                   </button>
                                 </td>
@@ -2389,8 +2589,11 @@ const dispatch = useDispatch();
           <div className="w-full">
             <label className="block mb-2 font-medium">Select Format</label>
             <div className="relative">
-              <select className="w-full p-2 outline-none border border-gray-300 rounded appearance-none bg-white text-gray-700 pr-8">
-                <option value="">Select</option>
+              <select
+                value={tripExportFormat}
+                onChange={(e) => setTripExportFormat(e.target.value)}
+                className="w-full p-2 outline-none border border-gray-300 rounded appearance-none bg-white text-gray-700 pr-8"
+              >
                 <option value="pdf">PDF</option>
                 <option value="csv">CSV</option>
                 <option value="excel">Excel</option>

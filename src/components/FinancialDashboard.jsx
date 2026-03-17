@@ -18,6 +18,7 @@ import {
     LineChart,
     ReferenceLine,
     ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis
 } from 'recharts';
@@ -109,6 +110,62 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
 
     const formatCurrency = (value) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+    const TrendChartTooltip = ({ active, payload, label }) => {
+        if (!active || !payload || payload.length === 0) return null;
+
+        const incomeValue = payload.find((entry) => entry.dataKey === 'value')?.value ?? 0;
+
+        return (
+            <div className="min-w-[180px] rounded-xl border border-[#E7EAF3] bg-white p-3 shadow-lg">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">
+                    {label || 'Period'}
+                </div>
+                <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="text-[#475569]">Income Trend</span>
+                        <span className="font-semibold text-[#141516]">{formatCurrency(incomeValue)}</span>
+                    </div>
+                    <div className="border-t border-[#EEF2F7] pt-2 flex items-center justify-between gap-4">
+                        <span className="text-[#475569]">View</span>
+                        <span className="font-semibold text-[#2563EB]">Monthly trend</span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const ComparisonChartTooltip = ({ active, payload, label }) => {
+        if (!active || !payload || payload.length === 0) return null;
+
+        const revenueValue = payload.find((entry) => entry.dataKey === 'revenue')?.value ?? 0;
+        const expensesValue = payload.find((entry) => entry.dataKey === 'expenses')?.value ?? 0;
+        const netValue = Number(revenueValue || 0) - Number(expensesValue || 0);
+
+        return (
+            <div className="min-w-[200px] rounded-xl border border-[#E7EAF3] bg-white p-3 shadow-lg">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">
+                    {label || 'Period'}
+                </div>
+                <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="text-[#475569]">Revenue</span>
+                        <span className="font-semibold text-[#141516]">{formatCurrency(revenueValue)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="text-[#475569]">Expenses</span>
+                        <span className="font-semibold text-[#141516]">{formatCurrency(expensesValue)}</span>
+                    </div>
+                    <div className="border-t border-[#EEF2F7] pt-2 flex items-center justify-between gap-4">
+                        <span className="text-[#475569]">Net</span>
+                        <span className={`font-semibold ${netValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(netValue)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     // Handlers
     const startEdit = (item) => {
@@ -468,7 +525,8 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} />
                                         <YAxis axisLine={false} tickLine={false} />
-                                        <Line type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                                        <Tooltip content={<TrendChartTooltip />} />
+                                        <Line type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} dot={{ r: 3, fill: '#EF4444' }} activeDot={{ r: 6, fill: '#EF4444' }} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             )}
@@ -493,6 +551,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="month" axisLine={false} tickLine={false} />
                                         <YAxis axisLine={false} tickLine={false} />
+                                        <Tooltip content={<ComparisonChartTooltip />} />
                                         <Bar dataKey="revenue" fill="#EF4444" radius={[2, 2, 0, 0]} />
                                         <Bar dataKey="expenses" fill="#6B7280" radius={[2, 2, 0, 0]} />
                                     </BarChart>
