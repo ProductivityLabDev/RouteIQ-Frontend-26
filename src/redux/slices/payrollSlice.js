@@ -195,6 +195,90 @@ export const rejectTimeOffRequest = createAsyncThunk(
   }
 );
 
+export const updateGlCodeDefaultPrice = createAsyncThunk(
+  "payroll/updateGlCodeDefaultPrice",
+  async ({ glCodeId, defaultUnitPrice }, { rejectWithValue }) => {
+    try {
+      await payrollService.updateGlCodeDefaultPrice(glCodeId, defaultUnitPrice);
+      return { glCodeId, defaultUnitPrice };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to update default price");
+    }
+  }
+);
+
+export const addGlCodeAssignment = createAsyncThunk(
+  "payroll/addGlCodeAssignment",
+  async ({ glCodeId, assignment, unitPrice }, { rejectWithValue }) => {
+    try {
+      const res = await payrollService.addGlCodeAssignment(glCodeId, { assignment, unitPrice });
+      return { glCodeId, item: res.data };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to add assignment");
+    }
+  }
+);
+
+export const updateGlCodeAssignment = createAsyncThunk(
+  "payroll/updateGlCodeAssignment",
+  async ({ glCodeId, assignmentId, assignment, unitPrice }, { rejectWithValue }) => {
+    try {
+      await payrollService.updateGlCodeAssignment(assignmentId, { assignment, unitPrice });
+      return { glCodeId, assignmentId, assignment, unitPrice };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to update assignment");
+    }
+  }
+);
+
+export const deleteGlCodeAssignment = createAsyncThunk(
+  "payroll/deleteGlCodeAssignment",
+  async ({ glCodeId, assignmentId }, { rejectWithValue }) => {
+    try {
+      await payrollService.deleteGlCodeAssignment(assignmentId);
+      return { glCodeId, assignmentId };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to delete assignment");
+    }
+  }
+);
+
+export const fetchGlCodes = createAsyncThunk(
+  "payroll/fetchGlCodes",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await payrollService.getGlCodes();
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch GL codes");
+    }
+  }
+);
+
+export const addGlCode = createAsyncThunk(
+  "payroll/addGlCode",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await payrollService.addGlCode(data);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to add GL code");
+    }
+  }
+);
+
+export const fetchGlCodeHistory = createAsyncThunk(
+  "payroll/fetchGlCodeHistory",
+  async ({ search, limit, offset } = {}, { rejectWithValue }) => {
+    try {
+      const res = await payrollService.getGlCodeHistory(search, limit, offset);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch GL code history");
+    }
+  }
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const payrollSlice = createSlice({
@@ -208,6 +292,8 @@ const payrollSlice = createSlice({
     driverPaystub: null,
     driverBenefits: null,
     driverTimeOff: null,
+    glCodes: [],
+    glCodeHistory: { total: 0, history: [], limit: 20, offset: 0 },
     loading: {
       terminals: false,
       terminalDetail: false,
@@ -222,6 +308,13 @@ const payrollSlice = createSlice({
       benefits: false,
       timeOff: false,
       approveReject: false,
+      glCodes: false,
+      addGlCode: false,
+      glCodeHistory: false,
+      updateDefaultPrice: false,
+      addAssignment: false,
+      updateAssignment: false,
+      deleteAssignment: false,
     },
     error: {
       terminals: null,
@@ -237,6 +330,13 @@ const payrollSlice = createSlice({
       benefits: null,
       timeOff: null,
       approveReject: null,
+      glCodes: null,
+      addGlCode: null,
+      glCodeHistory: null,
+      updateDefaultPrice: null,
+      addAssignment: null,
+      updateAssignment: null,
+      deleteAssignment: null,
     },
   },
   reducers: {
@@ -366,6 +466,78 @@ const payrollSlice = createSlice({
         }
       })
       .addCase(rejectTimeOffRequest.rejected, (state, action) => { state.loading.approveReject = false; state.error.approveReject = action.payload; });
+
+    // fetchGlCodes
+    builder
+      .addCase(fetchGlCodes.pending, (state) => { state.loading.glCodes = true; state.error.glCodes = null; })
+      .addCase(fetchGlCodes.fulfilled, (state, action) => { state.loading.glCodes = false; state.glCodes = action.payload || []; })
+      .addCase(fetchGlCodes.rejected, (state, action) => { state.loading.glCodes = false; state.error.glCodes = action.payload; });
+
+    // addGlCode
+    builder
+      .addCase(addGlCode.pending, (state) => { state.loading.addGlCode = true; state.error.addGlCode = null; })
+      .addCase(addGlCode.fulfilled, (state, action) => {
+        state.loading.addGlCode = false;
+        if (action.payload) state.glCodes.push(action.payload);
+      })
+      .addCase(addGlCode.rejected, (state, action) => { state.loading.addGlCode = false; state.error.addGlCode = action.payload; });
+
+    // fetchGlCodeHistory
+    builder
+      .addCase(fetchGlCodeHistory.pending, (state) => { state.loading.glCodeHistory = true; state.error.glCodeHistory = null; })
+      .addCase(fetchGlCodeHistory.fulfilled, (state, action) => { state.loading.glCodeHistory = false; state.glCodeHistory = action.payload || state.glCodeHistory; })
+      .addCase(fetchGlCodeHistory.rejected, (state, action) => { state.loading.glCodeHistory = false; state.error.glCodeHistory = action.payload; });
+
+    // updateGlCodeDefaultPrice
+    builder
+      .addCase(updateGlCodeDefaultPrice.pending, (state) => { state.loading.updateDefaultPrice = true; state.error.updateDefaultPrice = null; })
+      .addCase(updateGlCodeDefaultPrice.fulfilled, (state, action) => {
+        state.loading.updateDefaultPrice = false;
+        const gl = state.glCodes.find((g) => g.glCodeId === action.payload.glCodeId);
+        if (gl) gl.defaultUnitPrice = action.payload.defaultUnitPrice;
+      })
+      .addCase(updateGlCodeDefaultPrice.rejected, (state, action) => { state.loading.updateDefaultPrice = false; state.error.updateDefaultPrice = action.payload; });
+
+    // addGlCodeAssignment
+    builder
+      .addCase(addGlCodeAssignment.pending, (state) => { state.loading.addAssignment = true; state.error.addAssignment = null; })
+      .addCase(addGlCodeAssignment.fulfilled, (state, action) => {
+        state.loading.addAssignment = false;
+        const gl = state.glCodes.find((g) => g.glCodeId === action.payload.glCodeId);
+        if (gl && action.payload.item) {
+          if (!gl.items) gl.items = [];
+          gl.items.push(action.payload.item);
+        }
+      })
+      .addCase(addGlCodeAssignment.rejected, (state, action) => { state.loading.addAssignment = false; state.error.addAssignment = action.payload; });
+
+    // updateGlCodeAssignment
+    builder
+      .addCase(updateGlCodeAssignment.pending, (state) => { state.loading.updateAssignment = true; state.error.updateAssignment = null; })
+      .addCase(updateGlCodeAssignment.fulfilled, (state, action) => {
+        state.loading.updateAssignment = false;
+        const gl = state.glCodes.find((g) => g.glCodeId === action.payload.glCodeId);
+        if (gl?.items) {
+          const item = gl.items.find((i) => i.assignmentId === action.payload.assignmentId);
+          if (item) {
+            if (action.payload.assignment !== undefined) item.assignment = action.payload.assignment;
+            if (action.payload.unitPrice !== undefined) item.unitPrice = action.payload.unitPrice;
+          }
+        }
+      })
+      .addCase(updateGlCodeAssignment.rejected, (state, action) => { state.loading.updateAssignment = false; state.error.updateAssignment = action.payload; });
+
+    // deleteGlCodeAssignment
+    builder
+      .addCase(deleteGlCodeAssignment.pending, (state) => { state.loading.deleteAssignment = true; state.error.deleteAssignment = null; })
+      .addCase(deleteGlCodeAssignment.fulfilled, (state, action) => {
+        state.loading.deleteAssignment = false;
+        const gl = state.glCodes.find((g) => g.glCodeId === action.payload.glCodeId);
+        if (gl?.items) {
+          gl.items = gl.items.filter((i) => i.assignmentId !== action.payload.assignmentId);
+        }
+      })
+      .addCase(deleteGlCodeAssignment.rejected, (state, action) => { state.loading.deleteAssignment = false; state.error.deleteAssignment = action.payload; });
   },
 });
 

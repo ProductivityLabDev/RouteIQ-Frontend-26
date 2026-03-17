@@ -16,6 +16,10 @@ import employeeDashboardReducer from "./slices/employeeDashboardSlice";
 import vendorDashboardReducer from "./slices/vendorDashboardSlice";
 import schoolDashboardReducer from "./slices/schoolDashboardSlice";
 import payrollReducer from "./slices/payrollSlice";
+import accountsPayableReducer from "./slices/accountsPayableSlice";
+import accountsReceivableReducer from "./slices/accountsReceivableSlice";
+import schoolInvoicesReducer from "./slices/schoolInvoicesSlice";
+import tripInvoicesReducer from "./slices/tripInvoicesSlice";
 
 const persistConfig = {
   key: "root",
@@ -46,6 +50,10 @@ const rootReducer = combineReducers({
   vendorDashboard: vendorDashboardReducer,
   schoolDashboard: schoolDashboardReducer,
   payroll: payrollReducer,
+  accountsPayable: accountsPayableReducer,
+  accountsReceivable: accountsReceivableReducer,
+  schoolInvoices: schoolInvoicesReducer,
+  tripInvoices: tripInvoicesReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

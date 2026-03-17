@@ -1,14 +1,20 @@
+import React from 'react';
 import {
   accountingTab,
   generateReportEmployeesData,
-  glCodeData,
   glCodesTab,
   InvoicesData,
   payementTablesData,
   schoolInvoices,
   terminalTab,
 } from "@/data/dummyData";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchGlCodes } from "@/redux/slices/payrollSlice";
+import { addExpense } from "@/redux/slices/accountsPayableSlice";
+import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivableSlice";
+import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
+import { fetchTripInvoiceTerminals, fetchTripInvoices, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
 import {
   Button,
   ButtonGroup,
@@ -52,6 +58,7 @@ const Accounting = () => {
   const [selectedTab, setSelectedTab] = useState("School Invoices");
   const [selectedGlCodesTab, setSelectedGlCodesTab] =
     useState("GL Code List");
+  const [glCodeSearch, setGlCodeSearch] = useState("");
   const [selectedTerminalTab, setSelectedTerminalTab] =
     useState("Terminals Details");
   const [invoiceForm, setInvoiceForm] = useState(false);
@@ -61,6 +68,8 @@ const Accounting = () => {
   const [isTripInvoice, setIsTripInvoice] = useState(false);
   const [isTerminal, setIsTerminal] = useState(false);
   const [schoolData, setSchoolData] = useState(false);
+  const [selectedInstituteId, setSelectedInstituteId] = useState(null);
+  const [selectedSchoolName, setSelectedSchoolName] = useState('');
   const [schoolInvoice, setSchoolInvoice] = useState(false);
   const [editInvoice, setEditInvoice] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,7 +84,79 @@ const Accounting = () => {
   const [accountsPayable, setaccountsPayable] = useState("Accounts Payable");
   const [accountsReceivable, setaccountsReceivable] = useState("accountsReceivable");
 
-  
+  const dispatch = useDispatch();
+  const { glCodes, loading, error } = useSelector((state) => state.payroll);
+  const { loading: apLoading, error: apError } = useSelector((state) => state.accountsPayable);
+  const { invoices, loading: arLoading, error: arError } = useSelector((state) => state.accountsReceivable);
+  const { terminals, schools: siSchools, invoices: siInvoices, loading: siLoading } = useSelector((state) => state.schoolInvoices);
+  const { terminals: tripTerminals, invoices: tripInvoices, loading: tiLoading } = useSelector((state) => state.tripInvoices);
+  const filteredGlCodes = glCodes.filter((item) => {
+    const search = glCodeSearch.trim().toLowerCase();
+    if (!search) return true;
+
+    return [
+      item.glCode,
+      item.glCodeName,
+      item.category,
+      ...(item.items || []).map((assignment) => assignment.assignment),
+    ]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(search));
+  });
+
+  useEffect(() => {
+    dispatch(fetchGlCodes());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (selectedTab === "Accounts Receivable") {
+      dispatch(fetchInvoices({ source: "All", limit: 20, offset: 0 }));
+    }
+    if (selectedTab === "School Invoices") {
+      dispatch(fetchInvoiceTerminals());
+    }
+    if (selectedTab === "Trip invoices") {
+      dispatch(fetchTripInvoiceTerminals());
+    }
+  }, [dispatch, selectedTab]);
+
+  useEffect(() => {
+    if (selectedInstituteId) {
+      dispatch(fetchSchoolInvoices({ instituteId: selectedInstituteId, limit: 20, offset: 0 }));
+    }
+  }, [dispatch, selectedInstituteId]);
+
+  const importInputRef = React.useRef(null);
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (file) dispatch(importSchoolInvoices(file));
+  };
+
+  const tripImportInputRef = React.useRef(null);
+  const handleTripImportFile = (e) => {
+    const file = e.target.files[0];
+    if (file) dispatch(importTripInvoices(file));
+  };
+
+  const [expenseForm, setExpenseForm] = useState({
+    expenseDate: '', expenseType: '', amount: '', dueDate: '',
+    vendorName: '', glCodeId: '', paymentTerm: '', paymentMethod: '', terminalId: '',
+  });
+
+  const handleExpenseSubmit = async () => {
+    const result = await dispatch(addExpense({
+      ...expenseForm,
+      amount: parseFloat(expenseForm.amount),
+      glCodeId: parseInt(expenseForm.glCodeId),
+      terminalId: parseInt(expenseForm.terminalId),
+    }));
+    if (result.meta.requestStatus === 'fulfilled') {
+      setAddExpense(false);
+      setExpenseForm({ expenseDate: '', expenseType: '', amount: '', dueDate: '', vendorName: '', glCodeId: '', paymentTerm: '', paymentMethod: '', terminalId: '' });
+    }
+  };
+
+
 
   
 
@@ -225,11 +306,12 @@ const Accounting = () => {
                       onClick={() => setSchoolData(false)}
                     />
                     <h2 className="text-[22px] lg:text-[26px] xl:text-[29px] font-bold text-black">
-                      Lakeview High Sch...
+                      {selectedSchoolName || 'School Invoices'}
                     </h2>
                   </div>
 
                   <div className="flex flex-row items-center flex-wrap gap-4 justify-end">
+                    <input ref={importInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImportFile} />
                     <Button
                       className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
                       variant="filled"
@@ -249,9 +331,10 @@ const Accounting = () => {
                       className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
                       variant="filled"
                       size="lg"
-                      onClick={openImportInvoiceModal}
+                      onClick={() => importInputRef.current?.click()}
+                      disabled={siLoading.import}
                     >
-                      Import Invoice
+                      {siLoading.import ? 'Importing...' : 'Import Invoice'}
                     </Button>
                     <Button
                       className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
@@ -376,44 +459,46 @@ const Accounting = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {schoolInvoices.map((invoice, index) => (
-                          <tr key={index} className="bg-whit">
+                        {siLoading.invoices && (
+                          <tr><td colSpan={10} className="py-6 text-center text-gray-400">Loading...</td></tr>
+                        )}
+                        {!siLoading.invoices && !Array.isArray(siInvoices?.data) || (Array.isArray(siInvoices?.data) && siInvoices.data.length === 0) ? (
+                          <tr><td colSpan={10} className="py-6 text-center text-gray-400">No invoices found</td></tr>
+                        ) : null}
+                        {(Array.isArray(siInvoices?.data) ? siInvoices.data : []).map((invoice, index) => (
+                          <tr key={invoice.invoiceId ?? index} className="bg-white">
                             <td className="p-8 border-b flex justify-center items-center border-[#D9D9D9]">
                               <input type="checkbox" className="w-4 h-4" />
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
-                              {invoice.date}
+                              {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
-                              {invoice.invoiceNumber}
+                              {invoice.invoiceNumber ?? '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
-                              {invoice.billTo}
+                              {invoice.billTo ?? '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
-                              {invoice.glCode}
+                              {invoice.glCode ?? '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
-                              {invoice.type}
+                              {invoice.type ?? '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
-                              {invoice.milesPerRate}
+                              {invoice.milesPerRate ?? '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
-                              {invoice.invoiceTotal}
+                              {invoice.invoiceTotal != null ? `$${invoice.invoiceTotal}` : '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9]">
-                              <a
-                                className="text-[#C01824] font-bold cursor-pointer"
-                                onClick={handleInvoiceList}
-                              >
-                                View
-                              </a>
+                              <a className="text-[#C01824] font-bold cursor-pointer" onClick={handleInvoiceList}>View</a>
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9]">
                               <button
-                                className="text-red-500"
                                 aria-label="Delete"
+                                onClick={() => dispatch(deleteSchoolInvoice(invoice.invoiceId))}
+                                disabled={siLoading.delete}
                               >
                                 <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
                               </button>
@@ -428,8 +513,11 @@ const Accounting = () => {
             ) : (
               selectedTab === "School Invoices" && (
                 <div className="w-full space-y-4">
-                  {[...Array(4)].map((_, index) => (
-                    <div className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
+                  {siLoading && terminals.length === 0 && (
+                    <p className="text-center text-gray-400 py-6">Loading terminals...</p>
+                  )}
+                  {terminals.map((terminal, index) => (
+                    <div key={terminal.TerminalId} className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
                       <div className="flex items-center justify-between px-4 py-4 border rounded-md border-[#D9D9D9]">
                         <div className="flex items-center space-x-3">
                           <button className="text-gray-600 hover:text-gray-800">
@@ -449,7 +537,7 @@ const Accounting = () => {
                             </svg>
                           </button>
                           <h2 className="font-medium text-gray-800 text-lg">
-                            Terminal {index + 1}
+                            {terminal.TerminalName}
                           </h2>
                           <button className="text-gray-600 hover:text-gray-800">
                             <svg
@@ -468,9 +556,11 @@ const Accounting = () => {
                         </div>
                         <div className="flex items-center space-x-4">
                           <button
-                            onClick={() =>
-                              setIsOpen(index === isOpen ? null : index)
-                            }
+                            onClick={() => {
+                              const next = index === isOpen ? null : index;
+                              setIsOpen(next);
+                              if (next !== null) dispatch(fetchSchoolsByTerminal({ terminalId: terminal.TerminalId, limit: 20, offset: 0 }));
+                            }}
                             className="text-black hover:text-gray-800"
                           >
                             <svg
@@ -496,6 +586,10 @@ const Accounting = () => {
                         <SchoolInvoiceList
                           handleSchoolBack={handleSchoolBack}
                           setSchoolData={setSchoolData}
+                          setSelectedInstituteId={setSelectedInstituteId}
+                          setSelectedSchoolName={setSelectedSchoolName}
+                          schools={siSchools?.data || []}
+                          loadingSchools={siLoading.schools}
                         />
                       )}
                     </div>
@@ -516,8 +610,11 @@ const Accounting = () => {
             )}
             {selectedTab === "Trip invoices" && (
               <div className="w-full space-y-4">
-                {[...Array(4)].map((_, index) => (
-                  <div className="w-full bg-white border-b  shadow-sm">
+                {tiLoading.terminals && tripTerminals.length === 0 && (
+                  <p className="text-center text-gray-400 py-6">Loading terminals...</p>
+                )}
+                {tripTerminals.map((terminal, index) => (
+                  <div key={terminal.TerminalId} className="w-full bg-white border-b  shadow-sm">
                     <div className="flex items-center justify-between px-4 py-4 border rounded-md border-[#D6D6D6]">
                       <div className="flex items-center space-x-3">
                         <button className="text-[#000]">
@@ -537,7 +634,7 @@ const Accounting = () => {
                           </svg>
                         </button>
                         <h2 className="font-medium text-gray-800 text-lg">
-                          Terminal {index + 1}
+                          {terminal.TerminalName}
                         </h2>
                         <button className="text-gray-600 hover:text-gray-800">
                           <svg
@@ -557,10 +654,11 @@ const Accounting = () => {
                       <div className="flex items-center space-x-4">
                         <button
                           onClick={() =>
-                            setIsTripInvoice(
-                              index === isTripInvoice ? null : index
-                            )
-                          }
+                          {
+                            const next = index === isTripInvoice ? null : index;
+                            setIsTripInvoice(next);
+                            if (next !== null) dispatch(fetchTripInvoices({ terminalId: terminal.TerminalId, limit: 20, offset: 0 }));
+                          }}
                           className="text-black"
                         >
                           <svg
@@ -584,122 +682,66 @@ const Accounting = () => {
                     </div>
                     {isTripInvoice === index && (
                       <div className="w-full overflow-x-auto">
-                        <div className="flex flex-row items-center flex-wrap gap-4 p-3   justify-end">
-                          <Button
-                            className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                            variant="filled"
-                            size="sm"
-                          >
+                        <input ref={tripImportInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleTripImportFile} />
+                        <div className="flex flex-row items-center flex-wrap gap-4 p-3 justify-end">
+                          <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm">
                             Send
                           </Button>
-                          <Button
-                            className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                            variant="filled"
-                            size="sm"
-                            onClick={openModal}
-                          >
+                          <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm" onClick={openModal}>
                             Export Invoice
                           </Button>
                           <Button
                             className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                            variant="filled"
-                            size="sm"
-                            onClick={openImportInvoiceModal}
+                            variant="filled" size="sm"
+                            onClick={() => tripImportInputRef.current?.click()}
+                            disabled={tiLoading.import}
                           >
-                            Import Invoice
+                            {tiLoading.import ? 'Importing...' : 'Import Invoice'}
                           </Button>
-                          <Button
-                            className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                            variant="filled"
-                            size="sm"
-                            onClick={handleCreateBatchInvoice}
-                          >
+                          <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm" onClick={handleCreateBatchInvoice}>
                             Create Batch Invoice
                           </Button>
-                          <Button
-                            className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
-                            variant="filled"
-                            size="sm"
-                            onClick={handleCreateInvoice}
-                          >
+                          <Button className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center" variant="filled" size="sm" onClick={handleCreateInvoice}>
                             Create Invoice
                           </Button>
                         </div>
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="bg-gray-100">
-                              <th className="p-3 border-b border-[#EEEEEE]">
-                                <input type="checkbox" className="w-4 h-4" />
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Date
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Invoice#
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Bill To
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                GL Code#
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Type
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Miles per Rate
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Invoice Total
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Invoice
-                              </th>
-                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">
-                                Action
-                              </th>
+                              <th className="p-3 border-b border-[#EEEEEE]"><input type="checkbox" className="w-4 h-4" /></th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Date</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Invoice#</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Bill To</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">GL Code#</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Type</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Miles per Rate</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Invoice Total</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Invoice</th>
+                              <th className="p-3 text-left font-bold text-black border-b border-[#D9D9D9]">Action</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {schoolInvoices.map((invoice, index) => (
-                              <tr key={index} className="bg-white">
-                                <td className="p-8   border-b flex justify-center items-center border-[#D9D9D9]">
-                                  <input type="checkbox" className="w-4 h-4" />
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
-                                  {invoice.date}
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
-                                  {invoice.invoiceNumber}
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
-                                  {invoice.billTo}
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
-                                  {invoice.glCode}
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
-                                  {invoice.type}
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
-                                  {invoice.milesPerRate}
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">
-                                  {invoice.invoiceTotal}
+                            {tiLoading.invoices && (
+                              <tr><td colSpan={10} className="py-6 text-center text-gray-400">Loading...</td></tr>
+                            )}
+                            {!tiLoading.invoices && (tripInvoices?.data?.length ?? 0) === 0 && (
+                              <tr><td colSpan={10} className="py-6 text-center text-gray-400">No invoices found</td></tr>
+                            )}
+                            {(Array.isArray(tripInvoices?.data) ? tripInvoices.data : []).map((invoice, idx) => (
+                              <tr key={invoice.invoiceId ?? idx} className="bg-white">
+                                <td className="p-8 border-b flex justify-center items-center border-[#D9D9D9]"><input type="checkbox" className="w-4 h-4" /></td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceNumber ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.billTo ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.glCode ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.type ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.milesPerRate ?? '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9] text-[#141516] font-semibold">{invoice.invoiceTotal != null ? `$${invoice.invoiceTotal}` : '-'}</td>
+                                <td className="p-3 border-b border-[#D9D9D9]">
+                                  <a className="text-[#C01824] font-bold cursor-pointer" onClick={handleInvoiceList}>View</a>
                                 </td>
                                 <td className="p-3 border-b border-[#D9D9D9]">
-                                  <a
-                                    className="text-[#C01824] font-bold cursor-pointer"
-                                    onClick={handleInvoiceList}
-                                  >
-                                    View
-                                  </a>
-                                </td>
-                                <td className="p-3 border-b border-[#D9D9D9]">
-                                  <button
-                                    className="text-red-500"
-                                    aria-label="Delete"
-                                  >
+                                  <button aria-label="Delete" onClick={() => dispatch(deleteTripInvoice(invoice.invoiceId))} disabled={tiLoading.delete}>
                                     <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
                                   </button>
                                 </td>
@@ -840,11 +882,14 @@ const Accounting = () => {
                 {selectedGlCodesTab === "GL Code List" && (
                   <section className="w-full h-full p-4 md:p-6 lg:p-8 bg-white rounded-[10px]">
                     <div className="w-[100%]">
-                      <div className="flex justify-between items-start mb-6 w-full">
-                        {/* Title */}
-                        <h1 className="text-3xl font-bold">GL Codes</h1>
+                      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div>
+                          <h1 className="text-3xl font-bold">GL Codes</h1>
+                          <p className="mt-2 text-sm text-[#667085]">
+                            Review code, category, default pricing, and linked assignments in one place.
+                          </p>
+                        </div>
 
-                        {/* Buttons */}
                         <div className="flex flex-col items-end gap-2">
                           <Button
                             className="w-[160px] bg-[#C01824] !px-6 !py-2 capitalize text-sm font-normal flex items-center justify-center"
@@ -865,16 +910,49 @@ const Accounting = () => {
                         </div>
                       </div>
 
-                      <div className="max-w-4xl">
-                        <div className="flex justify-between mb-6 w-[63%]">
-                          <h2 className="text-2xl font-bold">GL Codes</h2>
-                          <h2 className="text-2xl font-bold">Assign to</h2>
+                      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-[#E7EAF3] bg-[#F8FAFC] p-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#141516] shadow-sm">
+                            Total Codes: {glCodes.length}
+                          </div>
+                          <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#141516] shadow-sm">
+                            Showing: {filteredGlCodes.length}
+                          </div>
                         </div>
-                        {glCodeData.map((item, index) => (
+
+                        <div className="w-full lg:max-w-md">
+                          <input
+                            type="text"
+                            value={glCodeSearch}
+                            onChange={(e) => setGlCodeSearch(e.target.value)}
+                            placeholder="Search by code, name, category, or assignment"
+                            className="w-full rounded-xl border border-[#D8DEE8] bg-white px-4 py-3 text-sm text-[#141516] outline-none transition focus:border-[#C01824]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="max-w-6xl">
+                        {loading.glCodes && <p className="text-gray-500">Loading...</p>}
+                        {error.glCodes && <p className="text-red-500">{error.glCodes}</p>}
+
+                        {!loading.glCodes && !error.glCodes && filteredGlCodes.length === 0 && (
+                          <div className="rounded-2xl border border-dashed border-[#D8DEE8] bg-[#FBFCFE] px-6 py-12 text-center">
+                            <h2 className="text-lg font-semibold text-[#141516]">No GL codes matched your search</h2>
+                            <p className="mt-2 text-sm text-[#667085]">
+                              Try a GL code number, code name, category, or assignment keyword.
+                            </p>
+                          </div>
+                        )}
+
+                        {filteredGlCodes.map((item) => (
                           <GLCodeItem
-                            key={index}
+                            key={item.glCodeId}
+                            glCodeId={item.glCodeId}
                             glCode={item.glCode}
-                            assignTo={item.assignTo}
+                            glCodeName={item.glCodeName}
+                            category={item.category}
+                            defaultUnitPrice={item.defaultUnitPrice}
+                            items={item.items || []}
                           />
                         ))}
                       </div>
@@ -1018,66 +1096,98 @@ const Accounting = () => {
                     ) : addExpense ? (
                       <div className="max-w-3xl p-6">
                         <div className="grid grid-cols-2 gap-6">
-                          {/* Vendor Name */}
                           <div className="col-span-1">
-                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                              Date
-                            </div>
-                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between relative">
-                              <input
-                                type="date"
-                                placeholder="Enter Date"
-                                className="bg-[#F5F6FA] outline-none w-full"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Address */}
-                          <div className="col-span-1">
-                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                              Type
-                            </div>
-                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between relative">
-                              <input
-                                type="text"
-                                placeholder="Select"
-                                className="bg-[#F5F6FA] outline-none w-full"
-                              />
-                              <div className="flex flex-row gap-3 items-center">
-                                <ChevronDownIcon className="h-5 w-5 text-black ml-2" />
-                              </div>
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">Expense Date</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full">
+                              <input type="date" className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.expenseDate}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, expenseDate: e.target.value })} />
                             </div>
                           </div>
 
                           <div className="col-span-1">
-                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                              Amount
-                            </div>
-                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between relative">
-                              <input
-                                type="text"
-                                placeholder="Enter Amount"
-                                className="bg-[#F5F6FA] outline-none w-full"
-                              />
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">Expense Type</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full">
+                              <input type="text" placeholder="e.g. Fuel" className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.expenseType}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, expenseType: e.target.value })} />
                             </div>
                           </div>
 
                           <div className="col-span-1">
-                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                              Due Date
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">Vendor Name</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full">
+                              <input type="text" placeholder="Enter vendor name" className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.vendorName}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, vendorName: e.target.value })} />
                             </div>
-                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between relative">
-                              <input
-                                type="text"
-                                placeholder="Enter due date"
-                                className="bg-[#F5F6FA] outline-none w-full"
-                              />
+                          </div>
+
+                          <div className="col-span-1">
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">Amount</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full">
+                              <input type="number" placeholder="Enter Amount" className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.amount}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
+                            </div>
+                          </div>
+
+                          <div className="col-span-1">
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">Due Date</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full">
+                              <input type="date" className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.dueDate}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, dueDate: e.target.value })} />
+                            </div>
+                          </div>
+
+                          <div className="col-span-1">
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">Payment Method</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                              <select className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.paymentMethod}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })}>
+                                <option value="">Select</option>
+                                <option value="BankTransfer">Bank Transfer</option>
+                                <option value="Card">Card</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="col-span-1">
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">Payment Term</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                              <select className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.paymentTerm}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, paymentTerm: e.target.value })}>
+                                <option value="">Select</option>
+                                <option value="Net30">Net30</option>
+                                <option value="Net60">Net60</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Monthly">Monthly</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="col-span-1">
+                            <div className="mb-2 text-[14px] text-[#2C2F32] font-semibold">GL Code</div>
+                            <div className="flex flex-row bg-[#F5F6FA] border border-[#D5D5D5] rounded-[6px] p-3 w-full justify-between">
+                              <select className="bg-[#F5F6FA] outline-none w-full"
+                                value={expenseForm.glCodeId}
+                                onChange={(e) => setExpenseForm({ ...expenseForm, glCodeId: e.target.value })}>
+                                <option value="">Select GL Code</option>
+                                {glCodes.map((g) => (
+                                  <option key={g.glCodeId} value={g.glCodeId}>{g.glCode} — {g.glCodeName}</option>
+                                ))}
+                              </select>
                             </div>
                           </div>
                         </div>
 
+                        {apError.addExpense && <p className="text-red-500 text-sm mt-4">{apError.addExpense}</p>}
+
                         {/* Buttons */}
-                        <div className="flex mt-20 space-x-4">
+                        <div className="flex mt-10 space-x-4">
                           <button
                             className="border border-[#C01824] bg-white text-[#C01824] px-12 py-2 rounded-[4px]"
                             onClick={() => setAddExpense(false)}
@@ -1085,10 +1195,11 @@ const Accounting = () => {
                             Cancel
                           </button>
                           <button
-                            className="bg-[#C01824] text-white px-12 py-2 rounded-[4px]"
-                            onClick={() => setAddExpense(false)}
+                            className="bg-[#C01824] text-white px-12 py-2 rounded-[4px] disabled:opacity-60"
+                            onClick={handleExpenseSubmit}
+                            disabled={apLoading.addExpense}
                           >
-                            Submit
+                            {apLoading.addExpense ? 'Saving...' : 'Submit'}
                           </button>
                         </div>
                       </div>
@@ -1115,97 +1226,98 @@ const Accounting = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="bg-gray-100">
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Date
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Payment Date
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Payment Method
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Trip#
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Trip Status
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Client
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Invoice#
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Bill To
-                            </th>
-
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Type
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Miles per Rate
-                            </th>
-                            <th className="px-4 py-3 text-left text-sm font-bold text-black">
-                              Invoice Total
-                            </th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-black">
-                              Invoice
-                            </th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-black">
-                              Action
-                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Invoice#</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Invoice Date</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Due Date</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Client</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Bill To</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Type</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Payment Terms</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Sub Total</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-black">Invoice Total</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-black">Status</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-black">Action</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {payementTablesData.map((payment, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.date}
+                          {arLoading.invoices && (
+                            <tr><td colSpan={13} className="py-6 text-center text-gray-400">Loading...</td></tr>
+                          )}
+                          {arError.invoices && (
+                            <tr><td colSpan={13} className="py-6 text-center text-red-500">{arError.invoices}</td></tr>
+                          )}
+                          {!arLoading.invoices && invoices.data.length === 0 && (
+                            <tr><td colSpan={13} className="py-6 text-center text-gray-400">No invoices found</td></tr>
+                          )}
+                          {arLoading.invoices && (
+                            <tr><td colSpan={11} className="py-6 text-center text-gray-400">Loading...</td></tr>
+                          )}
+                          {arError.invoices && (
+                            <tr><td colSpan={11} className="py-6 text-center text-red-500">{arError.invoices}</td></tr>
+                          )}
+                          {!arLoading.invoices && invoices.data.length === 0 && (
+                            <tr><td colSpan={11} className="py-6 text-center text-gray-400">No invoices found</td></tr>
+                          )}
+                          {invoices.data.map((invoice) => (
+                            <tr key={invoice.invoiceId} className="hover:bg-gray-50">
+                              <td className="px-4 py-4 text-sm font-medium text-gray-800">
+                                {invoice.invoiceNumber ?? '-'}
                               </td>
                               <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.paymentDate}
+                                {invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString() : '-'}
                               </td>
                               <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.paymentMethod}
+                                {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : '-'}
                               </td>
                               <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.tripId}
-                              </td>
-                              <td className="px-4 py-4">
-                                <span className="px-2 py-1 text-xs font-medium text-[#0BA071] bg-[#CCFAEB] rounded-md">
-                                  {payment.tripStatus}
-                                </span>
+                                {invoice.instituteName ?? '-'}
                               </td>
                               <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.client}
+                                {invoice.billTo ?? '-'}
                               </td>
                               <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.invoiceId}
+                                {invoice.invoiceType ?? '-'}
                               </td>
                               <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.billTo}
-                              </td>
-
-                              <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.type}
+                                {invoice.paymentTerms ?? '-'}
                               </td>
                               <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.milesPerRate}
+                                {invoice.subTotal != null ? `$${invoice.subTotal}` : '-'}
                               </td>
-                              <td className="px-4 py-4 text-sm text-gray-800">
-                                {payment.invoiceTotal}
-                              </td>
-                              <td
-                                className="px-4 py-4 text-center text-[#C01824] font-bold cursor-pointer"
-                                onClick={handleCreateInvoice}
-                              >
-                                View
+                              <td className="px-4 py-4 text-sm font-semibold text-gray-800">
+                                {invoice.totalAmount != null ? `$${invoice.totalAmount}` : '-'}
                               </td>
                               <td className="px-4 py-4 text-center">
-                                <button className="text-red-500 hover:text-red-700">
-                                  <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
-                                </button>
+                                <span className={`px-2 py-1 text-xs font-medium rounded-md ${
+                                  invoice.status === 'Paid'
+                                    ? 'text-[#0BA071] bg-[#CCFAEB]'
+                                    : invoice.status === 'Invoice Sent'
+                                    ? 'text-blue-600 bg-blue-100'
+                                    : 'text-yellow-700 bg-yellow-100'
+                                }`}>
+                                  {invoice.status ?? '-'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    className="bg-[#C01824] text-white px-3 py-1 rounded text-xs font-medium"
+                                    onClick={handleCreateInvoice}
+                                  >
+                                    Create Invoice
+                                  </button>
+                                  {invoice.status !== 'Paid' ? (
+                                    <button
+                                      className="bg-green-600 text-white px-3 py-1 rounded text-xs font-medium disabled:opacity-60"
+                                      onClick={() => dispatch(markInvoicePaid(invoice.invoiceId))}
+                                      disabled={arLoading.markPaid}
+                                    >
+                                      Mark Paid
+                                    </button>
+                                  ) : (
+                                    <span className="text-[#0BA071] font-medium text-xs">✓ Paid</span>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}

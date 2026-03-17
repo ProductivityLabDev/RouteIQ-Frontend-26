@@ -137,6 +137,41 @@ export interface DriverDetailsInput {
   periodEnd?: string;
 }
 
+export interface GlCodeItem {
+  id: number;
+  assignment: string;
+  unitPrice: number;
+}
+
+export interface GlCode {
+  glCodeId: number;
+  glCode: string;
+  glCodeName: string;
+  category: string | null;
+  defaultUnitPrice: number | null;
+  items: GlCodeItem[];
+  assignedTo?: string[];
+}
+
+export interface GlCodeInput {
+  glCode: string;
+  glCodeName: string;
+  category: string;
+  defaultUnitPrice?: number;
+  assignedTo: string[];
+}
+
+export interface GlCodeHistoryItem {
+  [key: string]: any;
+}
+
+export interface GlCodeHistory {
+  total: number;
+  history: GlCodeHistoryItem[];
+  limit: number;
+  offset: number;
+}
+
 export interface TimeOffPending {
   requestId: number;
   requestDate: string;
@@ -308,6 +343,48 @@ export const payrollService = {
 
   rejectTimeOff: async (requestId: number, note?: string) => {
     const response = await apiClient.patch(`/payroll/time-off/${requestId}/reject`, { note });
+    return { ok: true, data: response.data?.data };
+  },
+
+  // ── GL Codes ───────────────────────────────────────────────────────────────
+  getGlCodes: async (): Promise<ApiResponse<GlCode[]>> => {
+    const response = await apiClient.get("/gl-codes");
+    return { ok: true, data: response.data?.data };
+  },
+
+  addGlCode: async (data: GlCodeInput): Promise<ApiResponse<GlCode>> => {
+    const response = await apiClient.post("/gl-codes", data);
+    return { ok: true, data: response.data?.data };
+  },
+
+  updateGlCodeDefaultPrice: async (glCodeId: number, defaultUnitPrice: number) => {
+    const response = await apiClient.patch(`/gl-codes/${glCodeId}`, { defaultUnitPrice });
+    return { ok: true, data: response.data?.data };
+  },
+
+  addGlCodeAssignment: async (glCodeId: number, data: { assignment: string; unitPrice: number }) => {
+    const response = await apiClient.post(`/gl-codes/${glCodeId}/assignments`, data);
+    return { ok: true, data: response.data?.data };
+  },
+
+  updateGlCodeAssignment: async (assignmentId: number, data: { assignment?: string; unitPrice?: number }) => {
+    const response = await apiClient.patch(`/gl-codes/assignments/${assignmentId}`, data);
+    return { ok: true, data: response.data?.data };
+  },
+
+  deleteGlCodeAssignment: async (assignmentId: number) => {
+    const response = await apiClient.delete(`/gl-codes/assignments/${assignmentId}`);
+    return { ok: true, data: response.data?.data };
+  },
+
+  getGlCodeHistory: async (
+    search?: string,
+    limit = 20,
+    offset = 0
+  ): Promise<ApiResponse<GlCodeHistory>> => {
+    const params: Record<string, any> = { limit, offset };
+    if (search) params.search = search;
+    const response = await apiClient.get("/gl-codes/history", { params });
     return { ok: true, data: response.data?.data };
   },
 };
