@@ -3,9 +3,9 @@ import { balanceSheetService } from "@/services/balanceSheetService";
 
 export const fetchBalanceSheet = createAsyncThunk(
   "balanceSheet/fetchBalanceSheet",
-  async (_, { rejectWithValue }) => {
+  async ({ startDate, endDate } = {}, { rejectWithValue }) => {
     try {
-      const res = await balanceSheetService.getBalanceSheet();
+      const res = await balanceSheetService.getBalanceSheet(startDate, endDate);
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to fetch balance sheet");
@@ -102,10 +102,22 @@ const balanceSheetSlice = createSlice({
       .addCase(fetchBalanceSheet.fulfilled, (state, action) => {
         state.loading.sections = false;
         if (action.payload) {
-          state.sections.CurrentAssets = action.payload.CurrentAssets || [];
-          state.sections.NonCurrentAssets = action.payload.NonCurrentAssets || [];
-          state.sections.CurrentLiabilities = action.payload.CurrentLiabilities || [];
-          state.sections.NonCurrentLiabilities = action.payload.NonCurrentLiabilities || [];
+          state.sections.CurrentAssets =
+            action.payload.CurrentAssets ||
+            action.payload.currentAssets?.items ||
+            [];
+          state.sections.NonCurrentAssets =
+            action.payload.NonCurrentAssets ||
+            action.payload.nonCurrentAssets?.items ||
+            [];
+          state.sections.CurrentLiabilities =
+            action.payload.CurrentLiabilities ||
+            action.payload.currentLiabilities?.items ||
+            [];
+          state.sections.NonCurrentLiabilities =
+            action.payload.NonCurrentLiabilities ||
+            action.payload.nonCurrentLiabilities?.items ||
+            [];
         }
       })
       .addCase(fetchBalanceSheet.rejected, (state, action) => { state.loading.sections = false; state.error.sections = action.payload; });

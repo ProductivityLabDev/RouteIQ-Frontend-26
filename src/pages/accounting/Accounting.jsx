@@ -16,7 +16,15 @@ import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivabl
 import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
 import { fetchTripInvoiceTerminals, fetchTripInvoices, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
 import { fetchGenerateReport } from "@/redux/slices/reportsSlice";
-import { fetchTerminalSummary, fetchTerminalList } from "@/redux/slices/terminalTabSlice";
+import {
+  fetchTerminalSummary,
+  fetchTerminalList,
+  fetchTerminalTrack,
+  fetchTerminalInvoices,
+  fetchTerminalInvoiceById,
+  createTerminalInvoice,
+  deleteTerminalInvoice,
+} from "@/redux/slices/terminalTabSlice";
 import {
   Button,
   ButtonGroup,
@@ -73,6 +81,9 @@ const Accounting = () => {
   const [selectedInstituteId, setSelectedInstituteId] = useState(null);
   const [selectedSchoolName, setSelectedSchoolName] = useState('');
   const [schoolInvoice, setSchoolInvoice] = useState(false);
+  const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
+  const [terminalInvoiceModalOpen, setTerminalInvoiceModalOpen] = useState(false);
+  const [selectedTrackTerminalId, setSelectedTrackTerminalId] = useState("");
   const [editInvoice, setEditInvoice] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportInvoiceModal, setIsImportInvoiceModal] = useState(false);
@@ -85,6 +96,29 @@ const Accounting = () => {
   const [payModal, setPayModal] = useState(false);
   const [accountsPayable, setaccountsPayable] = useState("Accounts Payable");
   const [accountsReceivable, setaccountsReceivable] = useState("accountsReceivable");
+  const [terminalInvoiceFilters, setTerminalInvoiceFilters] = useState({
+    terminalId: "",
+    status: "",
+    search: "",
+    limit: 20,
+    offset: 0,
+  });
+  const [terminalInvoiceForm, setTerminalInvoiceForm] = useState({
+    terminalId: "",
+    glCodeId: "",
+    invoiceMode: "Monthly",
+    invoiceDate: new Date().toISOString().slice(0, 10),
+    dueDate: new Date().toISOString().slice(0, 10),
+    billFrom: "RouteIQ Inc",
+    billTo: "",
+    noOfBuses: 1,
+    subTotal: "",
+    taxAmount: "",
+    notes: "",
+    unitPrice: "",
+    quantity: "",
+    busId: "",
+  });
 
   // Generate Report filters
   const [grSearch, setGrSearch] = useState('');
@@ -106,8 +140,15 @@ const dispatch = useDispatch();
   const { terminals, schools: siSchools, invoices: siInvoices, loading: siLoading } = useSelector((state) => state.schoolInvoices);
   const { terminals: tripTerminals, invoices: tripInvoices, loading: tiLoading } = useSelector((state) => state.tripInvoices);
   const { generateReport, loading: grLoading } = useSelector((state) => state.reports);
-  const { summary: termSummary, list: termList, loading: termLoading } = useSelector((state) => state.terminalTab);
-const filteredGlCodes = glCodes.filter((item) => {
+  const {
+    summary: termSummary,
+    list: termList,
+    trackData: termTrackData,
+    invoices: terminalInvoices,
+    loading: termLoading,
+    error: termError,
+  } = useSelector((state) => state.terminalTab);
+  const filteredGlCodes = glCodes.filter((item) => {
     const search = glCodeSearch.trim().toLowerCase();
     if (!search) return true;
 
@@ -120,6 +161,45 @@ const filteredGlCodes = glCodes.filter((item) => {
       .filter(Boolean)
       .some((value) => value.toLowerCase().includes(search));
   });
+  const activeTrackTerminal =
+    termList.find((terminal) => String(terminal.id || terminal.terminalId) === String(selectedTrackTerminalId)) ||
+    (isTerminal !== null && isTerminal !== false && termList[isTerminal]
+      ? termList[isTerminal]
+      : termList[0]);
+  const activeTrackTerminalId = activeTrackTerminal ? String(activeTrackTerminal.id || activeTrackTerminal.terminalId || "") : "";
+  const activeTrackTerminalName =
+    activeTrackTerminal?.name || activeTrackTerminal?.terminalName || "Terminal 1";
+  const activeTrackData = activeTrackTerminalId ? termTrackData[activeTrackTerminalId] || {} : {};
+  const activeTrackIncome = Number(activeTrackData.income ?? activeTrackData.totalIncome ?? activeTrackData.ytdRevenue ?? 0);
+  const activeTrackExpenses = Number(activeTrackData.expenses ?? activeTrackData.totalExpenses ?? 0);
+  const activeTrackSavings = Number(activeTrackData.savings ?? (activeTrackIncome - activeTrackExpenses));
+  const activeTrackQuarterlyRaw = Array.isArray(activeTrackData.quarterlyChartData)
+    ? activeTrackData.quarterlyChartData
+    : Array.isArray(activeTrackData.quarterlyData)
+      ? activeTrackData.quarterlyData
+      : Array.isArray(activeTrackData.salesChartData)
+        ? activeTrackData.salesChartData
+        : [0, 0, 0, 0];
+  const mockTrackQuarterly = [18500, 26200, 21400, 31800];
+  const activeTrackQuarterly = activeTrackQuarterlyRaw.slice(0, 4).map((item, index) => {
+    if (typeof item === "number") return item;
+    return Number(item?.value ?? item?.amount ?? item?.total ?? item?.sales ?? item?.[`q${index + 1}`] ?? 0);
+  });
+  while (activeTrackQuarterly.length < 4) activeTrackQuarterly.push(0);
+  const displayTrackQuarterly = activeTrackQuarterly.some((value) => value > 0) ? activeTrackQuarterly : mockTrackQuarterly;
+  const activeTrackQuarterlyMax = Math.max(...displayTrackQuarterly, 1);
+  const formatTrackAxisValue = (value) => {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}m`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)}k`;
+    return `$${Math.round(value)}`;
+  };
+  const activeTrackYAxisLabels = [1, 0.66, 0.33, 0].map((ratio) => formatTrackAxisValue(activeTrackQuarterlyMax * ratio));
+  const activeTrackHasChartData = displayTrackQuarterly.some((value) => value > 0);
+  const activeTrackBarHeights = displayTrackQuarterly.map((value) =>
+    activeTrackHasChartData ? Math.max(14, (value / activeTrackQuarterlyMax) * 100) : 0
+  );
+  const activeTrackProfitColor = activeTrackSavings >= 0 ? "text-green-600" : "text-red-600";
+  const activeTrackPeriodLabel = format(new Date(), "MMMM yyyy");
 
   useEffect(() => {
     dispatch(fetchGlCodes());
@@ -149,6 +229,51 @@ const filteredGlCodes = glCodes.filter((item) => {
       dispatch(fetchTerminalList());
     }
   }, [dispatch, selectedTab]);
+
+  useEffect(() => {
+    if (!terminalInvoiceFilters.terminalId && termList.length > 0) {
+      const firstTerminal = termList[0];
+      setTerminalInvoiceFilters((prev) => ({
+        ...prev,
+        terminalId: String(firstTerminal?.id || firstTerminal?.terminalId || ""),
+      }));
+    }
+  }, [termList, terminalInvoiceFilters.terminalId]);
+
+  useEffect(() => {
+    if (!selectedTrackTerminalId && termList.length > 0) {
+      const firstTerminal = termList[0];
+      setSelectedTrackTerminalId(String(firstTerminal?.id || firstTerminal?.terminalId || ""));
+    }
+  }, [termList, selectedTrackTerminalId]);
+
+  useEffect(() => {
+    if (isTerminal !== null && isTerminal !== false && termList.length > 0) {
+      const terminal = termList[isTerminal];
+      if (terminal) {
+        const tId = terminal.id || terminal.terminalId;
+        dispatch(fetchTerminalTrack({ terminalId: tId, year: new Date().getFullYear() }));
+      }
+    }
+  }, [dispatch, isTerminal, termList]);
+
+  useEffect(() => {
+    if (selectedTab === "Terminal" && selectedTerminalTab === "Terminal Invoices") {
+      dispatch(fetchTerminalInvoices({
+        terminalId: terminalInvoiceFilters.terminalId || undefined,
+        status: terminalInvoiceFilters.status || undefined,
+        search: terminalInvoiceFilters.search || undefined,
+        limit: terminalInvoiceFilters.limit,
+        offset: terminalInvoiceFilters.offset,
+      }));
+    }
+  }, [dispatch, selectedTab, selectedTerminalTab, terminalInvoiceFilters]);
+
+  useEffect(() => {
+    if (selectedTab === "Terminal" && selectedTerminalTab === "Track Terminal" && activeTrackTerminalId) {
+      dispatch(fetchTerminalTrack({ terminalId: activeTrackTerminalId, year: new Date().getFullYear() }));
+    }
+  }, [dispatch, selectedTab, selectedTerminalTab, activeTrackTerminalId]);
 
   useEffect(() => {
     if (selectedTab === 'Generate Report') {
@@ -205,6 +330,7 @@ const filteredGlCodes = glCodes.filter((item) => {
   };
   const handleback = () => {
     setInvoiceForm(!invoiceForm);
+    setSelectedInvoiceData(null);
   };
   const handleExport = () => {
     closeModal();
@@ -219,13 +345,87 @@ const filteredGlCodes = glCodes.filter((item) => {
   const handleSchoolBack = () => {
     setSchoolData(!schoolData);
   };
-  const handleInvoiceList = () => {
+  const handleInvoiceList = async (invoice = null) => {
+    const invoiceId = invoice?.invoiceId || invoice?.InvoiceId || invoice?.id;
+    let nextInvoice = invoice;
+
+    if (selectedTab === "Terminal" && selectedTerminalTab === "Terminal Invoices" && invoiceId) {
+      const result = await dispatch(fetchTerminalInvoiceById(invoiceId));
+      if (result.meta.requestStatus === "fulfilled") {
+        nextInvoice = result.payload;
+      }
+    }
+
+    setSelectedInvoiceData(nextInvoice);
     setSchoolInvoice(true);
     setInvoiceForm(true);
   };
   const handleBatchInvoice = () => {
     setEditInvoice(true);
     setBatchInvoice(true);
+  };
+  const openTerminalInvoiceModal = (terminal = null) => {
+    const terminalId = terminal?.id || terminal?.terminalId || terminalInvoiceFilters.terminalId || "";
+    setTerminalInvoiceForm((prev) => ({
+      ...prev,
+      terminalId: String(terminalId),
+      billTo: terminal?.name || terminal?.terminalName || prev.billTo || "",
+      glCodeId: prev.glCodeId || String(glCodes[0]?.glCodeId || ""),
+    }));
+    setTerminalInvoiceModalOpen(true);
+  };
+  const closeTerminalInvoiceModal = () => {
+    setTerminalInvoiceModalOpen(false);
+  };
+  const handleTerminalInvoiceFormChange = (field, value) => {
+    setTerminalInvoiceForm((prev) => ({ ...prev, [field]: value }));
+  };
+  const handleCreateTerminalInvoice = async () => {
+    const subTotal = Number(terminalInvoiceForm.subTotal || 0);
+    const taxAmount = Number(terminalInvoiceForm.taxAmount || 0);
+    const quantity = Number(terminalInvoiceForm.quantity || 0);
+    const unitPrice = Number(terminalInvoiceForm.unitPrice || 0);
+
+    const payload = {
+      terminalId: Number(terminalInvoiceForm.terminalId),
+      glCodeId: Number(terminalInvoiceForm.glCodeId),
+      invoiceMode: terminalInvoiceForm.invoiceMode,
+      invoiceDate: terminalInvoiceForm.invoiceDate,
+      dueDate: terminalInvoiceForm.dueDate,
+      billFrom: terminalInvoiceForm.billFrom,
+      billTo: terminalInvoiceForm.billTo,
+      noOfBuses: Number(terminalInvoiceForm.noOfBuses || 0),
+      subTotal,
+      taxAmount,
+      totalAmount: subTotal + taxAmount,
+      notes: terminalInvoiceForm.notes,
+      lineItems: quantity > 0 || unitPrice > 0 || terminalInvoiceForm.busId
+        ? [{
+            glCodeId: Number(terminalInvoiceForm.glCodeId),
+            unitPrice,
+            quantity,
+            totalAmount: unitPrice * quantity || subTotal,
+            busId: terminalInvoiceForm.busId,
+          }]
+        : [],
+    };
+
+    const result = await dispatch(createTerminalInvoice(payload));
+    if (result.meta.requestStatus === "fulfilled") {
+      setTerminalInvoiceModalOpen(false);
+      setSelectedTerminalTab("Terminal Invoices");
+      dispatch(fetchTerminalInvoices({
+        terminalId: terminalInvoiceFilters.terminalId || undefined,
+        status: terminalInvoiceFilters.status || undefined,
+        search: terminalInvoiceFilters.search || undefined,
+        limit: terminalInvoiceFilters.limit,
+        offset: terminalInvoiceFilters.offset,
+      }));
+    }
+  };
+  const handleDeleteTerminalInvoice = async (invoiceId) => {
+    if (!invoiceId) return;
+    await dispatch(deleteTerminalInvoice(invoiceId));
   };
   const handleCreateBatchInvoice = () => {
     setCreateBatchInvoice(true);
@@ -299,6 +499,7 @@ const filteredGlCodes = glCodes.filter((item) => {
           <InvoiceForm
             handleback={handleback}
             schoolInvoice={schoolInvoice}
+            invoiceData={selectedInvoiceData}
             setEditInvoice={setEditInvoice}
             editInvoice={editInvoice}
             handleBatchInvoice={handleBatchInvoice}
@@ -1635,7 +1836,9 @@ const filteredGlCodes = glCodes.filter((item) => {
                                 </button>
                               </div>
                             </div>
-                            {isExpanded && (
+                            {isExpanded && (() => {
+                              const tTrack = termTrackData[tId] || {};
+                              return (
                               <div className="w-full">
                                 <div className="p-4 w-full">
                                   {/* Top Row Cards */}
@@ -1646,7 +1849,7 @@ const filteredGlCodes = glCodes.filter((item) => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">YTD Revenue</div>
-                                            <div className="font-medium">$ 240,000</div>
+                                            <div className="font-medium">${Number(tTrack.ytdRevenue ?? 0).toLocaleString()}</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1657,7 +1860,7 @@ const filteredGlCodes = glCodes.filter((item) => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total # of Open Trips</div>
-                                            <div className="font-medium">102</div>
+                                            <div className="font-medium">{tTrack.openTripsCount ?? 0}</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1668,16 +1871,16 @@ const filteredGlCodes = glCodes.filter((item) => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total # of Completed Trips<div className="text-xs text-gray-500">(within current month)</div></div>
-                                            <div className="font-medium">524</div>
+                                            <div className="font-medium">{tTrack.completedTripsCount ?? 0}</div>
                                           </div>
                                         </div>
                                       </div>
                                     </div>
                                     <div className="flex flex-col w-[400px] gap-6 items-end justify-end">
-                                      <button className="bg-[#C01824] w-[50%] text-white py-2 rounded mr-0 text-sm" onClick={() => setCreateInvoice(true)}>
+                                      <button className="bg-[#C01824] w-[50%] text-white py-2 rounded mr-0 text-sm" onClick={() => openTerminalInvoiceModal(terminal)}>
                                         Create Invoice
                                       </button>
-                                      <button className="bg-[#C01824] w-[50%] text-white py-2 rounded text-sm">
+                                      <button className="bg-[#C01824] w-[50%] text-white py-2 rounded text-sm" onClick={() => openTerminalInvoiceModal(terminal)}>
                                         Terminal Invoice
                                       </button>
                                     </div>
@@ -1691,7 +1894,7 @@ const filteredGlCodes = glCodes.filter((item) => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">YTD Trips</div>
-                                            <div className="font-medium">450</div>
+                                            <div className="font-medium">{tTrack.ytdTrips ?? 0}</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1702,7 +1905,7 @@ const filteredGlCodes = glCodes.filter((item) => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total $ of Open Trips</div>
-                                            <div className="font-medium">$ 5200</div>
+                                            <div className="font-medium">${Number(tTrack.openTripsAmount ?? 0).toLocaleString()}</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1713,7 +1916,7 @@ const filteredGlCodes = glCodes.filter((item) => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total $ of Completed Trips<div className="text-xs text-gray-500">(within current month)</div></div>
-                                            <div className="font-medium">$ 5200</div>
+                                            <div className="font-medium">${Number(tTrack.completedTripsAmount ?? 0).toLocaleString()}</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1729,7 +1932,8 @@ const filteredGlCodes = glCodes.filter((item) => {
                                   </div>
                                 </div>
                               </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         );
                       })}
@@ -1737,489 +1941,285 @@ const filteredGlCodes = glCodes.filter((item) => {
                   </>
                 )}
                 {selectedTerminalTab === "Terminal Invoices" && (
-                  <div className="bg-white rounded-lg shadow-md p-4 mt-4 w-[100%] h-[60%]">
-                    <table className="w-[100%] border-collapse">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="p-3 border-b border-[#D9D9D9]">
-                            <input type="checkbox" className="w-4 h-4" />
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Date
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            GL Code#
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Type
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Invoice Total
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Invoice
-                          </th>
-                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schoolInvoices.map((invoice, index) => (
-                          <tr key={index} className="bg-whit">
-                            <td className="p-5 border-b mb-[-1px] flex justify-center items-center border-[#D9D9D9]">
-                              <input type="checkbox" className="w-4 h-4" />
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.date}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.glCode}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.type}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              {invoice.invoiceTotal}
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              <a
-                                className="text-[#C01824] font-bold cursor-pointer"
-                                onClick={handleInvoiceList}
-                              >
-                                View
-                              </a>
-                            </td>
-                            <td className="p-3 border-b border-[#D9D9D9]">
-                              <button
-                                className="text-red-500"
-                                aria-label="Delete"
-                              >
-                                <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-xl bg-white p-4 shadow-md">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:w-[70%]">
+                          <select
+                            value={terminalInvoiceFilters.terminalId}
+                            onChange={(e) => setTerminalInvoiceFilters((prev) => ({ ...prev, terminalId: e.target.value, offset: 0 }))}
+                            className="rounded-lg border border-[#D9D9D9] px-4 py-3 outline-none"
+                          >
+                            <option value="">All Terminals</option>
+                            {termList.map((terminal) => {
+                              const terminalId = terminal.id || terminal.terminalId;
+                              const terminalName = terminal.name || terminal.terminalName || `Terminal ${terminalId}`;
+                              return (
+                                <option key={terminalId} value={terminalId}>
+                                  {terminalName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <select
+                            value={terminalInvoiceFilters.status}
+                            onChange={(e) => setTerminalInvoiceFilters((prev) => ({ ...prev, status: e.target.value, offset: 0 }))}
+                            className="rounded-lg border border-[#D9D9D9] px-4 py-3 outline-none"
+                          >
+                            <option value="">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={terminalInvoiceFilters.search}
+                            onChange={(e) => setTerminalInvoiceFilters((prev) => ({ ...prev, search: e.target.value, offset: 0 }))}
+                            placeholder="Search invoices"
+                            className="rounded-lg border border-[#D9D9D9] px-4 py-3 outline-none"
+                          />
+                        </div>
+
+                        <Button
+                          className="bg-[#C01824] px-6 py-3 capitalize text-sm font-normal"
+                          variant="filled"
+                          size="lg"
+                          onClick={() => openTerminalInvoiceModal()}
+                        >
+                          Create Terminal Invoice
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-md p-4 w-full">
+                      {termLoading.invoices && (
+                        <div className="py-8 text-center text-gray-400">Loading terminal invoices...</div>
+                      )}
+                      {termError?.invoices && (
+                        <div className="py-4 text-center text-red-500">{termError.invoices}</div>
+                      )}
+                      {!termLoading.invoices && !termError?.invoices && (
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Date</th>
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Invoice #</th>
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">GL Code</th>
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Type</th>
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Status</th>
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Invoice Total</th>
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Invoice</th>
+                              <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(terminalInvoices.data || []).length === 0 && (
+                              <tr>
+                                <td colSpan={8} className="p-6 text-center text-gray-400">
+                                  No terminal invoices found.
+                                </td>
+                              </tr>
+                            )}
+                            {(terminalInvoices.data || []).map((invoice, index) => {
+                              const invoiceId = invoice.id || invoice.invoiceId || index;
+                              const rawInvoiceDate = invoice.invoiceDate || invoice.date || "-";
+                              const invoiceDate =
+                                rawInvoiceDate && rawInvoiceDate !== "-"
+                                  ? new Date(rawInvoiceDate).toLocaleDateString("en-US")
+                                  : "-";
+                              const invoiceNumber = invoice.invoiceNumber || invoice.invoiceNo || invoice.id || "-";
+                              const invoiceGlCode = invoice.glCode || invoice.glCodeNumber || invoice.glCodeId || "-";
+                              const invoiceType = invoice.invoiceMode || invoice.type || "-";
+                              const invoiceStatus = invoice.status || "Pending";
+                              const invoiceTotal = invoice.totalAmount || invoice.invoiceTotal || 0;
+                              return (
+                                <tr key={invoiceId} className="bg-white">
+                                  <td className="p-3 border-b border-[#D9D9D9]">{invoiceDate}</td>
+                                  <td className="p-3 border-b border-[#D9D9D9]">{invoiceNumber}</td>
+                                  <td className="p-3 border-b border-[#D9D9D9]">{invoiceGlCode}</td>
+                                  <td className="p-3 border-b border-[#D9D9D9]">{invoiceType}</td>
+                                  <td className="p-3 border-b border-[#D9D9D9]">
+                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invoiceStatus === "Paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                                      {invoiceStatus}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 border-b border-[#D9D9D9]">
+                                    ${Number(invoiceTotal || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td className="p-3 border-b border-[#D9D9D9]">
+                                    <a className="text-[#C01824] font-bold cursor-pointer" onClick={() => handleInvoiceList(invoice)}>
+                                      View
+                                    </a>
+                                  </td>
+                                  <td className="p-3 border-b border-[#D9D9D9]">
+                                    <button className="text-red-500" aria-label="Delete" onClick={() => handleDeleteTerminalInvoice(invoiceId)}>
+                                      <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
                 )}
                 {selectedTerminalTab === "Track Terminal" && (
-                  <div className="flex items-center gap-5">
-                    <div className="bg-white rounded-lg shadow-md p-6 w-[45%] mt-4">
-                      {/* Top Cards */}
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        {/* Terminal Selection Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <img src={busIcon} />
-                          </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Select Terminal
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-medium text-[#141516] text-[24px]">
-                                Terminal 1
-                              </span>
-                              <FaChevronDown
-                                className="ml-1 text-[#141516]"
-                                size={12}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Income Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <img src={moneyWallet} />
-                          </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Income
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-medium text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Expenses Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <img src={marketIcon} />
-                          </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Expenses
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-medium text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Savings Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center gap-4">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <div className="bg-white rounded-full p-1 shadow-md flex items-center justify-center">
-                              <BiDollar size={18} color="#C01824" />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Savings
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-medium text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                  <div className="mt-4 rounded-xl bg-white p-6 shadow-md">
+                    <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                      <div>
+                        <h2 className="text-[26px] font-bold text-[#141516]">Track Terminal</h2>
+                        <p className="text-sm text-[#7C7C7C]">Change terminal to compare income, expenses, savings, sales trend, and profit & loss.</p>
                       </div>
-
-                      {/* Sales Section */}
-                      <div className="mb-6 border border-gray-100 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-[26px] font-bold text-[#475569]">
-                            Sales
-                          </h2>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
-                          </div>
-                        </div>
-                        <div className="text-[26px] font-bold mb-4 text-[#475569]">
-                          $15,940.65
-                        </div>
-
-                        {/* Sales Chart */}
-                        <div className="relative h-32">
-                          {/* Y-axis labels */}
-                          <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-[#475569]">
-                            <div>$15k</div>
-                            <div>$10k</div>
-                            <div>$5k</div>
-                            <div>$0k</div>
-                          </div>
-
-                          {/* Chart lines */}
-                          <div className="ml-8 h-full flex flex-col justify-between">
-                            <div className="border-t border-gray-300"></div>
-                            <div className="border-t border-gray-300"></div>
-                            <div className="border-t border-gray-300"></div>
-                            <div className="border-t border-gray-300"></div>
-                          </div>
-
-                          {/* Chart line */}
-                          <svg
-                            className="absolute top-0 left-10 w-5/6 h-full"
-                            viewBox="0 0 300 100"
-                            preserveAspectRatio="none"
-                          >
-                            <polyline
-                              points="0,40 100,60 200,80 300,20"
-                              fill="none"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="0"
-                              cy="40"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="100"
-                              cy="60"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle cx="200" cy="80" r="5" fill="#C01824" />
-                            <circle cx="300" cy="20" r="5" fill="#C01824" />
-                          </svg>
-
-                          {/* X-axis labels */}
-                          <div className="absolute bottom-0 left-10 w-5/6 flex justify-between text-xs text-gray-500">
-                            <div>Q1</div>
-                            <div>Q2</div>
-                            <div>Q3</div>
-                            <div>Q4</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Profit & Loss Section */}
-                      <div className="border border-gray-100 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">
-                            Profit & Loss
-                          </h2>
-                          <div className="text-sm text-gray-500 flex items-center text-[#475569]">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <div className="text-2xl font-bold text-[#475569]">
-                            $20,000
-                          </div>
-                          <div className="text-sm text-[#475569]">
-                            Net income for March
-                          </div>
-                        </div>
-
-                        {/* Income Bar */}
-                        <div className="mb-3">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">
-                              $100,000
-                            </span>
-                            <span className="text-[#475569]">Income</span>
-                          </div>
-                          <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "60%" }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        {/* Expenses Bar */}
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569">
-                              $80,000
-                            </span>
-                            <span className="text-[#475569]">Expenses</span>
-                          </div>
-                          <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "80%" }}
-                            ></div>
-                          </div>
-                        </div>
+                      <div className="w-full lg:w-[320px]">
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">
+                          Select Terminal
+                        </label>
+                        <select
+                          value={selectedTrackTerminalId}
+                          onChange={(e) => setSelectedTrackTerminalId(e.target.value)}
+                          className="w-full rounded-lg border border-[#D9D9D9] px-4 py-3 text-[16px] font-medium text-[#141516] outline-none"
+                        >
+                          {termList.map((terminal) => {
+                            const terminalId = terminal.id || terminal.terminalId;
+                            const terminalName = terminal.name || terminal.terminalName || `Terminal ${terminalId}`;
+                            return (
+                              <option key={terminalId} value={terminalId}>
+                                {terminalName}
+                              </option>
+                            );
+                          })}
+                        </select>
                       </div>
                     </div>
-                    <div className="bg-white rounded-lg shadow-md p-6 w-[45%] mt-4">
-                      {/* Top Cards */}
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        {/* Terminal Selection Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center ">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <img src={busIcon} />
+
+                    {termLoading.track ? (
+                      <div className="py-12 text-center text-gray-400">Loading track data...</div>
+                    ) : (
+                      <>
+                        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-lg border border-gray-100 p-4">
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Terminal</div>
+                            <div className="text-[24px] font-bold text-[#141516]">{activeTrackTerminalName}</div>
                           </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Select Terminal
+                          <div className="rounded-lg border border-gray-100 p-4">
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Income</div>
+                            <div className="text-[24px] font-bold text-[#141516]">${activeTrackIncome.toLocaleString()}</div>
+                          </div>
+                          <div className="rounded-lg border border-gray-100 p-4">
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Expenses</div>
+                            <div className="text-[24px] font-bold text-[#141516]">${activeTrackExpenses.toLocaleString()}</div>
+                          </div>
+                          <div className="rounded-lg border border-gray-100 p-4">
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Savings</div>
+                            <div className={`text-[24px] font-bold ${activeTrackProfitColor}`}>${activeTrackSavings.toLocaleString()}</div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_1fr]">
+                          <div className="rounded-lg border border-gray-100 p-5">
+                            <div className="mb-4 flex items-start justify-between">
+                              <div>
+                                <h3 className="text-[24px] font-bold text-[#475569]">Sales</h3>
+                                <p className="text-sm text-[#7C7C7C]">{activeTrackPeriodLabel}</p>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Current total</div>
+                                <div className="text-[24px] font-bold text-[#475569]">${activeTrackIncome.toLocaleString()}</div>
+                              </div>
                             </div>
-                            <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                Terminal 1
-                              </span>
-                              <FaChevronDown
-                                className="ml-1 text-[#141516]"
-                                size={12}
-                              />
+
+                            <div className="relative h-52 rounded-xl bg-[#FCFCFD] p-4">
+                              {activeTrackHasChartData ? (
+                                <div className="grid h-full grid-cols-[48px_1fr] gap-3">
+                                  <div className="flex h-full flex-col justify-between text-xs text-[#475569]">
+                                    {activeTrackYAxisLabels.map((label) => (
+                                      <div key={label}>{label}</div>
+                                    ))}
+                                  </div>
+                                  <div className="grid h-full grid-rows-[1fr_auto]">
+                                    <div className="relative h-full">
+                                      <div className="absolute inset-0 flex flex-col justify-between">
+                                        {activeTrackYAxisLabels.map((label) => (
+                                          <div key={label} className="border-t border-dashed border-gray-200"></div>
+                                        ))}
+                                      </div>
+                                      <div className="relative z-10 flex h-full items-end justify-between gap-4 px-2 pb-2">
+                                        {displayTrackQuarterly.map((value, index) => (
+                                          <div key={`${index}-${value}`} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+                                            <div className="text-xs font-semibold text-[#475569]">{formatTrackAxisValue(value)}</div>
+                                            <div className="flex h-full w-full items-end justify-center rounded-t-xl bg-[#FDECEF]">
+                                              <div className="w-full rounded-t-xl bg-[#C01824]" style={{ height: `${activeTrackBarHeights[index]}%` }}></div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div className="mt-3 flex justify-between px-2 text-xs font-medium text-gray-500">
+                                      <div>Q1</div>
+                                      <div>Q2</div>
+                                      <div>Q3</div>
+                                      <div>Q4</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-[#D9D9D9] bg-white text-center">
+                                  <div className="text-sm font-semibold text-[#475569]">No sales data available</div>
+                                  <div className="mt-1 text-xs text-[#8A94A6]">Select another terminal or wait for quarterly sales data.</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg border border-gray-100 p-5">
+                            <div className="mb-4 flex items-start justify-between">
+                              <div>
+                                <h3 className="text-[22px] font-bold text-[#475569]">Profit & Loss</h3>
+                                <p className="text-sm text-[#7C7C7C]">{activeTrackPeriodLabel}</p>
+                              </div>
+                              <div className={`text-[24px] font-bold ${activeTrackProfitColor}`}>${activeTrackSavings.toLocaleString()}</div>
+                            </div>
+
+                            <div className="mb-4 rounded-lg bg-[#F8FAFC] p-4">
+                              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Net result</div>
+                              <div className="text-sm text-[#475569]">Income ${activeTrackIncome.toLocaleString()} - Expenses ${activeTrackExpenses.toLocaleString()}</div>
+                            </div>
+
+                            <div className="mb-4">
+                              <div className="mb-2 flex justify-between text-sm">
+                                <span className="font-semibold text-[#475569]">Income</span>
+                                <span className="font-semibold text-[#475569]">${activeTrackIncome.toLocaleString()}</span>
+                              </div>
+                              <div className="h-3 w-full rounded-full bg-[#EEF2F7]">
+                                <div className="h-full rounded-full bg-[#16A34A]" style={{ width: `${Math.min(100, Math.max(8, activeTrackIncome ? (activeTrackIncome / Math.max(activeTrackIncome, activeTrackExpenses, 1)) * 100 : 8))}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div className="mb-6">
+                              <div className="mb-2 flex justify-between text-sm">
+                                <span className="font-semibold text-[#475569]">Expenses</span>
+                                <span className="font-semibold text-[#475569]">${activeTrackExpenses.toLocaleString()}</span>
+                              </div>
+                              <div className="h-3 w-full rounded-full bg-[#FCE8EA]">
+                                <div className="h-full rounded-full bg-[#C01824]" style={{ width: `${Math.min(100, Math.max(8, activeTrackExpenses ? (activeTrackExpenses / Math.max(activeTrackIncome, activeTrackExpenses, 1)) * 100 : 8))}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="rounded-lg border border-gray-100 p-4">
+                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Savings</div>
+                                <div className={`mt-2 text-[20px] font-bold ${activeTrackProfitColor}`}>${activeTrackSavings.toLocaleString()}</div>
+                              </div>
+                              <div className="rounded-lg border border-gray-100 p-4">
+                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Profitability</div>
+                                <div className={`mt-2 text-[20px] font-bold ${activeTrackProfitColor}`}>{activeTrackIncome > 0 ? `${((activeTrackSavings / activeTrackIncome) * 100).toFixed(1)}%` : "0.0%"}</div>
+                              </div>
                             </div>
                           </div>
                         </div>
-
-                        {/* Income Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <img src={moneyWallet} />
-                          </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Income
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Expenses Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <img src={marketIcon} />
-                          </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Expenses
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Savings Card */}
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
-                          <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
-                            <div className="bg-white rounded-full p-1 shadow-md flex items-center justify-center">
-                              <BiDollar size={18} color="#C01824" />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">
-                              Savings
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">
-                                $41,210
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Sales Section */}
-                      <div className="mb-6 border border-gray-100 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-[#475569]">
-                            Sales
-                          </h2>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
-                          </div>
-                        </div>
-                        <div className="text-2xl font-bold mb-4 text-[#475569]">
-                          $15,940.65
-                        </div>
-
-                        {/* Sales Chart */}
-                        <div className="relative h-32">
-                          {/* Y-axis labels */}
-                          <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500">
-                            <div>$15k</div>
-                            <div>$10k</div>
-                            <div>$5k</div>
-                            <div>$0k</div>
-                          </div>
-
-                          {/* Chart lines */}
-                          <div className="ml-8 h-full flex flex-col justify-between">
-                            <div className="border-t border-gray-300"></div>
-                            <div className="border-t border-gray-300"></div>
-                            <div className="border-t border-gray-300"></div>
-                            <div className="border-t border-gray-300"></div>
-                          </div>
-
-                          {/* Chart line */}
-                          <svg
-                            className="absolute top-0 left-10 w-5/6 h-full"
-                            viewBox="0 0 300 100"
-                            preserveAspectRatio="none"
-                          >
-                            <polyline
-                              points="0,40 100,60 200,80 300,20"
-                              fill="none"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="0"
-                              cy="40"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle
-                              cx="100"
-                              cy="60"
-                              r="5"
-                              fill="white"
-                              stroke="#C01824"
-                              strokeWidth="2"
-                            />
-                            <circle cx="200" cy="80" r="5" fill="#C01824" />
-                            <circle cx="300" cy="20" r="5" fill="#C01824" />
-                          </svg>
-
-                          {/* X-axis labels */}
-                          <div className="absolute bottom-0 left-10 w-5/6 flex justify-between text-xs text-gray-500">
-                            <div>Q1</div>
-                            <div>Q2</div>
-                            <div>Q3</div>
-                            <div>Q4</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Profit & Loss Section */}
-                      <div className="border border-gray-100 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">
-                            Profit & Loss
-                          </h2>
-                          <div className="text-sm text-gray-500 flex items-center text-[#475569]">
-                            Current month
-                            <FaChevronDown className="ml-1" size={10} />
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <div className="text-2xl font-bold text-[#475569]">
-                            $20,000
-                          </div>
-                          <div className="text-sm text-[#475569]">
-                            Net income for March
-                          </div>
-                        </div>
-
-                        {/* Income Bar */}
-                        <div className="mb-3">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">
-                              $100,000
-                            </span>
-                            <span className="text-[#475569]">Income</span>
-                          </div>
-                          <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "60%" }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        {/* Expenses Bar */}
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569">
-                              $80,000
-                            </span>
-                            <span className="text-[#475569]">Expenses</span>
-                          </div>
-                          <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div
-                              className="h-full bg-[#C01824] rounded-sm"
-                              style={{ width: "80%" }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -2231,6 +2231,151 @@ const filteredGlCodes = glCodes.filter((item) => {
           isOpen={gLCodeModalOpen}
           onClose={() => setGLCodeModalOpen(false)}
         />
+
+        <VendorGlobalModal
+          isOpen={terminalInvoiceModalOpen}
+          onClose={closeTerminalInvoiceModal}
+          title="Create Terminal Invoice"
+          primaryButtonText={termLoading.create ? "Creating..." : "Create"}
+          secondaryButtonText="Cancel"
+          onPrimaryAction={handleCreateTerminalInvoice}
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-medium">Terminal</label>
+              <select
+                value={terminalInvoiceForm.terminalId}
+                onChange={(e) => handleTerminalInvoiceFormChange("terminalId", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              >
+                <option value="">Select terminal</option>
+                {termList.map((terminal) => {
+                  const terminalId = terminal.id || terminal.terminalId;
+                  const terminalName = terminal.name || terminal.terminalName || `Terminal ${terminalId}`;
+                  return (
+                    <option key={terminalId} value={terminalId}>
+                      {terminalName}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">GL Code</label>
+              <select
+                value={terminalInvoiceForm.glCodeId}
+                onChange={(e) => handleTerminalInvoiceFormChange("glCodeId", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              >
+                <option value="">Select GL code</option>
+                {glCodes.map((code) => (
+                  <option key={code.glCodeId} value={code.glCodeId}>
+                    {code.glCode} - {code.glCodeName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Invoice Mode</label>
+              <select
+                value={terminalInvoiceForm.invoiceMode}
+                onChange={(e) => handleTerminalInvoiceFormChange("invoiceMode", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              >
+                <option value="Monthly">Monthly</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Custom">Custom</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Bill To</label>
+              <input
+                value={terminalInvoiceForm.billTo}
+                onChange={(e) => handleTerminalInvoiceFormChange("billTo", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Invoice Date</label>
+              <input
+                type="date"
+                value={terminalInvoiceForm.invoiceDate}
+                onChange={(e) => handleTerminalInvoiceFormChange("invoiceDate", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Due Date</label>
+              <input
+                type="date"
+                value={terminalInvoiceForm.dueDate}
+                onChange={(e) => handleTerminalInvoiceFormChange("dueDate", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">No. of Buses</label>
+              <input
+                type="number"
+                value={terminalInvoiceForm.noOfBuses}
+                onChange={(e) => handleTerminalInvoiceFormChange("noOfBuses", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Bus ID</label>
+              <input
+                value={terminalInvoiceForm.busId}
+                onChange={(e) => handleTerminalInvoiceFormChange("busId", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Unit Price</label>
+              <input
+                type="number"
+                value={terminalInvoiceForm.unitPrice}
+                onChange={(e) => handleTerminalInvoiceFormChange("unitPrice", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Quantity</label>
+              <input
+                type="number"
+                value={terminalInvoiceForm.quantity}
+                onChange={(e) => handleTerminalInvoiceFormChange("quantity", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Sub Total</label>
+              <input
+                type="number"
+                value={terminalInvoiceForm.subTotal}
+                onChange={(e) => handleTerminalInvoiceFormChange("subTotal", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Tax Amount</label>
+              <input
+                type="number"
+                value={terminalInvoiceForm.taxAmount}
+                onChange={(e) => handleTerminalInvoiceFormChange("taxAmount", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium">Notes</label>
+              <textarea
+                value={terminalInvoiceForm.notes}
+                onChange={(e) => handleTerminalInvoiceFormChange("notes", e.target.value)}
+                className="min-h-[100px] w-full rounded-lg border border-gray-300 px-3 py-2 outline-none"
+              />
+            </div>
+          </div>
+        </VendorGlobalModal>
 
         <VendorGlobalModal
           isOpen={isModalOpen}

@@ -2,8 +2,11 @@ import { apiClient } from "@/configs/api";
 
 export const balanceSheetService = {
 
-  getBalanceSheet: async () => {
-    const response = await apiClient.get("/balance-sheet");
+  getBalanceSheet: async (startDate?: string, endDate?: string) => {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await apiClient.get("/balance-sheet", { params });
     return { ok: true, data: response.data?.data };
   },
 

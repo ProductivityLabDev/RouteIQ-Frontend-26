@@ -66,21 +66,17 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
     const [newAmount, setNewAmount] = useState('');
 
     useEffect(() => {
-        dispatch(fetchBalanceSheet());
-        dispatch(fetchBalanceSheetChart({ year: parseInt(year) }));
-    }, [dispatch]);
-
-    useEffect(() => {
         const m = monthMap[month];
         const startDate = `${year}-${String(m).padStart(2, '0')}-01`;
         const lastDay = new Date(parseInt(year), m, 0).getDate();
         const endDate = `${year}-${String(m).padStart(2, '0')}-${lastDay}`;
+        dispatch(fetchBalanceSheet({ startDate, endDate }));
         dispatch(fetchBalanceSheetSummary({ startDate, endDate }));
-    }, [year, month]);
+    }, [dispatch, year, month]);
 
     useEffect(() => {
         dispatch(fetchBalanceSheetChart({ year: parseInt(year) }));
-    }, [year]);
+    }, [dispatch, year]);
 
     const dateOptions = ['Overview', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
     const reportTypeOptions = ['Lines', 'Bars', 'Area', 'Pie', 'Scatter'];
@@ -116,14 +112,14 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
 
     // Handlers
     const startEdit = (item) => {
-        setEditingId(item.id);
+        setEditingId(item.id ?? item.entryId);
         setEditLabel(item.label);
         setEditAmount(item.amount);
     };
 
     const handleSaveEntry = (item, section) => {
         dispatch(updateBalanceSheetEntry({
-            id: item.id,
+            id: item.id ?? item.entryId,
             section,
             label: editLabel,
             amount: parseFloat(editAmount) || 0,
@@ -132,7 +128,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
     };
 
     const handleDeleteEntry = (item, section) => {
-        dispatch(deleteBalanceSheetEntry({ id: item.id, section }));
+        dispatch(deleteBalanceSheetEntry({ id: item.id ?? item.entryId, section }));
     };
 
     const handleAddEntry = (section) => {
@@ -183,9 +179,10 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
     );
 
     const renderEditableItem = (item, section) => {
-        const isEditing = editingId === item.id;
+        const itemId = item.id ?? item.entryId;
+        const isEditing = editingId === itemId;
         return (
-            <div key={item.id} className="flex justify-between items-center py-1 px-2 bg-gray-100 group">
+            <div key={itemId} className="flex justify-between items-center py-1 px-2 bg-gray-100 group">
                 <div className="flex-1 mr-2">
                     {isEditing ? (
                         <input
