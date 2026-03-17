@@ -16,14 +16,7 @@ import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivabl
 import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
 import { fetchTripInvoiceTerminals, fetchTripInvoices, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
 import { fetchGenerateReport } from "@/redux/slices/reportsSlice";
-import {
-  fetchTerminalSummary,
-  fetchTerminalList,
-  fetchTerminalInvoices,
-  createTerminalInvoice,
-  deleteTerminalInvoice,
-  fetchTerminalTrack,
-} from "@/redux/slices/terminalTabSlice";
+import { fetchTerminalSummary, fetchTerminalList } from "@/redux/slices/terminalTabSlice";
 import {
   Button,
   ButtonGroup,
@@ -106,24 +99,15 @@ const Accounting = () => {
   const grYearOptions = [2022,2023,2024,2025,2026,2027];
   const grSortOptions = [{ label: 'Name', value: 'name' }, { label: 'Invoice Total', value: 'invoiceTotal' }, { label: 'Work Hours', value: 'workHours' }];
 
-  // Terminal Tab states
-  const [trackTerminalId, setTrackTerminalId] = useState(null);
-  const [trackYear, setTrackYear] = useState(new Date().getFullYear());
-  const [createInvoiceTerminalId, setCreateInvoiceTerminalId] = useState(null);
-  const [createInvoiceForm, setCreateInvoiceForm] = useState({
-    description: '', glCodeId: '', quantity: 1, unitPrice: '',
-  });
-  const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
-
-  const dispatch = useDispatch();
+const dispatch = useDispatch();
   const { glCodes, loading, error } = useSelector((state) => state.payroll);
   const { loading: apLoading, error: apError } = useSelector((state) => state.accountsPayable);
   const { invoices, loading: arLoading, error: arError } = useSelector((state) => state.accountsReceivable);
   const { terminals, schools: siSchools, invoices: siInvoices, loading: siLoading } = useSelector((state) => state.schoolInvoices);
   const { terminals: tripTerminals, invoices: tripInvoices, loading: tiLoading } = useSelector((state) => state.tripInvoices);
   const { generateReport, loading: grLoading } = useSelector((state) => state.reports);
-  const { summary: termSummary, list: termList, invoices: termInvoices, trackData: termTrackData, loading: termLoading } = useSelector((state) => state.terminalTab);
-  const filteredGlCodes = glCodes.filter((item) => {
+  const { summary: termSummary, list: termList, loading: termLoading } = useSelector((state) => state.terminalTab);
+const filteredGlCodes = glCodes.filter((item) => {
     const search = glCodeSearch.trim().toLowerCase();
     if (!search) return true;
 
@@ -160,12 +144,6 @@ const Accounting = () => {
   }, [dispatch, selectedInstituteId]);
 
   useEffect(() => {
-    if (selectedTab === 'Generate Report') {
-      dispatch(fetchGenerateReport({ year: grYear, month: grMonth, search: grSearch || undefined, sortBy: grSortBy, limit: 20, offset: 0 }));
-    }
-  }, [dispatch, selectedTab, grYear, grMonth, grSearch, grSortBy]);
-
-  useEffect(() => {
     if (selectedTab === 'Terminal') {
       dispatch(fetchTerminalSummary());
       dispatch(fetchTerminalList());
@@ -173,39 +151,10 @@ const Accounting = () => {
   }, [dispatch, selectedTab]);
 
   useEffect(() => {
-    if (selectedTab === 'Terminal' && selectedTerminalTab === 'Terminal Invoices') {
-      dispatch(fetchTerminalInvoices({ limit: 20, offset: 0 }));
+    if (selectedTab === 'Generate Report') {
+      dispatch(fetchGenerateReport({ year: grYear, month: grMonth, search: grSearch || undefined, sortBy: grSortBy, limit: 20, offset: 0 }));
     }
-  }, [dispatch, selectedTab, selectedTerminalTab]);
-
-  useEffect(() => {
-    if (isTerminal !== null && isTerminal !== false) {
-      const terminal = termList[isTerminal];
-      if (terminal) {
-        const tId = terminal.id || terminal.terminalId;
-        dispatch(fetchTerminalInvoices({ terminalId: tId, limit: 20, offset: 0 }));
-        dispatch(fetchTerminalTrack({ terminalId: tId, year: trackYear }));
-        setTrackTerminalId(tId);
-      }
-    }
-  }, [dispatch, isTerminal, trackYear, termList]);
-
-  const handleCreateTerminalInvoice = async (terminalId) => {
-    if (!createInvoiceForm.description || !createInvoiceForm.unitPrice) return;
-    const result = await dispatch(createTerminalInvoice({
-      terminalId,
-      lineItems: [{
-        glCodeId: parseInt(createInvoiceForm.glCodeId) || 0,
-        description: createInvoiceForm.description,
-        quantity: parseInt(createInvoiceForm.quantity) || 1,
-        unitPrice: parseFloat(createInvoiceForm.unitPrice),
-      }],
-    }));
-    if (result.meta.requestStatus === 'fulfilled') {
-      setCreateInvoiceOpen(false);
-      setCreateInvoiceForm({ description: '', glCodeId: '', quantity: 1, unitPrice: '' });
-    }
-  };
+  }, [dispatch, selectedTab, grYear, grMonth, grSearch, grSortBy]);
 
   const importInputRef = React.useRef(null);
   const handleImportFile = (e) => {
@@ -1649,8 +1598,6 @@ const Accounting = () => {
                         <div className="py-6 text-center text-gray-400 text-sm">No terminals found.</div>
                       ) : termList.map((terminal, index) => {
                         const tId = terminal.id || terminal.terminalId;
-                        const tTrack = termTrackData[tId] || {};
-                        const tInvoices = termInvoices[tId] || { total: 0, items: [] };
                         const isExpanded = isTerminal === index;
                         return (
                           <div key={tId || index} className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
@@ -1691,6 +1638,7 @@ const Accounting = () => {
                             {isExpanded && (
                               <div className="w-full">
                                 <div className="p-4 w-full">
+                                  {/* Top Row Cards */}
                                   <div className="flex space-x-2 mb-2">
                                     <div className="w-[300px] px-2 mb-4">
                                       <div className="border border-[#D9D9D9] rounded p-3 bg-white">
@@ -1698,7 +1646,7 @@ const Accounting = () => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">YTD Revenue</div>
-                                            <div className="font-medium">${Number(tTrack.ytdRevenue ?? 0).toLocaleString()}</div>
+                                            <div className="font-medium">$ 240,000</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1709,7 +1657,7 @@ const Accounting = () => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total # of Open Trips</div>
-                                            <div className="font-medium">{tTrack.openTripsCount ?? 0}</div>
+                                            <div className="font-medium">102</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1720,16 +1668,13 @@ const Accounting = () => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total # of Completed Trips<div className="text-xs text-gray-500">(within current month)</div></div>
-                                            <div className="font-medium">{tTrack.completedTripsCount ?? 0}</div>
+                                            <div className="font-medium">524</div>
                                           </div>
                                         </div>
                                       </div>
                                     </div>
                                     <div className="flex flex-col w-[400px] gap-6 items-end justify-end">
-                                      <button
-                                        className="bg-[#C01824] w-[50%] text-white py-2 rounded mr-0 text-sm"
-                                        onClick={() => { setCreateInvoiceTerminalId(tId); setCreateInvoiceOpen(true); }}
-                                      >
+                                      <button className="bg-[#C01824] w-[50%] text-white py-2 rounded mr-0 text-sm" onClick={() => setCreateInvoice(true)}>
                                         Create Invoice
                                       </button>
                                       <button className="bg-[#C01824] w-[50%] text-white py-2 rounded text-sm">
@@ -1738,6 +1683,7 @@ const Accounting = () => {
                                     </div>
                                   </div>
 
+                                  {/* Bottom Row Cards */}
                                   <div className="flex flex-wrap mx-1">
                                     <div className="w-[300px] px-2">
                                       <div className="border border-[#D9D9D9] rounded p-3 bg-white">
@@ -1745,7 +1691,7 @@ const Accounting = () => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">YTD Trips</div>
-                                            <div className="font-medium">{tTrack.ytdTrips ?? 0}</div>
+                                            <div className="font-medium">450</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1756,7 +1702,7 @@ const Accounting = () => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total $ of Open Trips</div>
-                                            <div className="font-medium">${Number(tTrack.openTripsAmount ?? 0).toLocaleString()}</div>
+                                            <div className="font-medium">$ 5200</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1767,48 +1713,12 @@ const Accounting = () => {
                                           <div className="bg-[#C01824] p-2 rounded text-white mr-3"><img src={busIcon} /></div>
                                           <div>
                                             <div className="text-xs text-gray-600">Total $ of Completed Trips<div className="text-xs text-gray-500">(within current month)</div></div>
-                                            <div className="font-medium">${Number(tTrack.completedTripsAmount ?? 0).toLocaleString()}</div>
+                                            <div className="font-medium">$ 5200</div>
                                           </div>
                                         </div>
                                       </div>
                                     </div>
                                   </div>
-
-                                  {/* Invoices for this terminal */}
-                                  {tInvoices.items.length > 0 && (
-                                    <div className="mt-4">
-                                      <div className="text-sm font-semibold text-gray-700 mb-2">Invoices</div>
-                                      <table className="w-full border-collapse text-sm">
-                                        <thead>
-                                          <tr className="bg-gray-100">
-                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Date</th>
-                                            <th className="p-2 text-left border-b border-[#D9D9D9]">GL Code</th>
-                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Type</th>
-                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Invoice Total</th>
-                                            <th className="p-2 text-left border-b border-[#D9D9D9]">Action</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {tInvoices.items.map((inv) => (
-                                            <tr key={inv.id}>
-                                              <td className="p-2 border-b border-[#D9D9D9]">{inv.date || inv.createdAt || '—'}</td>
-                                              <td className="p-2 border-b border-[#D9D9D9]">{inv.glCode || '—'}</td>
-                                              <td className="p-2 border-b border-[#D9D9D9]">{inv.type || inv.status || '—'}</td>
-                                              <td className="p-2 border-b border-[#D9D9D9]">${Number(inv.invoiceTotal || inv.total || 0).toLocaleString()}</td>
-                                              <td className="p-2 border-b border-[#D9D9D9]">
-                                                <button
-                                                  onClick={() => dispatch(deleteTerminalInvoice({ id: inv.id, terminalId: tId }))}
-                                                  className="text-red-500"
-                                                >
-                                                  <FaRegTrashAlt className="w-4 h-4 text-[#C01824]" />
-                                                </button>
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  )}
                                 </div>
 
                                 <div className="px-4 pb-3">
@@ -1827,55 +1737,74 @@ const Accounting = () => {
                   </>
                 )}
                 {selectedTerminalTab === "Terminal Invoices" && (
-                  <div className="bg-white rounded-lg shadow-md p-4 mt-4 w-[100%]">
-                    {termLoading.invoices ? (
-                      <div className="py-6 text-center text-gray-500 text-sm">Loading invoices...</div>
-                    ) : (
-                      <table className="w-[100%] border-collapse">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="p-3 border-b border-[#D9D9D9]"><input type="checkbox" className="w-4 h-4" /></th>
-                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Date</th>
-                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">GL Code#</th>
-                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Type</th>
-                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Invoice Total</th>
-                            <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">Action</th>
+                  <div className="bg-white rounded-lg shadow-md p-4 mt-4 w-[100%] h-[60%]">
+                    <table className="w-[100%] border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="p-3 border-b border-[#D9D9D9]">
+                            <input type="checkbox" className="w-4 h-4" />
+                          </th>
+                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
+                            Date
+                          </th>
+                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
+                            GL Code#
+                          </th>
+                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
+                            Type
+                          </th>
+                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
+                            Invoice Total
+                          </th>
+                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
+                            Invoice
+                          </th>
+                          <th className="p-3 text-left font-medium text-black border-b border-[#D9D9D9]">
+                            Action
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schoolInvoices.map((invoice, index) => (
+                          <tr key={index} className="bg-whit">
+                            <td className="p-5 border-b mb-[-1px] flex justify-center items-center border-[#D9D9D9]">
+                              <input type="checkbox" className="w-4 h-4" />
+                            </td>
+                            <td className="p-3 border-b border-[#D9D9D9]">
+                              {invoice.date}
+                            </td>
+                            <td className="p-3 border-b border-[#D9D9D9]">
+                              {invoice.glCode}
+                            </td>
+                            <td className="p-3 border-b border-[#D9D9D9]">
+                              {invoice.type}
+                            </td>
+                            <td className="p-3 border-b border-[#D9D9D9]">
+                              {invoice.invoiceTotal}
+                            </td>
+                            <td className="p-3 border-b border-[#D9D9D9]">
+                              <a
+                                className="text-[#C01824] font-bold cursor-pointer"
+                                onClick={handleInvoiceList}
+                              >
+                                View
+                              </a>
+                            </td>
+                            <td className="p-3 border-b border-[#D9D9D9]">
+                              <button
+                                className="text-red-500"
+                                aria-label="Delete"
+                              >
+                                <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
+                              </button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {(termInvoices['all']?.items || []).length === 0 ? (
-                            <tr><td colSpan={6} className="p-4 text-center text-gray-400 text-sm">No invoices found.</td></tr>
-                          ) : (termInvoices['all']?.items || []).map((invoice) => (
-                            <tr key={invoice.id}>
-                              <td className="p-3 border-b border-[#D9D9D9] text-center"><input type="checkbox" className="w-4 h-4" /></td>
-                              <td className="p-3 border-b border-[#D9D9D9]">{invoice.date || invoice.createdAt || '—'}</td>
-                              <td className="p-3 border-b border-[#D9D9D9]">{invoice.glCode || '—'}</td>
-                              <td className="p-3 border-b border-[#D9D9D9]">{invoice.type || invoice.status || '—'}</td>
-                              <td className="p-3 border-b border-[#D9D9D9]">${Number(invoice.invoiceTotal || invoice.total || 0).toLocaleString()}</td>
-                              <td className="p-3 border-b border-[#D9D9D9]">
-                                <button
-                                  onClick={() => dispatch(deleteTerminalInvoice({ id: invoice.id, terminalId: undefined }))}
-                                  className="text-red-500"
-                                  aria-label="Delete"
-                                >
-                                  <FaRegTrashAlt className="w-5 h-5 text-[#C01824]" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
-                {selectedTerminalTab === "Track Terminal" && (() => {
-                  const activeTrackId = trackTerminalId || (termList[0]?.id || termList[0]?.terminalId);
-                  const activeTrack = termTrackData[activeTrackId] || {};
-                  const quarterlyData = activeTrack.quarterly || [];
-                  const activeTerminalName = activeTrackId
-                    ? (termList.find(t => (t.id || t.terminalId) === activeTrackId)?.name || `Terminal`)
-                    : 'Terminal';
-                  return (
+                {selectedTerminalTab === "Track Terminal" && (
                   <div className="flex items-center gap-5">
                     <div className="bg-white rounded-lg shadow-md p-6 w-[45%] mt-4">
                       {/* Top Cards */}
@@ -1886,22 +1815,17 @@ const Accounting = () => {
                             <img src={busIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Select Terminal</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Select Terminal
+                            </div>
                             <div className="flex items-center">
-                              <select
-                                className="font-medium text-[#141516] text-base bg-transparent border-none outline-none cursor-pointer"
-                                value={activeTrackId || ''}
-                                onChange={(e) => {
-                                  const newId = parseInt(e.target.value);
-                                  setTrackTerminalId(newId);
-                                  dispatch(fetchTerminalTrack({ terminalId: newId, year: trackYear }));
-                                }}
-                              >
-                                {termList.map(t => {
-                                  const tid = t.id || t.terminalId;
-                                  return <option key={tid} value={tid}>{t.name || t.terminalName || `Terminal ${tid}`}</option>;
-                                })}
-                              </select>
+                              <span className="font-medium text-[#141516] text-[24px]">
+                                Terminal 1
+                              </span>
+                              <FaChevronDown
+                                className="ml-1 text-[#141516]"
+                                size={12}
+                              />
                             </div>
                           </div>
                         </div>
@@ -1912,10 +1836,12 @@ const Accounting = () => {
                             <img src={moneyWallet} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Income</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Income
+                            </div>
                             <div className="flex items-center">
                               <span className="font-medium text-[#141516] text-[24px]">
-                                ${Number(activeTrack.income ?? 0).toLocaleString()}
+                                $41,210
                               </span>
                             </div>
                           </div>
@@ -1927,10 +1853,12 @@ const Accounting = () => {
                             <img src={marketIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Expenses</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Expenses
+                            </div>
                             <div className="flex items-center">
                               <span className="font-medium text-[#141516] text-[24px]">
-                                ${Number(activeTrack.expenses ?? 0).toLocaleString()}
+                                $41,210
                               </span>
                             </div>
                           </div>
@@ -1944,10 +1872,12 @@ const Accounting = () => {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Savings</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Savings
+                            </div>
                             <div className="flex items-center">
                               <span className="font-medium text-[#141516] text-[24px]">
-                                ${Number(activeTrack.savings ?? 0).toLocaleString()}
+                                $41,210
                               </span>
                             </div>
                           </div>
@@ -1957,56 +1887,74 @@ const Accounting = () => {
                       {/* Sales Section */}
                       <div className="mb-6 border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-[26px] font-bold text-[#475569]">Sales</h2>
+                          <h2 className="text-[26px] font-bold text-[#475569]">
+                            Sales
+                          </h2>
                           <div className="text-sm text-gray-500 flex items-center">
-                            {trackYear}
+                            Current month
+                            <FaChevronDown className="ml-1" size={10} />
                           </div>
                         </div>
                         <div className="text-[26px] font-bold mb-4 text-[#475569]">
-                          ${Number(activeTrack.income ?? 0).toLocaleString()}
+                          $15,940.65
                         </div>
+
+                        {/* Sales Chart */}
                         <div className="relative h-32">
+                          {/* Y-axis labels */}
                           <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-[#475569]">
-                            <div>$15k</div><div>$10k</div><div>$5k</div><div>$0k</div>
+                            <div>$15k</div>
+                            <div>$10k</div>
+                            <div>$5k</div>
+                            <div>$0k</div>
                           </div>
+
+                          {/* Chart lines */}
                           <div className="ml-8 h-full flex flex-col justify-between">
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                           </div>
-                          {quarterlyData.length > 0 ? (
-                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-                              <polyline
-                                points={quarterlyData.map((q, i) => {
-                                  const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
-                                  const x = (i / (quarterlyData.length - 1)) * 300;
-                                  const y = 100 - ((q.amount || 0) / max) * 90;
-                                  return `${x},${y}`;
-                                }).join(' ')}
-                                fill="none" stroke="#C01824" strokeWidth="2"
-                              />
-                              {quarterlyData.map((q, i) => {
-                                const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
-                                const x = (i / (quarterlyData.length - 1)) * 300;
-                                const y = 100 - ((q.amount || 0) / max) * 90;
-                                return <circle key={i} cx={x} cy={y} r="5" fill="#C01824" />;
-                              })}
-                            </svg>
-                          ) : (
-                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-                              <polyline points="0,40 100,60 200,80 300,20" fill="none" stroke="#C01824" strokeWidth="2" />
-                              <circle cx="0" cy="40" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
-                              <circle cx="100" cy="60" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
-                              <circle cx="200" cy="80" r="5" fill="#C01824" />
-                              <circle cx="300" cy="20" r="5" fill="#C01824" />
-                            </svg>
-                          )}
+
+                          {/* Chart line */}
+                          <svg
+                            className="absolute top-0 left-10 w-5/6 h-full"
+                            viewBox="0 0 300 100"
+                            preserveAspectRatio="none"
+                          >
+                            <polyline
+                              points="0,40 100,60 200,80 300,20"
+                              fill="none"
+                              stroke="#C01824"
+                              strokeWidth="2"
+                            />
+                            <circle
+                              cx="0"
+                              cy="40"
+                              r="5"
+                              fill="white"
+                              stroke="#C01824"
+                              strokeWidth="2"
+                            />
+                            <circle
+                              cx="100"
+                              cy="60"
+                              r="5"
+                              fill="white"
+                              stroke="#C01824"
+                              strokeWidth="2"
+                            />
+                            <circle cx="200" cy="80" r="5" fill="#C01824" />
+                            <circle cx="300" cy="20" r="5" fill="#C01824" />
+                          </svg>
+
+                          {/* X-axis labels */}
                           <div className="absolute bottom-0 left-10 w-5/6 flex justify-between text-xs text-gray-500">
-                            {quarterlyData.length > 0
-                              ? quarterlyData.map((q, i) => <div key={i}>{q.quarter || `Q${i+1}`}</div>)
-                              : ['Q1','Q2','Q3','Q4'].map(q => <div key={q}>{q}</div>)
-                            }
+                            <div>Q1</div>
+                            <div>Q2</div>
+                            <div>Q3</div>
+                            <div>Q4</div>
                           </div>
                         </div>
                       </div>
@@ -2014,31 +1962,53 @@ const Accounting = () => {
                       {/* Profit & Loss Section */}
                       <div className="border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">Profit & Loss</h2>
-                          <div className="text-sm text-gray-500 flex items-center text-[#475569]">{trackYear}</div>
+                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">
+                            Profit & Loss
+                          </h2>
+                          <div className="text-sm text-gray-500 flex items-center text-[#475569]">
+                            Current month
+                            <FaChevronDown className="ml-1" size={10} />
+                          </div>
                         </div>
+
                         <div className="mb-4">
                           <div className="text-2xl font-bold text-[#475569]">
-                            ${Number((activeTrack.income ?? 0) - (activeTrack.expenses ?? 0)).toLocaleString()}
+                            $20,000
                           </div>
-                          <div className="text-sm text-[#475569]">Net income</div>
+                          <div className="text-sm text-[#475569]">
+                            Net income for March
+                          </div>
                         </div>
+
+                        {/* Income Bar */}
                         <div className="mb-3">
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">${Number(activeTrack.income ?? 0).toLocaleString()}</span>
+                            <span className="font-semibold text-[#475569]">
+                              $100,000
+                            </span>
                             <span className="text-[#475569]">Income</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.income / (activeTrack.income + activeTrack.expenses)) * 100) : 60}%` }}></div>
+                            <div
+                              className="h-full bg-[#C01824] rounded-sm"
+                              style={{ width: "60%" }}
+                            ></div>
                           </div>
                         </div>
+
+                        {/* Expenses Bar */}
                         <div>
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">${Number(activeTrack.expenses ?? 0).toLocaleString()}</span>
+                            <span className="font-semibold text-[#475569">
+                              $80,000
+                            </span>
                             <span className="text-[#475569]">Expenses</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.expenses / (activeTrack.income + activeTrack.expenses)) * 100) : 80}%` }}></div>
+                            <div
+                              className="h-full bg-[#C01824] rounded-sm"
+                              style={{ width: "80%" }}
+                            ></div>
                           </div>
                         </div>
                       </div>
@@ -2046,42 +2016,62 @@ const Accounting = () => {
                     <div className="bg-white rounded-lg shadow-md p-6 w-[45%] mt-4">
                       {/* Top Cards */}
                       <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
+                        {/* Terminal Selection Card */}
+                        <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center ">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <img src={busIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Terminal</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Select Terminal
+                            </div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">{activeTerminalName}</span>
+                              <span className="font-bold text-[#141516] text-[24px]">
+                                Terminal 1
+                              </span>
+                              <FaChevronDown
+                                className="ml-1 text-[#141516]"
+                                size={12}
+                              />
                             </div>
                           </div>
                         </div>
 
+                        {/* Income Card */}
                         <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <img src={moneyWallet} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Income</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Income
+                            </div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">${Number(activeTrack.income ?? 0).toLocaleString()}</span>
+                              <span className="font-bold text-[#141516] text-[24px]">
+                                $41,210
+                              </span>
                             </div>
                           </div>
                         </div>
 
+                        {/* Expenses Card */}
                         <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <img src={marketIcon} />
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Expenses</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Expenses
+                            </div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">${Number(activeTrack.expenses ?? 0).toLocaleString()}</span>
+                              <span className="font-bold text-[#141516] text-[24px]">
+                                $41,210
+                              </span>
                             </div>
                           </div>
                         </div>
 
+                        {/* Savings Card */}
                         <div className="bg-white rounded-lg border border-gray-100 p-3 flex items-center">
                           <div className="bg-[#C01824] text-white p-2 rounded mr-3 flex items-center justify-center">
                             <div className="bg-white rounded-full p-1 shadow-md flex items-center justify-center">
@@ -2089,9 +2079,13 @@ const Accounting = () => {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-[#9E9E9E] font-normal">Savings</div>
+                            <div className="text-xs text-[#9E9E9E] font-normal">
+                              Savings
+                            </div>
                             <div className="flex items-center">
-                              <span className="font-bold text-[#141516] text-[24px]">${Number(activeTrack.savings ?? 0).toLocaleString()}</span>
+                              <span className="font-bold text-[#141516] text-[24px]">
+                                $41,210
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -2100,71 +2094,74 @@ const Accounting = () => {
                       {/* Sales Section */}
                       <div className="mb-6 border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-[#475569]">Sales</h2>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <select
-                              className="text-sm text-gray-500 bg-transparent border-none outline-none cursor-pointer"
-                              value={trackYear}
-                              onChange={(e) => {
-                                const yr = parseInt(e.target.value);
-                                setTrackYear(yr);
-                                if (activeTrackId) dispatch(fetchTerminalTrack({ terminalId: activeTrackId, year: yr }));
-                              }}
-                            >
-                              {[2022,2023,2024,2025,2026,2027].map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                          <h2 className="text-lg font-semibold text-[#475569]">
+                            Sales
+                          </h2>
+                          <div className="text-sm text-gray-500 flex items-center">
+                            Current month
+                            <FaChevronDown className="ml-1" size={10} />
                           </div>
                         </div>
                         <div className="text-2xl font-bold mb-4 text-[#475569]">
-                          ${Number(activeTrack.income ?? 0).toLocaleString()}
+                          $15,940.65
                         </div>
 
                         {/* Sales Chart */}
                         <div className="relative h-32">
+                          {/* Y-axis labels */}
                           <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500">
                             <div>$15k</div>
                             <div>$10k</div>
                             <div>$5k</div>
                             <div>$0k</div>
                           </div>
+
+                          {/* Chart lines */}
                           <div className="ml-8 h-full flex flex-col justify-between">
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                             <div className="border-t border-gray-300"></div>
                           </div>
-                          {quarterlyData.length > 0 ? (
-                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-                              <polyline
-                                points={quarterlyData.map((q, i) => {
-                                  const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
-                                  const x = (i / (quarterlyData.length - 1)) * 300;
-                                  const y = 100 - ((q.amount || 0) / max) * 90;
-                                  return `${x},${y}`;
-                                }).join(' ')}
-                                fill="none" stroke="#C01824" strokeWidth="2"
-                              />
-                              {quarterlyData.map((q, i) => {
-                                const max = Math.max(...quarterlyData.map(d => d.amount || 0), 1);
-                                const x = (i / (quarterlyData.length - 1)) * 300;
-                                const y = 100 - ((q.amount || 0) / max) * 90;
-                                return <circle key={i} cx={x} cy={y} r="5" fill="#C01824" />;
-                              })}
-                            </svg>
-                          ) : (
-                            <svg className="absolute top-0 left-10 w-5/6 h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-                              <polyline points="0,40 100,60 200,80 300,20" fill="none" stroke="#C01824" strokeWidth="2" />
-                              <circle cx="0" cy="40" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
-                              <circle cx="100" cy="60" r="5" fill="white" stroke="#C01824" strokeWidth="2" />
-                              <circle cx="200" cy="80" r="5" fill="#C01824" />
-                              <circle cx="300" cy="20" r="5" fill="#C01824" />
-                            </svg>
-                          )}
+
+                          {/* Chart line */}
+                          <svg
+                            className="absolute top-0 left-10 w-5/6 h-full"
+                            viewBox="0 0 300 100"
+                            preserveAspectRatio="none"
+                          >
+                            <polyline
+                              points="0,40 100,60 200,80 300,20"
+                              fill="none"
+                              stroke="#C01824"
+                              strokeWidth="2"
+                            />
+                            <circle
+                              cx="0"
+                              cy="40"
+                              r="5"
+                              fill="white"
+                              stroke="#C01824"
+                              strokeWidth="2"
+                            />
+                            <circle
+                              cx="100"
+                              cy="60"
+                              r="5"
+                              fill="white"
+                              stroke="#C01824"
+                              strokeWidth="2"
+                            />
+                            <circle cx="200" cy="80" r="5" fill="#C01824" />
+                            <circle cx="300" cy="20" r="5" fill="#C01824" />
+                          </svg>
+
+                          {/* X-axis labels */}
                           <div className="absolute bottom-0 left-10 w-5/6 flex justify-between text-xs text-gray-500">
-                            {quarterlyData.length > 0
-                              ? quarterlyData.map((q, i) => <div key={i}>{q.quarter || `Q${i+1}`}</div>)
-                              : ['Q1','Q2','Q3','Q4'].map(q => <div key={q}>{q}</div>)
-                            }
+                            <div>Q1</div>
+                            <div>Q2</div>
+                            <div>Q3</div>
+                            <div>Q4</div>
                           </div>
                         </div>
                       </div>
@@ -2172,113 +2169,64 @@ const Accounting = () => {
                       {/* Profit & Loss Section */}
                       <div className="border border-gray-100 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">Profit & Loss</h2>
+                          <h2 className="text-lg font-semibold text-gray-700 text-[#475569]">
+                            Profit & Loss
+                          </h2>
                           <div className="text-sm text-gray-500 flex items-center text-[#475569]">
-                            {trackYear}
+                            Current month
+                            <FaChevronDown className="ml-1" size={10} />
                           </div>
                         </div>
+
                         <div className="mb-4">
                           <div className="text-2xl font-bold text-[#475569]">
-                            ${Number((activeTrack.income ?? 0) - (activeTrack.expenses ?? 0)).toLocaleString()}
+                            $20,000
                           </div>
-                          <div className="text-sm text-[#475569]">Net income</div>
+                          <div className="text-sm text-[#475569]">
+                            Net income for March
+                          </div>
                         </div>
+
                         {/* Income Bar */}
                         <div className="mb-3">
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">${Number(activeTrack.income ?? 0).toLocaleString()}</span>
+                            <span className="font-semibold text-[#475569]">
+                              $100,000
+                            </span>
                             <span className="text-[#475569]">Income</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.income / (activeTrack.income + activeTrack.expenses)) * 100) : 60}%` }}></div>
+                            <div
+                              className="h-full bg-[#C01824] rounded-sm"
+                              style={{ width: "60%" }}
+                            ></div>
                           </div>
                         </div>
+
                         {/* Expenses Bar */}
                         <div>
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="font-semibold text-[#475569]">${Number(activeTrack.expenses ?? 0).toLocaleString()}</span>
+                            <span className="font-semibold text-[#475569">
+                              $80,000
+                            </span>
                             <span className="text-[#475569]">Expenses</span>
                           </div>
                           <div className="h-6 w-full bg-[#F9E8E9] rounded-sm">
-                            <div className="h-full bg-[#C01824] rounded-sm" style={{ width: `${activeTrack.income && activeTrack.expenses ? Math.min(100, (activeTrack.expenses / (activeTrack.income + activeTrack.expenses)) * 100) : 80}%` }}></div>
+                            <div
+                              className="h-full bg-[#C01824] rounded-sm"
+                              style={{ width: "80%" }}
+                            ></div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                  );
-                })()}
+                )}
               </div>
             )}
             {selectedTab === "KPI" && <KPIScreen />}
           </>
         )}
-        {/* Create Terminal Invoice Modal */}
-        {createInvoiceOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-[420px]">
-              <h3 className="text-lg font-semibold mb-4">Create Invoice</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Description</label>
-                  <input
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
-                    value={createInvoiceForm.description}
-                    onChange={e => setCreateInvoiceForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="Invoice description"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-sm text-gray-600 mb-1">Quantity</label>
-                    <input
-                      type="number" min="1"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
-                      value={createInvoiceForm.quantity}
-                      onChange={e => setCreateInvoiceForm(f => ({ ...f, quantity: e.target.value }))}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm text-gray-600 mb-1">Unit Price ($)</label>
-                    <input
-                      type="number" min="0" step="0.01"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
-                      value={createInvoiceForm.unitPrice}
-                      onChange={e => setCreateInvoiceForm(f => ({ ...f, unitPrice: e.target.value }))}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">GL Code ID (optional)</label>
-                  <input
-                    type="number"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none"
-                    value={createInvoiceForm.glCodeId}
-                    onChange={e => setCreateInvoiceForm(f => ({ ...f, glCodeId: e.target.value }))}
-                    placeholder="GL Code ID"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-5">
-                <button
-                  className="px-4 py-2 text-sm rounded border border-gray-300 text-gray-700"
-                  onClick={() => { setCreateInvoiceOpen(false); setCreateInvoiceForm({ description: '', glCodeId: '', quantity: 1, unitPrice: '' }); }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="px-4 py-2 text-sm rounded bg-[#C01824] text-white disabled:opacity-60"
-                  disabled={termLoading.createInvoice}
-                  onClick={() => handleCreateTerminalInvoice(createInvoiceTerminalId)}
-                >
-                  {termLoading.createInvoice ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         <GLCodesModal
           isOpen={gLCodeModalOpen}
           onClose={() => setGLCodeModalOpen(false)}
