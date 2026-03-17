@@ -84,6 +84,7 @@ const Accounting = () => {
   const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
   const [terminalInvoiceModalOpen, setTerminalInvoiceModalOpen] = useState(false);
   const [selectedTrackTerminalId, setSelectedTrackTerminalId] = useState("");
+  const [selectedTrackYear, setSelectedTrackYear] = useState(new Date().getFullYear());
   const [editInvoice, setEditInvoice] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportInvoiceModal, setIsImportInvoiceModal] = useState(false);
@@ -185,11 +186,29 @@ const dispatch = useDispatch();
   const activeTrackTerminalId = activeTrackTerminal ? String(activeTrackTerminal.id || activeTrackTerminal.terminalId || "") : "";
   const activeTrackTerminalName =
     activeTrackTerminal?.name || activeTrackTerminal?.terminalName || "Terminal 1";
-  const activeTrackData = activeTrackTerminalId ? termTrackData[activeTrackTerminalId] || {} : {};
-  const activeTrackIncome = Number(activeTrackData.income ?? activeTrackData.totalIncome ?? activeTrackData.ytdRevenue ?? 0);
-  const activeTrackExpenses = Number(activeTrackData.expenses ?? activeTrackData.totalExpenses ?? 0);
-  const activeTrackSavings = Number(activeTrackData.savings ?? (activeTrackIncome - activeTrackExpenses));
-  const activeTrackQuarterlyRaw = Array.isArray(activeTrackData.quarterlyChartData)
+  const activeTrackKey = activeTrackTerminalId ? `${activeTrackTerminalId}_${selectedTrackYear}` : "";
+  const activeTrackData = activeTrackKey ? termTrackData[activeTrackKey] || {} : {};
+  const activeTrackIncome = Number(
+    activeTrackData.ytdIncome ??
+    activeTrackData.income ??
+    activeTrackData.totalIncome ??
+    activeTrackData.ytdRevenue ??
+    0
+  );
+  const activeTrackExpenses = Number(
+    activeTrackData.ytdExpenses ??
+    activeTrackData.expenses ??
+    activeTrackData.totalExpenses ??
+    0
+  );
+  const activeTrackSavings = Number(
+    activeTrackData.ytdSavings ??
+    activeTrackData.savings ??
+    (activeTrackIncome - activeTrackExpenses)
+  );
+  const activeTrackQuarterlyRaw = Array.isArray(activeTrackData.quarters)
+    ? activeTrackData.quarters
+    : Array.isArray(activeTrackData.quarterlyChartData)
     ? activeTrackData.quarterlyChartData
     : Array.isArray(activeTrackData.quarterlyData)
       ? activeTrackData.quarterlyData
@@ -197,12 +216,21 @@ const dispatch = useDispatch();
         ? activeTrackData.salesChartData
         : [0, 0, 0, 0];
   const mockTrackQuarterly = [18500, 26200, 21400, 31800];
+  const hasBackendQuarterData = Array.isArray(activeTrackQuarterlyRaw) && activeTrackQuarterlyRaw.length > 0;
   const activeTrackQuarterly = activeTrackQuarterlyRaw.slice(0, 4).map((item, index) => {
     if (typeof item === "number") return item;
-    return Number(item?.value ?? item?.amount ?? item?.total ?? item?.sales ?? item?.[`q${index + 1}`] ?? 0);
+    return Number(
+      item?.income ??
+      item?.value ??
+      item?.amount ??
+      item?.total ??
+      item?.sales ??
+      item?.[`q${index + 1}`] ??
+      0
+    );
   });
   while (activeTrackQuarterly.length < 4) activeTrackQuarterly.push(0);
-  const displayTrackQuarterly = activeTrackQuarterly.some((value) => value > 0) ? activeTrackQuarterly : mockTrackQuarterly;
+  const displayTrackQuarterly = hasBackendQuarterData ? activeTrackQuarterly : mockTrackQuarterly;
   const activeTrackQuarterlyMax = Math.max(...displayTrackQuarterly, 1);
   const formatTrackAxisValue = (value) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}m`;
@@ -215,7 +243,8 @@ const dispatch = useDispatch();
     activeTrackHasChartData ? Math.max(14, (value / activeTrackQuarterlyMax) * 100) : 0
   );
   const activeTrackProfitColor = activeTrackSavings >= 0 ? "text-green-600" : "text-red-600";
-  const activeTrackPeriodLabel = format(new Date(), "MMMM yyyy");
+  const activeTrackPeriodLabel = `${selectedTrackYear}`;
+  const trackYearOptions = [2022, 2023, 2024, 2025, 2026, 2027];
 
   useEffect(() => {
     dispatch(fetchGlCodes());
@@ -276,10 +305,10 @@ const dispatch = useDispatch();
       const terminal = termList[isTerminal];
       if (terminal) {
         const tId = terminal.id || terminal.terminalId;
-        dispatch(fetchTerminalTrack({ terminalId: tId, year: new Date().getFullYear() }));
+        dispatch(fetchTerminalTrack({ terminalId: tId, year: selectedTrackYear }));
       }
     }
-  }, [dispatch, isTerminal, termList]);
+  }, [dispatch, isTerminal, termList, selectedTrackYear]);
 
   useEffect(() => {
     if (selectedTab === "Terminal" && selectedTerminalTab === "Terminal Invoices") {
@@ -295,9 +324,9 @@ const dispatch = useDispatch();
 
   useEffect(() => {
     if (selectedTab === "Terminal" && selectedTerminalTab === "Track Terminal" && activeTrackTerminalId) {
-      dispatch(fetchTerminalTrack({ terminalId: activeTrackTerminalId, year: new Date().getFullYear() }));
+      dispatch(fetchTerminalTrack({ terminalId: activeTrackTerminalId, year: selectedTrackYear }));
     }
-  }, [dispatch, selectedTab, selectedTerminalTab, activeTrackTerminalId]);
+  }, [dispatch, selectedTab, selectedTerminalTab, activeTrackTerminalId, selectedTrackYear]);
 
   useEffect(() => {
     if (selectedTab === 'Generate Report') {
@@ -2271,25 +2300,43 @@ const dispatch = useDispatch();
                         <h2 className="text-[26px] font-bold text-[#141516]">Track Terminal</h2>
                         <p className="text-sm text-[#7C7C7C]">Change terminal to compare income, expenses, savings, sales trend, and profit & loss.</p>
                       </div>
-                      <div className="w-full lg:w-[320px]">
-                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">
-                          Select Terminal
-                        </label>
-                        <select
-                          value={selectedTrackTerminalId}
-                          onChange={(e) => setSelectedTrackTerminalId(e.target.value)}
-                          className="w-full rounded-lg border border-[#D9D9D9] px-4 py-3 text-[16px] font-medium text-[#141516] outline-none"
-                        >
-                          {termList.map((terminal) => {
-                            const terminalId = terminal.id || terminal.terminalId;
-                            const terminalName = terminal.name || terminal.terminalName || `Terminal ${terminalId}`;
-                            return (
-                              <option key={terminalId} value={terminalId}>
-                                {terminalName}
+                      <div className="grid w-full gap-4 lg:w-[520px] lg:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">
+                            Select Terminal
+                          </label>
+                          <select
+                            value={selectedTrackTerminalId}
+                            onChange={(e) => setSelectedTrackTerminalId(e.target.value)}
+                            className="w-full rounded-lg border border-[#D9D9D9] px-4 py-3 text-[16px] font-medium text-[#141516] outline-none"
+                          >
+                            {termList.map((terminal) => {
+                              const terminalId = terminal.id || terminal.terminalId;
+                              const terminalName = terminal.name || terminal.terminalName || `Terminal ${terminalId}`;
+                              return (
+                                <option key={terminalId} value={terminalId}>
+                                  {terminalName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">
+                            Select Year
+                          </label>
+                          <select
+                            value={selectedTrackYear}
+                            onChange={(e) => setSelectedTrackYear(Number(e.target.value))}
+                            className="w-full rounded-lg border border-[#D9D9D9] px-4 py-3 text-[16px] font-medium text-[#141516] outline-none"
+                          >
+                            {trackYearOptions.map((year) => (
+                              <option key={year} value={year}>
+                                {year}
                               </option>
-                            );
-                          })}
-                        </select>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
 

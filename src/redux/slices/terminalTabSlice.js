@@ -30,7 +30,7 @@ export const fetchTerminalTrack = createAsyncThunk(
   async ({ terminalId, year }, { rejectWithValue }) => {
     try {
       const res = await terminalTabService.getTrack(terminalId, year);
-      return { terminalId, data: res.data };
+      return { terminalId, year, data: res.data };
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to fetch track data");
     }
@@ -149,7 +149,8 @@ const terminalTabSlice = createSlice({
       })
       .addCase(fetchTerminalTrack.fulfilled, (state, action) => {
         state.loading.track = false;
-        state.trackData[action.payload.terminalId] = action.payload.data || {};
+        const trackKey = `${action.payload.terminalId}_${action.payload.year}`;
+        state.trackData[trackKey] = action.payload.data || {};
       })
       .addCase(fetchTerminalTrack.rejected, (state, action) => {
         state.loading.track = false;
