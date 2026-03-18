@@ -11,7 +11,7 @@ import {
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchGlCodes } from "@/redux/slices/payrollSlice";
-import { addExpense } from "@/redux/slices/accountsPayableSlice";
+import { addExpense, fetchWalletSummary, fetchWalletBalance, fetchWalletTransactions } from "@/redux/slices/accountsPayableSlice";
 import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivableSlice";
 import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
 import { fetchTripInvoiceTerminals, fetchTripInvoices, createTripInvoice, batchTripInvoice, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
@@ -152,7 +152,7 @@ const Accounting = () => {
 
 const dispatch = useDispatch();
   const { glCodes, loading, error } = useSelector((state) => state.payroll);
-  const { loading: apLoading, error: apError } = useSelector((state) => state.accountsPayable);
+  const { walletSummary, walletBalance, walletTransactions, loading: apLoading, error: apError } = useSelector((state) => state.accountsPayable);
   const { invoices, loading: arLoading, error: arError } = useSelector((state) => state.accountsReceivable);
   const { terminals, schools: siSchools, invoices: siInvoices, loading: siLoading } = useSelector((state) => state.schoolInvoices);
   const { terminals: tripTerminals, invoices: tripInvoices, loading: tiLoading } = useSelector((state) => state.tripInvoices);
@@ -253,6 +253,11 @@ const dispatch = useDispatch();
   useEffect(() => {
     if (selectedTab === "Accounts Receivable") {
       dispatch(fetchInvoices({ source: "All", limit: 20, offset: 0 }));
+    }
+    if (selectedTab === "Accounts Payable") {
+      dispatch(fetchWalletSummary());
+      dispatch(fetchWalletBalance());
+      dispatch(fetchWalletTransactions({ limit: 20, offset: 0 }));
     }
     if (selectedTab === "School Invoices") {
       dispatch(fetchInvoiceTerminals());
@@ -1664,17 +1669,89 @@ const dispatch = useDispatch();
                         </div>
                       </div>
                     ) : (
-                      <GLCodesTable
-                        expandedVendor={expandedVendor}
-                        toggleExpand={toggleExpand}
-                        setAddExpense={setAddExpense}
-                        setPayModal={setPayModal}
-                      />
+                      <div className="space-y-5 p-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-xl border border-[#E7EAF3] bg-[#F8FAFC] p-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Wallet Balance</div>
+                            <div className="mt-2 text-2xl font-bold text-[#141516]">
+                              ${Number(walletBalance?.balance ?? walletSummary?.balance ?? 0).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-[#E7EAF3] bg-[#F8FAFC] p-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Available Balance</div>
+                            <div className="mt-2 text-2xl font-bold text-[#141516]">
+                              ${Number(walletBalance?.availableBalance ?? walletBalance?.balance ?? 0).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-[#E7EAF3] bg-[#F8FAFC] p-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Total Top Up</div>
+                            <div className="mt-2 text-2xl font-bold text-[#141516]">
+                              ${Number(walletSummary?.totalTopUp ?? 0).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-[#E7EAF3] bg-[#F8FAFC] p-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Total Spent</div>
+                            <div className="mt-2 text-2xl font-bold text-[#141516]">
+                              ${Number(walletSummary?.totalSpent ?? 0).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-[#E7EAF3] bg-white p-4">
+                          <div className="mb-4 flex items-center justify-between">
+                            <div>
+                              <h3 className="text-lg font-bold text-[#141516]">Recent Wallet Transactions</h3>
+                              <p className="text-sm text-[#667085]">Latest credits and debits from wallet history.</p>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="bg-gray-50">
+                                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Type</th>
+                                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Status</th>
+                                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Amount</th>
+                                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-800">Date</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {apLoading.walletTransactions && (
+                                  <tr><td colSpan={4} className="py-5 text-center text-gray-400">Loading wallet transactions...</td></tr>
+                                )}
+                                {!apLoading.walletTransactions && (walletTransactions?.transactions || []).length === 0 && (
+                                  <tr><td colSpan={4} className="py-5 text-center text-gray-400">No wallet transactions found</td></tr>
+                                )}
+                                {(walletTransactions?.transactions || []).slice(0, 5).map((transaction, index) => (
+                                  <tr key={transaction.id ?? transaction.transactionId ?? index} className="border-t border-gray-100">
+                                    <td className="px-4 py-3 text-sm text-[#141516]">{transaction.type ?? transaction.transactionType ?? '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-[#141516]">{transaction.status ?? '-'}</td>
+                                    <td className="px-4 py-3 text-sm font-semibold text-[#141516]">${Number(transaction.amount ?? 0).toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-sm text-[#141516]">
+                                      {transaction.createdAt || transaction.transactionDate
+                                        ? new Date(transaction.createdAt || transaction.transactionDate).toLocaleDateString()
+                                        : '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <GLCodesTable
+                          expandedVendor={expandedVendor}
+                          toggleExpand={toggleExpand}
+                          setAddExpense={setAddExpense}
+                          setPayModal={setPayModal}
+                        />
+                      </div>
                     )}
                     {payModal && (
                       <BalanceModal
                         setBalanceModal={setPayModal}
                         accountingPay={true}
+                        apId={typeof payModal === "number" ? payModal : undefined}
                       />
                     )}
                   </div>

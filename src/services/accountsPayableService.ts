@@ -1,28 +1,43 @@
 import { apiClient } from "@/configs/api";
 import { ApiResponse } from "@/types/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+export interface WalletSummary {
+  balance?: number;
+  totalTopUp?: number;
+  totalSpent?: number;
+  lastTransactions?: any[];
+  [key: string]: any;
+}
 
 export interface WalletBalance {
-  balance: number;
+  balance?: number;
+  availableBalance?: number;
+  pendingBalance?: number;
   currency?: string;
+  [key: string]: any;
 }
 
 export interface FundWalletInput {
   amount: number;
-  paymentMethod: "BankTransfer" | "Card";
+  paymentMethodId?: string;
+  paymentMethod?: string;
   accountNumber?: string;
   bankName?: string;
   beneficiaryName?: string;
   description?: string;
 }
 
-export interface PayFromWalletInput {
+export interface WithdrawWalletInput {
   amount: number;
-  paymentMethod: "BankTransfer" | "Card";
-  beneficiaryName: string;
+  bankName?: string;
+  accountNumber?: string;
+  beneficiaryName?: string;
   description?: string;
-  apId?: number;
+}
+
+export interface PayPayrollFromWalletInput {
+  payrollId: number;
+  description?: string;
 }
 
 export interface WalletTransaction {
@@ -71,37 +86,88 @@ export interface AddExpenseInput {
   terminalId: number;
 }
 
-// ─── Service ──────────────────────────────────────────────────────────────────
+const normalizePaymentMethod = (paymentMethod?: string) => {
+  if (!paymentMethod) return undefined;
+  if (paymentMethod === "BankTransfer") return "Bank Transfer";
+  return paymentMethod;
+};
 
 export const accountsPayableService = {
+  getWalletSummary: async (): Promise<ApiResponse<WalletSummary>> => {
+    const response = await apiClient.get("/wallet/summary");
+    return { ok: true, data: response.data?.data };
+  },
 
-  // ── Wallet ─────────────────────────────────────────────────────────────────
   getWalletBalance: async (): Promise<ApiResponse<WalletBalance>> => {
-    const response = await apiClient.get("/accounts-payable/wallet");
+    const response = await apiClient.get("/wallet/balance");
     return { ok: true, data: response.data?.data };
   },
 
+  topUpWallet: async (data: FundWalletInput) => {
+    const payload = {
+      amount: Number(data.amount || 0),
+      paymentMethodId: data.paymentMethodId,
+      paymentMethod: normalizePaymentMethod(data.paymentMethod),
+    };
+    const response = await apiClient.post("/wallet/topup", payload);
+    return { ok: true, data: response.data?.data };
+  },
+
+  withdrawWallet: async (data: WithdrawWalletInput) => {
+    const payload = {
+      amount: Number(data.amount || 0),
+      bankName: data.bankName,
+      accountNumber: data.accountNumber,
+      beneficiaryName: data.beneficiaryName,
+      description: data.description,
+    };
+    const response = await apiClient.post("/wallet/withdraw", payload);
+    return { ok: true, data: response.data?.data };
+  },
+
+  payPayrollFromWallet: async (data: PayPayrollFromWalletInput) => {
+    const response = await apiClient.post("/wallet/pay-payroll", data);
+    return { ok: true, data: response.data?.data };
+  },
+
+  createStripeSetupIntent: async () => {
+    const response = await apiClient.post("/wallet/stripe/setup");
+    return { ok: true, data: response.data?.data };
+  },
+
+  getWalletTransactions: async (params?: {
+    type?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<WalletTransactionHistory>> => {
+    const response = await apiClient.get("/wallet/transactions", { params });
+    const raw =
+      response.data?.data?.items ??
+      response.data?.data?.transactions ??
+      response.data?.data?.rows ??
+      response.data?.data;
+
+    return {
+      ok: true,
+      data: {
+        total: response.data?.data?.total ?? (Array.isArray(raw) ? raw.length : 0),
+        transactions: Array.isArray(raw) ? raw : [],
+        limit: params?.limit ?? 20,
+        offset: params?.offset ?? 0,
+      },
+    };
+  },
+
+  // Legacy aliases kept so existing UI keeps working.
   fundWallet: async (data: FundWalletInput) => {
-    const response = await apiClient.post("/accounts-payable/wallet/fund", data);
-    return { ok: true, data: response.data?.data };
+    return accountsPayableService.topUpWallet(data);
   },
 
-  payFromWallet: async (data: PayFromWalletInput) => {
-    const response = await apiClient.post("/accounts-payable/wallet/pay", data);
-    return { ok: true, data: response.data?.data };
+  payFromWallet: async (data: WithdrawWalletInput) => {
+    return accountsPayableService.withdrawWallet(data);
   },
 
-  getWalletTransactions: async (
-    limit = 20,
-    offset = 0
-  ): Promise<ApiResponse<WalletTransactionHistory>> => {
-    const response = await apiClient.get("/accounts-payable/wallet/transactions", {
-      params: { limit, offset },
-    });
-    return { ok: true, data: response.data?.data };
-  },
-
-  // ── Expenses ───────────────────────────────────────────────────────────────
   getExpenses: async (params?: {
     source?: "Manual" | "Payroll" | "All";
     status?: string;
@@ -123,3 +189,4 @@ export const accountsPayableService = {
     return { ok: true, data: response.data?.data };
   },
 };
+

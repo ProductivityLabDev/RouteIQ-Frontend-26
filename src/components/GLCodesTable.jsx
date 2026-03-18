@@ -79,7 +79,7 @@ const GLCodesTable = ({ setAddExpense, setPayModal }) => {
                             <td className="py-3 px-4 flex items-center space-x-2">
                                 <button
                                     className="px-4 py-1 rounded text-white font-medium bg-[#C01824]"
-                                    onClick={() => setPayModal(true)}
+                                    onClick={() => setPayModal(expense.id)}
                                 >
                                     PAY
                                 </button>

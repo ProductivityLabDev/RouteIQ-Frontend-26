@@ -45,7 +45,7 @@ const getRangeDates = (range) => {
 
 const RANGES = ["Today", "Yesterday", "Last 7 Days", "Last 30 Days", "This Month", "Last Month"];
 
-export default function PayrollSummary() {
+export default function PayrollSummary({ onViewPayStub }) {
   const dispatch = useDispatch();
   const [selectedRange, setSelectedRange] = useState("Last 30 Days");
   const [showDropdown, setShowDropdown]   = useState(false);
@@ -147,7 +147,10 @@ export default function PayrollSummary() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full shadow-sm text-sm font-medium hover:bg-gray-50">
+              <button
+                onClick={onViewPayStub}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full shadow-sm text-sm font-medium hover:bg-gray-50"
+              >
                 <IoEyeSharp className="w-4 h-4" />
                 View Pay Stub
               </button>

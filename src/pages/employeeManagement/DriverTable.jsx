@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchTerminalDetail,
+  fetchTerminalRates,
   fetchDriverPaystub,
   updateTerminalRates,
   generateDriverPayroll,
@@ -21,7 +22,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 
 export default function DriverTable({ terminalId, handleEdit }) {
   const dispatch = useDispatch();
-  const { terminalDetail, loading } = useSelector((s) => s.payroll);
+  const { terminalDetail, terminalRates, loading } = useSelector((s) => s.payroll);
 
   const d = new Date();
   const [month, setMonth] = useState(d.getMonth() + 1);
@@ -52,9 +53,39 @@ export default function DriverTable({ terminalId, handleEdit }) {
   useEffect(() => {
     if (!terminalId) return;
     dispatch(fetchTerminalDetail({ terminalId, month, year }));
+    dispatch(fetchTerminalRates(terminalId));
   }, [dispatch, terminalId, month, year]);
 
-  const detail = terminalDetail?.terminalId === terminalId ? terminalDetail : null;
+  const normalizedDetail = terminalDetail
+    ? {
+        ...terminalDetail,
+        terminalId: pick(terminalDetail.terminalId, terminalDetail.TerminalId),
+        terminalName: pick(terminalDetail.terminalName, terminalDetail.TerminalName),
+        terminalCode: pick(terminalDetail.terminalCode, terminalDetail.TerminalCode),
+        month: pick(terminalDetail.month, terminalDetail.Month),
+        year: pick(terminalDetail.year, terminalDetail.Year),
+        routeRate: pick(terminalDetail.routeRate, terminalDetail.RouteRate),
+        tripRate: pick(terminalDetail.tripRate, terminalDetail.TripRate),
+        periodStart: pick(terminalDetail.periodStart, terminalDetail.PeriodStart),
+        periodEnd: pick(terminalDetail.periodEnd, terminalDetail.PeriodEnd),
+        settings: pick(terminalDetail.settings, terminalDetail.Settings) || {},
+        drivers: pick(terminalDetail.drivers, terminalDetail.Drivers) || [],
+      }
+    : null;
+  const detail =
+    normalizedDetail && Number(normalizedDetail.terminalId) === Number(terminalId)
+      ? normalizedDetail
+      : null;
+  const normalizedRates =
+    terminalRates && Number(pick(terminalRates.terminalId, terminalRates.TerminalId)) === Number(terminalId)
+      ? {
+          ...terminalRates,
+          terminalId: pick(terminalRates.terminalId, terminalRates.TerminalId),
+          terminalName: pick(terminalRates.terminalName, terminalRates.TerminalName),
+          routeRate: pick(terminalRates.routeRate, terminalRates.RouteRate),
+          tripRate: pick(terminalRates.tripRate, terminalRates.TripRate),
+        }
+      : null;
   // API returns flat structure — all payroll fields are directly on driver object
   const drivers = (detail?.drivers || []).map((driver) => {
     const benefits = pick(driver.benefits, driver.Benefits) || {};
@@ -66,6 +97,7 @@ export default function DriverTable({ terminalId, handleEdit }) {
       payType:              pick(driver.payType,       driver.PayType),
       job:                  pick(driver.job,           driver.Job),
       routeRate:            pick(driver.routeRate,     driver.RouteRate),
+      tripRate:             pick(driver.tripRate,      driver.TripRate),
       ssn:                  pick(driver.ssn,           driver.SSN),
       ytd:                  pick(driver.ytd,           driver.YTD),
       currentPayPeriod:     pick(driver.currentPayPeriod,     driver.CurrentPayPeriod),
@@ -105,14 +137,16 @@ export default function DriverTable({ terminalId, handleEdit }) {
   const currentDrivers = drivers.slice(startIndex, startIndex + itemsPerPage);
 
   const firstDriver = drivers[0];
-  const routeRateDisplay = firstDriver?.routeRate != null ? `$${Number(firstDriver.routeRate).toFixed(2)}/hr` : '—';
-  const tripRateDisplay = firstDriver?.tripRate != null ? `$${Number(firstDriver.tripRate).toFixed(2)}/hr` : '—';
+  const routeRateValue = pick(normalizedRates?.routeRate, detail?.settings?.routeRate, detail?.settings?.RouteRate, detail?.routeRate, firstDriver?.routeRate);
+  const tripRateValueDisplay = pick(normalizedRates?.tripRate, detail?.settings?.tripRate, detail?.settings?.TripRate, detail?.tripRate, firstDriver?.tripRate);
+  const routeRateDisplay = routeRateValue != null ? `$${Number(routeRateValue).toFixed(2)}/hr` : '—';
+  const tripRateDisplay = tripRateValueDisplay != null ? `$${Number(tripRateValueDisplay).toFixed(2)}/hr` : '—';
   const payPeriodDisplay = detail?.periodStart ? MONTHS[(new Date(detail.periodStart).getMonth())] : MONTHS[month - 1];
   const displayYear = detail?.year ?? year;
 
   const startEditRates = () => {
-    setTempValue(firstDriver?.routeRate ?? '');
-    setTripRateValue(firstDriver?.tripRate ?? '');
+    setTempValue(routeRateValue ?? '');
+    setTripRateValue(tripRateValueDisplay ?? '');
     setEditingField('rates');
   };
 
@@ -122,6 +156,7 @@ export default function DriverTable({ terminalId, handleEdit }) {
     if (isNaN(rr) || isNaN(tr)) { toast.error('Enter valid numbers'); return; }
     try {
       await dispatch(updateTerminalRates({ terminalId, routeRate: rr, tripRate: tr })).unwrap();
+      dispatch(fetchTerminalRates(terminalId));
       toast.success('Rates updated');
       setEditingField(null);
       dispatch(fetchTerminalDetail({ terminalId, month, year }));

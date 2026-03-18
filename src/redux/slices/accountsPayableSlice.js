@@ -15,6 +15,18 @@ export const fetchWalletBalance = createAsyncThunk(
   }
 );
 
+export const fetchWalletSummary = createAsyncThunk(
+  "accountsPayable/fetchWalletSummary",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await accountsPayableService.getWalletSummary();
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch wallet summary");
+    }
+  }
+);
+
 export const fundWallet = createAsyncThunk(
   "accountsPayable/fundWallet",
   async (data, { rejectWithValue }) => {
@@ -23,6 +35,18 @@ export const fundWallet = createAsyncThunk(
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to fund wallet");
+    }
+  }
+);
+
+export const topUpWallet = createAsyncThunk(
+  "accountsPayable/topUpWallet",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await accountsPayableService.topUpWallet(data);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to top up wallet");
     }
   }
 );
@@ -39,11 +63,47 @@ export const payFromWallet = createAsyncThunk(
   }
 );
 
+export const withdrawWallet = createAsyncThunk(
+  "accountsPayable/withdrawWallet",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await accountsPayableService.withdrawWallet(data);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to withdraw from wallet");
+    }
+  }
+);
+
+export const payPayrollFromWallet = createAsyncThunk(
+  "accountsPayable/payPayrollFromWallet",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await accountsPayableService.payPayrollFromWallet(data);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to pay payroll from wallet");
+    }
+  }
+);
+
+export const createWalletStripeSetup = createAsyncThunk(
+  "accountsPayable/createWalletStripeSetup",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await accountsPayableService.createStripeSetupIntent();
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to create Stripe setup intent");
+    }
+  }
+);
+
 export const fetchWalletTransactions = createAsyncThunk(
   "accountsPayable/fetchWalletTransactions",
-  async ({ limit, offset } = {}, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const res = await accountsPayableService.getWalletTransactions(limit, offset);
+      const res = await accountsPayableService.getWalletTransactions(params);
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to fetch transactions");
@@ -92,22 +152,34 @@ export const deleteExpense = createAsyncThunk(
 const accountsPayableSlice = createSlice({
   name: "accountsPayable",
   initialState: {
+    walletSummary: null,
     walletBalance: null,
+    walletSetup: null,
     walletTransactions: { total: 0, transactions: [], limit: 20, offset: 0 },
     expenses: { total: 0, data: [], limit: 20, offset: 0 },
     loading: {
+      walletSummary: false,
       walletBalance: false,
       fundWallet: false,
+      topUpWallet: false,
       payFromWallet: false,
+      withdrawWallet: false,
+      payPayrollFromWallet: false,
+      walletSetup: false,
       walletTransactions: false,
       expenses: false,
       addExpense: false,
       deleteExpense: false,
     },
     error: {
+      walletSummary: null,
       walletBalance: null,
       fundWallet: null,
+      topUpWallet: null,
       payFromWallet: null,
+      withdrawWallet: null,
+      payPayrollFromWallet: null,
+      walletSetup: null,
       walletTransactions: null,
       expenses: null,
       addExpense: null,
@@ -116,6 +188,11 @@ const accountsPayableSlice = createSlice({
   },
   reducers: {},
   extraReducers: (builder) => {
+    builder
+      .addCase(fetchWalletSummary.pending, (state) => { state.loading.walletSummary = true; state.error.walletSummary = null; })
+      .addCase(fetchWalletSummary.fulfilled, (state, action) => { state.loading.walletSummary = false; state.walletSummary = action.payload; })
+      .addCase(fetchWalletSummary.rejected, (state, action) => { state.loading.walletSummary = false; state.error.walletSummary = action.payload; });
+
     // fetchWalletBalance
     builder
       .addCase(fetchWalletBalance.pending, (state) => { state.loading.walletBalance = true; state.error.walletBalance = null; })
@@ -128,11 +205,34 @@ const accountsPayableSlice = createSlice({
       .addCase(fundWallet.fulfilled, (state) => { state.loading.fundWallet = false; })
       .addCase(fundWallet.rejected, (state, action) => { state.loading.fundWallet = false; state.error.fundWallet = action.payload; });
 
+    builder
+      .addCase(topUpWallet.pending, (state) => { state.loading.topUpWallet = true; state.error.topUpWallet = null; })
+      .addCase(topUpWallet.fulfilled, (state) => { state.loading.topUpWallet = false; })
+      .addCase(topUpWallet.rejected, (state, action) => { state.loading.topUpWallet = false; state.error.topUpWallet = action.payload; });
+
     // payFromWallet
     builder
       .addCase(payFromWallet.pending, (state) => { state.loading.payFromWallet = true; state.error.payFromWallet = null; })
       .addCase(payFromWallet.fulfilled, (state) => { state.loading.payFromWallet = false; })
       .addCase(payFromWallet.rejected, (state, action) => { state.loading.payFromWallet = false; state.error.payFromWallet = action.payload; });
+
+    builder
+      .addCase(withdrawWallet.pending, (state) => { state.loading.withdrawWallet = true; state.error.withdrawWallet = null; })
+      .addCase(withdrawWallet.fulfilled, (state) => { state.loading.withdrawWallet = false; })
+      .addCase(withdrawWallet.rejected, (state, action) => { state.loading.withdrawWallet = false; state.error.withdrawWallet = action.payload; });
+
+    builder
+      .addCase(payPayrollFromWallet.pending, (state) => { state.loading.payPayrollFromWallet = true; state.error.payPayrollFromWallet = null; })
+      .addCase(payPayrollFromWallet.fulfilled, (state) => { state.loading.payPayrollFromWallet = false; })
+      .addCase(payPayrollFromWallet.rejected, (state, action) => { state.loading.payPayrollFromWallet = false; state.error.payPayrollFromWallet = action.payload; });
+
+    builder
+      .addCase(createWalletStripeSetup.pending, (state) => { state.loading.walletSetup = true; state.error.walletSetup = null; })
+      .addCase(createWalletStripeSetup.fulfilled, (state, action) => {
+        state.loading.walletSetup = false;
+        state.walletSetup = action.payload;
+      })
+      .addCase(createWalletStripeSetup.rejected, (state, action) => { state.loading.walletSetup = false; state.error.walletSetup = action.payload; });
 
     // fetchWalletTransactions
     builder

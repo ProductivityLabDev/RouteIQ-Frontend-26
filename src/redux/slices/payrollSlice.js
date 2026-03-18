@@ -39,6 +39,18 @@ export const updateTerminalRates = createAsyncThunk(
   }
 );
 
+export const fetchTerminalRates = createAsyncThunk(
+  "payroll/fetchTerminalRates",
+  async (terminalId, { rejectWithValue }) => {
+    try {
+      const res = await payrollService.getTerminalRates(terminalId);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch terminal rates");
+    }
+  }
+);
+
 export const bulkGenerateTerminalPayroll = createAsyncThunk(
   "payroll/bulkGenerateTerminalPayroll",
   async ({ terminalId, ...data }, { rejectWithValue }) => {
@@ -286,6 +298,7 @@ const payrollSlice = createSlice({
   initialState: {
     terminals: [],
     terminalDetail: null,
+    terminalRates: null,
     payrollSummary: null,
     generatedPayroll: null,
     driverShifts: [],
@@ -297,6 +310,7 @@ const payrollSlice = createSlice({
     loading: {
       terminals: false,
       terminalDetail: false,
+      terminalRates: false,
       payrollSummary: false,
       generatePayroll: false,
       bulkGenerate: false,
@@ -319,6 +333,7 @@ const payrollSlice = createSlice({
     error: {
       terminals: null,
       terminalDetail: null,
+      terminalRates: null,
       payrollSummary: null,
       generatePayroll: null,
       bulkGenerate: null,
@@ -366,13 +381,63 @@ const payrollSlice = createSlice({
     // fetchTerminalDetail
     builder
       .addCase(fetchTerminalDetail.pending, (state) => { state.loading.terminalDetail = true; state.error.terminalDetail = null; })
-      .addCase(fetchTerminalDetail.fulfilled, (state, action) => { state.loading.terminalDetail = false; state.terminalDetail = action.payload; })
+      .addCase(fetchTerminalDetail.fulfilled, (state, action) => {
+        state.loading.terminalDetail = false;
+        const previousSettings =
+          state.terminalDetail?.settings ||
+          state.terminalDetail?.Settings ||
+          {};
+        const incomingSettings =
+          action.payload?.settings ||
+          action.payload?.Settings ||
+          {};
+        state.terminalDetail = {
+          ...action.payload,
+          settings: {
+            ...previousSettings,
+            ...incomingSettings,
+          },
+        };
+      })
       .addCase(fetchTerminalDetail.rejected, (state, action) => { state.loading.terminalDetail = false; state.error.terminalDetail = action.payload; });
+
+    builder
+      .addCase(fetchTerminalRates.pending, (state) => { state.loading.terminalRates = true; state.error.terminalRates = null; })
+      .addCase(fetchTerminalRates.fulfilled, (state, action) => {
+        state.loading.terminalRates = false;
+        state.terminalRates = action.payload;
+      })
+      .addCase(fetchTerminalRates.rejected, (state, action) => { state.loading.terminalRates = false; state.error.terminalRates = action.payload; });
 
     // updateTerminalRates
     builder
       .addCase(updateTerminalRates.pending, (state) => { state.loading.terminalDetail = true; })
-      .addCase(updateTerminalRates.fulfilled, (state) => { state.loading.terminalDetail = false; })
+      .addCase(updateTerminalRates.fulfilled, (state, action) => {
+        state.loading.terminalDetail = false;
+        state.terminalRates = {
+          ...(state.terminalRates || {}),
+          ...(action.payload || {}),
+        };
+        if (state.terminalDetail && Number(state.terminalDetail.terminalId ?? state.terminalDetail.TerminalId) === Number(action.payload?.terminalId)) {
+          const nextRouteRate = action.payload?.settings?.routeRate ?? action.payload?.settings?.RouteRate;
+          const nextTripRate = action.payload?.settings?.tripRate ?? action.payload?.settings?.TripRate;
+          const currentDrivers = state.terminalDetail.drivers || state.terminalDetail.Drivers || [];
+          state.terminalDetail = {
+            ...state.terminalDetail,
+            routeRate: nextRouteRate ?? state.terminalDetail.routeRate,
+            tripRate: nextTripRate ?? state.terminalDetail.tripRate,
+            settings: {
+              ...(state.terminalDetail.settings || {}),
+              ...(action.payload?.settings || {}),
+            },
+            drivers: currentDrivers.map((driver) => ({
+              ...driver,
+              routeRate: nextRouteRate ?? driver.routeRate ?? driver.RouteRate,
+              tripRate: nextTripRate ?? driver.tripRate ?? driver.TripRate,
+            })),
+          };
+        }
+      })
       .addCase(updateTerminalRates.rejected, (state) => { state.loading.terminalDetail = false; });
 
     // fetchPayrollSummary

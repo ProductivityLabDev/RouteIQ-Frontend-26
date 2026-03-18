@@ -3,11 +3,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RxCross1 } from "react-icons/rx";
 import '../../App.css';
 import { transicationTick } from '@/assets';
-import { fetchWalletBalance, fundWallet, payFromWallet } from '@/redux/slices/accountsPayableSlice';
+import { createWalletStripeSetup, fetchWalletBalance, fundWallet, payFromWallet } from '@/redux/slices/accountsPayableSlice';
 
 const BalanceModal = ({ setBalanceModal, accountingPay, apId }) => {
     const dispatch = useDispatch();
-    const { walletBalance, loading, error } = useSelector((state) => state.accountsPayable);
+    const { walletBalance, walletSetup, loading, error } = useSelector((state) => state.accountsPayable);
 
     const [showPayroll, setShowPayroll] = useState(false);
     const [showPinScreen, setShowPinScreen] = useState(false);
@@ -24,6 +24,10 @@ const BalanceModal = ({ setBalanceModal, accountingPay, apId }) => {
     const [bankName, setBankName] = useState('');
     const [beneficiaryName, setBeneficiaryName] = useState('');
     const [description, setDescription] = useState('');
+    const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
+    const [cardHolder, setCardHolder] = useState('RouteIQ Wallet');
+    const [cardExpiry, setCardExpiry] = useState('12/28');
+    const [cardCvc, setCardCvc] = useState('123');
 
     useEffect(() => {
         dispatch(fetchWalletBalance());
@@ -34,6 +38,9 @@ const BalanceModal = ({ setBalanceModal, accountingPay, apId }) => {
     };
 
     const handlePayProceed = () => {
+        if (paymentMethod === 'Card') {
+            dispatch(createWalletStripeSetup());
+        }
         setNextPaymentScreen(true);
         setInitialScreen(false);
     };
@@ -190,6 +197,62 @@ const BalanceModal = ({ setBalanceModal, accountingPay, apId }) => {
                             </div>
                         )}
 
+                        {paymentMethod === 'Card' && (
+                            <div className="rounded-xl border border-dashed border-gray-300 bg-[#FAFBFD] p-4 mb-4">
+                                <div className="mb-4 rounded-xl bg-gradient-to-r from-[#7A0F18] to-[#C01824] p-4 text-white shadow-sm">
+                                    <div className="mb-8 text-xs uppercase tracking-[0.16em] text-white/80">Saved Card Preview</div>
+                                    <div className="text-xl font-semibold tracking-[0.24em]">{cardNumber}</div>
+                                    <div className="mt-5 flex items-end justify-between">
+                                        <div>
+                                            <div className="text-[10px] uppercase text-white/70">Card Holder</div>
+                                            <div className="text-sm font-medium">{cardHolder}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] uppercase text-white/70">Expiry</div>
+                                            <div className="text-sm font-medium">{cardExpiry}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <input
+                                        type="text"
+                                        placeholder="Card Number"
+                                        className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none"
+                                        value={cardNumber}
+                                        onChange={(e) => setCardNumber(e.target.value)}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Card Holder Name"
+                                        className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none"
+                                        value={cardHolder}
+                                        onChange={(e) => setCardHolder(e.target.value)}
+                                    />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input
+                                            type="text"
+                                            placeholder="MM/YY"
+                                            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none"
+                                            value={cardExpiry}
+                                            onChange={(e) => setCardExpiry(e.target.value)}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="CVC"
+                                            className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none"
+                                            value={cardCvc}
+                                            onChange={(e) => setCardCvc(e.target.value)}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-[#667085]">
+                                        {walletSetup?.clientSecret
+                                            ? 'Stripe setup intent ready for card save.'
+                                            : 'Card details preview will appear here before confirmation.'}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         {error.fundWallet && <p className="text-red-500 text-sm mb-3">{error.fundWallet}</p>}
 
                         <div className="px-0 mt-5">
@@ -230,6 +293,27 @@ const BalanceModal = ({ setBalanceModal, accountingPay, apId }) => {
                                         <p className="text-base font-medium text-gray-800">{paymentMethod}</p>
                                     </div>
                                 </div>
+                                {paymentMethod === 'Card' && (
+                                    <div className="border-b border-gray-200 p-4">
+                                        <div className="rounded-xl bg-gradient-to-r from-[#7A0F18] to-[#C01824] p-4 text-white">
+                                            <div className="mb-6 text-xs uppercase tracking-[0.16em] text-white/80">Card Payment</div>
+                                            <div className="text-lg font-semibold tracking-[0.22em]">{cardNumber}</div>
+                                            <div className="mt-4 flex items-end justify-between">
+                                                <div>
+                                                    <div className="text-[10px] uppercase text-white/70">Card Holder</div>
+                                                    <div className="text-sm font-medium">{cardHolder}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] uppercase text-white/70">Expiry</div>
+                                                    <div className="text-sm font-medium">{cardExpiry}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 text-xs text-[#667085]">
+                                            {walletSetup?.clientSecret ? 'Card setup prepared successfully.' : 'Using card payment preview.'}
+                                        </div>
+                                    </div>
+                                )}
                                 {beneficiaryName && (
                                     <div className="p-4 border-b border-gray-200">
                                         <p className="text-sm text-gray-500">Beneficiary Name</p>

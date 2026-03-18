@@ -59,6 +59,13 @@ export interface TerminalDetail {
   drivers: TerminalDriver[];
 }
 
+export interface TerminalRates {
+  terminalId: number;
+  terminalName: string;
+  routeRate: number;
+  tripRate: number;
+}
+
 export interface PayrollSummaryData {
   month: number;
   year: number;
@@ -210,6 +217,13 @@ export const payrollService = {
     data: { routeRate: number; tripRate: number }
   ) => {
     const response = await apiClient.patch(`/payroll/terminal/${terminalId}/rates`, data);
+    return { ok: true, data: response.data?.data };
+  },
+
+  getTerminalRates: async (
+    terminalId: number
+  ): Promise<ApiResponse<TerminalRates>> => {
+    const response = await apiClient.get(`/payroll/terminal/${terminalId}/rates`);
     return { ok: true, data: response.data?.data };
   },
 
