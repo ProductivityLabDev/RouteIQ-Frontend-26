@@ -81,6 +81,7 @@ const balanceSheetSlice = createSlice({
       NonCurrentAssets: [],
       CurrentLiabilities: [],
       NonCurrentLiabilities: [],
+      Equity: [],
     },
     summary: null,
     chartData: [],
@@ -104,20 +105,31 @@ const balanceSheetSlice = createSlice({
         if (action.payload) {
           state.sections.CurrentAssets =
             action.payload.CurrentAssets ||
+            action.payload.assets?.current?.items ||
             action.payload.currentAssets?.items ||
             [];
           state.sections.NonCurrentAssets =
             action.payload.NonCurrentAssets ||
+            action.payload.assets?.nonCurrent?.items ||
             action.payload.nonCurrentAssets?.items ||
             [];
           state.sections.CurrentLiabilities =
             action.payload.CurrentLiabilities ||
+            action.payload.liabilities?.current?.items ||
             action.payload.currentLiabilities?.items ||
             [];
           state.sections.NonCurrentLiabilities =
             action.payload.NonCurrentLiabilities ||
+            action.payload.liabilities?.nonCurrent?.items ||
             action.payload.nonCurrentLiabilities?.items ||
             [];
+          state.sections.Equity =
+            action.payload.equity?.items ||
+            action.payload.Equity ||
+            [];
+          state.summary =
+            action.payload.summary ||
+            state.summary;
         }
       })
       .addCase(fetchBalanceSheet.rejected, (state, action) => { state.loading.sections = false; state.error.sections = action.payload; });

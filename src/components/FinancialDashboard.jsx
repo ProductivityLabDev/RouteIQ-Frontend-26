@@ -30,10 +30,20 @@ import {
     updateBalanceSheetEntry,
     deleteBalanceSheetEntry,
 } from '@/redux/slices/balanceSheetSlice';
+import {
+    fetchIncomeStatement,
+    fetchIncomeStatementChart,
+} from '@/redux/slices/incomeStatementSlice';
 
 export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
     const dispatch = useDispatch();
-    const { sections, summary, chartData, loading } = useSelector((state) => state.balanceSheet);
+    const balanceSheetState = useSelector((state) => state.balanceSheet);
+    const incomeStatementState = useSelector((state) => state.incomeStatement);
+    const isIncomeStatement = selectedTab === 'Income Statement';
+    const { sections, summary, chartData, loading } = balanceSheetState;
+    const incomeStatement = incomeStatementState?.statement;
+    const incomeChartData = incomeStatementState?.chartData || [];
+    const incomeLoading = incomeStatementState?.loading || {};
 
     const [year, setYear] = useState('2026');
     const [month, setMonth] = useState('August');
@@ -71,23 +81,32 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
         const startDate = `${year}-${String(m).padStart(2, '0')}-01`;
         const lastDay = new Date(parseInt(year), m, 0).getDate();
         const endDate = `${year}-${String(m).padStart(2, '0')}-${lastDay}`;
-        dispatch(fetchBalanceSheet({ startDate, endDate }));
-        dispatch(fetchBalanceSheetSummary({ startDate, endDate }));
-    }, [dispatch, year, month]);
+        if (isIncomeStatement) {
+            dispatch(fetchIncomeStatement({ startDate, endDate }));
+        } else {
+            dispatch(fetchBalanceSheet({ startDate, endDate }));
+            dispatch(fetchBalanceSheetSummary({ startDate, endDate }));
+        }
+    }, [dispatch, year, month, isIncomeStatement]);
 
     useEffect(() => {
-        dispatch(fetchBalanceSheetChart({ year: parseInt(year) }));
-    }, [dispatch, year]);
+        if (isIncomeStatement) {
+            dispatch(fetchIncomeStatementChart({ year: parseInt(year) }));
+        } else {
+            dispatch(fetchBalanceSheetChart({ year: parseInt(year) }));
+        }
+    }, [dispatch, year, isIncomeStatement]);
 
     const dateOptions = ['Overview', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
     const reportTypeOptions = ['Lines', 'Bars', 'Area', 'Pie', 'Scatter'];
 
     // Map API chart data → recharts format
-    const mappedChartData = Array.isArray(chartData)
-        ? chartData.map((item) => ({
-              month: item.month || item.name || '',
-              revenue: item.income || item.revenue || 0,
-              expenses: item.expenses || 0,
+    const rawChartData = isIncomeStatement ? incomeChartData : chartData;
+    const mappedChartData = Array.isArray(rawChartData)
+        ? rawChartData.map((item, index) => ({
+              month: item.month || item.name || item.label || `M${index + 1}`,
+              revenue: Number(item.income || item.revenue || item.amount || 0),
+              expenses: Number(item.expenses || item.expense || item.cost || 0),
           }))
         : [];
 
@@ -96,17 +115,88 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
         value: item.revenue,
     }));
 
+    const activeLoadingSections = isIncomeStatement ? incomeLoading.statement : loading.sections;
+    const activeLoadingSummary = isIncomeStatement ? incomeLoading.statement : loading.summary;
+    const activeLoadingChart = isIncomeStatement ? incomeLoading.chartData : loading.chartData;
+
     // Summary values
-    const grossIncome = summary?.grossIncome ?? summary?.gross_income ?? 0;
-    const netIncome = summary?.netIncome ?? summary?.net_income ?? 0;
-    const changePercent = summary?.change ?? summary?.percentChange ?? 0;
-    const walletBalance = summary?.walletBalance ?? summary?.wallet_balance ?? 0;
+    const grossIncome = isIncomeStatement
+        ? (
+            incomeStatement?.grossProfit ??
+            incomeStatement?.gross_profit ??
+            incomeStatement?.totalRevenue ??
+            incomeStatement?.total_revenue ??
+            0
+        )
+        : (summary?.grossIncome ?? summary?.gross_income ?? 0);
+    const netIncome = isIncomeStatement
+        ? (
+            incomeStatement?.netProfit ??
+            incomeStatement?.net_profit ??
+            incomeStatement?.netIncome ??
+            incomeStatement?.net_income ??
+            0
+        )
+        : (summary?.netIncome ?? summary?.net_income ?? 0);
+    const changePercent = isIncomeStatement
+        ? (
+            incomeStatement?.marginPercent ??
+            incomeStatement?.margin_percentage ??
+            incomeStatement?.profitMargin ??
+            0
+        )
+        : (summary?.change ?? summary?.percentChange ?? 0);
 
     // Totals
-    const totalCurrentAssets = (sections.CurrentAssets || []).reduce((s, i) => s + (i.amount || 0), 0);
-    const totalNonCurrentAssets = (sections.NonCurrentAssets || []).reduce((s, i) => s + (i.amount || 0), 0);
-    const totalCurrentLiabilities = (sections.CurrentLiabilities || []).reduce((s, i) => s + (i.amount || 0), 0);
-    const totalNonCurrentLiabilities = (sections.NonCurrentLiabilities || []).reduce((s, i) => s + (i.amount || 0), 0);
+    const revenueItemsRaw =
+        incomeStatement?.revenue?.items ||
+        incomeStatement?.revenues?.items ||
+        incomeStatement?.revenueBreakdown ||
+        incomeStatement?.revenue?.breakdown ||
+        incomeStatement?.revenue ||
+        [];
+    const expenseItemsRaw =
+        incomeStatement?.expenses?.items ||
+        incomeStatement?.expenseBreakdown ||
+        incomeStatement?.expenses?.breakdown ||
+        incomeStatement?.expenses ||
+        [];
+    const revenueItems = Array.isArray(revenueItemsRaw)
+        ? revenueItemsRaw.map((item, index) => ({
+            id: item.id ?? item.entryId ?? index,
+            label: item.label ?? item.name ?? item.glCodeName ?? item.glCode ?? `Revenue ${index + 1}`,
+            amount: Number(item.amount ?? item.total ?? item.value ?? 0),
+        }))
+        : [];
+    const expenseItems = Array.isArray(expenseItemsRaw)
+        ? expenseItemsRaw.map((item, index) => ({
+            id: item.id ?? item.entryId ?? index,
+            label: item.label ?? item.name ?? item.glCodeName ?? item.glCode ?? `Expense ${index + 1}`,
+            amount: Number(item.amount ?? item.total ?? item.value ?? 0),
+        }))
+        : [];
+
+    const totalCurrentAssets = isIncomeStatement
+        ? (incomeStatement?.totalRevenue ?? incomeStatement?.total_revenue ?? revenueItems.reduce((s, i) => s + (i.amount || 0), 0))
+        : ((sections.CurrentAssets || []).reduce((s, i) => s + (i.amount || 0), 0));
+    const totalNonCurrentAssets = isIncomeStatement
+        ? (incomeStatement?.grossProfit ?? incomeStatement?.gross_profit ?? 0)
+        : ((sections.NonCurrentAssets || []).reduce((s, i) => s + (i.amount || 0), 0));
+    const totalCurrentLiabilities = isIncomeStatement
+        ? (incomeStatement?.totalExpenses ?? incomeStatement?.total_expenses ?? expenseItems.reduce((s, i) => s + (i.amount || 0), 0))
+        : ((sections.CurrentLiabilities || []).reduce((s, i) => s + (i.amount || 0), 0));
+    const totalNonCurrentLiabilities = isIncomeStatement
+        ? (incomeStatement?.netProfit ?? incomeStatement?.net_profit ?? 0)
+        : ((sections.NonCurrentLiabilities || []).reduce((s, i) => s + (i.amount || 0), 0));
+    const totalEquity = isIncomeStatement
+        ? 0
+        : (summary?.totalEquity ?? (sections.Equity || []).reduce((s, i) => s + (i.amount || 0), 0));
+    const totalAssetsDisplay = isIncomeStatement
+        ? totalCurrentAssets + totalNonCurrentAssets
+        : (summary?.totalAssets ?? (totalCurrentAssets + totalNonCurrentAssets));
+    const totalLiabilitiesAndEquityDisplay = isIncomeStatement
+        ? totalCurrentLiabilities + totalNonCurrentLiabilities
+        : (summary?.liabilitiesPlusEquity ?? (totalCurrentLiabilities + totalNonCurrentLiabilities + totalEquity));
 
     const formatCurrency = (value) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
@@ -287,12 +377,14 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
     };
 
     const renderSection = (title, sectionKey) => {
-        const items = sections[sectionKey] || [];
+        const items = isIncomeStatement
+            ? (sectionKey === 'Revenue' ? revenueItems : sectionKey === 'Expenses' ? expenseItems : [])
+            : (sections[sectionKey] || []);
         return (
             <div>
                 <div className="bg-gray-200 p-2 mb-1 flex justify-between items-center">
                     <div className="font-bold text-[#141516]">{title}</div>
-                    {isEditMode && (
+                    {!isIncomeStatement && isEditMode && (
                         <button
                             onClick={() => setAddingSection(sectionKey)}
                             className="text-green-600 hover:text-green-800 flex items-center space-x-1"
@@ -303,7 +395,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     )}
                 </div>
                 {items.map((item) => renderEditableItem(item, sectionKey))}
-                {addingSection === sectionKey && (
+                {!isIncomeStatement && addingSection === sectionKey && (
                     <div className="flex gap-2 p-2 bg-gray-50 border border-dashed border-gray-300">
                         <input
                             className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none"
@@ -409,7 +501,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     </div>
                     <div>
                         <div className="flex items-center">
-                            <div className="text-[#565656] text-[14px] font-bold">Gross Income</div>
+                            <div className="text-[#565656] text-[14px] font-bold">{isIncomeStatement ? 'Gross Profit' : 'Gross Income'}</div>
                             {changePercent !== 0 && (
                                 <span className={`text-xs ml-2 px-1 rounded ${changePercent >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                                     {changePercent >= 0 ? '+' : ''}{changePercent}%
@@ -417,7 +509,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                             )}
                         </div>
                         <div className="font-medium text-[#141516] text-[33px]">
-                            {loading.summary ? '...' : formatCurrency(grossIncome)}
+                            {activeLoadingSummary ? '...' : formatCurrency(grossIncome)}
                         </div>
                     </div>
                 </div>
@@ -431,10 +523,10 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     </div>
                     <div>
                         <div className="flex items-center">
-                            <div className="text-[14px] text-[#565656] font-bold">Net Income</div>
+                            <div className="text-[14px] text-[#565656] font-bold">{isIncomeStatement ? 'Net Profit' : 'Net Income'}</div>
                         </div>
                         <div className="font-medium text-[#141516] text-[33px]">
-                            {loading.summary ? '...' : formatCurrency(netIncome)}
+                            {activeLoadingSummary ? '...' : formatCurrency(netIncome)}
                         </div>
                     </div>
                 </div>
@@ -445,52 +537,70 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                 {/* Balance Sheet */}
                 <div className="bg-white p-4 rounded-lg shadow-sm w-full mt-6 mx-auto max-h-[665px] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
-                        <h1 className="text-lg font-bold text-center flex-grow">CONSOLIDATED BALANCE SHEET</h1>
-                        <button
-                            onClick={toggleEditMode}
-                            className={`text-sm flex items-center transition-colors px-3 py-1 rounded ${isEditMode ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-100 text-red-500 hover:bg-red-200'}`}
-                        >
-                            {isEditMode ? <FaSave className="mr-1" /> : <FaEdit className="mr-1" />}
-                            {isEditMode ? 'Done' : 'Edit Mode'}
-                        </button>
+                        <h1 className="text-lg font-bold text-center flex-grow">
+                            {isIncomeStatement ? 'INCOME STATEMENT' : 'CONSOLIDATED BALANCE SHEET'}
+                        </h1>
+                        {!isIncomeStatement && (
+                            <button
+                                onClick={toggleEditMode}
+                                className={`text-sm flex items-center transition-colors px-3 py-1 rounded ${isEditMode ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-100 text-red-500 hover:bg-red-200'}`}
+                            >
+                                {isEditMode ? <FaSave className="mr-1" /> : <FaEdit className="mr-1" />}
+                                {isEditMode ? 'Done' : 'Edit Mode'}
+                            </button>
+                        )}
                     </div>
 
-                    {loading.sections && <p className="text-center text-gray-400 py-4">Loading...</p>}
+                    {activeLoadingSections && <p className="text-center text-gray-400 py-4">Loading...</p>}
 
-                    <div className="text-center font-bold bg-white py-2 mb-2 text-[#141516] text-[18px]">ASSETS</div>
-                    {renderSection('Current assets', 'CurrentAssets')}
+                    <div className="text-center font-bold bg-white py-2 mb-2 text-[#141516] text-[18px]">
+                        {isIncomeStatement ? 'REVENUE' : 'ASSETS'}
+                    </div>
+                    {renderSection(isIncomeStatement ? 'Revenue' : 'Current assets', isIncomeStatement ? 'Revenue' : 'CurrentAssets')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
-                        <div>Total current assets</div>
+                        <div>{isIncomeStatement ? 'Total revenue' : 'Total current assets'}</div>
                         <div>{formatCurrency(totalCurrentAssets)}</div>
                     </div>
 
-                    {renderSection('Non-Current assets', 'NonCurrentAssets')}
+                    {renderSection(isIncomeStatement ? 'Gross profit' : 'Non-Current assets', isIncomeStatement ? 'GrossProfit' : 'NonCurrentAssets')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
-                        <div>Total Non-Current assets</div>
+                        <div>{isIncomeStatement ? 'Gross profit' : 'Total Non-Current assets'}</div>
                         <div>{formatCurrency(totalNonCurrentAssets)}</div>
                     </div>
 
-                    <div className="text-center font-bold bg-white py-2 mb-2 mt-4">LIABILITIES AND SHAREHOLDERS EQUITY</div>
-                    {renderSection('Current Liabilities', 'CurrentLiabilities')}
+                    <div className="text-center font-bold bg-white py-2 mb-2 mt-4">
+                        {isIncomeStatement ? 'EXPENSES & PROFITABILITY' : 'LIABILITIES AND SHAREHOLDERS EQUITY'}
+                    </div>
+                    {renderSection(isIncomeStatement ? 'Expenses' : 'Current Liabilities', isIncomeStatement ? 'Expenses' : 'CurrentLiabilities')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
-                        <div>Total Current Liabilities</div>
+                        <div>{isIncomeStatement ? 'Total expenses' : 'Total Current Liabilities'}</div>
                         <div>{formatCurrency(totalCurrentLiabilities)}</div>
                     </div>
 
-                    {renderSection('Non-Current Liabilities', 'NonCurrentLiabilities')}
+                    {renderSection(isIncomeStatement ? 'Net profit' : 'Non-Current Liabilities', isIncomeStatement ? 'NetProfit' : 'NonCurrentLiabilities')}
                     <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
-                        <div>Total Non-Current Liabilities</div>
+                        <div>{isIncomeStatement ? 'Net profit' : 'Total Non-Current Liabilities'}</div>
                         <div>{formatCurrency(totalNonCurrentLiabilities)}</div>
                     </div>
 
+                    {!isIncomeStatement && (
+                        <>
+                            {renderSection('Equity', 'Equity')}
+                            <div className="flex justify-between py-2 px-2 font-bold text-[#C01824]">
+                                <div>Total Equity</div>
+                                <div>{formatCurrency(totalEquity)}</div>
+                            </div>
+                        </>
+                    )}
+
                     <div className="mt-4 pt-2 border-t-2 border-gray-300">
                         <div className="flex justify-between py-2 px-2 font-bold text-[#C01824] text-lg">
-                            <div>TOTAL ASSETS</div>
-                            <div>{formatCurrency(totalCurrentAssets + totalNonCurrentAssets)}</div>
+                            <div>{isIncomeStatement ? 'TOTAL REVENUE + GROSS PROFIT' : 'TOTAL ASSETS'}</div>
+                            <div>{formatCurrency(totalAssetsDisplay)}</div>
                         </div>
                         <div className="flex justify-between py-2 px-2 font-bold text-[#C01824] text-lg">
-                            <div>TOTAL LIABILITIES & EQUITY</div>
-                            <div>{formatCurrency(totalCurrentLiabilities + totalNonCurrentLiabilities)}</div>
+                            <div>{isIncomeStatement ? 'TOTAL EXPENSES + NET PROFIT' : 'TOTAL LIABILITIES & EQUITY'}</div>
+                            <div>{formatCurrency(totalLiabilitiesAndEquityDisplay)}</div>
                         </div>
                     </div>
                 </div>
@@ -504,7 +614,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4">
                         <div className="flex justify-between items-center mb-4">
-                            <div className="font-medium text-gray-700">Overview</div>
+                            <div className="font-medium text-gray-700">{isIncomeStatement ? 'Monthly Income Trend' : 'Overview'}</div>
                             <div className="flex mb-2 text-xs">
                                 <div className="flex items-center mr-4">
                                     <div className="w-2 h-2 rounded-full bg-[#C01824] mr-1"></div>
@@ -517,7 +627,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                             </div>
                         </div>
                         <div className="h-64">
-                            {loading.chartData ? (
+                            {activeLoadingChart ? (
                                 <div className="flex items-center justify-center h-full text-gray-400">Loading chart...</div>
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
@@ -540,10 +650,10 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                     </div>
                     <div className="bg-white rounded-lg shadow-sm p-4">
                         <div className="flex justify-between items-center mb-4">
-                            <div className="font-medium text-gray-700">Total Revenue</div>
+                            <div className="font-medium text-gray-700">{isIncomeStatement ? 'Income vs Expenses' : 'Total Revenue'}</div>
                         </div>
                         <div className="h-48">
-                            {loading.chartData ? (
+                            {activeLoadingChart ? (
                                 <div className="flex items-center justify-center h-full text-gray-400">Loading chart...</div>
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">

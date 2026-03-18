@@ -19,6 +19,10 @@ export function VendorApprovedCard({
 }) {
   const [showCommModal, setShowCommModal] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState([]);
+  const pickupName = trip?.pickup?.location ?? trip?.pickup ?? '--';
+  const pickupAddress = trip?.pickup?.address ?? trip?.pickupAddress ?? '';
+  const dropoffName = trip?.dropoff?.location ?? trip?.dropoff ?? '--';
+  const dropoffAddress = trip?.dropoff?.address ?? trip?.dropoffAddress ?? '';
 
   const handleRecipientChange = (e) => {
     const { value } = e.target;
@@ -82,10 +86,10 @@ export function VendorApprovedCard({
                 />
                 <div className='text-black'>
                   <h6 className='text-xs md:text-[14px] font-semibold'>
-                    {trip?.pickup ?? '--'}
+                    {pickupName}
                   </h6>
                   <p className='font-normal text-[12px]'>
-                    {trip?.pickupAddress ?? ''}
+                    {pickupAddress}
                   </p>
                 </div>
               </div>
@@ -97,10 +101,10 @@ export function VendorApprovedCard({
                 />
                 <div className='text-black'>
                   <h6 className='text-[14px] font-semibold'>
-                    {trip?.dropoff ?? '--'}
+                    {dropoffName}
                   </h6>
                   <p className='font-normal text-[12px]'>
-                    {trip?.dropoffAddress ?? ''}
+                    {dropoffAddress}
                   </p>
                 </div>
               </div>

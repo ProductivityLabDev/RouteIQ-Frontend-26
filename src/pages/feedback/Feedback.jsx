@@ -1,83 +1,132 @@
-import React, { useState } from 'react';
-import {
-  ChatDriver1, ChatDriver2, ChatDriver3, ChatDriver4, ChatDriver5,
-  darksearchicon, feedbackChatUser1, feedbackChatUser2, feedbackChatUser3,
-  feedbackChatUser4, feedbackChatUser5, fileuploadicon, imguploadicon,
-  Parent1, Parent2, Parent3, Parent4, Parent5
-} from '@/assets';
-import { initialMessages } from '@/data';
+import React, { useEffect, useMemo, useState } from 'react';
+import { darksearchicon } from '@/assets';
 import MainLayout from '@/layouts/SchoolLayout';
 import { Button, Tabs, TabsBody } from '@material-tailwind/react';
-import { IoMdThumbsUp, IoMdThumbsDown } from "react-icons/io";
+import { IoMdThumbsDown, IoMdThumbsUp } from "react-icons/io";
 import { VendorFeedbackChatMessage } from '@/components/VendorFeedbackMessage';
+import vendorFeedbackService from '@/services/vendorFeedbackService';
+import { toast } from 'react-hot-toast';
+
+const TYPE_TABS = [
+  { label: "School Feedback", value: "School" },
+  { label: "Driver Feedback", value: "Driver" },
+  { label: "Parent Feedback", value: "Parent" },
+];
+
+const statusColors = {
+  Open: 'bg-[#F9E8E9] text-[#C01824]',
+  Read: 'bg-[#EEF5FF] text-[#246BFD]',
+  Resolved: 'bg-[#EAF9F0] text-[#1F9254]',
+};
+
+const ratingColors = {
+  Positive: 'bg-[#EAF9F0] text-[#1F9254]',
+  Negative: 'bg-[#F9E8E9] text-[#C01824]',
+};
 
 const Feedback = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [venderfeedbackData, setVenderfeedbackData] = useState(null);
+  const [stats, setStats] = useState({ total: 0, positive: 0, negative: 0 });
+  const [feedbackList, setFeedbackList] = useState([]);
+  const [selectedFeedbackId, setSelectedFeedbackId] = useState(null);
+  const [selectedFeedback, setSelectedFeedback] = useState(null);
+  const [loadingList, setLoadingList] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  const tabNames = ["School Feedback", "Driver Feedback", "Parent Feedback", "Retail Feedback"];
+  const activeType = TYPE_TABS[activeTab]?.value;
 
-  const chats = [
-    { name: "NYU STERN", logo: feedbackChatUser5, message: "Thanks, I can't wait to see you tomorrow for coffee!", time: "12:01pm", count: 0 },
-    { name: "Taft Public School", logo: feedbackChatUser4, message: "No", time: "11:22pm", count: 0 },
-    { name: "Berkeley Haas", logo: feedbackChatUser3, message: "Have you seen Jane's new dog???????", time: "11:22pm", count: 1 },
-    { name: "DC Virgo Middle", logo: feedbackChatUser2, message: "I know! Where is the time going?!", time: "11:22pm", count: 0 },
-    { name: "Hoggard High", logo: feedbackChatUser1, message: "sounds good", time: "11:22pm", count: 0 },
-  ];
-  const chatsDriver = [
-    { name: "Sarah Johnson", logo: ChatDriver1, message: "Thanks, I can't wait to see you tomorrow for coffee!", time: "12:01pm", count: 0 },
-    { name: "Angel Lubin", logo: ChatDriver2, message: "No", time: "11:22pm", count: 0 },
-    { name: "Kaiya Levin", logo: ChatDriver3, message: "Have you seen Jane's new dog???????", time: "11:22pm", count: 1 },
-    { name: "Phillip Aminoff", logo: ChatDriver4, message: "I know! Where is the time going?!", time: "11:22pm", count: 0 },
-    { name: "Haylie Schleifer", logo: ChatDriver5, message: "sounds good", time: "11:22pm", count: 0 },
-  ];
-  const chatsParent = [
-    { name: "Jerome Bell", logo: Parent1, message: "Thanks, I can't wait to see you tomorrow for coffee!", time: "12:01pm", count: 0 },
-    { name: "Cameron Williamson", logo: Parent2, message: "No", time: "11:22pm", count: 0 },
-    { name: "Robert Fox", logo: Parent3, message: "Have you seen Jane's new dog???????", time: "11:22pm", count: 1 },
-    { name: "Darrell Steward", logo: Parent4, message: "I know! Where is the time going?!", time: "11:22pm", count: 0 },
-    { name: "Devon Lane", logo: Parent5, message: "sounds good", time: "11:22pm", count: 0 },
-  ];
-
-  const chatsRetail = [
-  { name: "Retail One", logo: feedbackChatUser1, message: "Great service!", time: "10:45am", count: 0 },
-  { name: "Retail Two", logo: feedbackChatUser2, message: "Need more stock.", time: "11:00am", count: 1 },
-  { name: "Retail Three", logo: feedbackChatUser3, message: "Can we schedule a meeting?", time: "1:15pm", count: 0 },
-  { name: "Retail Four", logo: feedbackChatUser4, message: "Thank you!", time: "2:30pm", count: 0 },
-  { name: "Retail Five", logo: feedbackChatUser5, message: "Received the items.", time: "4:10pm", count: 0 },
-];
-
-  
-
-  const messages = [
-    {
-      isOwnMessage: false,
-      message: "It is a long established fact that a reader will be distracted by the readable content...",
-      avatarUrl: "https://via.placeholder.com/40",
-      timestamp: "6:30 pm"
-    },
-    {
-      isOwnMessage: true,
-      message: "There are many variations of passages of Lorem Ipsum available...",
-      avatarUrl: "",
-      timestamp: "6:34 pm"
-    },
-    {
-      isOwnMessage: false,
-      message: "The point of using Lorem Ipsum is that it has a more-or-less normal distribution...",
-      avatarUrl: "https://via.placeholder.com/40",
-      timestamp: "6:38 pm"
+  const loadStats = async () => {
+    try {
+      const response = await vendorFeedbackService.getStats();
+      setStats(response.data);
+    } catch (error) {
+      toast.error('Failed to load feedback stats');
     }
-  ];
+  };
 
-  const conditionTab =
-  activeTab === 0 ? chats :
-  activeTab === 1 ? chatsDriver :
-  activeTab === 2 ? chatsParent :
-  chatsRetail;
+  const loadFeedbackList = async () => {
+    try {
+      setLoadingList(true);
+      const response = await vendorFeedbackService.getFeedbackList({
+        type: activeType,
+        search: searchTerm.trim(),
+        limit: 20,
+        offset: 0,
+      });
+      const items = response.data || [];
+      setFeedbackList(items);
+      setSelectedFeedbackId((prev) => {
+        if (prev && items.some((item) => item.FeedbackId === prev)) return prev;
+        return items[0]?.FeedbackId ?? null;
+      });
+    } catch (error) {
+      toast.error('Failed to load feedback list');
+    } finally {
+      setLoadingList(false);
+    }
+  };
 
-  const handleData = (logo) => setVenderfeedbackData(logo);
+  const loadFeedbackDetail = async (feedbackId) => {
+    if (!feedbackId) {
+      setSelectedFeedback(null);
+      return;
+    }
+
+    try {
+      setLoadingDetail(true);
+      const response = await vendorFeedbackService.getFeedbackDetail(feedbackId);
+      setSelectedFeedback(response.data);
+    } catch (error) {
+      toast.error('Failed to load feedback detail');
+      setSelectedFeedback(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  useEffect(() => {
+    loadFeedbackList();
+  }, [activeType, searchTerm]);
+
+  useEffect(() => {
+    loadFeedbackDetail(selectedFeedbackId);
+  }, [selectedFeedbackId]);
+
+  const selectedFeedbackListItem = useMemo(
+    () => feedbackList.find((item) => item.FeedbackId === selectedFeedbackId) || null,
+    [feedbackList, selectedFeedbackId]
+  );
+
+  const detailData = selectedFeedback || selectedFeedbackListItem;
+
+  const handleStatusUpdate = async (status) => {
+    if (!selectedFeedbackId) return;
+
+    try {
+      setUpdatingStatus(true);
+      await vendorFeedbackService.updateFeedbackStatus(selectedFeedbackId, status);
+      toast.success('Status updated');
+      setSelectedFeedback((prev) => (prev ? { ...prev, Status: status } : prev));
+      setFeedbackList((prev) =>
+        prev.map((item) => (item.FeedbackId === selectedFeedbackId ? { ...item, Status: status } : item))
+      );
+      loadStats();
+    } catch (error) {
+      toast.error('Failed to update status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const detailTimestamp = detailData?.CreatedAt
+    ? new Date(detailData.CreatedAt).toLocaleString()
+    : '--';
 
   return (
     <MainLayout>
@@ -85,29 +134,27 @@ const Feedback = () => {
         <h1 className="text-[24px] md:text-[32px] font-semibold leading-[1.3] my-6">Feedback</h1>
 
         <div className='flex flex-col xl:flex-row xl:space-x-5 w-full h-[calc(100vh-150px)]'>
-
-          {/* Sidebar Tabs */}
           <div className='bg-white w-full xl:max-w-[200px] rounded-xl space-y-1 border shadow-sm p-4 xl:h-full mb-4 xl:mb-0'>
-            {tabNames.map((name, index) => (
+            {TYPE_TABS.map((tab, index) => (
               <Button
-                key={index}
-                className={`w-full text-left font-semibold text-sm md:text-[16px] capitalize pl-4 shadow-none rounded-[4px] transition-all
-                  ${activeTab === index ? 'bg-[#F9E8E9] text-[#C01824]' : 'bg-transparent text-black hover:bg-[#C01824] hover:text-white'}`}
+                key={tab.value}
+                className={`w-full text-left font-semibold text-sm md:text-[16px] capitalize pl-4 shadow-none rounded-[4px] transition-all ${
+                  activeTab === index ? 'bg-[#F9E8E9] text-[#C01824]' : 'bg-transparent text-black hover:bg-[#C01824] hover:text-white'
+                }`}
                 onClick={() => setActiveTab(index)}
               >
-                {name}
+                {tab.label}
               </Button>
             ))}
           </div>
 
-          {/* Chat List Panel */}
-          <div className='bg-white w-full xl:max-w-[280px] rounded-xl border shadow-sm xl:h-full mb-4 xl:mb-0 overflow-hidden'>
+          <div className='bg-white w-full xl:max-w-[320px] rounded-xl border shadow-sm xl:h-full mb-4 xl:mb-0 overflow-hidden'>
             <div className="p-4 border-b border-[#D2D2D2]">
               <div className="flex justify-between items-center text-[14px] font-medium">
-                <div>Total Feedback: <span className="font-normal">254</span></div>
+                <div>Total Feedback: <span className="font-normal">{stats.total}</span></div>
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1 text-[#6F6F6F]"><IoMdThumbsUp size={20}/> <span>55</span></div>
-                  <div className="flex items-center gap-1 text-[#6F6F6F]"><IoMdThumbsDown size={20}/> <span>12</span></div>
+                  <div className="flex items-center gap-1 text-[#6F6F6F]"><IoMdThumbsUp size={20} /> <span>{stats.positive}</span></div>
+                  <div className="flex items-center gap-1 text-[#6F6F6F]"><IoMdThumbsDown size={20} /> <span>{stats.negative}</span></div>
                 </div>
               </div>
             </div>
@@ -125,64 +172,114 @@ const Feedback = () => {
               </div>
 
               <TabsBody className='overflow-y-auto max-h-[500px] xl:max-h-full px-2'>
-                {conditionTab.map(({ name, logo, message, time, count }, index) => (
-                  <Button
-                    key={index}
-                    variant='text'
-                    className={`flex items-center gap-3 py-3 w-full text-left hover:bg-[#F9E8E9] transition-all rounded-none
-                      ${index === 0 ? 'bg-[#F9E8E9]' : ''}`}
-                    onClick={() => handleData(logo)}
-                  >
-                    <img src={logo} alt={name} className="rounded-full  h-[42px]" />
-                    <div className='flex-1 text-sm'>
-                      <div className='flex justify-between'>
-                        <span className="font-bold text-[14px]">{name}</span>
-                        <span className="text-[#627D98] text-xs w-[70%]">{time}</span>
+                {loadingList ? (
+                  <div className="px-3 py-8 text-sm text-gray-500">Loading feedback...</div>
+                ) : feedbackList.length === 0 ? (
+                  <div className="px-3 py-8 text-sm text-gray-500">No feedback found.</div>
+                ) : (
+                  feedbackList.map((item) => (
+                    <Button
+                      key={item.FeedbackId}
+                      variant='text'
+                      className={`flex items-center gap-3 py-3 w-full text-left hover:bg-[#F9E8E9] transition-all rounded-none ${
+                        selectedFeedbackId === item.FeedbackId ? 'bg-[#F9E8E9]' : ''
+                      }`}
+                      onClick={() => setSelectedFeedbackId(item.FeedbackId)}
+                    >
+                      <div className="rounded-full h-[42px] w-[42px] bg-[#F3F4F6] flex items-center justify-center font-bold text-[#6B7280]">
+                        {(item.senderName || '?').charAt(0).toUpperCase()}
                       </div>
-                      <div className='flex justify-between items-center'>
-                        <p className="text-[#334E68] text-[10px] truncate w-[50%] pr-2">{message}</p>
-                        {count > 0 && (
-                          <div className='bg-[#C52707] text-white text-xs rounded-full px-2 py-0.5'>
-                            {count}
-                          </div>
-                        )}
+                      <div className='flex-1 text-sm overflow-hidden'>
+                        <div className='flex justify-between gap-2'>
+                          <span className="font-bold text-[14px] truncate">{item.senderName || '--'}</span>
+                          <span className="text-[#627D98] text-xs whitespace-nowrap">
+                            {item.CreatedAt ? new Date(item.CreatedAt).toLocaleDateString() : '--'}
+                          </span>
+                        </div>
+                        <div className='flex justify-between items-center gap-2'>
+                          <p className="text-[#334E68] text-[10px] truncate pr-2">
+                            {item.Subject || item.messagePreview || '--'}
+                          </p>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[item.Status] || 'bg-gray-100 text-gray-600'}`}>
+                            {item.Status || 'Open'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </Button>
-                ))}
+                    </Button>
+                  ))
+                )}
               </TabsBody>
             </Tabs>
           </div>
 
-          {/* Chat Panel */}
           <div className='bg-white w-full rounded-xl border shadow-sm flex flex-col xl:h-full'>
             <div className="flex-1 p-4 flex flex-col justify-between overflow-hidden">
-              <div id="messages" className="flex-1 overflow-y-auto space-y-4">
-                {messages.map((msg, index) => (
-                  <VendorFeedbackChatMessage key={index} {...msg} venderfeedbackData={venderfeedbackData} />
-                ))}
-              </div>
-
-              <div className="border-t pt-4 mt-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Write your message!"
-                    className="flex-grow p-2 rounded border outline-none"
-                  />
-                  <img src={fileuploadicon} alt="Upload File" className="h-6 w-6 cursor-pointer" />
-                  <img src={imguploadicon} alt="Upload Image" className="h-6 w-6 cursor-pointer" />
-                  <Button size="lg" className="bg-[#C01824] text-white px-4 py-2 flex items-center gap-1 hover:opacity-90">
-                    <span>Send</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 rotate-45">
-                      <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-                    </svg>
-                  </Button>
+              {!selectedFeedbackId ? (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  Select a feedback to view details.
                 </div>
-              </div>
+              ) : loadingDetail ? (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  Loading feedback detail...
+                </div>
+              ) : detailData ? (
+                <>
+                  <div id="messages" className="flex-1 overflow-y-auto space-y-4">
+                    <div className="border border-[#E5E7EB] rounded-xl p-4">
+                      <div className="flex flex-wrap items-center gap-2 justify-between">
+                        <div>
+                          <h2 className="text-xl font-semibold text-[#202224]">{detailData.Subject || '--'}</h2>
+                          <p className="text-sm text-[#6B7280] mt-1">
+                            {detailData.senderName || '--'} | {detailData.senderType || activeType}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`text-xs px-3 py-1 rounded-full ${statusColors[detailData.Status] || 'bg-gray-100 text-gray-600'}`}>
+                            {detailData.Status || 'Open'}
+                          </span>
+                          <span className={`text-xs px-3 py-1 rounded-full ${ratingColors[detailData.Rating] || 'bg-[#F5F5F5] text-[#202224]'}`}>
+                            {detailData.Rating || '--'}
+                          </span>
+                          <span className="text-xs px-3 py-1 rounded-full bg-[#F5F5F5] text-[#202224]">
+                            {detailData.FeedbackType || '--'}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-[#6B7280] mt-2">{detailTimestamp}</p>
+                    </div>
+
+                    <VendorFeedbackChatMessage
+                      isOwnMessage={false}
+                      message={detailData.Message || detailData.messagePreview || '--'}
+                      avatarUrl=""
+                      timestamp={detailTimestamp}
+                      venderfeedbackData=""
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {['Open', 'Read', 'Resolved'].map((status) => (
+                        <Button
+                          key={status}
+                          size="sm"
+                          className={`${detailData.Status === status ? 'bg-[#C01824]' : 'bg-[#202224]'} text-white shadow-none`}
+                          onClick={() => handleStatusUpdate(status)}
+                          disabled={updatingStatus}
+                        >
+                          {status}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  Feedback detail not found.
+                </div>
+              )}
             </div>
           </div>
-
         </div>
       </section>
     </MainLayout>

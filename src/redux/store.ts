@@ -21,6 +21,7 @@ import accountsReceivableReducer from "./slices/accountsReceivableSlice";
 import schoolInvoicesReducer from "./slices/schoolInvoicesSlice";
 import tripInvoicesReducer from "./slices/tripInvoicesSlice";
 import balanceSheetReducer from "./slices/balanceSheetSlice";
+import incomeStatementReducer from "./slices/incomeStatementSlice";
 import reportsReducer from "./slices/reportsSlice";
 import terminalTabReducer from "./slices/terminalTabSlice";
 
@@ -58,6 +59,7 @@ const rootReducer = combineReducers({
   schoolInvoices: schoolInvoicesReducer,
   tripInvoices: tripInvoicesReducer,
   balanceSheet: balanceSheetReducer,
+  incomeStatement: incomeStatementReducer,
   reports: reportsReducer,
   terminalTab: terminalTabReducer,
 });

@@ -1866,7 +1866,7 @@ const dispatch = useDispatch();
 
 
 
-            {selectedTab === "Income Statement" && <FinancialDashboard />}
+            {selectedTab === "Income Statement" && <FinancialDashboard selectedTab={selectedTab} />}
             {selectedTab === "Balance Sheet" && (
               <FinancialDashboard selectedTab={selectedTab} />
             )}
