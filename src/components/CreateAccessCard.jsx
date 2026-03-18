@@ -41,7 +41,12 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
         try {
             const res = await axios.get(`${BASE_URL}/terminals`, getAxiosConfig());
             const arr = Array.isArray(res.data) ? res.data : Array.isArray(res.data.data) ? res.data.data : [];
-            setTerminal(arr);
+            setTerminal(
+                arr.map((item) => ({
+                    id: item.id ?? item.Id ?? item.TerminalId ?? item.terminalId,
+                    name: item.name ?? item.Name ?? item.TerminalName ?? item.terminalName ?? item.TerminalCode ?? item.terminalCode ?? "--",
+                }))
+            );
         } catch {
             setTerminal([]);
         }
@@ -279,7 +284,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                             Select Terminal <span className="text-red-500">*</span>
                         </label>
                         <div className="grid grid-cols-4 gap-4">
-                            {loadingDropdowns ? (
+                            {loadingDropdowns && terminal.length === 0 ? (
                                 <p className="text-sm text-gray-500">Loading terminals...</p>
                             ) : terminal.length === 0 ? (
                                 <p className="text-sm text-gray-500">No terminals found</p>
