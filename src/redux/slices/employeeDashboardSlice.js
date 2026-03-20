@@ -391,9 +391,9 @@ const employeeDashboardSlice = createSlice({
         state.loading.timeOff = false;
         const raw = Array.isArray(action.payload.data) ? action.payload.data : [];
         state.timeOffRequests = raw.map((r) => ({
-          id:          r.id          ?? r.Id          ?? r.timeOffId   ?? r.TimeOffId,
+          id:          r.id          ?? r.Id          ?? r.requestId   ?? r.RequestId ?? r.timeOffId   ?? r.TimeOffId,
           submittedAt: r.submittedAt ?? r.SubmittedAt ?? r.createdAt   ?? r.CreatedAt,
-          leaveType:   r.leaveType   ?? r.LeaveType,
+          leaveType:   r.leaveType   ?? r.LeaveType   ?? r.requestType ?? r.RequestType,
           startDate:   r.startDate   ?? r.StartDate,
           endDate:     r.endDate     ?? r.EndDate,
           totalDays:   r.totalDays   ?? r.TotalDays,

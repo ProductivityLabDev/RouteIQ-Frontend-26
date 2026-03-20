@@ -13,7 +13,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchGlCodes } from "@/redux/slices/payrollSlice";
 import { addExpense, fetchWalletSummary, fetchWalletBalance, fetchWalletTransactions } from "@/redux/slices/accountsPayableSlice";
 import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivableSlice";
-import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
+import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, createSchoolInvoice, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
 import { fetchTripInvoiceTerminals, fetchTripInvoices, createTripInvoice, batchTripInvoice, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
 import { fetchGenerateReport } from "@/redux/slices/reportsSlice";
 import {
@@ -588,6 +588,52 @@ const dispatch = useDispatch();
       }
     }
   };
+  const submitSchoolInvoiceCreate = async () => {
+    const normalizedLineItems = (tripInvoiceForm.lineItems || [])
+      .map((item) => {
+        const quantity = Number(item.quantity || 0);
+        const unitPrice = Number(item.unitPrice || 0);
+        const totalAmount = Number(item.totalAmount || quantity * unitPrice || 0);
+        return {
+          itemDescription: item.itemDescription || "",
+          quantity,
+          unitPrice,
+          totalAmount,
+          tripId: item.tripId ? Number(item.tripId) : undefined,
+          glCodeId: Number(item.glCodeId || tripInvoiceForm.glCodeId || 0),
+        };
+      })
+      .filter((item) => item.itemDescription || item.tripId || item.quantity || item.unitPrice || item.totalAmount);
+
+    const computedSubTotal = normalizedLineItems.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+    const subTotal = Number(tripInvoiceForm.subTotal || computedSubTotal || 0);
+    const taxAmount = Number(tripInvoiceForm.taxAmount || 0);
+
+    const payload = {
+      instituteId: Number(selectedInstituteId || 0),
+      terminalId: Number(tripInvoiceForm.terminalId || 0),
+      glCodeId: Number(tripInvoiceForm.glCodeId || normalizedLineItems[0]?.glCodeId || 0),
+      invoiceDate: tripInvoiceForm.invoiceDate,
+      dueDate: tripInvoiceForm.dueDate,
+      billFrom: tripInvoiceForm.billFrom,
+      billTo: tripInvoiceForm.billTo || selectedSchoolName,
+      subTotal,
+      taxAmount,
+      totalAmount: subTotal + taxAmount,
+      notes: tripInvoiceForm.notes,
+      lineItems: normalizedLineItems,
+    };
+
+    const result = await dispatch(createSchoolInvoice(payload));
+    if (result.meta.requestStatus === "fulfilled") {
+      setCreateInvoice(false);
+      setEditInvoice(false);
+      resetTripInvoiceDraft();
+      if (selectedInstituteId) {
+        dispatch(fetchSchoolInvoices({ instituteId: selectedInstituteId, limit: 20, offset: 0 }));
+      }
+    }
+  };
   const submitTripBatchInvoice = async () => {
     if (selectedTripInvoiceIds.length === 0) return;
     const result = await dispatch(batchTripInvoice({ invoiceIds: selectedTripInvoiceIds, notes: tripBatchNotes }));
@@ -654,6 +700,10 @@ const dispatch = useDispatch();
                         }
                         return;
                       }
+                      if (selectedTab === "School Invoices" && createInvoice) {
+                        submitSchoolInvoiceCreate();
+                        return;
+                      }
                       if (createInvoice) {
                         handlebackCreateInvoice();
                       } else {
@@ -661,7 +711,9 @@ const dispatch = useDispatch();
                       }
                     }}
                   >
-                    {selectedTab === "Trip invoices" && (tiLoading.create || tiLoading.batch) ? "Saving..." : "Save Invoice"}
+                    {(selectedTab === "Trip invoices" && (tiLoading.create || tiLoading.batch)) || (selectedTab === "School Invoices" && siLoading.create)
+                      ? "Saving..."
+                      : "Save Invoice"}
                   </Button>
                 </div>
               </div>
@@ -2054,7 +2106,7 @@ const dispatch = useDispatch();
                           <div className="text-xs text-gray-500">Total # of Open Trips</div>
                           <div className="flex items-center">
                             <span className="font-medium text-black">
-                              {termLoading.summary ? '...' : (termSummary?.openTripsCount ?? 0).toLocaleString()}
+                              {termLoading.summary ? '...' : Number(termSummary?.totalOpenTrips ?? 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
@@ -2068,7 +2120,7 @@ const dispatch = useDispatch();
                           <div className="text-xs text-gray-500">Total $ of Open Trips</div>
                           <div className="flex items-center">
                             <span className="font-medium text-black">
-                              {termLoading.summary ? '...' : `$${Number(termSummary?.openTripsAmount ?? 0).toLocaleString()}`}
+                              {termLoading.summary ? '...' : `$${Number(termSummary?.totalOpenTripsAmount ?? 0).toLocaleString()}`}
                             </span>
                           </div>
                         </div>
@@ -2081,7 +2133,7 @@ const dispatch = useDispatch();
                         <div>
                           <div className="text-xs text-gray-500">Total # of Completed Trips(within current month)</div>
                           <div className="font-medium">
-                            {termLoading.summary ? '...' : (termSummary?.completedTripsCount ?? 0).toLocaleString()}
+                            {termLoading.summary ? '...' : Number(termSummary?.totalCompletedTripsThisMonth ?? 0).toLocaleString()}
                           </div>
                         </div>
                       </div>
@@ -2093,7 +2145,7 @@ const dispatch = useDispatch();
                         <div>
                           <div className="text-xs text-gray-500">Total $ of Completed Trips(within current month)</div>
                           <div className="font-medium">
-                            {termLoading.summary ? '...' : `$${Number(termSummary?.completedTripsAmount ?? 0).toLocaleString()}`}
+                            {termLoading.summary ? '...' : `$${Number(termSummary?.totalCompletedTripsAmountThisMonth ?? 0).toLocaleString()}`}
                           </div>
                         </div>
                       </div>

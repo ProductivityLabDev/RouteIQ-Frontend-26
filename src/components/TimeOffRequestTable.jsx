@@ -4,18 +4,20 @@ import { fetchTimeOff, cancelTimeOffRequest } from '@/redux/slices/employeeDashb
 import dayjs from 'dayjs';
 
 const STATUS_STYLE = {
-  APPROVED:  'bg-[#CCFAEB] text-green-800',
-  REJECTED:  'bg-[#C3555C] text-white',
-  PENDING:   'bg-[#FFFEA6] text-[#39485B]',
+  APPROVED: 'bg-[#CCFAEB] text-green-800',
+  REJECTED: 'bg-[#C3555C] text-white',
+  PENDING: 'bg-[#FFFEA6] text-[#39485B]',
   CANCELLED: 'bg-gray-200 text-gray-600',
 };
 
 const LEAVE_LABEL = {
-  SICK:     'Sick Leave',
-  CASUAL:   'Casual Leave',
-  ANNUAL:   'Annual Leave',
+  SICK: 'Sick Leave',
+  CASUAL: 'Casual Leave',
+  ANNUAL: 'Annual Leave',
   PERSONAL: 'Personal Leave',
 };
+
+const formatDisplayDate = (value) => (value ? dayjs(value).format('MMM D, YYYY') : '--');
 
 const TimeOffRequestTable = () => {
   const dispatch = useDispatch();
@@ -57,7 +59,7 @@ const TimeOffRequestTable = () => {
               timeOffRequests.map((entry) => (
                 <tr key={entry.id}>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
-                    {entry.submittedAt ? dayjs(entry.submittedAt).format('MMM D, YYYY') : '--'}
+                    {formatDisplayDate(entry.submittedAt)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
                     {LEAVE_LABEL[entry.leaveType] || entry.leaveType || '--'}
@@ -65,8 +67,8 @@ const TimeOffRequestTable = () => {
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
                     {entry.startDate && entry.endDate
                       ? entry.startDate === entry.endDate
-                        ? entry.startDate
-                        : `${entry.startDate} – ${entry.endDate}`
+                        ? formatDisplayDate(entry.startDate)
+                        : `${formatDisplayDate(entry.startDate)} - ${formatDisplayDate(entry.endDate)}`
                       : '--'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
@@ -75,7 +77,7 @@ const TimeOffRequestTable = () => {
                   <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200">
                     {entry.approvedBy || '--'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200 max-w-[180px] truncate">
+                  <td className="px-6 py-4 text-sm text-gray-700 border-r border-gray-200 max-w-[220px] whitespace-normal break-words">
                     {entry.reason || '--'}
                   </td>
                   <td className="px-6 py-4 border-r border-gray-200">

@@ -3,7 +3,16 @@ import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchDriverTimeOff, approveTimeOffRequest, rejectTimeOffRequest } from '@/redux/slices/payrollSlice';
 
-const fmtDate = (val) => val ? dayjs(val).format('MMM DD, YYYY') : '—';
+const fmtDate = (val) => (val ? dayjs(val).format('MMM DD, YYYY') : '--');
+const fmtDateTime = (val) => (val ? dayjs(val).format('MMM DD, YYYY hh:mm A') : '--');
+const fmtText = (val) => (val !== undefined && val !== null && val !== '' ? val : '--');
+const fmtLeaveType = (val) =>
+  val
+    ? String(val)
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (ch) => ch.toUpperCase())
+    : '--';
 
 export default function RequestModal({ employeeId, closeModal }) {
   const dispatch = useDispatch();
@@ -14,11 +23,11 @@ export default function RequestModal({ employeeId, closeModal }) {
     dispatch(fetchDriverTimeOff(employeeId));
   }, [dispatch, employeeId]);
 
-  // Combine both arrays — API sometimes returns pending items inside approvalHistory
   const allRequests = [
     ...(driverTimeOff?.pending || []),
     ...(driverTimeOff?.approvalHistory || []),
   ];
+
   const pending = allRequests.filter((r) => (r.status || '').toLowerCase() === 'pending');
   const history = allRequests.filter((r) => (r.status || '').toLowerCase() !== 'pending');
 
@@ -39,12 +48,12 @@ export default function RequestModal({ employeeId, closeModal }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[9999]">
-      <div className="bg-white w-full max-w-5xl p-6 rounded-md shadow-lg relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-full max-w-6xl p-6 rounded-md shadow-lg relative max-h-[90vh] overflow-y-auto">
         <button
           onClick={closeModal}
           className="absolute top-4 right-4 text-gray-700 text-2xl font-bold"
         >
-          ✕
+          x
         </button>
 
         <h2 className="text-2xl font-bold mb-6">Time-Off Request</h2>
@@ -58,7 +67,11 @@ export default function RequestModal({ employeeId, closeModal }) {
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Date</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Requested On</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Leave From</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Leave To</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Total Days</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Type</th>
                     <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punch In</th>
                     <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Punched Out</th>
                     <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Work Hours</th>
@@ -68,22 +81,46 @@ export default function RequestModal({ employeeId, closeModal }) {
                 </thead>
                 <tbody>
                   {pending.length === 0 ? (
-                    <tr><td colSpan={6} className="border border-gray-200 py-4 text-center text-gray-500">No pending requests.</td></tr>
-                  ) : pending.map((r) => (
-                    <tr key={r.requestId}>
-                      <td className="border border-gray-200 py-3 px-3">{fmtDate(r.requestDate)}</td>
-                      <td className="border border-gray-200 py-3 px-3">{r.punchIn}</td>
-                      <td className="border border-gray-200 py-3 px-3">{r.punchOut}</td>
-                      <td className="border border-gray-200 py-3 px-3">{r.workHours}h</td>
-                      <td className="border border-gray-200 py-3 px-3">{r.reason}</td>
-                      <td className="border border-gray-200 py-3 px-3">
-                        <div className="flex gap-2">
-                          <button className="bg-green-500 text-white px-3 py-1 rounded text-sm" onClick={() => handleApprove(r.requestId)} disabled={loading.approveReject}>Approve</button>
-                          <button className="bg-red-600 text-white px-3 py-1 rounded text-sm" onClick={() => handleReject(r.requestId)} disabled={loading.approveReject}>Reject</button>
-                        </div>
+                    <tr>
+                      <td colSpan={10} className="border border-gray-200 py-4 text-center text-gray-500">
+                        No pending requests.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    pending.map((r) => (
+                      <tr key={r.requestId}>
+                        <td className="border border-gray-200 py-3 px-3">{fmtDateTime(r.createdAt)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtDate(r.startDate)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtDate(r.endDate)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{r.totalDays ?? '--'}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtLeaveType(r.requestType)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtText(r.punchIn)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtText(r.punchOut)}</td>
+                        <td className="border border-gray-200 py-3 px-3">
+                          {r.workHours != null ? `${r.workHours}h` : '--'}
+                        </td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtText(r.reason)}</td>
+                        <td className="border border-gray-200 py-3 px-3">
+                          <div className="flex gap-2">
+                            <button
+                              className="bg-green-500 text-white px-3 py-1 rounded text-sm"
+                              onClick={() => handleApprove(r.requestId)}
+                              disabled={loading.approveReject}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="bg-red-600 text-white px-3 py-1 rounded text-sm"
+                              onClick={() => handleReject(r.requestId)}
+                              disabled={loading.approveReject}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -94,22 +131,40 @@ export default function RequestModal({ employeeId, closeModal }) {
                 <thead>
                   <tr>
                     <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Request ID</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Requested On</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Leave From</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Leave To</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Total Days</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Type</th>
                     <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Status</th>
                     <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Approved By</th>
                     <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Approved At</th>
+                    <th className="border border-gray-200 bg-gray-100 py-3 px-3 text-left">Reason</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.length === 0 ? (
-                    <tr><td colSpan={4} className="border border-gray-200 py-4 text-center text-gray-500">No history.</td></tr>
-                  ) : history.map((h) => (
-                    <tr key={h.requestId}>
-                      <td className="border border-gray-200 py-3 px-3">{h.requestId}</td>
-                      <td className="border border-gray-200 py-3 px-3">{h.status}</td>
-                      <td className="border border-gray-200 py-3 px-3">{h.approvedBy}</td>
-                      <td className="border border-gray-200 py-3 px-3">{fmtDate(h.approvedAt)}</td>
+                    <tr>
+                      <td colSpan={10} className="border border-gray-200 py-4 text-center text-gray-500">
+                        No history.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    history.map((h) => (
+                      <tr key={h.requestId}>
+                        <td className="border border-gray-200 py-3 px-3">{h.requestId}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtDateTime(h.createdAt)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtDate(h.startDate)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtDate(h.endDate)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{h.totalDays ?? '--'}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtLeaveType(h.requestType)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtText(h.status)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtText(h.approvedBy)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtDateTime(h.approvedAt)}</td>
+                        <td className="border border-gray-200 py-3 px-3">{fmtText(h.reason)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

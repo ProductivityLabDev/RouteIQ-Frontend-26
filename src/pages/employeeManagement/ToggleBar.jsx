@@ -5,6 +5,8 @@ import { fetchTerminals, fetchTerminalDetail } from '@/redux/slices/payrollSlice
 import DriverTable from './DriverTable';
 import EditTableData from './EditTableData';
 
+const pick = (...values) => values.find((value) => value !== undefined && value !== null);
+
 const ToggleBar = () => {
     const dispatch = useDispatch();
     const { terminals, loading } = useSelector((state) => state.payroll);
@@ -13,6 +15,36 @@ const ToggleBar = () => {
     const [balanceModal, setBalanceModal] = useState(null);
     const [edit, setEdit] = useState(false);
     const [editDriver, setEditDriver] = useState(null);
+    const [terminalStatuses, setTerminalStatuses] = useState({});
+
+    const getTerminalId = (terminal) => terminal?.terminalId ?? terminal?.TerminalId ?? terminal?.id;
+
+    const derivePayrollStatus = (detail, terminal) => {
+        const drivers = detail?.drivers || detail?.Drivers || [];
+        const payrollStatuses = drivers
+            .map((driver) =>
+                pick(
+                    driver?.payStatus,
+                    driver?.PayStatus,
+                    driver?.status,
+                    driver?.Status,
+                    driver?.payroll?.status,
+                    driver?.Payroll?.Status
+                )
+            )
+            .filter(Boolean)
+            .map((status) => String(status).toLowerCase());
+
+        if (payrollStatuses.length === 0) {
+            return terminal?.payrollStatus || terminal?.PayrollStatus || 'Payroll In Process';
+        }
+
+        if (payrollStatuses.every((status) => status === 'paid')) {
+            return 'Paid';
+        }
+
+        return 'Payroll In Process';
+    };
 
     const handleEdit = (driver) => {
         setEditDriver(driver || null);
@@ -32,6 +64,45 @@ const ToggleBar = () => {
         dispatch(fetchTerminals());
     }, [dispatch]);
 
+    useEffect(() => {
+        if (!Array.isArray(terminals) || terminals.length === 0) return;
+
+        const currentDate = new Date();
+        const month = currentDate.getMonth() + 1;
+        const year = currentDate.getFullYear();
+        let cancelled = false;
+
+        const loadStatuses = async () => {
+            const statusEntries = await Promise.all(
+                terminals.map(async (terminal) => {
+                    const terminalId = getTerminalId(terminal);
+                    if (!terminalId) return null;
+                    try {
+                        const detail = await dispatch(fetchTerminalDetail({ terminalId, month, year })).unwrap();
+                        return [terminalId, derivePayrollStatus(detail, terminal)];
+                    } catch {
+                        return [terminalId, terminal?.payrollStatus || terminal?.PayrollStatus || 'Payroll In Process'];
+                    }
+                })
+            );
+
+            if (!cancelled) {
+                setTerminalStatuses(
+                    statusEntries.filter(Boolean).reduce((acc, [terminalId, status]) => {
+                        acc[terminalId] = status;
+                        return acc;
+                    }, {})
+                );
+            }
+        };
+
+        loadStatuses();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [dispatch, terminals]);
+
     if (loading.terminals) {
         return <div className="w-full p-6 text-center text-gray-500">Loading terminals...</div>;
     }
@@ -41,7 +112,7 @@ const ToggleBar = () => {
             {edit ? <EditTableData handleClose={handleClose} driver={editDriver} /> :
                 <div className="w-full space-y-4">
                     {terminals.map((terminal, index) => (
-                        <div key={terminal.terminalId} className="w-full bg-white border-b border-gray-200 shadow-sm">
+                        <div key={getTerminalId(terminal)} className="w-full bg-white border-b border-gray-200 shadow-sm">
                             <div className="flex items-center justify-between px-4 py-2">
                                 <div className="flex items-center space-x-3">
                                     <button className="text-gray-600 hover:text-gray-800">
@@ -50,7 +121,7 @@ const ToggleBar = () => {
                                         </svg>
                                     </button>
 
-                                    <h2 className="font-semibold text-[#202224] text-[18]">{terminal.terminalName}</h2>
+                                    <h2 className="font-semibold text-[#202224] text-[18]">{terminal.terminalName || terminal.TerminalName}</h2>
 
                                     <button
                                         className="text-gray-600 hover:text-gray-800"
@@ -63,10 +134,10 @@ const ToggleBar = () => {
                                     </button>
 
                                     <button
-                                        className="bg-[#C01824] text-white text-sm px-4 py-1 rounded"
+                                        className={`${terminalStatuses[getTerminalId(terminal)] === 'Paid' ? 'bg-green-600' : 'bg-[#C01824]'} text-white text-sm px-4 py-1 rounded`}
                                         onClick={() => setBalanceModal(balanceModal === index ? null : index)}
                                     >
-                                        {terminal.payrollStatus || 'Payroll In Process'}
+                                        {terminalStatuses[getTerminalId(terminal)] || terminal.payrollStatus || terminal.PayrollStatus || 'Payroll In Process'}
                                     </button>
                                 </div>
 
