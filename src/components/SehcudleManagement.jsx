@@ -1,7 +1,7 @@
 import { backArrow, editicon } from '@/assets';
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchRepairSchedules } from '@/redux/slices/repairScheduleSlice';
+import { fetchRepairSchedules, updateRepairSchedule } from '@/redux/slices/repairScheduleSlice';
 import { Spinner } from '@material-tailwind/react';
 import { format } from 'date-fns';
 
@@ -9,6 +9,8 @@ const SehcudleManagement = ({ onBack, vehicle, selectedDate }) => {
     const dispatch = useDispatch();
     const { repairSchedules, loading } = useSelector((state) => state.repairSchedule);
     const [filteredSchedules, setFilteredSchedules] = useState([]);
+    const [editingNotesId, setEditingNotesId] = useState(null);
+    const [editingNotesText, setEditingNotesText] = useState('');
 
     // Extract busId from vehicle prop
     const busId = vehicle?.vehicleId 
@@ -48,6 +50,37 @@ const SehcudleManagement = ({ onBack, vehicle, selectedDate }) => {
             setFilteredSchedules(repairSchedules);
         }
     }, [repairSchedules, selectedDate]);
+
+    const handleStartNotesEdit = (item) => {
+        setEditingNotesId(item.maintenanceId);
+        setEditingNotesText(item.notes || '');
+    };
+
+    const handleCancelNotesEdit = () => {
+        setEditingNotesId(null);
+        setEditingNotesText('');
+    };
+
+    const handleSaveNotes = async (maintenanceId) => {
+        const result = await dispatch(
+            updateRepairSchedule({
+                maintenanceId,
+                payload: {
+                    notes: editingNotesText || '',
+                },
+            })
+        );
+
+        if (updateRepairSchedule.fulfilled.match(result)) {
+            if (busId) {
+                dispatch(fetchRepairSchedules(busId));
+            } else {
+                dispatch(fetchRepairSchedules());
+            }
+            handleCancelNotesEdit();
+        }
+    };
+
     return (
         <section className=" bg-white w-full h-full">
             <div className="flex items-center mb-8 mt-8 gap-7 ms-4">
@@ -95,12 +128,46 @@ const SehcudleManagement = ({ onBack, vehicle, selectedDate }) => {
                                     <td className="p-2 border">{item.estimatedCompletionTime || "N/A"}</td>
                                     <td className="p-2 border">{item.terminal || "N/A"}</td>
                                     <td className="p-2 border">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[#C01824] underline mr-2 cursor-pointer">
-                                                {item.notes || "See Notes"}
-                                            </span>
-                                            <img src={editicon} className="cursor-pointer" alt="Edit Icon" />
-                                        </div>
+                                        {editingNotesId === item.maintenanceId ? (
+                                            <div className="flex flex-col gap-2">
+                                                <textarea
+                                                    value={editingNotesText}
+                                                    onChange={(e) => setEditingNotesText(e.target.value)}
+                                                    rows={3}
+                                                    className="w-full rounded border border-[#D5D5D5] p-2 text-sm outline-none"
+                                                    placeholder="Enter notes"
+                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSaveNotes(item.maintenanceId)}
+                                                        disabled={loading.updating}
+                                                        className="rounded bg-[#C01824] px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                                                    >
+                                                        {loading.updating ? 'Saving...' : 'Save'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleCancelNotesEdit}
+                                                        className="rounded border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="mr-2 text-[#C01824] underline">
+                                                    {item.notes || "See Notes"}
+                                                </span>
+                                                <img
+                                                    src={editicon}
+                                                    className="cursor-pointer"
+                                                    alt="Edit Icon"
+                                                    onClick={() => handleStartNotesEdit(item)}
+                                                />
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))

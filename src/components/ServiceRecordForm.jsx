@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaArrowLeft } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { createRepairSchedule } from '@/redux/slices/repairScheduleSlice';
+import { fetchTerminals } from '@/redux/slices/busesSlice';
 import { toast } from 'react-hot-toast';
 
 const ServiceRecordForm = ({ handleCancel, vehicle, busId, onSuccess }) => {
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.repairSchedule);
+  const { terminals } = useSelector((state) => state.buses);
 
   const [formData, setFormData] = useState({
     serviceDesc: '',
@@ -25,6 +27,20 @@ const ServiceRecordForm = ({ handleCancel, vehicle, busId, onSuccess }) => {
   });
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    dispatch(fetchTerminals());
+  }, [dispatch]);
+
+  useEffect(() => {
+    const vehicleTerminal = vehicle?.TerminalName || vehicle?.terminalName || '';
+    if (vehicleTerminal && !formData.terminal) {
+      setFormData((prev) => ({
+        ...prev,
+        terminal: vehicleTerminal,
+      }));
+    }
+  }, [vehicle, formData.terminal]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -103,14 +119,14 @@ const ServiceRecordForm = ({ handleCancel, vehicle, busId, onSuccess }) => {
               placeholder='Repair/Service Description'
             />
 
-            <label className="block text-sm font-bold text-black mt-4 mb-1">P/N</label>
+            <label className="block text-sm font-bold text-black mt-4 mb-1">Part Number</label>
             <input 
               type="text" 
               name="passNum"
               value={formData.passNum}
               onChange={handleChange}
               className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" 
-              placeholder='P/N'
+              placeholder='Part Number'
             />
 
             <label className="block text-sm font-bold text-black mt-4 mb-1">Part Description</label>
@@ -133,14 +149,14 @@ const ServiceRecordForm = ({ handleCancel, vehicle, busId, onSuccess }) => {
               placeholder='Qty'
             />
 
-            <label className="block text-sm font-bold text-black mt-4 mb-1">Vendor</label>
+            <label className="block text-sm font-bold text-black mt-4 mb-1">Service Vendor <span className="text-xs font-normal text-gray-500">(Optional)</span></label>
             <input 
               type="text" 
               name="vendor"
               value={formData.vendor}
               onChange={handleChange}
               className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" 
-              placeholder='Vendor'
+              placeholder='Workshop / Supplier'
             />
 
             <label className="block text-sm font-bold text-black mt-4 mb-1">Repair Type</label>
@@ -188,14 +204,24 @@ const ServiceRecordForm = ({ handleCancel, vehicle, busId, onSuccess }) => {
             />
 
             <label className="block text-sm font-bold text-black mt-4 mb-1">Terminal</label>
-            <input 
-              type="text" 
+            <select
               name="terminal"
               value={formData.terminal}
               onChange={handleChange}
-              className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]" 
-              placeholder='Terminal'
-            />
+              className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-6 bg-[#F5F6FA] w-[70%]"
+            >
+              <option value="">Select Terminal</option>
+              {(Array.isArray(terminals) ? terminals : []).map((terminal) => {
+                const terminalName = terminal.TerminalName || terminal.name || 'Unknown';
+                const terminalId = terminal.TerminalId || terminal.id || terminalName;
+
+                return (
+                  <option key={terminalId} value={terminalName}>
+                    {terminalName}
+                  </option>
+                );
+              })}
+            </select>
 
             <label className="block text-sm font-bold text-black mt-4 mb-1">Notes</label>
             <input 

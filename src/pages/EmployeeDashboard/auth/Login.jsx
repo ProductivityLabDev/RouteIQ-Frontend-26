@@ -6,7 +6,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 import { jwtDecode } from 'jwt-decode'
 import Cookies from 'js-cookie'
-import { getApiUrl, getAxiosConfig } from '@/configs'
+import { getApiUrl, getAxiosConfig, setAuthTokens } from '@/configs'
 
 const Login = () => {
     const navigate = useNavigate()
@@ -30,7 +30,7 @@ const Login = () => {
             const url = getApiUrl('/auth/login')
             const res = await axios.post(
                 url,
-                { username: email, password },
+                { username: email, password, deviceType: 'Web' },
                 getAxiosConfig()
             )
 
@@ -40,6 +40,12 @@ const Login = () => {
                 res.data?.accessToken ||
                 res.data?.data?.token
 
+            const refreshToken =
+                res.data?.refresh_token ||
+                res.data?.refreshToken ||
+                res.data?.data?.refresh_token ||
+                null
+
             if (!token) {
                 setError('Login failed. Token not received.')
                 setLoading(false)
@@ -48,7 +54,7 @@ const Login = () => {
 
             // Store token
             Cookies.set('token', token, { expires: 7, secure: true })
-            localStorage.setItem('token', token)
+            setAuthTokens(token, refreshToken)
 
             const decoded = jwtDecode(token)
 

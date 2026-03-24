@@ -9,7 +9,7 @@ import { setUser } from '@/redux/slices/userSlice';
 import axios from 'axios';
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
-import { BASE_URL, getApiUrl, getAxiosConfig } from '@/configs';
+import { BASE_URL, getApiUrl, getAxiosConfig, setAuthTokens } from '@/configs';
 
 export function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
@@ -87,7 +87,7 @@ export function SignIn() {
 
       const res = await axios.post(
         url,
-        { username, password },
+        { username, password, deviceType: "Web" },
         getAxiosConfig()
       );
 
@@ -99,6 +99,12 @@ export function SignIn() {
         res.data?.accessToken ||
         res.data?.data?.token;
 
+      const refreshToken =
+        res.data?.refresh_token ||
+        res.data?.refreshToken ||
+        res.data?.data?.refresh_token ||
+        null;
+
       if (!token) {
         setError("Token not found in response");
         setLoading(false);
@@ -107,7 +113,7 @@ export function SignIn() {
 
       // Store token in cookies and localStorage
       Cookies.set("token", token, { expires: 7, secure: true });
-      localStorage.setItem("token", token);
+      setAuthTokens(token, refreshToken);
 
       // Decode JWT token to get user info
       const decoded = jwtDecode(token);

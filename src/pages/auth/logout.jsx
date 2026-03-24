@@ -3,18 +3,31 @@ import { useDispatch } from "react-redux";
 import { logoutUser } from "@/redux/slices/userSlice";
 import { persistor } from "@/redux/store";
 import Cookies from "js-cookie";
+import { apiClient, clearAuthTokens, getRefreshToken } from "@/configs";
 
 export default function Logout() {
     const dispatch = useDispatch();
-    console.log("we are here log outttttttttttttttt")
     useEffect(() => {
         (async () => {
             try {
+                const refreshToken = getRefreshToken();
+
+                try {
+                    if (refreshToken) {
+                        await apiClient.post("/auth/logout", { refreshToken });
+                    } else {
+                        await apiClient.post("/auth/logout", {});
+                    }
+                } catch (_) {
+                    // Even if server logout fails, continue with local cleanup.
+                }
+
                 dispatch(logoutUser());
                 await persistor.purge();
-                localStorage.removeItem("token");
+                clearAuthTokens();
                 localStorage.removeItem("vendor");
                 localStorage.removeItem("user");
+                localStorage.removeItem("employeeUser");
                 localStorage.removeItem("instituteId");
                 sessionStorage.clear();
                 Cookies.remove("token");

@@ -8,7 +8,7 @@ import axios from 'axios';
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import { Toaster, toast } from 'react-hot-toast';
-import { BASE_URL, API_PREFIX, getAuthToken, getAxiosConfig, getApiUrl } from '@/configs';
+import { BASE_URL, API_PREFIX, getAxiosConfig, getApiUrl, setAuthTokens } from '@/configs';
 const LoginAsVendor = () => {
 
     const navigate = useNavigate();
@@ -32,7 +32,7 @@ const LoginAsVendor = () => {
         try {
             const res = await axios.post(
                 url,
-                { email, password },
+                { email, password, deviceType: "Web" },
                 getAxiosConfig()
             );
 
@@ -44,15 +44,19 @@ const LoginAsVendor = () => {
                 res.data?.accessToken ||
                 res.data?.data?.token;
 
+            const refreshToken =
+                res.data?.refresh_token ||
+                res.data?.refreshToken ||
+                res.data?.data?.refresh_token ||
+                null;
+
             if (!token) {
                 setError("Token not found in response");
                 return;
             }
 
             Cookies.set("token", token, { expires: 7, secure: true });
-
-            // Refresh token in config util
-            getAuthToken();
+            setAuthTokens(token, refreshToken);
 
             const decoded = jwtDecode(token);
 

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { announcementcardimg, filterIcon, vechileWhite } from '@/assets'
 import MainLayout from '@/layouts/SchoolLayout'
 import { Button, Card, CardBody, CardFooter, Typography, Spinner } from '@material-tailwind/react'
-import { vehicleManagement } from '@/data/vehicleManagementData'
 import RepairSchedule from './RepairSchedule'
 import { Menu, MenuItem } from "@mui/material";
 import VehicleInfoComponent from './VehicleInfoComponent'
@@ -19,21 +18,11 @@ import { BsThreeDots } from 'react-icons/bs'
 import { IoIosList } from "react-icons/io";
 import AddBusInfoForm from '@/components/AddBusInfoForm'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchBuses } from '@/redux/slices/busesSlice'
+import { fetchBuses, fetchTerminals } from '@/redux/slices/busesSlice'
 const VehicleManagement = () => {
     const dispatch = useDispatch();
     const { terminals, buses, loading } = useSelector((state) => state.buses);
     const isLoadingBuses = loading?.buses || false;
-
-    // Grid view needs buses grouped by terminal; list view uses flat array
-    const busesGrouped = Array.isArray(buses)
-        ? buses.reduce((acc, bus) => {
-            const key = bus.TerminalName || bus.terminalName || 'Unknown';
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(bus);
-            return acc;
-          }, {})
-        : (buses && typeof buses === 'object' ? buses : {});
 
     const [isNavigate, setIsNavigate] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -49,10 +38,9 @@ const VehicleManagement = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [anchorEl, setAnchorEl] = useState(null);
     const openSortBy = Boolean(anchorEl);
-    const [selectedTerminal, setSelectedTerminal] = useState('Terminal 1');
+    const [selectedTerminal, setSelectedTerminal] = useState('All Terminals');
     const [open, setOpen] = useState(false);
     const itemsPerPage = 9;
-    const totalPages = Math.ceil(vehicleManagement.length / itemsPerPage);
     const [addbusinfo, setAddBusInfo] = useState(false);
     const [editBus, setEditBus] = useState(null);
     
@@ -108,7 +96,6 @@ const VehicleManagement = () => {
     };
 
     const handleReportedDefect = (item) => {
-        console.log("🚌 Sending vehicle to ReportedDefects:", item);
         setReportedDefects(true)
         setSelectedVehicle(item);
     }
@@ -145,16 +132,40 @@ const VehicleManagement = () => {
 
     const handleEditClickFromMenu = () => {
         if (selectedVehicleForMenu) {
-            console.log("🔄 [VehicleManagement] Setting editBus:", selectedVehicleForMenu);
-            console.log("🔄 [VehicleManagement] Vehicle keys:", Object.keys(selectedVehicleForMenu));
-            console.log("🔄 [VehicleManagement] BusId:", selectedVehicleForMenu.BusId);
             setEditBus(selectedVehicleForMenu);
             setAddBusInfo(true);
-        } else {
-            console.error("❌ [VehicleManagement] No vehicle selected for editing");
         }
         handleMenuClose();
     };
+
+    const terminalOptions = React.useMemo(() => {
+        const normalized = (Array.isArray(terminals) ? terminals : []).map((terminal) => ({
+            id: terminal.TerminalId || terminal.id,
+            name: terminal.TerminalName || terminal.name || 'Unknown',
+        }));
+
+        return [{ id: 'all', name: 'All Terminals' }, ...normalized];
+    }, [terminals]);
+
+    const normalizedBuses = React.useMemo(() => {
+        if (Array.isArray(buses)) return buses;
+        if (buses && typeof buses === 'object') {
+            return Object.values(buses).flatMap((terminalBuses) =>
+                Array.isArray(terminalBuses) ? terminalBuses : []
+            );
+        }
+        return [];
+    }, [buses]);
+
+    const filteredBuses = React.useMemo(() => {
+        if (selectedTerminal === 'All Terminals') return normalizedBuses;
+        return normalizedBuses.filter((bus) => {
+            const terminalName = bus.TerminalName || bus.terminalName || 'Unknown';
+            return terminalName === selectedTerminal;
+        });
+    }, [normalizedBuses, selectedTerminal]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredBuses.length / itemsPerPage));
 
     const renderPageNumbers = () => {
         const pages = [];
@@ -173,12 +184,12 @@ const VehicleManagement = () => {
         }
 
         for (let i = startPage; i <= endPage; i++) {
-            pages.push(<button key={i} className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === i ? 'bg-black text-white' : 'bg-white text-black border border-black'}`}>{i}</button>);
+            pages.push(<button key={i} onClick={() => setCurrentPage(i)} className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === i ? 'bg-black text-white' : 'bg-white text-black border border-black'}`}>{i}</button>);
         }
 
         if (endPage < totalPages) {
             if (endPage < totalPages - 1) pages.push(<span key="end-ellipsis" className="px-1">...</span>);
-            pages.push(<button key={totalPages} className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-black text-white' : 'bg-white text-black border border-black'}`}>{totalPages}</button>);
+            pages.push(<button key={totalPages} onClick={() => setCurrentPage(totalPages)} className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-black text-white' : 'bg-white text-black border border-black'}`}>{totalPages}</button>);
         }
 
         return pages;
@@ -186,27 +197,31 @@ const VehicleManagement = () => {
 
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const currentVehicles = vehicleManagement.slice(startIndex, endIndex);
+    const currentVehicles = filteredBuses.slice(startIndex, endIndex);
+
+    const busesGrouped = React.useMemo(() => {
+        return currentVehicles.reduce((acc, bus) => {
+            const key = bus.TerminalName || bus.terminalName || 'Unknown';
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(bus);
+            return acc;
+        }, {});
+    }, [currentVehicles]);
 
     // Calculate total bus count (handle both array and object structures)
     const totalBusesCount = React.useMemo(() => {
-        if (!buses) return 0;
-        if (Array.isArray(buses)) {
-            return buses.length;
-        }
-        // If buses is an object grouped by terminal, sum all vehicles
-        if (typeof buses === 'object') {
-            return Object.values(buses).reduce((total, terminalBuses) => {
-                return total + (Array.isArray(terminalBuses) ? terminalBuses.length : 0);
-            }, 0);
-        }
-        return 0;
-    }, [buses]);
+        return normalizedBuses.length;
+    }, [normalizedBuses]);
 
     // Fetch buses from Redux on mount
     useEffect(() => {
         dispatch(fetchBuses());
+        dispatch(fetchTerminals());
     }, [dispatch]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedTerminal, toogle]);
     return (
         <MainLayout>
             {isNavigate ? (
@@ -264,9 +279,16 @@ const VehicleManagement = () => {
                                         className: "w-[150px] rounded-md shadow-lg bg-[#D2D2D2]",
                                     }}
                                 >
-                                    {["Terminal 1", "Terminal 2", "Terminal 3", "Terminal 4"].map((option) => (
-                                        <MenuItem key={option} onClick={handleClose} className="px-4 py-2 text-black bg-[#E0E0E0] hover:bg-[#BDBDBD]">
-                                            {option}
+                                    {terminalOptions.map((option) => (
+                                        <MenuItem
+                                            key={option.id}
+                                            onClick={() => {
+                                                setSelectedTerminal(option.name);
+                                                handleClose();
+                                            }}
+                                            className="px-4 py-2 text-black bg-[#E0E0E0] hover:bg-[#BDBDBD]"
+                                        >
+                                            {option.name}
                                         </MenuItem>
                                     ))}
                                 </Menu>
@@ -312,19 +334,23 @@ const VehicleManagement = () => {
                                 <Spinner className="h-8 w-8 text-[#C01824]" />
                                 <p className="mt-3 text-sm text-gray-500">Loading vehicles...</p>
                             </div>
-                        ) : (!buses || buses.length === 0) ? (
+                        ) : (filteredBuses.length === 0) ? (
                             <div className="flex flex-col items-center justify-center h-full w-full text-center text-gray-600 py-12">
-                                <p className="text-lg font-semibold">No vehicles found for this vendor.</p>
-                                <p className="text-sm mt-1">Use “Add Bus” to create the first vehicle.</p>
+                                <p className="text-lg font-semibold">No vehicles found.</p>
+                                <p className="text-sm mt-1">
+                                    {selectedTerminal === 'All Terminals'
+                                        ? 'Use "Add Bus" to create the first vehicle.'
+                                        : `No vehicles found for ${selectedTerminal}.`}
+                                </p>
                             </div>
                         ) : toogle ? (
-                            <div className={`flex flex-wrap justify-center gap-6 px-2 ${Array.isArray(buses) && buses.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
+                            <div className={`flex flex-wrap justify-center gap-6 px-2 ${currentVehicles.length > 8 ? "max-h-[500px] overflow-y-auto" : "overflow-y-hidden"}`}>
                                 {Object.keys(busesGrouped).map((terminal) => (
                                     <div key={terminal} className="mb-6">
                                         <Typography className="text-[16px] font-extrabold text-black mb-2">{terminal}</Typography>
                                         <div className="flex flex-wrap justify-center gap-6">
                                             {busesGrouped[terminal].map((vehicle) => (
-                                                <Card key={vehicle.id} className="w-[330px] h-[330px] shadow-2xl rounded-[16px] mt-4 overflow-hidden p-2 flex flex-col">
+                                                <Card key={vehicle.BusId || vehicle.id} className="w-[330px] h-[330px] shadow-2xl rounded-[16px] mt-4 overflow-hidden p-2 flex flex-col">
                                                     <div className="flex justify-end items-end px-3 py-2">
                                                         <div className="relative">
                                                             <BsThreeDots className="text-black cursor-pointer text-lg" onClick={(e) => handleMenuOpen(e, vehicle)} />
@@ -333,13 +359,19 @@ const VehicleManagement = () => {
                                                             </Menu>
                                                         </div>
                                                     </div>
-                                                    <img src={vehicle.vehiclImg} alt="card-image" className="w-full h-[140px] rounded-[8px] mx-auto" />
+                                                    <img
+                                                        src={vehicle.vehiclImg || '/src/assets/vechicelSvg.svg'}
+                                                        alt={vehicle.VehicleName || vehicle.vehicleName || "Vehicle"}
+                                                        className="w-full h-[140px] rounded-[8px] mx-auto object-cover"
+                                                    />
                                                     <CardBody className="flex-1 px-3 flex flex-col justify-between">
-                                                        <Typography className="mb-1 text-center font-extrabold text-[14px] text-black truncate">{vehicle.vehicleName}</Typography>
+                                                        <Typography className="mb-1 text-center font-extrabold text-[14px] text-black truncate">
+                                                            {vehicle.VehicleName || vehicle.vehicleName || "N/A"}
+                                                        </Typography>
                                                         <Typography className="text-center text-[12px] font-bold text-[#000] cursor-pointer">
                                                             Status:{" "}
-                                                            <span className={`text-[12px] font-semibold ${vehicle.vehicleStatus === "Defect Reported" ? "text-[#C01824]" : "text-[#147D2C]"}`}>
-                                                                {vehicle.vehicleStatus}
+                                                            <span className={`text-[12px] font-semibold ${(vehicle.vehicleStatus || vehicle.VehicleStatus) === "Defect Reported" ? "text-[#C01824]" : "text-[#147D2C]"}`}>
+                                                                {vehicle.vehicleStatus || vehicle.VehicleStatus || "Active"}
                                                             </span>
                                                         </Typography>
                                                     </CardBody>
@@ -371,8 +403,8 @@ const VehicleManagement = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {buses && buses.length > 0 ? (
-                                            buses.map((vehicle) => (
+                                        {currentVehicles.length > 0 ? (
+                                            currentVehicles.map((vehicle) => (
                                                 <tr key={vehicle.BusId} className="border-b">
                                                     <td className="p-4">
                                                         <img
@@ -382,7 +414,7 @@ const VehicleManagement = () => {
                                                         />
                                                     </td>
 
-                                                    <td className="p-4 font-medium">{vehicle.VehicleName || "N/A"}</td>
+                                                    <td className="p-4 font-medium">{vehicle.VehicleName || vehicle.vehicleName || "N/A"}</td>
 
                                                     <td className="p-4">{vehicle.TerminalName || vehicle.terminalName || "N/A"}</td>
 
@@ -444,7 +476,10 @@ const VehicleManagement = () => {
                             <div className="flex items-end justify-end space-x-2 w-[90%]">
                                 <span className="mr-2 text-black-700">Page</span>
                                 {renderPageNumbers()}
-                                <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                                <ChevronRightIcon
+                                    className={`w-5 h-5 ${currentPage < totalPages ? 'text-black cursor-pointer' : 'text-gray-400'}`}
+                                    onClick={() => currentPage < totalPages && setCurrentPage((prev) => prev + 1)}
+                                />
                             </div>
                         )}
                         <FilterModal open={open} onClose={() => setOpen(false)} />

@@ -106,9 +106,20 @@ export const createEmployee = createAsyncThunk(
       if (formData.drivingLicenses) data.append("drivingLicenses", formData.drivingLicenses);
       if (formData.certificates) data.append("certificates", formData.certificates);
       
+      const normalizedDob = formData.dateOfBirth
+        ? new Date(`${formData.dateOfBirth}T00:00:00.000Z`).toISOString()
+        : "";
+
+      const emergencyDigits = String(formData.emergencyContact || "")
+        .replace(/\D/g, "");
+
+      const normalizedEmergencyContact = emergencyDigits
+        ? String(Number(emergencyDigits))
+        : "";
+
       data.append("userId", userId);
       data.append("name", formData.name || "");
-      data.append("adress", formData.adress || "");
+      data.append("adress", formData.address || formData.adress || "");
       
       const cityValue = formData.city && !isNaN(Number(formData.city)) ? String(Math.floor(Number(formData.city))) : "0";
       data.append("city", cityValue);
@@ -116,17 +127,17 @@ export const createEmployee = createAsyncThunk(
       
       const stateIdValue = formData.stateId ? String(Math.floor(Number(formData.stateId))) : "0";
       data.append("stateId", stateIdValue);
-      data.append("dob", formData.dop || "");
+      data.append("dob", normalizedDob);
       data.append("joiningDate", formData.joiningDate || "");
       data.append("status", formData.status || "Active");
       
       const positionTypeValue = formData.positionType ? String(Math.floor(Number(formData.positionType))) : "";
       data.append("positionType", positionTypeValue);
       data.append("email", formData.email || "");
-      data.append("emergencyContact", formData.emergencyContact || "");
+      data.append("emergencyContact", normalizedEmergencyContact);
       data.append("payGrade", formData.payGrade || "");
       data.append("routeRate", formData.routeRate || "");
-      data.append("terminalAssigmedId", formData.terminalAssigmed || "");
+      data.append("terminalAssigmedId", formData.terminalAssigned || formData.terminalAssigmed || "");
       
       const fuelCardCodeValue = formData.fuelCardCode && !isNaN(Number(formData.fuelCardCode)) ? String(Math.floor(Number(formData.fuelCardCode))) : "0";
       data.append("fuelCardCode", fuelCardCodeValue);

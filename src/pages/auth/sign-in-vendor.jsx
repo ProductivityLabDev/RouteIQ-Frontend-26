@@ -10,6 +10,7 @@ import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import { Toaster, toast } from 'react-hot-toast';
 import authBg from '@/assets/authbg.png';
+import { setAuthTokens } from '@/configs';
 
 export function SignInVendor() {
   const [activeTab, setActiveTab] = useState('login');
@@ -98,7 +99,7 @@ export function SignInVendor() {
 
       const res = await axios.post(
         url,
-        { email, password },
+        { email, password, deviceType: "Web" },
         {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
@@ -113,6 +114,12 @@ export function SignInVendor() {
         res.data?.accessToken ||
         res.data?.data?.token;
 
+      const refreshToken =
+        res.data?.refresh_token ||
+        res.data?.refreshToken ||
+        res.data?.data?.refresh_token ||
+        null;
+
       if (!token) {
         setError("Token not found in response");
         setLoading(false);
@@ -121,7 +128,7 @@ export function SignInVendor() {
 
       // Store token in cookies and localStorage
       Cookies.set("token", token, { expires: 7, secure: true });
-      localStorage.setItem("token", token);
+      setAuthTokens(token, refreshToken);
 
       // Decode JWT token to get user info
       const decoded = jwtDecode(token);
