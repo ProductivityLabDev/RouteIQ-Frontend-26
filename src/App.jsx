@@ -39,6 +39,12 @@ import Accounting from "./pages/accounting/Accounting";
 import AccessManagement from "./pages/accessManagement/AccessManagement";
 import Documents from "./pages/auth/document/Documents";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
+import SuperAdminLayout from "./layouts/SuperAdminLayout";
+import SuperAdminProtectedRoute from "./protectedRoutesSuperAdmin";
+import SuperAdminSignIn from "./pages/superAdmin/SuperAdminSignIn";
+import SuperAdminDashboard from "./pages/superAdmin/SuperAdminDashboard";
+import SuperAdminVendorManagement from "./pages/superAdmin/SuperAdminVendorManagement";
+import SuperAdminSubAdmins from "./pages/superAdmin/SuperAdminSubAdmins";
 
 import ProtectedRoute from "./protectedRoutes";
 
@@ -60,6 +66,7 @@ function App() {
     <Routes>
       {/* ---------- PUBLIC ---------- */}
       <Route path="/sign-in-vendor" element={<SignInVendor />} />
+      <Route path="/super-admin/sign-in" element={<SuperAdminSignIn />} />
       <Route path="/account/*" element={<Auth />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/" element={<Navigate to="/account/sign-in" replace />} />
@@ -67,6 +74,14 @@ function App() {
       <Route path="/EmployeeDashboard/*" element={<EmployeeManagementRoutes />} />
 
       <Route path="/unauthorized/*" element={<Unauthorized />} />
+      <Route element={<SuperAdminProtectedRoute />}>
+        <Route path="/super-admin" element={<SuperAdminLayout />}>
+          <Route path="dashboard" element={<SuperAdminDashboard />} />
+          <Route path="vendors" element={<SuperAdminVendorManagement />} />
+          <Route path="sub-admins" element={<SuperAdminSubAdmins />} />
+          <Route index element={<Navigate to="/super-admin/dashboard" replace />} />
+        </Route>
+      </Route>
       {/* ---------- PRIVATE (GUARDED) ---------- */}
       <Route element={<ProtectedRoute />}>
       <Route path="/dashboard/*" element={<Dashboard />} />

@@ -11,9 +11,13 @@ import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import { BASE_URL, getApiUrl, getAxiosConfig, setAuthTokens } from '@/configs';
 
+const SECURITY_CODE_LENGTH = 6;
+const SECURITY_CODE_REFRESH_SECONDS = 60;
+
 export function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [securityText, setSecurityText] = useState(generateSecurityText());
+  const [securityTimer, setSecurityTimer] = useState(SECURITY_CODE_REFRESH_SECONDS);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [securityCode, setSecurityCode] = useState('');
@@ -53,26 +57,42 @@ export function SignIn() {
 
   const reloadSecurityText = () => {
     setSecurityText(generateSecurityText());
+    setSecurityCode('');
+    setSecurityTimer(SECURITY_CODE_REFRESH_SECONDS);
   };
 
   function generateSecurityText() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < SECURITY_CODE_LENGTH; i++) {
       result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     return result;
   }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setSecurityTimer((prev) => {
+        if (prev <= 1) {
+          setSecurityText(generateSecurityText());
+          setSecurityCode('');
+          return SECURITY_CODE_REFRESH_SECONDS;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
     // Validate security code
-    if (securityCode !== securityText) {
+    if (securityCode.trim().toLowerCase() !== securityText.toLowerCase()) {
       setError('Security code does not match. Please try again.');
-      setSecurityText(generateSecurityText());
-      setSecurityCode('');
+      reloadSecurityText();
       return;
     }
 
@@ -183,12 +203,14 @@ export function SignIn() {
         setError("Network error. Please check your connection and try again.");
       }
       // Reset security code on error
-      setSecurityText(generateSecurityText());
-      setSecurityCode('');
+      reloadSecurityText();
     } finally {
       setLoading(false);
     }
   };
+
+  const timerMinutes = String(Math.floor(securityTimer / 60)).padStart(2, '0');
+  const timerSeconds = String(securityTimer % 60).padStart(2, '0');
 
   const handleEmployeeLogin = () => {
     navigate("/EmployeeDashboard");
@@ -253,6 +275,18 @@ export function SignIn() {
               <Typography variant="small" className="-mb-3 text-[14px] font-medium text-[#2C2F32]">
                 Security Code
               </Typography>
+              <div className="flex items-center justify-between -mt-3">
+                <Typography className="text-xs text-[#6B7280]">
+                  Code refreshes in {timerMinutes}:{timerSeconds}
+                </Typography>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-[#C01824]"
+                  onClick={reloadSecurityText}
+                >
+                  Refresh Code
+                </button>
+              </div>
               <div className='flex gap-2 items-center'>
                 <input
                   required
@@ -271,6 +305,7 @@ export function SignIn() {
                     type="button"
                     className="flex items-center pr-1.5"
                     onClick={reloadSecurityText}
+                    title="Refresh security code"
                   >
                     <ArrowPathIcon className="h-4 w-4 text-black" />
                   </button>

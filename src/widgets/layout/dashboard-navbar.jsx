@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   Navbar,
@@ -49,6 +49,13 @@ export function DashboardNavbar({ user }) {
   const dispatchUser = useDispatch();
   const { user: loggedInUser } = useSelector((state) => state.user);
   const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0);
+  const superAdminVendorContext = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("superAdminVendorContext") || "null");
+    } catch (error) {
+      return null;
+    }
+  }, [pathname]);
 
 
   useEffect(() => {
@@ -63,18 +70,43 @@ export function DashboardNavbar({ user }) {
     navigate("/logout")
   };
 
+  const handleExitSuperAdminMode = () => {
+    localStorage.removeItem("superAdminVendorContext");
+    navigate("/super-admin/vendors");
+  };
+
   return (
-    <Navbar
-      color={fixedNavbar ? "white" : "transparent"}
-      className={`rounded-xl transition-all ${fixedNavbar
-        ? "sticky top-4 z-40 py-3 shadow-md shadow-blue-gray-500/5"
-        : "px-0 py-1"
-        }`}
-      fullWidth
-      blurred={fixedNavbar}
-    >
-      <div className="flex flex-col-reverse justify-between gap-6 md:flex-row md:items-center pt-2">
-        <div className="flex w-full justify-end space-x-5 items-center">
+    <>
+      {superAdminVendorContext?.active ? (
+        <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-[#f1c7cb] bg-[#fff2f3] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c01824]">
+              Super Admin Mode
+            </p>
+            <p className="truncate text-sm font-semibold text-[#171a2a] sm:pr-4">
+              Viewing Vendor Workspace: {superAdminVendorContext.vendorName}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleExitSuperAdminMode}
+            className="shrink-0 self-start rounded-xl bg-[#c01824] px-4 py-2 text-sm font-semibold text-white sm:self-auto"
+          >
+            Back to Super Admin
+          </button>
+        </div>
+      ) : null}
+      <Navbar
+        color={fixedNavbar ? "white" : "transparent"}
+        className={`rounded-xl transition-all ${fixedNavbar
+          ? "sticky top-4 z-40 py-3 shadow-md shadow-blue-gray-500/5"
+          : "px-0 py-1"
+          }`}
+        fullWidth
+        blurred={fixedNavbar}
+      >
+        <div className="flex flex-col-reverse justify-between gap-6 md:flex-row md:items-center pt-2">
+          <div className="flex w-full justify-end space-x-5 items-center">
           {/* {shouldDisplaySearchBar || user === 'vendor' && (
               <div className="mr-auto w-72 flex flex-row md:max-w-screen-3xl md:w-full  bg-white border ps-4 border-[#DCDCDC] rounded-[6px] items-center">
                 <CiSearch size={25} color='#787878' />
@@ -206,9 +238,10 @@ export function DashboardNavbar({ user }) {
                 </Link> */}
             </MenuList>
           </Menu>
+          </div>
         </div>
-      </div>
-    </Navbar>
+      </Navbar>
+    </>
   );
 }
 

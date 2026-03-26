@@ -90,6 +90,11 @@ export interface SchoolTrip {
   specialInstructions?: string;
 }
 
+export interface SchoolCostChartPoint {
+  month: string;
+  totalCost: number;
+}
+
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 export const schoolDashboardService = {
@@ -101,6 +106,16 @@ export const schoolDashboardService = {
   getAttendanceChart: async (params?: { type?: string; month?: number; year?: number }) => {
     const response = await apiClient.get("/school/dashboard/attendance-chart", { params });
     return { ok: true, data: response.data?.data ?? [] };
+  },
+
+  getCostChart: async (params?: { toggle?: "trips" | "routes"; year?: number }) => {
+    const response = await apiClient.get("/school/dashboard/chart", { params });
+    return {
+      ok: true,
+      toggle: response.data?.toggle ?? params?.toggle ?? "trips",
+      year: response.data?.year ?? params?.year ?? new Date().getFullYear(),
+      data: (response.data?.data ?? []) as SchoolCostChartPoint[],
+    };
   },
 
   getStudents: async () => {

@@ -94,6 +94,19 @@ export const fetchSchoolTrips = createAsyncThunk(
   }
 );
 
+export const fetchSchoolCostChart = createAsyncThunk(
+  "schoolDashboard/fetchCostChart",
+  async (params, { rejectWithValue }) => {
+    try {
+      const res = await schoolDashboardService.getCostChart(params);
+      return res;
+    } catch (error) {
+      const msg = error?.response?.data?.message;
+      return rejectWithValue(Array.isArray(msg) ? msg.join(", ") : msg || "Failed to fetch chart data");
+    }
+  }
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const initialState = {
@@ -109,6 +122,11 @@ const initialState = {
   announcements: [],
   announcementsTotal: 0,
   trips: [],
+  costChart: {
+    toggle: "trips",
+    year: new Date().getFullYear(),
+    data: [],
+  },
   loading: {
     dashboard: false,
     students: false,
@@ -117,6 +135,7 @@ const initialState = {
     buses: false,
     announcements: false,
     trips: false,
+    costChart: false,
   },
   error: {
     dashboard: null,
@@ -126,6 +145,7 @@ const initialState = {
     buses: null,
     announcements: null,
     trips: null,
+    costChart: null,
   },
 };
 
@@ -236,6 +256,24 @@ const schoolDashboardSlice = createSlice({
       .addCase(fetchSchoolTrips.rejected, (state, action) => {
         state.loading.trips = false;
         state.error.trips = action.payload;
+      })
+
+      // Cost chart
+      .addCase(fetchSchoolCostChart.pending, (state) => {
+        state.loading.costChart = true;
+        state.error.costChart = null;
+      })
+      .addCase(fetchSchoolCostChart.fulfilled, (state, action) => {
+        state.loading.costChart = false;
+        state.costChart = {
+          toggle: action.payload?.toggle ?? "trips",
+          year: action.payload?.year ?? new Date().getFullYear(),
+          data: action.payload?.data ?? [],
+        };
+      })
+      .addCase(fetchSchoolCostChart.rejected, (state, action) => {
+        state.loading.costChart = false;
+        state.error.costChart = action.payload;
       });
   },
 });

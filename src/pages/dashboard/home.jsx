@@ -2,28 +2,68 @@ import React, { useEffect } from "react";
 import { Typography, Card, Button, ButtonGroup } from "@material-tailwind/react";
 import { StatisticsCard } from "@/widgets/cards";
 import Chart from "react-apexcharts";
-import { menuItems } from "@/data";
 import { Link } from "react-router-dom";
 import StudentsTable from "@/components/StudentTable";
 import DriversTable from "@/components/DriverTable";
 import { chartConfig } from "@/configs";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchSchoolDashboard } from "@/redux/slices/schoolDashboardSlice";
+import { fetchSchoolCostChart, fetchSchoolDashboard } from "@/redux/slices/schoolDashboardSlice";
 import { useState } from "react";
 import { Menu, MenuHandler, MenuList, MenuItem } from "@material-tailwind/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export function Home() {
   const [openMenu, setOpenMenu] = useState(false);
-  const [selectedAttendance, setSelectedAttendance] = useState('Students');
+  const [selectedToggle, setSelectedToggle] = useState("trips");
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const dispatch = useDispatch();
-  const { dashboardStats, loading } = useSelector((s) => s.schoolDashboard);
+  const { dashboardStats, costChart, loading } = useSelector((s) => s.schoolDashboard);
 
   useEffect(() => {
     dispatch(fetchSchoolDashboard());
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(fetchSchoolCostChart({ toggle: selectedToggle, year: selectedYear }));
+  }, [dispatch, selectedToggle, selectedYear]);
+
   const isLoading = loading.dashboard;
+  const isChartLoading = loading.costChart;
+  const chartPoints = Array.isArray(costChart?.data) ? costChart.data : [];
+  const chartCategories = chartPoints.map((item) => item?.month || "--");
+  const chartValues = chartPoints.map((item) => Number(item?.totalCost || 0));
+  const availableYears = Array.from({ length: 5 }, (_, idx) => new Date().getFullYear() - idx);
+  const chartTitle = selectedToggle === "routes" ? "Total Routes Costs" : "Total Trips Costs";
+
+  const schoolCostChartConfig = {
+    ...chartConfig,
+    series: [
+      {
+        name: selectedToggle === "routes" ? "Route Cost" : "Trip Cost",
+        data: chartValues,
+      },
+    ],
+    options: {
+      ...chartConfig.options,
+      xaxis: {
+        ...chartConfig.options.xaxis,
+        categories: chartCategories.length > 0 ? chartCategories : chartConfig.options.xaxis.categories,
+      },
+      yaxis: {
+        ...chartConfig.options.yaxis,
+        labels: {
+          ...chartConfig.options.yaxis.labels,
+          formatter: (value) => `$${Number(value || 0).toLocaleString()}`,
+        },
+      },
+      tooltip: {
+        ...chartConfig.options.tooltip,
+        y: {
+          formatter: (value) => `$${Number(value || 0).toLocaleString()}`,
+        },
+      },
+    },
+  };
 
   const statsCards = [
     {
@@ -69,16 +109,19 @@ export function Home() {
             <div className="flex flex-col justify-between gap-4 rounded-none md:flex-row md:items-center border-b border-[#E4E5E7] pb-2 px-4 pt-3">
               <div className="flex md:flex-row flex-col md:space-x-8 md:items-center">
                 <Typography variant="h4" className="text-[20px] font-extrabold text-[#141516] w-[300px]">
-                  Total Trips Costs
+                  {chartTitle}
                 </Typography>
                 <ButtonGroup className="border border-[#E5E5E9] rounded-md outline-none !p-0" variant="text" size='lg'>
-                  {['Students', '# of trips / teacher'].map(attendance => (
+                  {[
+                    { label: "Trips", value: "trips" },
+                    { label: "Routes", value: "routes" },
+                  ].map((item) => (
                     <Button
-                      key={attendance}
-                      className={selectedAttendance === attendance ? 'bg-[#C01824] hover:bg-[#C01824]/80 px-6 py-2.5 text-white capitalize font-medium text-[12px]' : 'bg-white px-6 py-2.5 text-[12px] capitalize font-medium'}
-                      onClick={() => setSelectedAttendance(attendance)}
+                      key={item.value}
+                      className={selectedToggle === item.value ? 'bg-[#C01824] hover:bg-[#C01824]/80 px-6 py-2.5 text-white capitalize font-medium text-[12px]' : 'bg-white px-6 py-2.5 text-[12px] capitalize font-medium'}
+                      onClick={() => setSelectedToggle(item.value)}
                     >
-                      {attendance}
+                      {item.label}
                     </Button>
                   ))}
                 </ButtonGroup>
@@ -87,19 +130,16 @@ export function Home() {
                 <Menu className="p-0" open={openMenu} handler={setOpenMenu} allowHover>
                   <MenuHandler>
                     <Button variant="text" className="flex items-center gap-3 text-[14px] font-semibold text-[#0F2552] capitalize tracking-normal">
-                      Month
+                      {selectedYear}
                       <ChevronDownIcon strokeWidth={2.5} className={`h-3.5 w-3.5 transition-transform ${openMenu ? "rotate-180" : ""}`} />
                     </Button>
                   </MenuHandler>
                   <MenuList className="hidden w-[5rem] grid-cols-7 gap-3 overflow-visible lg:grid">
                     <ul className="col-span-7 flex w-full flex-col gap-1">
-                      {menuItems.map(({ title, description }) => (
-                        <Link to="#" key={title}>
-                          <MenuItem>
-                            <Typography variant="small">{title}</Typography>
-                            <Typography variant="small" color="gray" className="font-normal text-sm">{description}</Typography>
-                          </MenuItem>
-                        </Link>
+                      {availableYears.map((year) => (
+                        <MenuItem key={year} onClick={() => setSelectedYear(year)}>
+                          <Typography variant="small">{year}</Typography>
+                        </MenuItem>
                       ))}
                     </ul>
                   </MenuList>
@@ -107,7 +147,13 @@ export function Home() {
               </div>
             </div>
             <div className="px-2 pb-0">
-              <Chart {...chartConfig} />
+              {isChartLoading ? (
+                <div className="h-[225px] flex items-center justify-center text-sm text-gray-400">
+                  Loading chart...
+                </div>
+              ) : (
+                <Chart {...schoolCostChartConfig} />
+              )}
             </div>
           </Card>
         </div>
