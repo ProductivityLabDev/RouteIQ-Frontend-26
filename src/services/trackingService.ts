@@ -29,6 +29,99 @@ export interface VehicleTracking {
   instituteName?: string;
 }
 
+const pickFirst = <T,>(...values: T[]): T | undefined =>
+  values.find((value) => value !== undefined && value !== null);
+
+const toNumber = (value: any): number | undefined => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const normalizeCurrentLocation = (source: any): CurrentLocation | undefined => {
+  if (!source) return undefined;
+
+  const loc = source.currentLocation || source.CurrentLocation || source;
+  const latitude = toNumber(
+    pickFirst(
+      loc.latitude,
+      loc.Latitude,
+      source.latitude,
+      source.Latitude
+    )
+  );
+  const longitude = toNumber(
+    pickFirst(
+      loc.longitude,
+      loc.Longitude,
+      source.longitude,
+      source.Longitude
+    )
+  );
+
+  if (latitude === undefined || longitude === undefined) return undefined;
+
+  return {
+    latitude,
+    longitude,
+    speed: toNumber(pickFirst(loc.speed, loc.Speed, source.speed, source.Speed)) || 0,
+    heading:
+      toNumber(pickFirst(loc.heading, loc.Heading, source.heading, source.Heading)) || 0,
+    timestamp:
+      pickFirst(loc.timestamp, loc.Timestamp, source.timestamp, source.Timestamp, "") || "",
+  };
+};
+
+const normalizeVehicleTracking = (vehicle: any): VehicleTracking => {
+  const currentLocation = normalizeCurrentLocation(vehicle);
+  return {
+    vehicleId:
+      toNumber(pickFirst(vehicle.vehicleId, vehicle.VehicleId, vehicle.BusId, vehicle.id)) || 0,
+    vehicleName:
+      pickFirst(
+        vehicle.vehicleName,
+        vehicle.VehicleName,
+        vehicle.busName,
+        vehicle.name,
+        vehicle.Name,
+        "Unknown Vehicle"
+      ) || "Unknown Vehicle",
+    numberPlate:
+      pickFirst(
+        vehicle.numberPlate,
+        vehicle.NumberPlate,
+        vehicle.busNumber,
+        vehicle.registrationNumber,
+        "N/A"
+      ) || "N/A",
+    driverId:
+      toNumber(pickFirst(vehicle.driverId, vehicle.DriverId, vehicle.employeeId, vehicle.EmployeeId)) ||
+      0,
+    driverName:
+      pickFirst(
+        vehicle.driverName,
+        vehicle.DriverName,
+        vehicle.assignedDriverName,
+        vehicle.employeeName,
+        "Unknown Driver"
+      ) || "Unknown Driver",
+    routeId: toNumber(pickFirst(vehicle.routeId, vehicle.RouteId)),
+    routeName: pickFirst(vehicle.routeName, vehicle.RouteName),
+    currentLocation: currentLocation as CurrentLocation,
+    studentsOnBoard: toNumber(
+      pickFirst(vehicle.studentsOnBoard, vehicle.StudentsOnBoard, vehicle.onBoardCount)
+    ),
+    totalStudents: toNumber(
+      pickFirst(vehicle.totalStudents, vehicle.TotalStudents, vehicle.capacity)
+    ),
+    status:
+      pickFirst(vehicle.status, vehicle.Status, vehicle.tripStatus, vehicle.busStatus, "Unknown") ||
+      "Unknown",
+    instituteId: toNumber(pickFirst(vehicle.instituteId, vehicle.InstituteId, vehicle.schoolId)),
+    instituteName: pickFirst(vehicle.instituteName, vehicle.InstituteName, vehicle.schoolName),
+  };
+};
+
 export interface StudentOnBoard {
   studentId: number;
   studentName: string;
@@ -168,9 +261,10 @@ export const trackingService = {
     const url = `/tracking/vehicles/active${queryString ? `?${queryString}` : ""}`;
 
     const response = await apiClient.get(url);
+    const rawData = response.data?.data || response.data || [];
     return {
       ok: true,
-      data: response.data?.data || response.data || [],
+      data: Array.isArray(rawData) ? rawData.map(normalizeVehicleTracking) : [],
     };
   },
 
@@ -180,25 +274,37 @@ export const trackingService = {
    */
   getTerminalVehicles: async (terminalId: number): Promise<ApiResponse<VehicleTracking[]>> => {
     const response = await apiClient.get(`/tracking/terminals/${terminalId}/vehicles`);
+    const rawData = response.data?.data || response.data || [];
     return {
       ok: true,
-      data: response.data?.data || response.data || [],
+      data: Array.isArray(rawData) ? rawData.map(normalizeVehicleTracking) : [],
     };
   },
 
   /**
    * 4.6 Get School Vehicles Tracking (Vendor Only)
-   * GET /tracking/schools/:schoolId/vehicles
+   * School portal vehicles
+   * GET /school/buses
    */
   getSchoolVehicles: async (
     schoolId: number,
     terminalId?: number
   ): Promise<ApiResponse<VehicleTracking[]>> => {
-    const queryString = terminalId ? `?terminalId=${terminalId}` : "";
-    const response = await apiClient.get(`/tracking/schools/${schoolId}/vehicles${queryString}`);
+    const response = await apiClient.get(`/school/buses`);
+    const rawData = response.data?.data || response.data || [];
+    const normalized = Array.isArray(rawData) ? rawData.map(normalizeVehicleTracking) : [];
+    const filtered =
+      schoolId && normalized.some((item) => item.instituteId != null)
+        ? normalized.filter((item) => item.instituteId === schoolId)
+        : normalized;
+
     return {
       ok: true,
-      data: response.data?.data || response.data || [],
+      data: terminalId
+        ? filtered.filter((item) =>
+            toNumber((item as any).terminalId ?? (item as any).TerminalId) === terminalId
+          )
+        : filtered,
     };
   },
 

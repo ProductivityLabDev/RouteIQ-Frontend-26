@@ -95,7 +95,10 @@ const RealTimeTracking = () => {
     // ✅ Show ALL active vehicles when no terminal/school selected (default view)
     if (selectedInfo === 'Track School' && !selectedTab && !selectedSchool && allActiveVehicles.length > 0) {
       allActiveVehicles.forEach((vehicle) => {
-        if (vehicle.currentLocation?.latitude && vehicle.currentLocation?.longitude) {
+        if (
+          vehicle.currentLocation?.latitude != null &&
+          vehicle.currentLocation?.longitude != null
+        ) {
           addMarker({
             id: `all-vehicle-${vehicle.vehicleId}`,
             position: {
@@ -114,7 +117,10 @@ const RealTimeTracking = () => {
     // Terminal vehicles markers
     if (selectedTab && terminalVehicles.length > 0) {
       terminalVehicles.forEach((vehicle) => {
-        if (vehicle.currentLocation?.latitude && vehicle.currentLocation?.longitude) {
+        if (
+          vehicle.currentLocation?.latitude != null &&
+          vehicle.currentLocation?.longitude != null
+        ) {
           addMarker({
             id: `vehicle-${vehicle.vehicleId}`,
             position: {
@@ -133,7 +139,10 @@ const RealTimeTracking = () => {
     // School vehicles markers
     if (selectedSchool?.instituteId && schoolVehicles.length > 0) {
       schoolVehicles.forEach((vehicle) => {
-        if (vehicle.currentLocation?.latitude && vehicle.currentLocation?.longitude) {
+        if (
+          vehicle.currentLocation?.latitude != null &&
+          vehicle.currentLocation?.longitude != null
+        ) {
           addMarker({
             id: `school-vehicle-${vehicle.vehicleId}`,
             position: {
@@ -152,7 +161,10 @@ const RealTimeTracking = () => {
     // Active drivers markers (Track Drivers mode)
     if (selectedInfo === 'Track Drivers' && activeDrivers.length > 0) {
       activeDrivers.forEach((driver) => {
-        if (driver.currentLocation?.latitude && driver.currentLocation?.longitude) {
+        if (
+          driver.currentLocation?.latitude != null &&
+          driver.currentLocation?.longitude != null
+        ) {
           addMarker({
             id: `driver-${driver.driverId}`,
             position: {
@@ -161,7 +173,7 @@ const RealTimeTracking = () => {
             },
             title: `${driver.name} - ${driver.busNo}`,
             type: 'driver',
-            status: driver.currentLocation?.Status || 'Unknown',
+            status: driver.status || 'Unknown',
             vehicleData: driver,
           });
         }
