@@ -72,9 +72,6 @@ const validate = (name, value) => {
 			if (str && (isNaN(parseFloat(str)) || parseFloat(str) < 0))
 				return 'Must be a positive number';
 			break;
-		case 'driver':
-			if (!value) return 'Please select a driver';
-			break;
 		case 'fuelType':
 			if (!value) return 'Please select a fuel type';
 			break;
@@ -98,7 +95,7 @@ const validate = (name, value) => {
 const REQUIRED_FIELDS = [
 	'vehicleName', 'busType', 'numberPlate', 'modelYear',
 	'serviceInterval', 'fuelTankSize', 'vehicleMake', 'noOfPassenger',
-	'vinNo', 'driver', 'fuelType', 'assignedTerminal', 'expiredDate',
+	'vinNo', 'fuelType', 'assignedTerminal', 'expiredDate',
 ];
 
 const INITIAL_FORM = {
@@ -339,13 +336,13 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 						/>
 					</Field>
 
-					<Field label="Assigned Driver" required error={errors.driver} touched={touched.driver}>
+					<Field label="Assigned Driver" error={errors.driver} touched={touched.driver}>
 						<select
 							name="driver" value={formData.driver}
 							onChange={handleChange} onBlur={handleBlur}
 							className={inputClass(errors.driver, touched.driver)}
 						>
-							<option value="">Select driver</option>
+							<option value="">Select driver (optional)</option>
 							{loading.drivers ? (
 								<option disabled>Loading...</option>
 							) : drivers.length > 0 ? (
@@ -409,7 +406,7 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 						</select>
 					</Field>
 
-					<Field label="Expiration Date" required error={errors.expiredDate} touched={touched.expiredDate}>
+					<Field label="Permit Expiration Date" required error={errors.expiredDate} touched={touched.expiredDate}>
 						<input
 							type="date" name="expiredDate" value={formData.expiredDate}
 							onChange={handleChange} onBlur={handleBlur}

@@ -5,35 +5,29 @@ export default function SuperAdminProtectedRoute() {
   const location = useLocation();
   const rawSession = localStorage.getItem("superAdminSession");
 
+  const redirectToSignIn = () => (
+    <Navigate
+      to="/super-admin/sign-in"
+      replace
+      state={{ from: location.pathname }}
+    />
+  );
+
   if (!rawSession) {
-    return (
-      <Navigate
-        to="/super-admin/sign-in"
-        replace
-        state={{ from: location.pathname }}
-      />
-    );
+    return redirectToSignIn();
   }
 
   try {
     const session = JSON.parse(rawSession);
-    if (!session?.active) {
-      return (
-        <Navigate
-          to="/super-admin/sign-in"
-          replace
-          state={{ from: location.pathname }}
-        />
-      );
+    const role = String(session?.role || "").toUpperCase();
+    if (
+      !session?.active ||
+      (role !== "SUPER_ADMIN" && role !== "SUB_ADMIN")
+    ) {
+      return redirectToSignIn();
     }
   } catch (error) {
-    return (
-      <Navigate
-        to="/super-admin/sign-in"
-        replace
-        state={{ from: location.pathname }}
-      />
-    );
+    return redirectToSignIn();
   }
 
   return <Outlet />;

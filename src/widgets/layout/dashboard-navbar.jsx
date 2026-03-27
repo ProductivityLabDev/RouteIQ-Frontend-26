@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useLocation, Link, useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
 import {
   Navbar,
   Typography,
@@ -18,6 +19,7 @@ import {
   useMaterialTailwindController,
   setOpenSidenav,
 } from "@/context";
+import { setAuthTokens } from "@/configs";
 import { chevroncircleicon, GrNotification, PiChatCircleTextBold, profileavatar } from '@/assets';
 import { FiSearch } from 'react-icons/fi'
 import { useDispatch, useSelector } from "react-redux";
@@ -71,6 +73,17 @@ export function DashboardNavbar({ user }) {
   };
 
   const handleExitSuperAdminMode = () => {
+    try {
+      const originalAuth = JSON.parse(localStorage.getItem("superAdminOriginalAuth") || "null");
+      if (originalAuth?.token) {
+        setAuthTokens(originalAuth.token, originalAuth.refreshToken ?? null);
+        Cookies.set("token", originalAuth.token, { expires: 7, secure: true });
+      }
+    } catch (error) {
+      // Ignore malformed local storage payloads and continue exiting.
+    }
+
+    localStorage.removeItem("superAdminOriginalAuth");
     localStorage.removeItem("superAdminVendorContext");
     navigate("/super-admin/vendors");
   };

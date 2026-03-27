@@ -37,7 +37,9 @@ export const setAuthTokens = (
   refreshToken?: string | null
 ): void => {
   localStorage.setItem("token", accessToken);
-  if (refreshToken) {
+  if (refreshToken === null) {
+    localStorage.removeItem("refreshToken");
+  } else if (refreshToken) {
     localStorage.setItem("refreshToken", refreshToken);
   }
 };

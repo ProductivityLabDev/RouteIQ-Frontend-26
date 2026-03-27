@@ -37,9 +37,6 @@ import {
   ViewMap,
 } from "@/assets";
 
-import { tripsData } from "@/data";
-import { busTrips } from "@/data/dummyData";
-
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { createTerminal } from "@/redux/slices/busesSlice";
 import {
@@ -50,6 +47,7 @@ import {
   fetchRouteDetails,
 } from "@/redux/slices/routesSlice";
 import { fetchStates, fetchCities } from "@/redux/slices/employeSlices";
+import { routeSchedulingService } from "@/services/routeSchedulingService";
 
 const INITIAL_TERMINAL_FORM = {
   name: "",
@@ -95,6 +93,8 @@ const RouteManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [isOpen, setIsOpen] = useState(null);
+  const [tripsByTerminal, setTripsByTerminal] = useState({});
+  const [tripsLoadingByTerminal, setTripsLoadingByTerminal] = useState({});
 
   // Add terminal modal
   const [isAddTerminalModalOpen, setIsAddTerminalModalOpen] = useState(false);
@@ -208,6 +208,33 @@ const RouteManagement = () => {
     route?.routeid ??
     route?.id ??
     route?.ID;
+
+  useEffect(() => {
+    if (selectedTab !== "Trip Planner" || isOpen === null) return;
+
+    const terminal = displayedTerminals[isOpen];
+    const terminalId = terminal?.terminalId;
+    if (!terminalId || tripsByTerminal[terminalId] || tripsLoadingByTerminal[terminalId]) return;
+
+    const loadTrips = async () => {
+      try {
+        setTripsLoadingByTerminal((prev) => ({ ...prev, [terminalId]: true }));
+        const response = await routeSchedulingService.getTripsByTerminal(terminalId);
+        if (response.ok) {
+          setTripsByTerminal((prev) => ({ ...prev, [terminalId]: response.data || [] }));
+        } else {
+          setTripsByTerminal((prev) => ({ ...prev, [terminalId]: [] }));
+        }
+      } catch (error) {
+        setTripsByTerminal((prev) => ({ ...prev, [terminalId]: [] }));
+        toast.error("Failed to load trips");
+      } finally {
+        setTripsLoadingByTerminal((prev) => ({ ...prev, [terminalId]: false }));
+      }
+    };
+
+    loadTrips();
+  }, [selectedTab, isOpen, displayedTerminals, tripsByTerminal, tripsLoadingByTerminal]);
 
   // ---------------------------
   // ✅ OPEN MAP SCREEN (ROUTE MAP)
@@ -604,6 +631,12 @@ const RouteManagement = () => {
                   {isOpen === index && (
                     selectedTab === "Trip Planner" ? (
                       <div className="w-full">
+                        {(() => {
+                          const terminalTrips = tripsByTerminal[terminal.terminalId] || [];
+                          const isTripsLoading = !!tripsLoadingByTerminal[terminal.terminalId];
+
+                          return (
+                            <>
                         {/* ✅ your Trip Planner UI — keep as is */}
                         {/* IMPORTANT FIX: View Map click must pass route/trip */}
                         {humburgerBar ? (
@@ -612,7 +645,7 @@ const RouteManagement = () => {
                               <table className="w-full border-collapse">
                                 <thead>{/* your headers */}</thead>
                                 <tbody>
-                                  {busTrips?.map((trip) => (
+                                  {terminalTrips?.map((trip) => (
                                     <tr key={trip.id} className="border-t border-gray-200 hover:bg-gray-50">
                                       {/* ... your cells */}
                                       <td
@@ -631,15 +664,21 @@ const RouteManagement = () => {
                               </table>
                             </div>
                           </div>
+                        ) : isTripsLoading ? (
+                          <div className="flex justify-center py-8">
+                            <Spinner className="h-8 w-8 text-[#C01824]" />
+                          </div>
+                        ) : terminalTrips.length === 0 ? (
+                          <div className="px-4 py-8 text-center text-gray-500">
+                            No trips found for this terminal.
+                          </div>
                         ) : (
                           <div className="flex flex-wrap gap-2 justify-evenly">
-                            {tripsData
-                              .filter((card) => card.status === "Approved")
-                              .map((trip, idx) => (
+                            {terminalTrips.map((trip, idx) => (
                                 <VendorApprovedCard
                                   key={idx}
                                   trip={trip}
-                                  trips={tripsData}
+                                  trips={terminalTrips}
                                   onEditClick={hanldeEditModal}
                                   selectedTab={selectedTab}
                                   handleMapScreenClick={handleMapScreenClick} // ✅ ensure card calls with route obj
@@ -648,6 +687,9 @@ const RouteManagement = () => {
                               ))}
                           </div>
                         )}
+                            </>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div className="w-full bg-white border-t border-gray-200 shadow-sm">

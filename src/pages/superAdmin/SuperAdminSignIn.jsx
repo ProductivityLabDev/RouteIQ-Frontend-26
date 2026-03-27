@@ -1,15 +1,21 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+import Cookies from "js-cookie";
+import { Toaster, toast } from "react-hot-toast";
 import authBg from "@/assets/authbg.png";
+import { BASE_URL, clearAuthTokens, setAuthTokens } from "@/configs";
 
 export default function SuperAdminSignIn() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState("superadmin@routeiq.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
@@ -18,22 +24,84 @@ export default function SuperAdminSignIn() {
       return;
     }
 
-    localStorage.setItem(
-      "superAdminSession",
-      JSON.stringify({
-        active: true,
-        email: email.trim(),
-        role: "SUPER_ADMIN",
-        signedInAt: new Date().toISOString(),
-      })
-    );
+    try {
+      setLoading(true);
 
-    const nextPath = location.state?.from || "/super-admin/dashboard";
-    navigate(nextPath, { replace: true });
+      const response = await axios.post(
+        `${BASE_URL}/auth/login`,
+        {
+          email: email.trim(),
+          password,
+          deviceType: "Web",
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
+      );
+
+      const token =
+        response.data?.token ||
+        response.data?.access_token ||
+        response.data?.accessToken ||
+        response.data?.data?.token;
+
+      const refreshToken =
+        response.data?.refresh_token ||
+        response.data?.refreshToken ||
+        response.data?.data?.refresh_token ||
+        null;
+
+      if (!token) {
+        throw new Error("Access token not found in response");
+      }
+
+      const decoded = jwtDecode(token);
+      const role = String(decoded?.role || "").toUpperCase();
+
+      if (role !== "SUPER_ADMIN" && role !== "SUB_ADMIN") {
+        clearAuthTokens();
+        localStorage.removeItem("superAdminSession");
+        throw new Error("This account does not have super admin or sub admin access.");
+      }
+
+      setAuthTokens(token, refreshToken);
+      Cookies.set("token", token, { expires: 7, secure: true });
+      localStorage.setItem(
+        "superAdminSession",
+        JSON.stringify({
+          active: true,
+          email: decoded?.email || email.trim(),
+          role,
+          responsibilities: decoded?.responsibilities ?? [],
+          allowedModules: decoded?.allowedModules ?? null,
+          signedInAt: new Date().toISOString(),
+        })
+      );
+
+      toast.success(
+        role === "SUB_ADMIN"
+          ? "Sub admin logged in successfully"
+          : "Super admin logged in successfully"
+      );
+      const defaultPath = role === "SUB_ADMIN" ? "/super-admin/vendors" : "/super-admin/dashboard";
+      const nextPath = location.state?.from || defaultPath;
+      navigate(nextPath, { replace: true });
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to sign in as super admin";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f5ef] px-4">
+      <Toaster position="top-right" reverseOrder={false} toastOptions={{ duration: 3000 }} />
       <div
         className="absolute inset-0 bg-cover bg-center opacity-20"
         style={{ backgroundImage: `url(${authBg})` }}
@@ -59,7 +127,7 @@ export default function SuperAdminSignIn() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
-              placeholder="superadmin@routeiq.com"
+              placeholder="Enter super admin email"
             />
           </div>
 
@@ -80,9 +148,10 @@ export default function SuperAdminSignIn() {
 
           <button
             type="submit"
+            disabled={loading}
             className="w-full rounded-2xl bg-[#c01824] px-4 py-3 text-base font-semibold text-white transition hover:bg-[#a61520]"
           >
-            Continue to Super Admin
+            {loading ? "Signing In..." : "Continue to Super Admin"}
           </button>
         </form>
       </div>

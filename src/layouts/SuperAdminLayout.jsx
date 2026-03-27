@@ -1,5 +1,8 @@
 import React from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import Cookies from "js-cookie";
+import { clearAuthTokens } from "@/configs";
 import {
   ChartBarIcon,
   ArrowRightOnRectangleIcon,
@@ -13,16 +16,19 @@ const navItems = [
     label: "Dashboard",
     path: "/super-admin/dashboard",
     icon: ChartBarIcon,
+    roles: ["SUPER_ADMIN"],
   },
   {
     label: "Vendor Management",
     path: "/super-admin/vendors",
     icon: BuildingOffice2Icon,
+    roles: ["SUPER_ADMIN", "SUB_ADMIN"],
   },
   {
     label: "Sub Admin Management",
     path: "/super-admin/sub-admins",
     icon: UserPlusIcon,
+    roles: ["SUPER_ADMIN"],
   },
 ];
 
@@ -30,10 +36,15 @@ export default function SuperAdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const session = JSON.parse(localStorage.getItem("superAdminSession") || "{}");
+  const currentRole = String(session?.role || "").toUpperCase();
+  const visibleNavItems = navItems.filter((item) => item.roles.includes(currentRole));
 
   const handleLogout = () => {
+    clearAuthTokens();
+    Cookies.remove("token");
     localStorage.removeItem("superAdminSession");
     localStorage.removeItem("superAdminVendorContext");
+    localStorage.removeItem("superAdminOriginalAuth");
     navigate("/super-admin/sign-in");
   };
 
@@ -53,7 +64,7 @@ export default function SuperAdminLayout() {
         </div>
 
         <nav className="space-y-3">
-          {navItems.map(({ label, path, icon: Icon }) => (
+          {visibleNavItems.map(({ label, path, icon: Icon }) => (
             <NavLink
               key={path}
               to={path}
@@ -82,6 +93,7 @@ export default function SuperAdminLayout() {
       </div>
 
       <div className="ml-72 min-h-screen p-6">
+        <Toaster position="top-right" reverseOrder={false} toastOptions={{ duration: 3000 }} />
         <div className="mb-6 flex items-center justify-between rounded-3xl border border-[#ebe6da] bg-white px-6 py-4 shadow-sm">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#8e8a80]">
@@ -99,6 +111,9 @@ export default function SuperAdminLayout() {
             <p className="text-sm text-[#7c7a73]">Signed in as</p>
             <p className="text-base font-semibold text-[#171a2a]">
               {session?.email || "superadmin@routeiq.com"}
+            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e8a80]">
+              {currentRole || "SUPER_ADMIN"}
             </p>
           </div>
         </div>

@@ -1,31 +1,6 @@
-import React, { useMemo, useState } from "react";
-
-const initialSubAdmins = [
-  {
-    id: 1,
-    name: "Sarah Khan",
-    email: "accounts.admin@routeiq.com",
-    role: "Accounts Admin",
-    responsibilities: ["Accounting", "Invoices", "Financial Reports"],
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Daniel Brooks",
-    email: "operations.admin@routeiq.com",
-    role: "Operations Admin",
-    responsibilities: ["Vendors", "Schools", "Routes", "Vehicles"],
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Maria Joseph",
-    email: "support.admin@routeiq.com",
-    role: "Support Admin",
-    responsibilities: ["Feedback", "Complaints", "Support Chats"],
-    status: "Inactive",
-  },
-];
+import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
+import { superAdminService } from "@/services/superAdminService";
 
 const responsibilityOptions = [
   "Accounting",
@@ -51,15 +26,33 @@ const roleOptions = [
 ];
 
 export default function SuperAdminSubAdmins() {
-  const [subAdmins, setSubAdmins] = useState(initialSubAdmins);
+  const [subAdmins, setSubAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
     role: roleOptions[0],
     responsibilities: ["Accounting"],
   });
+
+  const loadSubAdmins = async () => {
+    try {
+      setLoading(true);
+      const rows = await superAdminService.getSubAdmins();
+      setSubAdmins(rows);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to load sub admins");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSubAdmins();
+  }, []);
 
   const filteredSubAdmins = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -86,42 +79,47 @@ export default function SuperAdminSubAdmins() {
     });
   };
 
-  const handleCreate = (event) => {
+  const handleCreate = async (event) => {
     event.preventDefault();
-    if (!form.name.trim() || !form.email.trim()) return;
+    if (!form.name.trim() || !form.email.trim()) {
+      toast.error("Name and email are required");
+      return;
+    }
 
-    setSubAdmins((prev) => [
-      {
-        id: Date.now(),
+    try {
+      setSaving(true);
+      await superAdminService.createSubAdmin({
         name: form.name.trim(),
         email: form.email.trim(),
         role: form.role,
         responsibilities: form.responsibilities,
-        status: "Active",
-      },
-      ...prev,
-    ]);
-
-    setForm({
-      name: "",
-      email: "",
-      role: roleOptions[0],
-      responsibilities: ["Accounting"],
-    });
-    setShowForm(false);
+      });
+      toast.success("Sub admin created successfully");
+      setForm({
+        name: "",
+        email: "",
+        role: roleOptions[0],
+        responsibilities: ["Accounting"],
+      });
+      setShowForm(false);
+      await loadSubAdmins();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to create sub admin");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const toggleStatus = (id) => {
-    setSubAdmins((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: item.status === "Active" ? "Inactive" : "Active",
-            }
-          : item
-      )
-    );
+  const toggleStatus = async (item) => {
+    const nextIsActive = String(item.status).toLowerCase() !== "active";
+
+    try {
+      await superAdminService.updateSubAdminStatus(item.id, nextIsActive);
+      toast.success(`Sub admin ${nextIsActive ? "activated" : "deactivated"}`);
+      await loadSubAdmins();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to update sub admin status");
+    }
   };
 
   return (
@@ -223,9 +221,10 @@ export default function SuperAdminSubAdmins() {
           <div className="mt-6 flex justify-end">
             <button
               type="submit"
-              className="rounded-2xl bg-[#c01824] px-6 py-3 font-semibold text-white transition hover:bg-[#a61520]"
+              disabled={saving}
+              className="rounded-2xl bg-[#c01824] px-6 py-3 font-semibold text-white transition hover:bg-[#a61520] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Create Sub Admin
+              {saving ? "Creating..." : "Create Sub Admin"}
             </button>
           </div>
         </form>
@@ -261,41 +260,63 @@ export default function SuperAdminSubAdmins() {
               </tr>
             </thead>
             <tbody>
-              {filteredSubAdmins.map((item) => (
-                <tr key={item.id} className="border-t border-[#eee9df] align-top">
-                  <td className="px-6 py-4 font-semibold text-[#171a2a]">{item.name}</td>
-                  <td className="px-6 py-4 text-[#171a2a]">{item.email}</td>
-                  <td className="px-6 py-4 text-[#171a2a]">{item.role}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex max-w-md flex-wrap gap-2">
-                      {item.responsibilities.map((responsibility) => (
-                        <span
-                          key={responsibility}
-                          className="rounded-full bg-[#fff2f3] px-3 py-1 text-xs font-semibold text-[#c01824]"
-                        >
-                          {responsibility}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td
-                    className={`px-6 py-4 font-semibold ${
-                      item.status === "Active" ? "text-[#2ca44f]" : "text-[#c01824]"
-                    }`}
-                  >
-                    {item.status}
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      type="button"
-                      onClick={() => toggleStatus(item.id)}
-                      className="rounded-xl border border-[#c01824] px-4 py-2 text-sm font-semibold text-[#c01824] transition hover:bg-[#fff2f3]"
-                    >
-                      {item.status === "Active" ? "Deactivate" : "Activate"}
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-[#6f7280]">
+                    Loading sub admins...
                   </td>
                 </tr>
-              ))}
+              ) : filteredSubAdmins.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-[#6f7280]">
+                    No sub admins found.
+                  </td>
+                </tr>
+              ) : (
+                filteredSubAdmins.map((item) => (
+                  <tr key={item.id} className="border-t border-[#eee9df] align-top">
+                    <td className="px-6 py-4 font-semibold text-[#171a2a]">{item.name}</td>
+                    <td className="px-6 py-4 text-[#171a2a]">{item.email}</td>
+                    <td className="px-6 py-4 text-[#171a2a]">{item.role}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex max-w-md flex-wrap gap-2">
+                        {item.responsibilities.length ? (
+                          item.responsibilities.map((responsibility) => (
+                            <span
+                              key={responsibility}
+                              className="rounded-full bg-[#fff2f3] px-3 py-1 text-xs font-semibold text-[#c01824]"
+                            >
+                              {responsibility}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-[#6f7280]">No responsibilities</span>
+                        )}
+                      </div>
+                    </td>
+                    <td
+                      className={`px-6 py-4 font-semibold ${
+                        String(item.status).toLowerCase() === "active"
+                          ? "text-[#2ca44f]"
+                          : "text-[#c01824]"
+                      }`}
+                    >
+                      {item.status}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => toggleStatus(item)}
+                        className="rounded-xl border border-[#c01824] px-4 py-2 text-sm font-semibold text-[#c01824] transition hover:bg-[#fff2f3]"
+                      >
+                        {String(item.status).toLowerCase() === "active"
+                          ? "Deactivate"
+                          : "Activate"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

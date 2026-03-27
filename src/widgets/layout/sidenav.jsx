@@ -8,14 +8,54 @@ import {
 import { useMaterialTailwindController, setOpenSidenav } from "@/context";
 import { sidenavRoutes, bottomRoutes } from "@/routes";
 import { logo } from "@/assets";
+import { useSelector } from "react-redux";
 
 export function Sidenav() {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavType, openSidenav } = controller;
+  const { user } = useSelector((state) => state.user);
+  const userModules = user?.modules || {};
+  const userModuleKeys = Object.keys(userModules);
   const sidenavTypes = {
     dark: "bg-gradient-to-br from-gray-800 to-gray-900",
     white: "bg-white shadow-sm",
     transparent: "bg-transparent",
+  };
+
+  const findModuleAccess = (moduleKey) => {
+    if (!moduleKey) return null;
+
+    const normalized = moduleKey.toUpperCase();
+    let access = userModules[normalized];
+    if (access) return access;
+
+    let foundKey = userModuleKeys.find((key) => key.toUpperCase() === normalized);
+
+    if (!foundKey) {
+      const variants = [normalized];
+      if (!normalized.endsWith("S")) {
+        variants.push(`${normalized}S`);
+      } else {
+        variants.push(normalized.slice(0, -1));
+      }
+
+      foundKey = userModuleKeys.find((key) => variants.includes(key.toUpperCase()));
+    }
+
+    if (foundKey) {
+      return userModules[foundKey];
+    }
+
+    return null;
+  };
+
+  const canShowPage = (page) => {
+    if (!page.modules || page.modules.length === 0) return true;
+
+    return page.modules.some((moduleKey) => {
+      const access = findModuleAccess(moduleKey);
+      return access?.canRead === true;
+    });
   };
 
   return (
@@ -52,7 +92,7 @@ export function Sidenav() {
                 </Typography>
               </li>
             )}
-            {pages.map(({ icon, name, path }) => (
+            {pages.filter(canShowPage).map(({ icon, name, path }) => (
               <li key={name}>
                 <NavLink to={`/${layout}${path}`}>
                   {({ isActive }) => (
