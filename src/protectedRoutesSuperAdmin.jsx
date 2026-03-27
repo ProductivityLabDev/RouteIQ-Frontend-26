@@ -1,5 +1,7 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+import { getAuthToken } from "@/configs";
 
 export default function SuperAdminProtectedRoute() {
   const location = useLocation();
@@ -20,11 +22,23 @@ export default function SuperAdminProtectedRoute() {
   try {
     const session = JSON.parse(rawSession);
     const role = String(session?.role || "").toUpperCase();
+
     if (
       !session?.active ||
       (role !== "SUPER_ADMIN" && role !== "SUB_ADMIN")
     ) {
       return redirectToSignIn();
+    }
+
+    // Validate token expiration
+    const token = getAuthToken();
+    if (token) {
+      const decoded = jwtDecode(token);
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (decoded.exp && decoded.exp < currentTime) {
+        localStorage.removeItem("superAdminSession");
+        return redirectToSignIn();
+      }
     }
   } catch (error) {
     return redirectToSignIn();

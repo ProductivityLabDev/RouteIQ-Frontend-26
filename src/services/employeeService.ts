@@ -378,6 +378,26 @@ export const employeeService = {
     };
   },
 
+  getEmployeeById: async (employeeId: number): Promise<ApiResponse<any>> => {
+    const response = await apiClient.get(`/institute/employee/${employeeId}`);
+    return {
+      ok: true,
+      data: response.data?.data ?? response.data,
+    };
+  },
+
+  updateEmployee: async (employeeId: number, data: FormData): Promise<ApiResponse<any>> => {
+    const response = await apiClient.patch(`/institute/employee/${employeeId}`, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return {
+      ok: true,
+      data: response.data,
+    };
+  },
+
   getEmployees: async (userId: number): Promise<ApiResponse<any[]>> => {
     const response = await apiClient.get(`/institute/GetEmployeeInfo/${userId}`);
     return {

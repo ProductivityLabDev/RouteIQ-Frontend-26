@@ -44,9 +44,9 @@ const AvailabilityBadge = ({ availability }) => {
 
 // ── Detail row in the "View Details" modal ──────────────────────────────────
 const DetailRow = ({ label, value }) => (
-  <div className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
-    <span className="w-44 text-xs font-semibold text-gray-500 shrink-0">{label}</span>
-    <span className="text-xs text-gray-800 break-all">{value || 'N/A'}</span>
+  <div className="grid grid-cols-[120px_1fr] gap-3 rounded-xl border border-[#f0ede6] bg-[#fcfbf8] px-3 py-2.5">
+    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a9488]">{label}</span>
+    <span className="text-sm font-medium text-[#2c2f32] break-words">{value || 'N/A'}</span>
   </div>
 );
 
@@ -169,7 +169,7 @@ const EmployeeManagement = () => {
       ) : addEmployee ? (
         <AddDriver handleCancel={() => { setAddEmployee(false); fetchEmployees(); }} />
       ) : editEmployee ? (
-        <EditDriver handleCancel={() => setEditEmployee(false)} />
+        <EditDriver employee={menuEmployee} handleCancel={() => setEditEmployee(false)} onSaved={fetchEmployees} />
       ) : (
         <div className="bg-white w-full rounded border shadow-sm min-h-[60vh] flex flex-col">
           {loading ? (
@@ -216,7 +216,7 @@ const EmployeeManagement = () => {
                             <span className="font-medium text-gray-800 whitespace-nowrap">{emp.Name || 'N/A'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{emp.Title || '—'}</td>
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{emp.DesignationName || emp.Title || '—'}</td>
                         <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{emp.Phone || '—'}</td>
                         <td className="px-4 py-3 text-gray-700 whitespace-nowrap max-w-[180px] truncate" title={emp.Email}>{emp.Email || '—'}</td>
                         <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{emp.TerminalName || '—'}</td>
@@ -279,7 +279,7 @@ const EmployeeManagement = () => {
           style={{ top: menuAnchor.top, left: menuAnchor.left }}
         >
           <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50" onClick={() => { setViewEmployee(menuEmployee); setMenuAnchor(null); }}>View Details</button>
-          <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50" onClick={() => { setEditEmployee(true); setMenuAnchor(null); }}>Edit</button>
+          <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50" onClick={() => { setEditEmployee(true); setMenuEmployee(menuEmployee); setMenuAnchor(null); }}>Edit</button>
           <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50" onClick={() => { setShowLicense(true); setMenuAnchor(null); }}>License Copy</button>
           <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50" onClick={() => { setShowInfraction(true); setMenuAnchor(null); }}>Infraction</button>
         </div>
@@ -287,49 +287,80 @@ const EmployeeManagement = () => {
 
       {/* ── View Details modal ─────────────────────────────────────────── */}
       {viewEmployee && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewEmployee(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]" onClick={() => setViewEmployee(null)}>
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[24px] border border-[#efe8dd] bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center gap-4 p-6 border-b">
+            <div className="flex items-start gap-4 border-b border-[#eee7dc] bg-gradient-to-r from-[#fff8f8] to-white p-6 sm:p-7">
               <img
                 src={getImageUrl(viewEmployee.FilePath) || defaultAvatar}
                 alt="avatar"
-                className="w-14 h-14 rounded-full object-cover border"
+                className="h-16 w-16 rounded-full border border-[#eadfd2] object-cover shadow-sm"
                 onError={(e) => { e.target.src = defaultAvatar; }}
               />
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">{viewEmployee.Name || 'N/A'}</h2>
-                <p className="text-sm text-gray-500">{viewEmployee.Title || '—'}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl font-bold text-[#2c2f32]">{viewEmployee.Name || 'N/A'}</h2>
+                  <span className="rounded-full bg-[#fff1f2] px-3 py-1 text-xs font-semibold text-[#c01824]">
+                    {viewEmployee.DesignationName || viewEmployee.Title || 'N/A'}
+                  </span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    viewEmployee.Status === 'Active'
+                      ? 'bg-[#e7f8ef] text-[#1b8f50]'
+                      : 'bg-[#fce8ea] text-[#c01824]'
+                  }`}>
+                    {viewEmployee.Status || 'Inactive'}
+                  </span>
+                </div>
+                <p className="mt-2 break-all text-sm text-[#6d6f73]">{viewEmployee.Email || 'No email available'}</p>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-[#efe8dd] bg-white px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a9488]">Terminal</p>
+                    <p className="mt-1 text-sm font-semibold text-[#2c2f32]">{viewEmployee.TerminalName || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#efe8dd] bg-white px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a9488]">Pay Type</p>
+                    <p className="mt-1 text-sm font-semibold text-[#2c2f32]">{viewEmployee.PayTypeName || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#efe8dd] bg-white px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a9488]">Pay Cycle</p>
+                    <p className="mt-1 text-sm font-semibold text-[#2c2f32]">{viewEmployee.PayCycleName || 'N/A'}</p>
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setViewEmployee(null)} className="ml-auto text-gray-400 hover:text-gray-700 text-xl font-bold">×</button>
+              <button onClick={() => setViewEmployee(null)} className="ml-auto rounded-full border border-[#eadfd2] px-3 py-1 text-sm font-bold text-[#8f8a81] transition hover:bg-[#f8f5ef] hover:text-[#2c2f32]">X</button>
             </div>
 
             {/* Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 px-6 py-4">
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Personal</p>
-                <DetailRow label="Date of Birth" value={viewEmployee.DateOfBirth ? new Date(viewEmployee.DateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : null} />
-                <DetailRow label="Phone" value={viewEmployee.Phone} />
-                <DetailRow label="Email" value={viewEmployee.Email} />
-                <DetailRow label="Address" value={viewEmployee.Address} />
-                <DetailRow label="City" value={viewEmployee.CityName} />
-                <DetailRow label="State" value={viewEmployee.StateName} />
-                <DetailRow label="Zip Code" value={viewEmployee.ZipCode} />
-                <DetailRow label="Emergency Contact" value={viewEmployee.EmergencyContactName} />
-                <DetailRow label="Emergency Phone" value={viewEmployee.EmergencyContactPhone} />
+            {/* Details */}
+            <div className="grid grid-cols-1 gap-5 px-6 py-6 sm:px-7 lg:grid-cols-2">
+              <div className="rounded-[20px] border border-[#efe8dd] bg-white p-5">
+                <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[#9a9488]">Personal</p>
+                <div className="space-y-3">
+                  <DetailRow label="Date of Birth" value={viewEmployee.DateOfBirth ? new Date(viewEmployee.DateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : null} />
+                  <DetailRow label="Phone" value={viewEmployee.Phone} />
+                  <DetailRow label="Email" value={viewEmployee.Email} />
+                  <DetailRow label="Address" value={viewEmployee.Address} />
+                  <DetailRow label="City" value={viewEmployee.CityName} />
+                  <DetailRow label="State" value={viewEmployee.StateName} />
+                  <DetailRow label="Zip Code" value={viewEmployee.ZipCode} />
+                  <DetailRow label="Emergency Contact" value={viewEmployee.EmergencyContactName} />
+                  <DetailRow label="Emergency Phone" value={viewEmployee.EmergencyContactPhone} />
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Employment</p>
-                <DetailRow label="Terminal" value={viewEmployee.TerminalName} />
-                <DetailRow label="Pay Grade" value={viewEmployee.PayGrade} />
-                <DetailRow label="Pay Type" value={viewEmployee.PayTypeName} />
-                <DetailRow label="Pay Cycle" value={viewEmployee.PayCycleName} />
-                <DetailRow label="Trip Rate" value={viewEmployee.TripRate} />
-                <DetailRow label="Route Rate" value={viewEmployee.RouteRate} />
-                <DetailRow label="Fuel Card Code" value={viewEmployee.FuelCardCode} />
-                <DetailRow label="Username" value={viewEmployee.AppUserName} />
-                <DetailRow label="Status" value={viewEmployee.Status} />
-                <DetailRow label="Availability" value={viewEmployee.Availability} />
+              <div className="rounded-[20px] border border-[#efe8dd] bg-white p-5">
+                <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[#9a9488]">Employment</p>
+                <div className="space-y-3">
+                  <DetailRow label="Terminal" value={viewEmployee.TerminalName} />
+                  <DetailRow label="Pay Grade" value={viewEmployee.PayGrade} />
+                  <DetailRow label="Pay Type" value={viewEmployee.PayTypeName} />
+                  <DetailRow label="Pay Cycle" value={viewEmployee.PayCycleName} />
+                  <DetailRow label="Trip Rate" value={viewEmployee.TripRate} />
+                  <DetailRow label="Route Rate" value={viewEmployee.RouteRate} />
+                  <DetailRow label="Fuel Card Code" value={viewEmployee.FuelCardCode} />
+                  <DetailRow label="Username" value={viewEmployee.AppUserName} />
+                  <DetailRow label="Status" value={viewEmployee.Status} />
+                  <DetailRow label="Availability" value={viewEmployee.Availability} />
+                </div>
               </div>
             </div>
           </div>
@@ -382,3 +413,5 @@ const EmployeeManagement = () => {
 };
 
 export default EmployeeManagement;
+
+

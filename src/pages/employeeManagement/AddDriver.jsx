@@ -65,10 +65,10 @@ const INITIAL_FORM = {
     dateOfBirth: '', joiningDate: '', positionType: '', email: '',
     payGrade: '', routeRate: '', payCycle: '', payTypeId: '',
     fuelCardCode: '', terminalAssigned: '', phone: '',
-    socialSecurityNo: '', accountNumber: '', routingNo: '',
+    socialSecurityNo: '', bankName: '', accountNumber: '', routingNo: '',
 };
 
-const validateField = (name, value) => {
+const validateField = (name, value, allValues = {}) => {
     const str = value == null ? '' : String(value).trim();
     switch (name) {
         case 'name':
@@ -119,6 +119,9 @@ const validateField = (name, value) => {
             break;
         case 'routeRate':
             if (str && (isNaN(parseFloat(str)) || parseFloat(str) < 0)) return 'Must be a positive number';
+            break;
+        case 'bankName':
+            if ((allValues.accountNumber || allValues.routingNo) && !str) return 'Bank name is required';
             break;
         default:
             break;
@@ -187,7 +190,7 @@ const AddDriver = ({ handleCancel }) => {
     const handleBlur = (e) => {
         const { name, value } = e.target;
         setTouched((p) => ({ ...p, [name]: true }));
-        setErrors((p) => ({ ...p, [name]: validateField(name, value) }));
+        setErrors((p) => ({ ...p, [name]: validateField(name, value, { ...formData, [name]: value }) }));
     };
 
     const handleCitySelect = (city) => {
@@ -217,8 +220,8 @@ const AddDriver = ({ handleCancel }) => {
             newTouched[key] = true;
             newErrors[key]  = validateField(key, formData[key]);
         });
-        ['phone', 'routeRate'].forEach((key) => {
-            if (formData[key]) newErrors[key] = validateField(key, formData[key]);
+        ['phone', 'routeRate', 'bankName'].forEach((key) => {
+            if (formData[key] || key === 'bankName') newErrors[key] = validateField(key, formData[key], formData);
         });
 
         setTouched((p) => ({ ...p, ...newTouched }));
@@ -429,6 +432,12 @@ const AddDriver = ({ handleCancel }) => {
                         <input type="password" name="socialSecurityNo" value={formData.socialSecurityNo}
                             onChange={handleChange} placeholder="XXX-XX-XXXX"
                             className={inputCls()} />
+                    </Field>
+
+                    <Field label="Bank Name" error={errors.bankName} touched={touched.bankName}>
+                        <input type="text" name="bankName" value={formData.bankName}
+                            onChange={handleChange} onBlur={handleBlur} placeholder="Bank name"
+                            className={inputCls(errors.bankName, touched.bankName)} />
                     </Field>
 
                     <Field label="Account Number">

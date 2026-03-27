@@ -262,6 +262,18 @@ export const superAdminService = {
     return response.data;
   },
 
+  async createVendor(payload: {
+    name: string;
+    contact: string;
+    contractNumber?: string;
+    serviceAgreementUrl?: string;
+    status?: string;
+  }): Promise<SuperAdminVendor> {
+    const response = await apiClient.post("/super-admin/vendors", payload);
+    const body = response.data?.data ?? response.data ?? {};
+    return normalizeVendor(body);
+  },
+
   async getVendorsAsSubAdmin(): Promise<SuperAdminVendor[]> {
     const response = await apiClient.get("/sub-admin/vendors");
     const rows = response.data?.data ?? response.data ?? [];

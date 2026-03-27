@@ -32,5 +32,9 @@ export const routeTitles = {
   "/EmployeeDashboard/profileInformation": "Employee Profile Information",
   "/EmployeeDashboard/designation": "Employee Designation",
   // "/EmployeeDashboard": "Employee Detail",
+  '/super-admin/sign-in': 'Route IQ - Super Admin Sign In',
+  '/super-admin/dashboard': 'Route IQ - Super Admin Dashboard',
+  '/super-admin/vendors': 'Route IQ - Vendor Management',
+  '/super-admin/sub-admins': 'Route IQ - Sub Admin Management',
   '*': 'Route Iq - Not Found',
 };

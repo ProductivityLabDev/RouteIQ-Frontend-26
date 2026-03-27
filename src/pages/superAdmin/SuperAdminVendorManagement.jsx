@@ -66,6 +66,7 @@ export default function SuperAdminVendorManagement() {
   const [search, setSearch] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [savingContract, setSavingContract] = useState(false);
+  const [creatingVendor, setCreatingVendor] = useState(false);
   const [contractForm, setContractForm] = useState(emptyContractForm);
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -237,7 +238,7 @@ export default function SuperAdminVendorManagement() {
     }
   };
 
-  const handleCreateVendor = (event) => {
+  const handleCreateVendor = async (event) => {
     event.preventDefault();
 
     if (!createForm.name.trim() || !createForm.contact.trim()) {
@@ -245,28 +246,30 @@ export default function SuperAdminVendorManagement() {
       return;
     }
 
-    setVendors((prev) => [
-      {
-        id: `local-${Date.now()}`,
+    try {
+      setCreatingVendor(true);
+      const newVendor = await superAdminService.createVendor({
         name: createForm.name.trim(),
         contact: createForm.contact.trim(),
-        contractNumber: createForm.contractNumber.trim() || "--",
-        serviceAgreementUrl: createForm.serviceAgreementUrl.trim(),
+        contractNumber: createForm.contractNumber.trim() || undefined,
+        serviceAgreementUrl: createForm.serviceAgreementUrl.trim() || undefined,
         status: createForm.status,
-        email: "",
-      },
-      ...prev,
-    ]);
-
-    setCreateForm({
-      name: "",
-      contractNumber: "",
-      contact: "",
-      serviceAgreementUrl: "",
-      status: "Active",
-    });
-    setShowCreateForm(false);
-    toast.success("Vendor added to list");
+      });
+      setVendors((prev) => [newVendor, ...prev]);
+      setCreateForm({
+        name: "",
+        contractNumber: "",
+        contact: "",
+        serviceAgreementUrl: "",
+        status: "Active",
+      });
+      setShowCreateForm(false);
+      toast.success("Vendor created successfully");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to create vendor");
+    } finally {
+      setCreatingVendor(false);
+    }
   };
 
   return (
@@ -389,9 +392,10 @@ export default function SuperAdminVendorManagement() {
           <div className="mt-6 flex justify-end">
             <button
               type="submit"
-              className="rounded-2xl bg-[#c01824] px-6 py-3 font-semibold text-white transition hover:bg-[#a61520]"
+              disabled={creatingVendor}
+              className="rounded-2xl bg-[#c01824] px-6 py-3 font-semibold text-white transition hover:bg-[#a61520] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Save Vendor
+              {creatingVendor ? "Creating..." : "Save Vendor"}
             </button>
           </div>
         </form>

@@ -138,6 +138,7 @@ export const createEmployee = createAsyncThunk(
       data.append("payGrade", formData.payGrade || "");
       data.append("routeRate", formData.routeRate || "");
       data.append("terminalAssigmedId", formData.terminalAssigned || formData.terminalAssigmed || "");
+      data.append("bankName", formData.bankName || "");
       
       const fuelCardCodeValue = formData.fuelCardCode && !isNaN(Number(formData.fuelCardCode)) ? String(Math.floor(Number(formData.fuelCardCode))) : "0";
       data.append("fuelCardCode", fuelCardCodeValue);
