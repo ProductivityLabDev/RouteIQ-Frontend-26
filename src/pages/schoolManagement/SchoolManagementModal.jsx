@@ -39,7 +39,7 @@ const SectionTitle = ({ icon, title, subtitle }) => (
 );
 
 const inputCls = (hasError) =>
-  `w-full outline-none border rounded-xl h-12 pl-6 pr-11 [text-indent:0.35rem] bg-[#fafaf8] text-sm text-[#171a2a] placeholder:text-[#b3b3b3] transition-all ${
+  `w-full outline-none border rounded-xl py-2.5 px-4 bg-[#fafaf8] text-sm text-[#171a2a] placeholder:text-[#b3b3b3] transition-all ${
     hasError
       ? "border-[#c01824] bg-red-50 focus:border-[#c01824]"
       : "border-[#ddd5c7] focus:border-[#c01824] focus:bg-white"
