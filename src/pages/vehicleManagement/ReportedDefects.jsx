@@ -6,6 +6,7 @@ import { Spinner } from '@material-tailwind/react';
 import { apiClient } from '@/configs';
 import { chatService } from '@/services/chatService';
 import { toast } from 'react-hot-toast';
+import { useSelector } from 'react-redux';
 
 const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null);
 
@@ -15,7 +16,15 @@ const normalizeDefect = (defect) => ({
     defectType: pickFirst(defect?.defectType, defect?.DefectType, defect?.type, defect?.Type, 'General'),
     severity: pickFirst(defect?.severity, defect?.Severity, 'Unknown'),
     status: pickFirst(defect?.status, defect?.Status, 'Open'),
-    reporterName: pickFirst(defect?.reporterName, defect?.ReporterName, defect?.reportedBy, defect?.ReportedBy, 'N/A'),
+    reporterName: pickFirst(
+        defect?.reporterName,
+        defect?.ReporterName,
+        defect?.ReportedByName,
+        defect?.reportedByName,
+        defect?.reportedBy,
+        defect?.ReportedBy,
+        'N/A'
+    ),
 });
 
 const normalizeMessages = (messages = []) =>
@@ -29,10 +38,17 @@ const normalizeMessages = (messages = []) =>
             message?.SenderType,
             'User'
         ),
+        senderType: pickFirst(
+            message?.sender?.type,
+            message?.senderType,
+            message?.SenderType,
+            ''
+        ),
         text: pickFirst(message?.content, message?.message, message?.Message, ''),
     }));
 
 const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleScheduleRepair }) => {
+    const currentUser = useSelector((state) => state.user?.user);
     const [isOpen, setIsOpen] = useState(false);
     const [chatInput, setChatInput] = useState("");
     const [defectsLoading, setDefectsLoading] = useState(false);
@@ -42,6 +58,7 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
     const [defects, setDefects] = useState([]);
     const [chatMessages, setChatMessages] = useState([]);
     const [conversationId, setConversationId] = useState(null);
+    const [driverNotified, setDriverNotified] = useState(false);
 
     const vehicleId = pickFirst(
         vehicle?.vehicleId,
@@ -55,11 +72,30 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
 
     const activeVehicle = vehicleInfo || vehicle || {};
     const primaryDefect = defects[0] || null;
+    const currentUserName = pickFirst(
+        currentUser?.username,
+        currentUser?.Username,
+        currentUser?.email,
+        currentUser?.Email,
+        currentUser?.name,
+        currentUser?.Name,
+        ''
+    );
 
     const defectList = useMemo(
         () => defects.map((defect) => defect.description || defect.defectType || 'Unnamed defect'),
         [defects]
     );
+
+    const isVendorMessage = (msg) => {
+        const senderType = String(msg?.senderType || '').toUpperCase();
+        const senderName = String(msg?.sender || '').trim().toLowerCase();
+        const ownName = String(currentUserName || '').trim().toLowerCase();
+
+        if (senderType === 'VENDOR') return true;
+        if (ownName && senderName === ownName) return true;
+        return false;
+    };
 
     const fetchVehicleDefects = async () => {
         if (!vehicleId) return;
@@ -88,6 +124,10 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
     useEffect(() => {
         fetchVehicleDefects();
     }, [vehicleId]);
+
+    useEffect(() => {
+        setDriverNotified(false);
+    }, [vehicleId, primaryDefect?.defectId]);
 
     const openConversation = async () => {
         if (!vehicleId) return null;
@@ -151,6 +191,7 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
         setActionLoading(true);
         try {
             await apiClient.post(`/vendor/vehicles/defects/${primaryDefect.defectId}/notify-driver`);
+            setDriverNotified(true);
             toast.success('Driver notified successfully');
         } catch (error) {
             toast.error(error?.response?.data?.message || 'Failed to notify driver');
@@ -251,7 +292,12 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
                                     Terminal
                                 </Typography>
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
-                                    {activeVehicle?.AssignedTerminal || activeVehicle?.assignedTerminal || activeVehicle?.TerminalName || "N/A"}
+                                    {activeVehicle?.terminal ||
+                                        activeVehicle?.Terminal ||
+                                        activeVehicle?.AssignedTerminal ||
+                                        activeVehicle?.assignedTerminal ||
+                                        activeVehicle?.TerminalName ||
+                                        "N/A"}
                                 </Typography>
                             </div>
                             <ButtonComponent sx={{ width: '145px', height: '42px', fontSize: '13px' }} label='See more Info' Icon={false} onClick={() => handleSeeMoreInfoClick(activeVehicle)} />
@@ -364,13 +410,20 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
                         <h2 className="mb-4 text-xl font-bold">Communication Hub</h2>
 
                         <div className="mb-4">
-                            <button
-                                onClick={handleNotifyDriver}
-                                disabled={actionLoading || !primaryDefect?.defectId}
-                                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-                            >
-                                {actionLoading ? 'Please wait...' : 'Notify Driver'}
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleNotifyDriver}
+                                    disabled={actionLoading || !primaryDefect?.defectId || driverNotified}
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {actionLoading ? 'Please wait...' : driverNotified ? 'Driver Notified' : 'Notify Driver'}
+                                </button>
+                                {driverNotified && (
+                                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                                        Notification Sent
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -389,17 +442,42 @@ const ReportedDefects = ({ vehicle, onBack, handleSeeMoreInfoClick, handleSchedu
 
                             <div>
                                 <h3 className="mb-2 font-semibold">Chat (Driver)</h3>
-                                <div className="mb-3 h-48 overflow-y-auto rounded-lg border bg-gray-50 p-3">
+                                <div className="mb-3 h-56 overflow-y-auto rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3">
                                     {chatLoading ? (
                                         <div className="flex h-full items-center justify-center">
                                             <Spinner className="h-6 w-6 text-[#C01824]" />
                                         </div>
                                     ) : chatMessages.length > 0 ? (
-                                        chatMessages.map((msg) => (
-                                            <p key={msg.id} className="mb-1">
-                                                <span className="font-bold">{msg.sender}:</span> {msg.text}
-                                            </p>
-                                        ))
+                                        <div className="space-y-3">
+                                            {chatMessages.map((msg) => {
+                                                const ownMessage = isVendorMessage(msg);
+                                                return (
+                                                    <div
+                                                        key={msg.id}
+                                                        className={`flex ${ownMessage ? 'justify-end' : 'justify-start'}`}
+                                                    >
+                                                        <div
+                                                            className={`max-w-[82%] rounded-2xl px-3 py-2 shadow-sm ${
+                                                                ownMessage
+                                                                    ? 'bg-[#C01824] text-white rounded-br-md'
+                                                                    : 'bg-white text-[#202224] border border-[#E5E7EB] rounded-bl-md'
+                                                            }`}
+                                                        >
+                                                            <p
+                                                                className={`mb-1 text-[11px] font-semibold ${
+                                                                    ownMessage ? 'text-white/80' : 'text-[#64748B]'
+                                                                }`}
+                                                            >
+                                                                {ownMessage ? 'Vendor' : msg.sender || 'Driver'}
+                                                            </p>
+                                                            <p className="text-sm leading-6 break-words">
+                                                                {msg.text}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     ) : (
                                         <p className="text-sm text-gray-500">No chat messages yet.</p>
                                     )}

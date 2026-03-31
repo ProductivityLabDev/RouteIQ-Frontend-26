@@ -89,15 +89,7 @@ export const createBus = createAsyncThunk(
       const decoded = token ? decodeToken(token) : null;
       const userId = decoded?.sub || decoded?.id || decoded?.userId || decoded?.UserId;
 
-      let serviceIntervalDays = null;
-      if (busData.serviceInterval) {
-        const serviceDate = new Date(busData.serviceInterval);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        serviceDate.setHours(0, 0, 0, 0);
-        const diffTime = serviceDate.getTime() - today.getTime();
-        serviceIntervalDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-      }
+      const serviceIntervalValue = busData.serviceInterval || null;
 
       const undercarriageStorageNum = busData.undercarriageStorage === 'yes' ? 1 : busData.undercarriageStorage === 'no' ? 0 : null;
 
@@ -112,7 +104,7 @@ export const createBus = createAsyncThunk(
         busType: busData.busType || null,
         numberPlate: busData.numberPlate || null,
         modelYear: busData.modelYear ? parseInt(busData.modelYear, 10) : null,
-        serviceInterval: serviceIntervalDays,
+        serviceInterval: serviceIntervalValue,
         fuelTankSize: busData.fuelTankSize ? parseFloat(busData.fuelTankSize) : null,
         assignedTerminalId: busData.assignedTerminal ? parseInt(busData.assignedTerminal, 10) : null,
         expiredDate: busData.expiredDate || null,
@@ -121,7 +113,6 @@ export const createBus = createAsyncThunk(
         vinNo: busData.vinNo || null,
         mileage: busData.mileage ? parseFloat(busData.mileage) : null,
         driverId: driverIdValue,
-        driverName: busData.driverName || null,
         fuelTypeId: busData.fuelType ? parseInt(busData.fuelType, 10) : null,
         insuranceExpiration: busData.insuranceExpiration || null,
         undercarriageStorage: undercarriageStorageNum,
@@ -144,18 +135,7 @@ export const updateBus = createAsyncThunk(
       console.log("🔄 [busesSlice] updateBus called with vehicleId:", vehicleId);
       console.log("🔄 [busesSlice] busData:", busData);
 
-      // Calculate serviceInterval as number of days from today to the selected date
-      let serviceIntervalDays = null;
-      if (busData.serviceInterval) {
-        const serviceDate = new Date(busData.serviceInterval);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        serviceDate.setHours(0, 0, 0, 0);
-        const diffTime = serviceDate.getTime() - today.getTime();
-        serviceIntervalDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        // Ensure it's a positive number (days from today)
-        if (serviceIntervalDays < 0) serviceIntervalDays = 0;
-      }
+      const serviceIntervalValue = busData.serviceInterval || null;
 
       // Handle undercarriageStorage - convert yes/no to number or keep as number
       let undercarriageStorageValue = null;
@@ -181,7 +161,7 @@ export const updateBus = createAsyncThunk(
         busType: busData.busType || null,
         numberPlate: busData.numberPlate || null,
         modelYear: busData.modelYear ? parseInt(busData.modelYear, 10) : null,
-        serviceInterval: serviceIntervalDays, // Number of days
+        serviceInterval: serviceIntervalValue,
         fuelTankSize: busData.fuelTankSize ? parseFloat(busData.fuelTankSize) : null,
         assignedTerminalId: busData.assignedTerminal ? parseInt(busData.assignedTerminal, 10) : null,
         expiredDate: busData.expiredDate || null,
@@ -190,7 +170,6 @@ export const updateBus = createAsyncThunk(
         vinNo: busData.vinNo || null,
         mileage: busData.mileage ? parseFloat(busData.mileage) : null,
         driverId: driverIdValue,
-        driverName: busData.driverName || null,
         fuelTypeId: busData.fuelType ? parseInt(busData.fuelType, 10) : null,
         insuranceExpiration: busData.insuranceExpiration || null,
         undercarriageStorage: undercarriageStorageValue,

@@ -1,7 +1,7 @@
 import { backArrow, editicon } from '@/assets';
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchRepairSchedules, updateRepairSchedule } from '@/redux/slices/repairScheduleSlice';
+import { fetchRepairSchedules, updateRepairScheduleNotes } from '@/redux/slices/repairScheduleSlice';
 import { Spinner } from '@material-tailwind/react';
 import { format } from 'date-fns';
 
@@ -63,15 +63,13 @@ const SehcudleManagement = ({ onBack, vehicle, selectedDate }) => {
 
     const handleSaveNotes = async (maintenanceId) => {
         const result = await dispatch(
-            updateRepairSchedule({
+            updateRepairScheduleNotes({
                 maintenanceId,
-                payload: {
-                    notes: editingNotesText || '',
-                },
+                notes: editingNotesText || '',
             })
         );
 
-        if (updateRepairSchedule.fulfilled.match(result)) {
+        if (updateRepairScheduleNotes.fulfilled.match(result)) {
             if (busId) {
                 dispatch(fetchRepairSchedules(busId));
             } else {

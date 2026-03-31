@@ -63,8 +63,6 @@ export const sidenavRoutes = [
         name: "announcements",
         path: "/announcements",
         element: <Announcements />,
-        // Require RFQ or Invoices module access
-        modules: ["RFQ", "INVOICES"],
       },
       {
         icon: <img src={tripplannericon} alt="Route Schedules" className="w-5 h-5" />,

@@ -119,7 +119,7 @@ export function DashboardNavbar({ user }) {
         blurred={fixedNavbar}
       >
         <div className="flex flex-col-reverse justify-between gap-6 md:flex-row md:items-center pt-2">
-          <div className="flex w-full justify-end space-x-5 items-center">
+          <div className="flex w-full min-w-0 items-center gap-3 md:gap-5">
           {/* {shouldDisplaySearchBar || user === 'vendor' && (
               <div className="mr-auto w-72 flex flex-row md:max-w-screen-3xl md:w-full  bg-white border ps-4 border-[#DCDCDC] rounded-[6px] items-center">
                 <CiSearch size={25} color='#787878' />
@@ -130,7 +130,7 @@ export function DashboardNavbar({ user }) {
                 />
               </div>
             )} */}
-          <div className="mr-auto w-72 md:max-w-screen-3xl md:w-full rounded-md bg-white">
+          <div className="mr-auto w-72 min-w-0 flex-1 rounded-md bg-white">
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
                 <FiSearch />
@@ -151,7 +151,7 @@ export function DashboardNavbar({ user }) {
             <Bars3Icon strokeWidth={3} className="h-8 w-8 text-blue-gray-500" />
           </IconButton>
           {user && (
-            <div className="relative inline-block">
+            <div className="relative inline-block shrink-0">
               <button className="h-14 w-15 flex items-center justify-center focus:outline-none" onClick={handleVendorChatClick}>
                 <PiChatCircleTextBold size={30} color="black" />
               </button>
@@ -159,7 +159,7 @@ export function DashboardNavbar({ user }) {
             </div>
           )}
           {user && (
-            <div className="relative inline-block">
+            <div className="relative inline-block shrink-0">
               <button className="h-14 w-16 flex items-center justify-center focus:outline-none" onClick={handleNotificationClick}>
                 <GrNotification size={25} color="black" />
               </button>
@@ -172,7 +172,7 @@ export function DashboardNavbar({ user }) {
           )}
           <Menu>
             <MenuHandler>
-              <div className="flex justify-end items-center w-full md:max-w-[170px] sm:max-w-[60px] max-w-[40px] cursor-pointer">
+              <div className="flex shrink-0 items-center justify-end cursor-pointer">
                 <Avatar
                   src={profileavatar}
                   alt={loggedInUser?.username || "User"}
@@ -180,13 +180,13 @@ export function DashboardNavbar({ user }) {
                   className="w-10 md:w-12 border h-10 md:h-12"
                 />
 
-                <div className="ml-4 text-left md:block hidden">
-                  <Typography variant="h6" className="font-bold text-[14px] text-black">
+                <div className="ml-3 min-w-0 text-left md:block hidden">
+                  <Typography variant="h6" className="max-w-[160px] truncate font-bold text-[14px] text-black">
                     {loggedInUser?.username || "Guest User"}
                   </Typography>
                   <Typography
                     variant="small"
-                    className="flex items-center gap-1 text-[12px] font-semibold text-[#565656]"
+                    className="max-w-[160px] truncate text-[12px] font-semibold text-[#565656]"
                   >
                     {loggedInUser?.role || "No Role"}
                   </Typography>
@@ -194,7 +194,7 @@ export function DashboardNavbar({ user }) {
 
                 <img
                   src={chevroncircleicon}
-                  className="w-[24px] h-[24px] ml-5 md:block hidden"
+                  className="w-[24px] h-[24px] ml-3 md:block hidden"
                   alt="chevron"
                 />
               </div>

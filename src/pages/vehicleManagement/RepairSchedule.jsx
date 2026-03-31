@@ -25,6 +25,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchRepairSchedules,
   deleteRepairSchedule,
+  updateRepairScheduleNotes,
 } from "@/redux/slices/repairScheduleSlice";
 
 const RepairSchedule = ({
@@ -43,8 +44,14 @@ const RepairSchedule = ({
   const [showVehicleInfo, setShowVehicleInfo] = useState(false);
   const [vehicleInfoData, setVehicleInfoData] = useState(null);
   const datePickerRef = useRef(null);
+  const topCalendarWrapperRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [serviceRecord, setServiceRecord] = useState(false);
+  const [selectedServiceTypes, setSelectedServiceTypes] = useState([]);
+  const [selectedRepairTypes, setSelectedRepairTypes] = useState([]);
+  const [sortDate, setSortDate] = useState(null);
+  const [editingNotesId, setEditingNotesId] = useState(null);
+  const [editingNotesText, setEditingNotesText] = useState("");
 
   // Extract busId from vehicle
   const busId = vehicle?.vehicleId 
@@ -57,10 +64,18 @@ const RepairSchedule = ({
 
   // Fetch repair schedules when component mounts or busId changes
   useEffect(() => {
-    if (busId) {
-      dispatch(fetchRepairSchedules(busId));
-    }
-  }, [dispatch, busId]);
+    dispatch(
+      fetchRepairSchedules({
+        busId,
+        search: searchQuery || undefined,
+        repairTypes: selectedRepairTypes,
+        serviceTypes: selectedServiceTypes,
+        date: sortDate ? format(sortDate, "yyyy-MM-dd") : undefined,
+        limit: 20,
+        offset: 0,
+      })
+    );
+  }, [dispatch, busId, searchQuery, selectedRepairTypes, selectedServiceTypes, sortDate]);
 
   const handleServiceRecordClick = () => {
     setServiceRecord(true);
@@ -74,6 +89,24 @@ const RepairSchedule = ({
       datePickerRef.current.setFocus();
     }
   };
+
+  useEffect(() => {
+    if (!isCalendarOpen) return;
+
+    const handleOutsideClick = (event) => {
+      if (
+        topCalendarWrapperRef.current &&
+        !topCalendarWrapperRef.current.contains(event.target)
+      ) {
+        setIsCalendarOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isCalendarOpen]);
 
   const formattedDate = selectedDate
     ? selectedDate.toLocaleDateString("en-US", {
@@ -111,28 +144,64 @@ const RepairSchedule = ({
     // TODO: Show notes modal
   };
 
+  const handleStartNotesEdit = (item) => {
+    setEditingNotesId(item.maintenanceId || item.MaintenanceId);
+    setEditingNotesText(item.notes || "");
+  };
+
+  const handleCancelNotesEdit = () => {
+    setEditingNotesId(null);
+    setEditingNotesText("");
+  };
+
+  const handleSaveNotes = async (maintenanceId) => {
+    const result = await dispatch(
+      updateRepairScheduleNotes({
+        maintenanceId,
+        notes: editingNotesText || "",
+      })
+    );
+
+    if (updateRepairScheduleNotes.fulfilled.match(result)) {
+      dispatch(
+        fetchRepairSchedules({
+          busId,
+          search: searchQuery || undefined,
+          repairTypes: selectedRepairTypes,
+          serviceTypes: selectedServiceTypes,
+          date: sortDate ? format(sortDate, "yyyy-MM-dd") : undefined,
+          limit: 20,
+          offset: 0,
+        })
+      );
+      handleCancelNotesEdit();
+    }
+  };
+
   const handleDelete = async (maintenanceId) => {
     if (window.confirm("Are you sure you want to delete this repair schedule?")) {
       await dispatch(deleteRepairSchedule(maintenanceId));
       // Refresh the list after deletion
-      if (busId) {
-        dispatch(fetchRepairSchedules(busId));
-      }
+      dispatch(
+        fetchRepairSchedules({
+          busId,
+          search: searchQuery || undefined,
+          repairTypes: selectedRepairTypes,
+          serviceTypes: selectedServiceTypes,
+          sortBy,
+          limit: 20,
+          offset: 0,
+        })
+      );
     }
   };
 
-  // Filter and search repair schedules
+  // Date filter remains local on top of server-side filters
   const filteredSchedules = repairSchedules.filter((schedule) => {
-    const matchesSearch = searchQuery === "" || 
-      (schedule.serviceDesc?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (schedule.partDesc?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (schedule.vendor?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (schedule.terminal?.toLowerCase().includes(searchQuery.toLowerCase()));
-    
     const matchesDate = !date || 
       (schedule.repairDate && format(new Date(schedule.repairDate), "yyyy-MM-dd") === format(date, "yyyy-MM-dd"));
     
-    return matchesSearch && matchesDate;
+    return matchesDate;
   });
 
   if (showVehicleInfo) {
@@ -162,9 +231,17 @@ const RepairSchedule = ({
           busId={busId}
           onSuccess={() => {
             handleCancel();
-            if (busId) {
-              dispatch(fetchRepairSchedules(busId));
-            }
+            dispatch(
+              fetchRepairSchedules({
+                busId,
+                search: searchQuery || undefined,
+                repairTypes: selectedRepairTypes,
+                serviceTypes: selectedServiceTypes,
+                date: sortDate ? format(sortDate, "yyyy-MM-dd") : undefined,
+                limit: 20,
+                offset: 0,
+              })
+            );
           }}
         />
       ) : (
@@ -222,7 +299,7 @@ const RepairSchedule = ({
                 </div>
               </div>
 
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center relative" ref={topCalendarWrapperRef}>
                 <ButtonComponent
                   sx={{ width: "244px", height: "49px", fontSize: "12px" }}
                   label={formattedDate}
@@ -231,19 +308,21 @@ const RepairSchedule = ({
                   onClick={handleButtonClick}
                 />
                 {isCalendarOpen && (
-                  <DatePickerComponent
-                    selectedDate={selectedDate}
-                    onDateChange={(date) => {
-                      setSelectedDate(date);
-                      setIsCalendarOpen(false);
-                      setIsNavigate(false);
-                      if (setSelectedScheduleDate) {
-                        setSelectedScheduleDate(date);
-                      }
-                      setShowScheduleManagement(true);
-                    }}
-                    datePickerRef={datePickerRef}
-                  />
+                  <div className="absolute top-[58px] z-50">
+                    <DatePickerComponent
+                      selectedDate={selectedDate}
+                      onDateChange={(date) => {
+                        setSelectedDate(date);
+                        setIsCalendarOpen(false);
+                        setIsNavigate(false);
+                        if (setSelectedScheduleDate) {
+                          setSelectedScheduleDate(date);
+                        }
+                        setShowScheduleManagement(true);
+                      }}
+                      datePickerRef={datePickerRef}
+                    />
+                  </div>
                 )}
               </div>
 
@@ -286,13 +365,19 @@ const RepairSchedule = ({
                   }}
                   onClick={handleClick}
                 />
-                {anchorEl && (
-                  <PositionedMenu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    handleClose={handleClose}
-                  />
-                )}
+                  {anchorEl && (
+                   <PositionedMenu
+                      anchorEl={anchorEl}
+                      open={Boolean(anchorEl)}
+                      handleClose={handleClose}
+                      selectedServiceTypes={selectedServiceTypes}
+                      selectedRepairTypes={selectedRepairTypes}
+                      onApply={({ serviceTypes, repairTypes }) => {
+                        setSelectedServiceTypes(serviceTypes);
+                        setSelectedRepairTypes(repairTypes);
+                      }}
+                    />
+                  )}
 
                 <div className="mr-auto w-55 flex flex-row md:max-w-screen-3xl md:w-[335px] h-[47px] bg-white border ps-4 border-[#DCDCDC] rounded-[6px] items-center">
                   <CiSearch size={25} color="#787878" />
@@ -305,50 +390,46 @@ const RepairSchedule = ({
                   />
                 </div>
 
-                <Typography className="mb-2 text-start font-bold text-[16px] text-black">
-                  Sort By
-                </Typography>
-                <div className="md:w-[250px]">
-                  <Popover placement="bottom">
-                    <PopoverHandler>
-                      <div className="relative">
-                        <Input
-                          label="Date"
-                          onChange={() => null}
-                          value={date ? format(date, "PPP") : ""}
-                          className="bg-[#D2D2D2]"
+                  <Typography className="mb-2 text-start font-bold text-[16px] text-black">
+                   Date
+                  </Typography>
+                  <div className="md:w-[250px]">
+                    <Popover placement="bottom-end">
+                      <PopoverHandler>
+                        <div>
+                          <ButtonComponent
+                            sx={{ width: "244px", height: "43px", fontSize: "12px" }}
+                            label={sortDate ? format(sortDate, "PPP") : "Select Date"}
+                            Icon={true}
+                            IconName={CalenderIcon}
+                          />
+                        </div>
+                      </PopoverHandler>
+                      <PopoverContent>
+                        <DayPicker
+                          mode="single"
+                          selected={sortDate}
+                          onSelect={(nextDate) => setSortDate(nextDate || null)}
+                          showOutsideDays
+                          classNames={{ day_selected: "bg-[#C01824] text-white" }}
+                          components={{
+                            IconLeft: (props) => (
+                              <ChevronLeftIcon
+                                {...props}
+                                className="h-4 w-4 stroke-2"
+                              />
+                            ),
+                            IconRight: (props) => (
+                              <ChevronRightIcon
+                                {...props}
+                                className="h-4 w-4 stroke-2"
+                              />
+                            ),
+                          }}
                         />
-                        <FaChevronDown
-                          className="absolute right-4 top-3"
-                          color="#787878"
-                        />
-                      </div>
-                    </PopoverHandler>
-                    <PopoverContent>
-                      <DayPicker
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        showOutsideDays
-                        classNames={{ day_selected: "bg-[#C01824] text-white" }}
-                        components={{
-                          IconLeft: (props) => (
-                            <ChevronLeftIcon
-                              {...props}
-                              className="h-4 w-4 stroke-2"
-                            />
-                          ),
-                          IconRight: (props) => (
-                            <ChevronRightIcon
-                              {...props}
-                              className="h-4 w-4 stroke-2"
-                            />
-                          ),
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
               </div>
 
               {/* -------------------- Table-Content -------------------------- */}
@@ -427,23 +508,48 @@ const RepairSchedule = ({
                             {item.terminal || "N/A"}
                           </td>
                           <td
-                            className="px-6 py-4 border-b text-[14px] font-[600] text-[#C01824] underline flex-row flex gap-7 cursor-pointer"
-                            onClick={() => handleNotes(item)}
+                            className="px-6 py-4 border-b text-[14px] font-[600] text-[#C01824]"
                           >
-                            {item.notes || "See Notes"}
-                            <div
-                              className="flex space-x-2 md:space-x-7 justify-start items-center"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditClick(item);
-                              }}
-                            >
-                              <img
-                                src={editicon}
-                                className="cursor-pointer w-5"
-                                alt="Edit Icon"
-                              />
-                            </div>
+                            {editingNotesId === (item.maintenanceId || item.MaintenanceId) ? (
+                              <div className="flex min-w-[220px] flex-col gap-2">
+                                <textarea
+                                  value={editingNotesText}
+                                  onChange={(e) => setEditingNotesText(e.target.value)}
+                                  rows={3}
+                                  className="w-full rounded border border-[#D5D5D5] p-2 text-sm text-[#141516] outline-none"
+                                  placeholder="Enter notes"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveNotes(item.maintenanceId || item.MaintenanceId)}
+                                    disabled={loading.updating}
+                                    className="rounded bg-[#C01824] px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                                  >
+                                    {loading.updating ? "Saving..." : "Save"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelNotesEdit}
+                                    className="rounded border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="underline">{item.notes || "See Notes"}</span>
+                                <div className="flex space-x-2 md:space-x-7 justify-start items-center">
+                                  <img
+                                    src={editicon}
+                                    className="cursor-pointer w-5"
+                                    alt="Edit Icon"
+                                    onClick={() => handleStartNotesEdit(item)}
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))

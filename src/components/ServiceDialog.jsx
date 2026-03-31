@@ -3,35 +3,61 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { Typography } from "@material-tailwind/react";
 
-export default function PositionedMenu({ anchorEl, open, handleClose }) {
-  const [checkedItems, setCheckedItems] = React.useState([]);
+export default function PositionedMenu({
+  anchorEl,
+  open,
+  handleClose,
+  selectedServiceTypes = [],
+  selectedRepairTypes = [],
+  onApply,
+}) {
+  const [serviceSelections, setServiceSelections] = React.useState(selectedServiceTypes);
+  const [repairSelections, setRepairSelections] = React.useState(selectedRepairTypes);
 
   const serviceOptions = ["Type A", "Type B (Full)"];
   const repairOptions = ["Engine", "Brakes", "Axle", "Body", "Interior"];
 
-  const handleSelectItem = (id) => {
-    if (checkedItems.includes(id)) {
-      setCheckedItems(checkedItems.filter((item) => item !== id));
+  React.useEffect(() => {
+    setServiceSelections(selectedServiceTypes);
+  }, [selectedServiceTypes]);
+
+  React.useEffect(() => {
+    setRepairSelections(selectedRepairTypes);
+  }, [selectedRepairTypes]);
+
+  const handleToggle = (value, type) => {
+    const updater = type === "service" ? setServiceSelections : setRepairSelections;
+    const current = type === "service" ? serviceSelections : repairSelections;
+    if (current.includes(value)) {
+      updater(current.filter((item) => item !== value));
     } else {
-      setCheckedItems([...checkedItems, id]);
+      updater([...current, value]);
     }
   };
 
-  const renderOptions = (options, startIndex) => {
-    return options.map((option, i) => {
-      const id = startIndex + i;
+  const renderOptions = (options, type) => {
+    const current = type === "service" ? serviceSelections : repairSelections;
+    return options.map((option) => {
       return (
-        <label key={id} className="flex items-center space-x-2">
+        <label key={option} className="flex items-center space-x-2">
           <input
             type="checkbox"
             className="w-5 h-5 text-red-600 accent-red-600 align-middle"
-            checked={checkedItems.includes(id)}
-            onChange={() => handleSelectItem(id)}
+            checked={current.includes(option)}
+            onChange={() => handleToggle(option, type)}
           />
           <span>{option}</span>
         </label>
       );
     });
+  };
+
+  const handleApplyClick = () => {
+    onApply?.({
+      serviceTypes: serviceSelections,
+      repairTypes: repairSelections,
+    });
+    handleClose();
   };
 
   return (
@@ -67,7 +93,7 @@ export default function PositionedMenu({ anchorEl, open, handleClose }) {
         }}
       >
         <div className="flex flex-col space-y-2 pt-2 w-[220px]">
-          {renderOptions(serviceOptions, 0)}
+          {renderOptions(serviceOptions, "service")}
         </div>
       </MenuItem>
 
@@ -83,8 +109,24 @@ export default function PositionedMenu({ anchorEl, open, handleClose }) {
         }}
       >
         <div className="flex flex-col space-y-2 pt-2 w-[220px]">
-          {renderOptions(repairOptions, serviceOptions.length)}
+          {renderOptions(repairOptions, "repair")}
         </div>
+      </MenuItem>
+      <MenuItem
+        sx={{
+          backgroundColor: "#efefef",
+          justifyContent: "flex-end",
+          paddingTop: "8px !important",
+          paddingBottom: "8px !important",
+        }}
+      >
+        <button
+          type="button"
+          onClick={handleApplyClick}
+          className="rounded bg-[#C01824] px-4 py-2 text-xs font-semibold text-white"
+        >
+          Apply Filters
+        </button>
       </MenuItem>
     </Menu>
   );

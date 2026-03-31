@@ -58,11 +58,36 @@ export interface UpdateRepairSchedulePayload {
 
 export const repairScheduleService = {
   // GET all repair schedules
-  getRepairSchedules: async (busId?: number): Promise<ApiResponse<RepairSchedule[]>> => {
-    const url = busId 
-      ? `/institute/repair-schedule?busId=${busId}`
-      : `/institute/repair-schedule`;
-    const response = await apiClient.get(url);
+  getRepairSchedules: async (
+    params?: number | {
+      busId?: number;
+      search?: string;
+      repairTypes?: string[];
+      serviceTypes?: string[];
+      date?: string;
+      sortBy?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<ApiResponse<RepairSchedule[]>> => {
+    const queryParams =
+      typeof params === "number"
+        ? { busId: params }
+        : params || {};
+
+    const normalizedParams: Record<string, any> = {};
+    if (queryParams.busId) normalizedParams.busId = queryParams.busId;
+    if (queryParams.search) normalizedParams.search = queryParams.search;
+    if (queryParams.repairTypes?.length) normalizedParams.repairTypes = queryParams.repairTypes.join(",");
+    if (queryParams.serviceTypes?.length) normalizedParams.serviceTypes = queryParams.serviceTypes.join(",");
+    if (queryParams.date) normalizedParams.date = queryParams.date;
+    if (queryParams.sortBy) normalizedParams.sortBy = queryParams.sortBy;
+    if (queryParams.limit !== undefined) normalizedParams.limit = queryParams.limit;
+    if (queryParams.offset !== undefined) normalizedParams.offset = queryParams.offset;
+
+    const response = await apiClient.get(`/institute/repair-schedule`, {
+      params: normalizedParams,
+    });
     return {
       ok: true,
       data: response.data?.data || response.data || [],
@@ -93,6 +118,19 @@ export const repairScheduleService = {
     payload: UpdateRepairSchedulePayload
   ): Promise<ApiResponse<any>> => {
     const response = await apiClient.patch(`/institute/repair-schedule/${maintenanceId}`, payload);
+    return {
+      ok: true,
+      data: response.data,
+    };
+  },
+
+  updateRepairScheduleNotes: async (
+    maintenanceId: number,
+    notes: string
+  ): Promise<ApiResponse<any>> => {
+    const response = await apiClient.patch(`/institute/repair-schedule/${maintenanceId}/notes`, {
+      notes,
+    });
     return {
       ok: true,
       data: response.data,

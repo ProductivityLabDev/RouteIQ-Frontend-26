@@ -238,7 +238,7 @@ const VehicleManagement = () => {
             ) : isSeeMoreInfo ? (
                 <VehicleInfoComponent vehicle={selectedVehicle} onBack={handleBackClick} />
             ) : editMode ? (
-                <EditScheduledMaintenance item={editSelectedItem} onBack={handleBackClick} scheduleRepair={scheduleRepair} handleAddMore={handleAddMore} setEditMode={setEditMode} setIsNavigate={setIsNavigate} />
+                <EditScheduledMaintenance item={editSelectedItem} vehicle={selectedVehicle} onBack={handleBackClick} scheduleRepair={scheduleRepair} handleAddMore={handleAddMore} setEditMode={setEditMode} setIsNavigate={setIsNavigate} />
             ) : reportedDefects ? (
                 <ReportedDefects vehicle={selectedVehicle} onBack={handleBackClick} handleSeeMoreInfoClick={handleSeeMoreInfoClick} handleScheduleRepair={handleScheduleRepair} />
             ) : notes ? (

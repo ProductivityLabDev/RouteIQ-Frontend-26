@@ -5,9 +5,9 @@ import { toast } from "react-hot-toast";
 // Async thunk to fetch repair schedules
 export const fetchRepairSchedules = createAsyncThunk(
   "repairSchedule/fetchRepairSchedules",
-  async (busId, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await repairScheduleService.getRepairSchedules(busId);
+      const response = await repairScheduleService.getRepairSchedules(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -60,6 +60,21 @@ export const updateRepairSchedule = createAsyncThunk(
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.message || "Failed to update repair schedule";
+      toast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const updateRepairScheduleNotes = createAsyncThunk(
+  "repairSchedule/updateRepairScheduleNotes",
+  async ({ maintenanceId, notes }, { rejectWithValue }) => {
+    try {
+      const response = await repairScheduleService.updateRepairScheduleNotes(maintenanceId, notes);
+      toast.success("Notes updated successfully");
+      return { maintenanceId, ...(response.data || {}), notes };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to update notes";
       toast.error(errorMessage);
       return rejectWithValue(errorMessage);
     }
@@ -172,6 +187,28 @@ const repairScheduleSlice = createSlice({
         }
       })
       .addCase(updateRepairSchedule.rejected, (state, action) => {
+        state.loading.updating = false;
+        state.error = action.payload;
+      });
+
+    builder
+      .addCase(updateRepairScheduleNotes.pending, (state) => {
+        state.loading.updating = true;
+        state.error = null;
+      })
+      .addCase(updateRepairScheduleNotes.fulfilled, (state, action) => {
+        state.loading.updating = false;
+        const index = state.repairSchedules.findIndex(
+          (schedule) => schedule.maintenanceId === action.payload?.maintenanceId
+        );
+        if (index !== -1) {
+          state.repairSchedules[index] = {
+            ...state.repairSchedules[index],
+            notes: action.payload?.notes ?? state.repairSchedules[index].notes,
+          };
+        }
+      })
+      .addCase(updateRepairScheduleNotes.rejected, (state, action) => {
         state.loading.updating = false;
         state.error = action.payload;
       });
