@@ -26,6 +26,8 @@ const tabsData = [
   { label: 'On Board', value: 'onboard' },
 ];
 
+const GOOGLE_LIBRARIES = ['places'];
+
 const RealTimeTracking = () => {
   const dispatch = useAppDispatch();
   const { terminals, schoolManagementSummary, loading } = useAppSelector((state) => state.schools);
@@ -69,7 +71,6 @@ const RealTimeTracking = () => {
   const lastMarkerCount = useRef(0);
 
   // Google Maps API Loader
-  const GOOGLE_LIBRARIES = ['places'];
   const { isLoaded: isMapLoaded, loadError: mapLoadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',

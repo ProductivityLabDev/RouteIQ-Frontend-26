@@ -13,7 +13,7 @@ import { useDispatch } from 'react-redux';
 import { fetchStudentsByInstitute } from '@/redux/slices/studentSlice';
 import { useJsApiLoader } from '@react-google-maps/api';
 
-
+const GOOGLE_LIBRARIES = ["places"];
 
 const Students = () => {
   const dispatch = useDispatch();
@@ -31,7 +31,6 @@ const Students = () => {
   const { instituteId, schoolName } = location.state || {};
 
   // Google Maps API Loader - Load in parent so script is ready before modal opens
-  const GOOGLE_LIBRARIES = ["places"];
   const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   
   console.log("🔍 [Students] Initializing Google Maps in parent:", {

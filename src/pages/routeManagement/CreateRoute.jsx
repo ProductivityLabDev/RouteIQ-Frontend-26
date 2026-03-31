@@ -20,6 +20,8 @@ import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
 import { routeService } from "@/services/routeService";
 import { toast } from "react-hot-toast";
 
+const GOOGLE_LIBRARIES = ["places"];
+
 /**
  * @type {import('./CreateRoute').default}
  */
@@ -33,8 +35,6 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         buses: realBuses,
         loading: { drivers: driversLoading, buses: busesLoading }
     } = useAppSelector((state) => state.buses);
-
-    const GOOGLE_LIBRARIES = ["places"];
     // 🔐 Load Google Maps API for Autocomplete
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
