@@ -13,7 +13,6 @@ const SchoolManagementUserTable = ({ instituteId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  console.log("🔍 [SchoolManagementUserTable] Render with instituteId:", instituteId, "type:", typeof instituteId);
 
   // If no instituteId provided, show clear message
   if (!instituteId) {
@@ -34,10 +33,8 @@ const SchoolManagementUserTable = ({ instituteId }) => {
         const instituteIdParam =
           typeof instituteId === 'string' ? parseInt(instituteId, 10) : Number(instituteId);
 
-        console.log("📡 [SchoolManagementUserTable] Normalised instituteId:", instituteIdParam);
 
         if (!instituteIdParam || isNaN(instituteIdParam)) {
-          console.error("❌ [SchoolManagementUserTable] Invalid instituteId:", instituteId);
           setError(`Invalid InstituteId: ${instituteId}`);
           return;
         }
@@ -45,7 +42,6 @@ const SchoolManagementUserTable = ({ instituteId }) => {
         const response = await schoolService.getStudentsBySchool(instituteIdParam);
         const studentsArray = response.data;
 
-        console.log("📊 [SchoolManagementUserTable] Parsed studentsArray length:", studentsArray.length);
 
         // Map API students to table rows
         const mappedRows = studentsArray.map((student, index) => ({
@@ -60,10 +56,8 @@ const SchoolManagementUserTable = ({ instituteId }) => {
           grade: student.Grade || '',
         }));
 
-        console.log("📊 [SchoolManagementUserTable] Mapped rows:", mappedRows);
         setRows(mappedRows);
       } catch (err) {
-        console.error("❌ [SchoolManagementUserTable] Error fetching students:", err);
         setError(err.response?.data?.message || err.message || "Failed to fetch students");
       } finally {
         setLoading(false);
