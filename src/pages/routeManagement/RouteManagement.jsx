@@ -58,6 +58,26 @@ const INITIAL_TERMINAL_FORM = {
   zipCode: "",
 };
 
+const normalizeTripRecord = (trip) => ({
+  ...trip,
+  id: trip?.id ?? trip?.TripId,
+  tripId: trip?.tripId ?? trip?.TripId,
+  tripName: trip?.tripName ?? trip?.TripName ?? "--",
+  tripNumber: trip?.tripNumber ?? trip?.TripNumber ?? trip?.TripNo ?? "--",
+  startTime: trip?.startTime ?? trip?.StartTime ?? null,
+  endTime: trip?.endTime ?? trip?.EndTime ?? null,
+  pickup: trip?.pickup ?? trip?.PickupLocation ?? trip?.PickUp ?? "--",
+  pickupAddress: trip?.pickupAddress ?? trip?.PickupAddress ?? "",
+  dropoff: trip?.dropoff ?? trip?.DropoffLocation ?? trip?.Dropoff ?? "--",
+  dropoffAddress: trip?.dropoffAddress ?? trip?.DropoffAddress ?? "",
+  noOfPersons: trip?.noOfPersons ?? trip?.NoOfPersons ?? trip?.NoOfPassengers ?? "--",
+  status: trip?.status ?? trip?.Status ?? "--",
+  busNumber: trip?.busNumber ?? trip?.BusNumber ?? trip?.BusNo ?? "--",
+  driverName: trip?.driverName ?? trip?.DriverName ?? "--",
+  contactName: trip?.contactName ?? trip?.ContactName ?? trip?.Contact ?? "",
+  flagColor: trip?.flagColor ?? trip?.FlagColor ?? "",
+});
+
 const RouteManagement = () => {
   const dispatch = useAppDispatch();
 
@@ -221,7 +241,10 @@ const RouteManagement = () => {
         setTripsLoadingByTerminal((prev) => ({ ...prev, [terminalId]: true }));
         const response = await routeSchedulingService.getTripsByTerminal(terminalId);
         if (response.ok) {
-          setTripsByTerminal((prev) => ({ ...prev, [terminalId]: response.data || [] }));
+          const normalizedTrips = Array.isArray(response.data)
+            ? response.data.map(normalizeTripRecord)
+            : [];
+          setTripsByTerminal((prev) => ({ ...prev, [terminalId]: normalizedTrips }));
         } else {
           setTripsByTerminal((prev) => ({ ...prev, [terminalId]: [] }));
         }

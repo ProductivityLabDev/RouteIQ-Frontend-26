@@ -27,6 +27,89 @@ const tabsData = [
 ];
 
 const GOOGLE_LIBRARIES = ['places'];
+const GOOGLE_ROADS_CHUNK_SIZE = 100;
+
+const isValidCoordinate = (value) => Number.isFinite(Number(value));
+
+const normalizePathPoints = (points = []) =>
+  points
+    .map((point) => ({
+      lat: Number(point?.lat ?? point?.Latitude),
+      lng: Number(point?.lng ?? point?.Longitude),
+    }))
+    .filter((point) => isValidCoordinate(point.lat) && isValidCoordinate(point.lng));
+
+const extractHistoryArray = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  const candidates = [
+    payload.data,
+    payload.history,
+    payload.items,
+    payload.points,
+    payload.trackingPoints,
+    payload.TrackingPoints,
+    payload.results,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  return [];
+};
+
+const chunkPathPoints = (points, size) => {
+  const chunks = [];
+  for (let index = 0; index < points.length; index += size - 1) {
+    chunks.push(points.slice(index, index + size));
+  }
+  return chunks;
+};
+
+const snapPathToRoads = async (points, apiKey) => {
+  const normalizedPoints = normalizePathPoints(points);
+  if (!apiKey || normalizedPoints.length < 2) return normalizedPoints;
+
+  const snappedPath = [];
+  const chunks = chunkPathPoints(normalizedPoints, GOOGLE_ROADS_CHUNK_SIZE);
+
+  for (const chunk of chunks) {
+    const pathParam = chunk.map((point) => `${point.lat},${point.lng}`).join('|');
+    const response = await fetch(
+      `https://roads.googleapis.com/v1/snapToRoads?interpolate=true&path=${encodeURIComponent(pathParam)}&key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Roads API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const snappedPoints = (data?.snappedPoints || [])
+      .map((point) => ({
+        lat: Number(point?.location?.latitude),
+        lng: Number(point?.location?.longitude),
+      }))
+      .filter((point) => isValidCoordinate(point.lat) && isValidCoordinate(point.lng));
+
+    if (snappedPoints.length === 0) continue;
+
+    if (snappedPath.length > 0) {
+      const lastPoint = snappedPath[snappedPath.length - 1];
+      const [firstPoint, ...restPoints] = snappedPoints;
+      if (lastPoint && firstPoint && lastPoint.lat === firstPoint.lat && lastPoint.lng === firstPoint.lng) {
+        snappedPath.push(...restPoints);
+      } else {
+        snappedPath.push(...snappedPoints);
+      }
+    } else {
+      snappedPath.push(...snappedPoints);
+    }
+  }
+
+  return snappedPath.length > 1 ? snappedPath : normalizedPoints;
+};
 
 const RealTimeTracking = () => {
   const dispatch = useAppDispatch();
@@ -59,12 +142,15 @@ const RealTimeTracking = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicleDetail, setVehicleDetail] = useState(null);
   const [vehiclePath, setVehiclePath] = useState([]); // for polyline
+  const [isSnappingVehiclePath, setIsSnappingVehiclePath] = useState(false);
+  const [vehiclePathSource, setVehiclePathSource] = useState('idle');
   const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
 
   // ✅ NEW: Polling control + last update time
   const [isPollingEnabled, setIsPollingEnabled] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const pollingRef = useRef(null);
+  const pathRequestIdRef = useRef(0);
 
   // ✅ Track if initial fit bounds done (don't re-fit on polling)
   const hasInitialFit = useRef(false);
@@ -76,6 +162,9 @@ const RealTimeTracking = () => {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
     libraries: GOOGLE_LIBRARIES,
   });
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+  const initialUsCenter = { lat: 39.8283, lng: -98.5795 };
+  const initialUsZoom = 5;
 
   const defaultCenter = { lat: 20, lng: 0 }; // world view — vehicles load hone par auto-zoom hoga
   const defaultZoom = 3;
@@ -185,7 +274,7 @@ const RealTimeTracking = () => {
   }, [terminalVehicles, schoolVehicles, activeDrivers, allActiveVehicles, selectedTab, selectedSchool, selectedInfo]);
 
   const mapCenter = useMemo(() => {
-    if (mapMarkers.length === 0) return defaultCenter;
+    if (mapMarkers.length === 0) return initialUsCenter;
     if (mapMarkers.length === 1) return mapMarkers[0].position;
 
     const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
@@ -425,18 +514,69 @@ const RealTimeTracking = () => {
 
   // ✅ Fetch vehicle path/history (for polyline)
   const fetchVehiclePath = async (vehicleId) => {
+    const requestId = ++pathRequestIdRef.current;
     try {
+      console.log('[RealTimeTracking] Fetching vehicle history for Roads API test:', vehicleId);
       const response = await trackingService.getVehicleHistory(vehicleId, { limit: 200 });
+      console.log('[RealTimeTracking] Vehicle history raw response:', response);
       if (response.ok && response.data) {
-        const historyData = response.data.data || response.data || [];
+        const historyData = extractHistoryArray(response.data);
+        console.log('[RealTimeTracking] Vehicle history summary:', {
+          responseType: typeof response.data,
+          isArray: Array.isArray(response.data),
+          topLevelKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : [],
+          extractedCount: historyData.length,
+          firstItem: historyData[0] || null,
+        });
+        console.log('[RealTimeTracking] Vehicle history extracted payload:', historyData);
         const path = historyData.map((point) => ({
-          lat: point.Latitude,
-          lng: point.Longitude,
+          lat: point.Latitude ?? point.latitude ?? point.lat ?? point.Lat,
+          lng: point.Longitude ?? point.longitude ?? point.lng ?? point.Lng,
         }));
-        setVehiclePath(path);
+        const normalizedPath = normalizePathPoints(path);
+        console.log('[RealTimeTracking] Vehicle history normalized path:', normalizedPath);
+
+        if (pathRequestIdRef.current !== requestId) return;
+
+        setVehiclePath(normalizedPath);
+        setVehiclePathSource('raw');
+
+        if (normalizedPath.length <= 1) {
+          console.log('[RealTimeTracking] Roads API skipped: not enough history points', normalizedPath.length);
+          setVehiclePathSource('not_enough_points');
+          return;
+        }
+
+        if (!googleMapsApiKey) {
+          console.warn('[RealTimeTracking] Roads API skipped: missing Google Maps API key');
+          setVehiclePathSource('missing_key');
+          return;
+        }
+
+        setIsSnappingVehiclePath(true);
+        setVehiclePathSource('snapping');
+        try {
+          const snappedPath = await snapPathToRoads(normalizedPath, googleMapsApiKey);
+          if (pathRequestIdRef.current === requestId && snappedPath.length > 1) {
+            setVehiclePath(snappedPath);
+            setVehiclePathSource('roads');
+            console.log('[RealTimeTracking] Roads API success. Snapped points:', snappedPath.length);
+          }
+        } catch (error) {
+          console.warn('Roads API snap failed. Falling back to raw vehicle path.', error);
+          setVehiclePathSource('roads_failed');
+        } finally {
+          if (pathRequestIdRef.current === requestId) {
+            setIsSnappingVehiclePath(false);
+          }
+        }
       }
     } catch (error) {
-      setVehiclePath([]);
+      if (pathRequestIdRef.current === requestId) {
+        setVehiclePath([]);
+        setIsSnappingVehiclePath(false);
+        setVehiclePathSource('history_failed');
+      }
     }
   };
 
@@ -449,6 +589,7 @@ const RealTimeTracking = () => {
     setSelectedStudent(null); // close student panel if open
     setVehicleDetail(null); // reset previous detail
     setVehiclePath([]); // reset previous path
+    setVehiclePathSource('idle');
 
     if (!vehicleId) return;
 
@@ -464,6 +605,8 @@ const RealTimeTracking = () => {
     setSelectedVehicle(null);
     setVehicleDetail(null);
     setVehiclePath([]);
+    setIsSnappingVehiclePath(false);
+    setVehiclePathSource('idle');
   };
 
   // ✅ NEW: Toggle polling
@@ -1105,6 +1248,15 @@ const RealTimeTracking = () => {
                               <div className="bg-gray-50 p-3 rounded-lg">
                                 <p className="text-xs font-medium text-gray-500 uppercase">Route</p>
                                 <p className="text-sm font-bold text-gray-900">{routeName}</p>
+                                <p className="mt-1 text-[11px] font-semibold text-blue-700">
+                                  {vehiclePathSource === 'roads' && 'Roads API Active'}
+                                  {vehiclePathSource === 'snapping' && 'Roads API request in progress'}
+                                  {vehiclePathSource === 'roads_failed' && 'Raw GPS fallback: Roads API failed'}
+                                  {vehiclePathSource === 'raw' && 'Raw GPS path loaded'}
+                                  {vehiclePathSource === 'not_enough_points' && 'Roads API skipped: not enough history points'}
+                                  {vehiclePathSource === 'missing_key' && 'Roads API skipped: API key missing'}
+                                  {vehiclePathSource === 'history_failed' && 'Vehicle history request failed'}
+                                </p>
                               </div>
                             )}
 
@@ -1186,7 +1338,7 @@ const RealTimeTracking = () => {
                   <GoogleMap
                     mapContainerStyle={{ width: '100%', height: '100%' }}
                     center={mapCenter}
-                    zoom={defaultZoom}
+                    zoom={mapMarkers.length === 0 ? initialUsZoom : defaultZoom}
                     onLoad={onMapLoad}
                     onUnmount={onMapUnmount}
                     options={{
