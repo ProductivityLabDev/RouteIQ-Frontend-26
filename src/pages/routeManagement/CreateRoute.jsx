@@ -34,6 +34,13 @@ const StudentSeatSelection = ({
     initialRouteDetails,
     initialRouteStudents = [],
 }) => {
+    const editingRouteId =
+        initialRoute?.routeId ??
+        initialRoute?.RouteId ??
+        initialRoute?.routeID ??
+        initialRoute?.id ??
+        initialRoute?.ID ??
+        null;
     const dispatch = useAppDispatch();
     const { creating } = useAppSelector((state) => state.routes);
     const { schoolManagementSummary } = useAppSelector((state) => state.schools);
@@ -527,8 +534,7 @@ const StudentSeatSelection = ({
                 routeForm.routeTime && 
                 routeForm.driverId && 
                 routeForm.busId && 
-                selectedSchoolId &&
-                selectedStudents.length > 0
+                (editRoute || (selectedSchoolId && selectedStudents.length > 0))
             );
 
             // Debugging for you to see in Console why button is disabled
@@ -550,39 +556,66 @@ const StudentSeatSelection = ({
 
     const handleSubmitRoute = async () => {
         if (!isFormValid) {
-            toast.error("Please fill all required fields and select at least one student.");
+            toast.error(
+                editRoute
+                    ? "Please fill all required route fields."
+                    : "Please fill all required fields and select at least one student."
+            );
             return;
         }
 
-        const payload = {
-            instituteId: Number(selectedSchoolId),
-            routeNumber: routeForm.routeNumber,
-            routeName: routeForm.routeName,
-            pickup: routeForm.pickup,
-            dropoff: routeForm.dropoff,
-            routeDate: routeForm.routeDate,
-            routeTime: routeForm.routeTime,
-            driverId: Number(routeForm.driverId),
-            busId: Number(routeForm.busId),
-            studentIds: selectedStudents.join(','),
-            pickupLat: pickupCoords?.lat != null ? Number(pickupCoords.lat) : null,
-            pickupLng: pickupCoords?.lng != null ? Number(pickupCoords.lng) : null,
-            dropoffLat: dropoffCoords?.lat != null ? Number(dropoffCoords.lat) : null,
-            dropoffLng: dropoffCoords?.lng != null ? Number(dropoffCoords.lng) : null,
-        };
-
         try {
-            const result = await dispatch(createRoute(payload));
-            if (createRoute.fulfilled.match(result)) {
-                toast.success("Route created successfully!");
-                // Clear state
-                setSelectedStudents([]);
-                if (onBack) onBack();
+            if (editRoute && editingRouteId) {
+                const payload = {
+                    routeName: routeForm.routeName,
+                    routeNumber: routeForm.routeNumber,
+                    startLocation: routeForm.pickup,
+                    endLocation: routeForm.dropoff,
+                    driverId: Number(routeForm.driverId),
+                    vehicleId: Number(routeForm.busId),
+                    date: routeForm.routeDate,
+                    time: routeForm.routeTime,
+                };
+
+                const response = await routeService.updateRoute(Number(editingRouteId), payload);
+                if (response?.ok !== false) {
+                    toast.success("Route updated successfully!");
+                    if (onBack) onBack();
+                } else {
+                    toast.error(response?.message || "Failed to update route");
+                }
             } else {
-                toast.error(result.payload || "Failed to create route");
+                const payload = {
+                    instituteId: Number(selectedSchoolId),
+                    routeNumber: routeForm.routeNumber,
+                    routeName: routeForm.routeName,
+                    pickup: routeForm.pickup,
+                    dropoff: routeForm.dropoff,
+                    routeDate: routeForm.routeDate,
+                    routeTime: routeForm.routeTime,
+                    driverId: Number(routeForm.driverId),
+                    busId: Number(routeForm.busId),
+                    studentIds: selectedStudents.join(','),
+                    pickupLat: pickupCoords?.lat != null ? Number(pickupCoords.lat) : null,
+                    pickupLng: pickupCoords?.lng != null ? Number(pickupCoords.lng) : null,
+                    dropoffLat: dropoffCoords?.lat != null ? Number(dropoffCoords.lat) : null,
+                    dropoffLng: dropoffCoords?.lng != null ? Number(dropoffCoords.lng) : null,
+                };
+
+                const result = await dispatch(createRoute(payload));
+                if (createRoute.fulfilled.match(result)) {
+                    toast.success("Route created successfully!");
+                    setSelectedStudents([]);
+                    if (onBack) onBack();
+                } else {
+                    toast.error(result.payload || "Failed to create route");
+                }
             }
         } catch (err) {
-            toast.error("Failed to create route");
+            toast.error(
+                err?.response?.data?.message ||
+                (editRoute ? "Failed to update route" : "Failed to create route")
+            );
         }
     };
 

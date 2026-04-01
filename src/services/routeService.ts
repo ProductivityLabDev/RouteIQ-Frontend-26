@@ -21,6 +21,17 @@ export interface CreateRoutePayload {
   dropoffLng?: number | null;
 }
 
+export interface UpdateRoutePayload {
+  routeName: string;
+  routeNumber: string;
+  startLocation: string;
+  endLocation: string;
+  driverId: number;
+  vehicleId: number;
+  date: string;
+  time: string;
+}
+
 // Backend DTO → sp_CreateRouteWithStudents (@PickupLat, @PickupLng, @DropoffLat, @DropoffLng, @DropoffTime)
 interface CreateRouteBackendDto {
   instituteId: number;
@@ -277,6 +288,17 @@ export const routeService = {
     const response = await apiClient.post<ApiResponse<RouteResponse>>(
       "/institute/create-with-students",
       body
+    );
+    return response.data;
+  },
+
+  updateRoute: async (
+    routeId: number,
+    payload: UpdateRoutePayload
+  ): Promise<ApiResponse<any>> => {
+    const response = await apiClient.patch<ApiResponse<any>>(
+      `/route-management/routes/${routeId}`,
+      payload
     );
     return response.data;
   },
