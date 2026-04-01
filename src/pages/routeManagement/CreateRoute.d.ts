@@ -5,6 +5,9 @@ export interface CreateRouteProps {
   editRoute?: boolean;
   isEditable?: boolean;
   handleBackTrip: () => void;
+  initialRoute?: any;
+  initialRouteDetails?: any;
+  initialRouteStudents?: any[];
 }
 
 declare const CreateRoute: React.FC<CreateRouteProps>;

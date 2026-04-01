@@ -10,9 +10,11 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
     const [openSchoolId, setOpenSchoolId] = useState(null);
     const [expandedRoutes, setExpandedRoutes] = useState({});
     const [routeTabTime, setRouteTabTime] = useState({}); // { [routeKey]: 'AM' | 'PM' }
-    const [currentPage, setCurrentPage] = useState(1);
+    const [routePages, setRoutePages] = useState({});
+    const PAGE_SIZE = 10;
 
     const getTabTime = (routeKey) => routeTabTime[routeKey] ?? 'AM';
+    const getRoutePage = (routeId) => routePages[routeId] ?? 1;
     const toggleRoute = (routeId) => {
         setExpandedRoutes(prev => ({
             ...prev,
@@ -20,7 +22,7 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
         }));
     };
     const dispatch = useAppDispatch();
-    const { routesByInstitute, loading, studentsByRoute, errors } = useAppSelector((state) => state.routes);
+    const { routesByInstitute, loading, studentsByRoute, studentsMetaByRoute, errors } = useAppSelector((state) => state.routes);
     const [smartMatch, setSmartMatch] = useState({
         routeId: null,
         loading: false,
@@ -89,7 +91,7 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
         const already = Array.isArray(studentsByRoute?.[routeId]) && studentsByRoute[routeId].length > 0;
         const isLoading = loading?.routeStudents?.[routeId];
         if (!already && !isLoading) {
-            dispatch(fetchRouteStudents({ routeId, type }));
+            dispatch(fetchRouteStudents({ routeId, type, limit: PAGE_SIZE, offset: 0 }));
         }
     };
 
@@ -97,8 +99,22 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
         const routeId = route?.routeId || route?.RouteId || route?.routeID || route?.id;
         const routeKey = `route-${routeId || ridx}`;
         setRouteTabTime((prev) => ({ ...prev, [routeKey]: newType }));
+        setRoutePages((prev) => ({ ...prev, [routeId]: 1 }));
         if (!routeId) return;
-        dispatch(fetchRouteStudents({ routeId, type: newType }));
+        dispatch(fetchRouteStudents({ routeId, type: newType, limit: PAGE_SIZE, offset: 0 }));
+    };
+
+    const handleRouteStudentsPageChange = (routeId, page, type) => {
+        const meta = studentsMetaByRoute?.[routeId] || {};
+        const totalPages = Math.max(1, Math.ceil(Number(meta.total || 0) / Number(meta.limit || PAGE_SIZE)));
+        if (page < 1 || page > totalPages || page === getRoutePage(routeId)) return;
+        setRoutePages((prev) => ({ ...prev, [routeId]: page }));
+        dispatch(fetchRouteStudents({
+            routeId,
+            type,
+            limit: Number(meta.limit || PAGE_SIZE),
+            offset: (page - 1) * Number(meta.limit || PAGE_SIZE),
+        }));
     };
 
     const handleSchoolMap = (inst) => {
@@ -250,7 +266,7 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                 : [];
             try {
                 const fetchResult = await dispatch(
-                    fetchRouteStudents({ routeId, type: "AM" })
+                    fetchRouteStudents({ routeId, type: "AM", limit: PAGE_SIZE, offset: 0 })
                 ).unwrap();
                 if (Array.isArray(fetchResult?.data)) existing = fetchResult.data;
             } catch (_) {
@@ -322,7 +338,7 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                     ),
                     assigningStudentId: null,
                 }));
-                dispatch(fetchRouteStudents({ routeId, type: "AM" }));
+                dispatch(fetchRouteStudents({ routeId, type: "AM", limit: PAGE_SIZE, offset: 0 }));
             } else if (res.data?.AlreadyAssigned) {
                 toast(`Student is already on this route`);
                 // Remove from suggestions so they don't keep showing
@@ -517,7 +533,7 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                                                     Map
                                                 </button>
                                                 
-                                                <button className="border border-gray-300 px-6 py-1 rounded flex items-center" onClick={handleEditRoute}>
+                                                <button className="border border-gray-300 px-6 py-1 rounded flex items-center" onClick={() => handleEditRoute(route)}>
                                                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                     <path d="M3.20531 16.7498C2.98112 16.7498 2.7932 16.674 2.64155 16.5223C2.48989 16.3707 2.41406 16.1827 2.41406 15.9586V14.0398C2.41406 13.8288 2.45362 13.6277 2.53275 13.4364C2.61187 13.2452 2.72397 13.0771 2.86903 12.932L12.8585 2.96229C13.0168 2.81723 13.1915 2.70514 13.3827 2.62601C13.574 2.54689 13.7751 2.50732 13.9861 2.50732C14.1971 2.50732 14.4015 2.54689 14.5993 2.62601C14.7971 2.70514 14.9685 2.82382 15.1136 2.98207L16.2016 4.08982C16.3598 4.23488 16.4752 4.40632 16.5477 4.60413C16.6203 4.80195 16.6565 4.99976 16.6565 5.19757C16.6565 5.40857 16.6203 5.60968 16.5477 5.8009C16.4752 5.99212 16.3598 6.16685 16.2016 6.3251L6.23184 16.2948C6.08678 16.4399 5.91863 16.552 5.72742 16.6311C5.5362 16.7102 5.33509 16.7498 5.12409 16.7498H3.20531ZM13.9663 6.30532L15.074 5.19757L13.9663 4.08982L12.8585 5.19757L13.9663 6.30532Z" fill="#C01824"/>
                                                     </svg>
@@ -699,27 +715,45 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                                     </div>
 
                                     {/* Pagination */}
-                                    <div className="flex justify-center mt-6">
-                                        <button className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md bg-[#919EAB]">
-                                            <img src={leftArrow} />
-                                        </button>
+                                    {(() => {
+                                        const routeId = route.routeId || route.RouteId || route.routeID || route.id;
+                                        const routeStudents = Array.isArray(studentsByRoute?.[routeId]) ? studentsByRoute[routeId] : [];
+                                        const meta = studentsMetaByRoute?.[routeId] || {};
+                                        const limit = Number(meta.limit || PAGE_SIZE);
+                                        const total = Number(meta.total || routeStudents.length || 0);
+                                        const currentPage = getRoutePage(routeId);
+                                        const totalPages = Math.max(1, Math.ceil(total / limit));
 
-                                        <button className={`w-10 h-10 flex items-center justify-center border border-[#C01824] mx-1 ${currentPage === 1 ? 'text-[#C01824]' : ''}`}>
-                                            1
-                                        </button>
+                                        return (
+                                            <div className="flex justify-center mt-6">
+                                                <button
+                                                    onClick={() => handleRouteStudentsPageChange(routeId, currentPage - 1, getTabTime(`route-${routeId || ridx}`))}
+                                                    disabled={currentPage === 1}
+                                                    className={`w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md ${currentPage === 1 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#919EAB]'}`}
+                                                >
+                                                    <img src={leftArrow} />
+                                                </button>
 
-                                        <button className={`w-10 h-10 flex items-center justify-center border border-gray-300 mx-1 ${currentPage === 2 ? 'bg-red-600 text-white' : ''}`}>
-                                            2
-                                        </button>
+                                                {Array.from({ length: totalPages }, (_, index) => index + 1).slice(0, 5).map((page) => (
+                                                    <button
+                                                        key={page}
+                                                        onClick={() => handleRouteStudentsPageChange(routeId, page, getTabTime(`route-${routeId || ridx}`))}
+                                                        className={`w-10 h-10 flex items-center justify-center border mx-1 ${page === currentPage ? 'border-[#C01824] bg-red-600 text-white' : 'border-gray-300'}`}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                ))}
 
-                                        <button className={`w-10 h-10 flex items-center justify-center border border-gray-300 mx-1 ${currentPage === 3 ? 'bg-red-600 text-white' : ''}`}>
-                                            3
-                                        </button>
-
-                                        <button className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md bg-[#919EAB]">
-                                            <img src={rightArrow} />
-                                        </button>
-                                    </div>
+                                                <button
+                                                    onClick={() => handleRouteStudentsPageChange(routeId, currentPage + 1, getTabTime(`route-${routeId || ridx}`))}
+                                                    disabled={currentPage === totalPages}
+                                                    className={`w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md ${currentPage === totalPages ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#919EAB]'}`}
+                                                >
+                                                    <img src={rightArrow} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>

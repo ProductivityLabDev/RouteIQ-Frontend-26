@@ -48,10 +48,10 @@ export const fetchRouteMap = createAsyncThunk(
 
 export const fetchRouteStudents = createAsyncThunk(
   "routes/fetchRouteStudents",
-  async ({ routeId, type = "AM" }, { rejectWithValue }) => {
+  async ({ routeId, type = "AM", limit = 10, offset = 0 }, { rejectWithValue }) => {
     try {
-      const res = await routeService.getRouteStudents(Number(routeId), type);
-      return { routeId, type, data: res.data };
+      const res = await routeService.getRouteStudents(Number(routeId), type, { limit, offset });
+      return { routeId, type, data: res.data, total: res.total, limit: res.limit, offset: res.offset };
     } catch (error) {
       const msg = error?.response?.data?.message;
       const normalized =
@@ -116,6 +116,7 @@ const initialState = {
   terminalsHierarchy: [],
   routesByInstitute: {}, // { [instituteId]: Route[] }
   studentsByRoute: {}, // { [routeId]: Student[] }
+  studentsMetaByRoute: {}, // { [routeId]: { total, limit, offset, type } }
   metricsByRoute: {}, // { [routeId]: { distanceKm, durationMinutes, ... } }
   detailsByRoute: {}, // { [routeId]: RouteDetails }
   mapView: {
@@ -214,11 +215,17 @@ const routesSlice = createSlice({
         }
       })
       .addCase(fetchRouteStudents.fulfilled, (state, action) => {
-        const { routeId, data } = action.payload || {};
+        const { routeId, data, total, limit, offset, type } = action.payload || {};
         if (routeId !== undefined) {
           state.loading.routeStudents[routeId] = false;
           state.errors.routeStudents[routeId] = null;
           state.studentsByRoute[routeId] = data || [];
+          state.studentsMetaByRoute[routeId] = {
+            total: Number(total ?? (data || []).length ?? 0),
+            limit: Number(limit ?? 10),
+            offset: Number(offset ?? 0),
+            type: type || "AM",
+          };
         }
       })
       .addCase(fetchRouteStudents.rejected, (state, action) => {
@@ -228,6 +235,12 @@ const routesSlice = createSlice({
           state.errors.routeStudents[routeId] =
             error || "Failed to fetch route students";
           state.studentsByRoute[routeId] = [];
+          state.studentsMetaByRoute[routeId] = {
+            total: 0,
+            limit: 10,
+            offset: 0,
+            type: action.meta.arg?.type || "AM",
+          };
         }
       })
       .addCase(fetchRouteMetrics.pending, (state, action) => {
@@ -286,7 +299,6 @@ const routesSlice = createSlice({
 
 export const { clearRouteState } = routesSlice.actions;
 export default routesSlice.reducer;
-
 
 
 

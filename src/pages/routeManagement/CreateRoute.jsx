@@ -25,7 +25,15 @@ const GOOGLE_LIBRARIES = ["places"];
 /**
  * @type {import('./CreateRoute').default}
  */
-const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip }) => {
+const StudentSeatSelection = ({
+    onBack,
+    editRoute,
+    isEditable,
+    handleBackTrip,
+    initialRoute,
+    initialRouteDetails,
+    initialRouteStudents = [],
+}) => {
     const dispatch = useAppDispatch();
     const { creating } = useAppSelector((state) => state.routes);
     const { schoolManagementSummary } = useAppSelector((state) => state.schools);
@@ -118,6 +126,116 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
     });
     const [pickupCoords, setPickupCoords] = useState({ lat: null, lng: null });
     const [dropoffCoords, setDropoffCoords] = useState({ lat: null, lng: null });
+
+    useEffect(() => {
+        if (!editRoute || !initialRoute) return;
+
+        const routeDetails = initialRouteDetails || {};
+        const routeData = { ...initialRoute, ...routeDetails };
+        const instituteId =
+            routeData.instituteId ??
+            routeData.InstituteId ??
+            routeData.schoolId ??
+            routeData.SchoolId ??
+            "";
+        const driverId =
+            routeData.driverEmployeeId ??
+            routeData.DriverEmployeeId ??
+            routeData.driverId ??
+            routeData.DriverId ??
+            "";
+        const busId =
+            routeData.vehicleId ??
+            routeData.VehicleId ??
+            routeData.busId ??
+            routeData.BusId ??
+            "";
+
+        setRouteForm((prev) => ({
+            ...prev,
+            routeName: routeData.routeName ?? routeData.RouteName ?? prev.routeName,
+            routeNumber: routeData.routeNumber ?? routeData.RouteNumber ?? prev.routeNumber,
+            pickup:
+                routeData.pickup ??
+                routeData.pickupLocation ??
+                routeData.PickupLocation ??
+                routeData.pickupAddress ??
+                routeData.PickupAddress ??
+                prev.pickup,
+            dropoff:
+                routeData.dropoff ??
+                routeData.dropoffLocation ??
+                routeData.DropoffLocation ??
+                routeData.dropoffAddress ??
+                routeData.DropoffAddress ??
+                prev.dropoff,
+            routeDate:
+                (routeData.routeDate ?? routeData.RouteDate ?? "").slice(0, 10) || prev.routeDate,
+            routeTime:
+                (routeData.routeTime ??
+                    routeData.RouteTime ??
+                    routeData.pickupTime ??
+                    routeData.PickupTime ??
+                    ""
+                ).slice(0, 5) || prev.routeTime,
+            driverId: driverId ? Number(driverId) : prev.driverId,
+            busId: busId ? Number(busId) : prev.busId,
+        }));
+
+        if (instituteId) {
+            setSelectedSchoolId(String(instituteId));
+            dispatch(fetchStudentsByInstitute(Number(instituteId)));
+        }
+
+        setSelectedDriverName(
+            routeData.driverName ??
+            routeData.DriverName ??
+            routeData.driverFullName ??
+            routeData.DriverFullName ??
+            ""
+        );
+        setSelectedBusName(
+            routeData.vehicleNumberPlate ??
+            routeData.VehicleNumberPlate ??
+            routeData.busNumber ??
+            routeData.BusNumber ??
+            routeData.vehicleName ??
+            routeData.VehicleName ??
+            ""
+        );
+
+        setSelectedStudents(
+            (Array.isArray(initialRouteStudents) ? initialRouteStudents : [])
+                .map((student) => student.studentId ?? student.StudentId ?? student.id)
+                .filter(Boolean)
+        );
+
+        setPickupCoords({
+            lat:
+                routeData.pickupLat ??
+                routeData.pickupLatitude ??
+                routeData.PickupLatitude ??
+                null,
+            lng:
+                routeData.pickupLng ??
+                routeData.pickupLongitude ??
+                routeData.PickupLongitude ??
+                null,
+        });
+
+        setDropoffCoords({
+            lat:
+                routeData.dropoffLat ??
+                routeData.dropoffLatitude ??
+                routeData.DropoffLatitude ??
+                null,
+            lng:
+                routeData.dropoffLng ??
+                routeData.dropoffLongitude ??
+                routeData.DropoffLongitude ??
+                null,
+        });
+    }, [editRoute, initialRoute, initialRouteDetails, initialRouteStudents, dispatch]);
 
     const handleRouteFieldChange = (e) => {
         const { name, value } = e.target;

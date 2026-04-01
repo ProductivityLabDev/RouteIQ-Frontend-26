@@ -103,8 +103,10 @@ export interface RouteMapResponse {
 }
 
 export interface RouteStudent {
+  assignmentId?: number;
   studentId?: number;
   studentName?: string;
+  studentAddress?: string;
   time?: string;
   pickupTime?: string;
   pickupAddress?: string;
@@ -112,6 +114,19 @@ export interface RouteStudent {
   pickupState?: string;
   studentLatitude?: number;
   studentLongitude?: number;
+  assignmentType?: string;
+  busNumber?: string;
+  stopId?: number;
+  stopName?: string;
+  stopAddress?: string;
+  stopOrder?: number;
+  estimatedArrivalTime?: string;
+}
+
+export interface RouteStudentsResponse extends ApiResponse<RouteStudent[]> {
+  total?: number;
+  limit?: number;
+  offset?: number;
 }
 
 export interface RouteMetrics {
@@ -335,17 +350,31 @@ export const routeService = {
    */
   getRouteStudents: async (
     routeId: number,
-    type: string = "AM"
-  ): Promise<ApiResponse<RouteStudent[]>> => {
-    const response = await apiClient.get<RouteStudent[]>(
+    type: string = "AM",
+    options: { limit?: number; offset?: number } = {}
+  ): Promise<RouteStudentsResponse> => {
+    const { limit = 10, offset = 0 } = options;
+    const response = await apiClient.get<any>(
       `/route-management/routes/${routeId}/students`,
       {
-        params: { type },
+        params: { type, limit, offset },
       }
     );
+    const raw = response.data;
+    const payload = Array.isArray(raw)
+      ? raw
+      : raw?.ok && Array.isArray(raw.data)
+      ? raw.data
+      : Array.isArray(raw?.data)
+      ? raw.data
+      : [];
+
     return {
       ok: true,
-      data: Array.isArray(response.data) ? response.data : [],
+      data: payload,
+      total: Number(raw?.total ?? payload.length ?? 0),
+      limit: Number(raw?.limit ?? limit),
+      offset: Number(raw?.offset ?? offset),
     };
   },
 
@@ -546,4 +575,3 @@ export const routeService = {
     return response.data;
   },
 };
-

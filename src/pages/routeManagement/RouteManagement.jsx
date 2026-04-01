@@ -105,6 +105,7 @@ const RouteManagement = () => {
   const [isEditable, setIsEditable] = useState(false);
   const [isCreateRoute, setIsCreateRoute] = useState(false);
   const [isEditRoute, setIsEditRoute] = useState(false);
+  const [selectedEditableRoute, setSelectedEditableRoute] = useState(null);
 
   // ✅ This decides whether MapComponent should call Directions (Uber style)
   const [isRouteMap, setIsRouteMap] = useState(false);
@@ -410,17 +411,26 @@ const RouteManagement = () => {
     setIsCreateRoute(false);
     setIsEditRoute(false);
     setIsRouteMap(false);
+    setSelectedEditableRoute(null);
     setShowCard(true);
   };
 
   const handleOpenRoute = () => {
     setIsCreateRoute(true);
     setIsEditRoute(false);
+    setSelectedEditableRoute(null);
   };
 
-  const handleEditRoute = () => {
+  const handleEditRoute = (route) => {
+    const resolvedId = resolveRouteId(route);
+    setSelectedEditableRoute(route || null);
     setIsEditRoute(true);
     setIsCreateRoute(true);
+
+    if (resolvedId) {
+      dispatch(fetchRouteDetails(resolvedId));
+      dispatch(fetchRouteStudents({ routeId: resolvedId, type: "AM", limit: 100, offset: 0 }));
+    }
   };
 
   const closeCard = () => setShowCard(false);
@@ -661,6 +671,9 @@ const RouteManagement = () => {
           editRoute={isEditRoute}
           isEditable={isEditable}
           handleBackTrip={handleBackTrip}
+          initialRoute={selectedEditableRoute}
+          initialRouteDetails={selectedEditableRoute ? detailsByRoute?.[resolveRouteId(selectedEditableRoute)] : null}
+          initialRouteStudents={selectedEditableRoute ? studentsByRoute?.[resolveRouteId(selectedEditableRoute)] || [] : []}
         />
       ) : (
         // ===========================
