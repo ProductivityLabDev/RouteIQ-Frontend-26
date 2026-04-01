@@ -191,7 +191,7 @@ const EditScheduledMaintenance = ({
             setEditMode(false)
             setIsNavigate(true)
         } catch (error) {
-            console.error('Repair schedule submit error:', error)
+            toast.error(error?.message || 'Failed to submit repair schedule')
         }
     }
 

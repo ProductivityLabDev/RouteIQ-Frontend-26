@@ -12,11 +12,7 @@ export interface CreateStudentPayload {
   firstName: string;
   lastName: string;
   pickupLocation: string;
-  pickupLatitude?: number | null;
-  pickupLongitude?: number | null;
   dropLocation: string;
-  dropLatitude?: number | null;
-  dropLongitude?: number | null;
   grade: string;
   emergencyContact: string;
   enrollmentNo: string;
@@ -24,8 +20,6 @@ export interface CreateStudentPayload {
   guardian1: string;
   guardian2: string;
   guardianEmail: string;
-  busNo: string;
-  instituteId: number;
 }
 
 export const studentService = {
@@ -53,23 +47,22 @@ export const studentService = {
     };
   },
 
-  createStudent: async (payload: CreateStudentPayload): Promise<any> => {
-    const pickupLat = payload.pickupLatitude != null ? Number(payload.pickupLatitude) : null;
-    const pickupLng = payload.pickupLongitude != null ? Number(payload.pickupLongitude) : null;
-    const dropLat = payload.dropLatitude != null ? Number(payload.dropLatitude) : null;
-    const dropLng = payload.dropLongitude != null ? Number(payload.dropLongitude) : null;
-
-    // Send only keys that backend DTO allows (camelCase). Backend maps these to sp_Student @PickupLatitude, @DropLatitude, etc.
+  createStudent: async (instituteId: number | string, payload: CreateStudentPayload): Promise<any> => {
     const body = {
-      ...payload,
-      pickupLatitude: pickupLat,
-      pickupLongitude: pickupLng,
-      dropLatitude: dropLat,
-      dropLongitude: dropLng,
+      firstName: payload.firstName || "",
+      lastName: payload.lastName || "",
+      grade: payload.grade || "",
+      emergencyContact: payload.emergencyContact || "",
+      enrollmentNo: payload.enrollmentNo || "",
+      address: payload.address || "",
+      guardian1: payload.guardian1 || "",
+      guardian2: payload.guardian2 || "",
+      guardianEmail: payload.guardianEmail || "",
+      pickupLocation: payload.pickupLocation || "",
+      dropLocation: payload.dropLocation || "",
     };
-    const response = await apiClient.post("/institute/create-student", body);
+    const response = await apiClient.post(`/institute/${instituteId}/create-student`, body);
     // Backend already returns { ok, message, data: { studentId, smartMatch, ... } }
     return response.data;
   },
 };
-

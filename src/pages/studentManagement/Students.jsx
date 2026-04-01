@@ -12,6 +12,7 @@ import { GrDocumentCsv } from "react-icons/gr";
 import { useDispatch } from 'react-redux';
 import { fetchStudentsByInstitute } from '@/redux/slices/studentSlice';
 import { useJsApiLoader } from '@react-google-maps/api';
+import { toast } from 'react-hot-toast';
 
 const GOOGLE_LIBRARIES = ["places"];
 
@@ -23,7 +24,7 @@ const Students = () => {
   const [editStudentModal, setStudentModal] = useState(false);
   const [noticeState, setNoticeState] = useState(false);
   const [studentEditData, setStudentEditData] = useState(null);
-  // will be filled from API – no static rows
+  // will be filled from API ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ no static rows
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -33,23 +34,13 @@ const Students = () => {
   // Google Maps API Loader - Load in parent so script is ready before modal opens
   const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   
-  console.log("🔍 [Students] Initializing Google Maps in parent:", {
-    apiKey: googleApiKey ? "✅ Present" : "❌ Missing",
-    apiKeyLength: googleApiKey.length
-  });
   
-  const { isLoaded: isGoogleMapsLoaded, loadError } = useJsApiLoader({
+  const { isLoaded: isGoogleMapsLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: googleApiKey,
     libraries: GOOGLE_LIBRARIES
   });
 
-  useEffect(() => {
-    console.log("🔍 [Students] Google Maps Status:", {
-      isLoaded: isGoogleMapsLoaded,
-      loadError: loadError?.message || null
-    });
-  }, [isGoogleMapsLoaded, loadError]);
 
   // When coming from School Management with an instituteId, fetch students for that school
   useEffect(() => {
@@ -58,11 +49,9 @@ const Students = () => {
 
       try {
         setLoading(true);
-        console.log('[Students] Loading students for instituteId:', instituteId);
         const result = await dispatch(fetchStudentsByInstitute(instituteId));
         if (fetchStudentsByInstitute.fulfilled.match(result)) {
           const apiStudents = result.payload || [];
-          console.log('[Students] API students from slice:', apiStudents);
 
           const mapped = apiStudents.map((student, index) => ({
             id: student.StudentId || index + 1,
@@ -78,11 +67,10 @@ const Students = () => {
             address: student.Address || '',
           }));
 
-          console.log('[Students] Mapped students for table:', mapped);
           setStudents(mapped);
         }
       } catch (e) {
-        console.error('Error loading students by institute:', e);
+        toast.error('Failed to load students');
       } finally {
         setLoading(false);
       }
@@ -216,7 +204,7 @@ const menuItems = [
                     <td className="px-6 py-2 border-b text-sm">{student.enrollment || 'N/A'}</td>
                     <td className="px-6 py-2 border-b text-sm">{student.address || 'N/A'}</td>
                     {/* <td className="px-6 py-2 border-b text-sm">
-                      {student?.isAdmin ? student.medicalDetails : '••••••'}
+                      {student?.isAdmin ? student.medicalDetails : 'ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢'}
                     </td> */}
                     {/* <td className="px-6 py-2 border-b text-sm text-center">
                       <img
@@ -290,10 +278,10 @@ const menuItems = [
         handleOpen={handleStudentModal}
         editDriver={editStudentModal}
         studentEditData={studentEditData}
+        instituteId={instituteId}
         isGoogleMapsLoaded={isGoogleMapsLoaded}
         refreshStudents={() => {
           // Add refresh logic here if needed
-          console.log("Refreshing students list...");
         }}
       />
     </MainLayout>

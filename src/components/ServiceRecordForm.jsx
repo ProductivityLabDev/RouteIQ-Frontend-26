@@ -85,7 +85,6 @@ const ServiceRecordForm = ({ handleCancel, vehicle, busId, onSuccess }) => {
         }
       }
     } catch (error) {
-      console.error("Error creating repair schedule:", error);
     }
   };
 

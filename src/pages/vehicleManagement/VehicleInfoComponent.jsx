@@ -10,8 +10,6 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    console.log("🚌 Vehicle data received in VehicleInfoComponent:", vehicle);
-
     useEffect(() => {
         const fetchBusDetails = async () => {
             if (!vehicle) {
@@ -29,7 +27,6 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                 || vehicle.ID;
 
             if (!vehicleId) {
-                console.error("❌ [VehicleInfoComponent] No vehicleId found in vehicle:", vehicle);
                 setError("Vehicle ID not found");
                 setLoading(false);
                 toast.error("Vehicle ID not found");
@@ -38,17 +35,14 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
 
             try {
                 setLoading(true);
-                console.log("🔄 [VehicleInfoComponent] Fetching bus details for vehicleId:", vehicleId);
                 const response = await busService.getBusByVehicleId(vehicleId);
                 
                 if (response.ok && response.data) {
-                    console.log("✅ [VehicleInfoComponent] Bus details fetched:", response.data);
                     setBusData(response.data);
                 } else {
                     throw new Error("Failed to fetch bus details");
                 }
             } catch (err) {
-                console.error("❌ [VehicleInfoComponent] Error fetching bus details:", err);
                 setError(err.message || "Failed to load bus information");
                 toast.error("Failed to load bus information");
             } finally {

@@ -16,9 +16,9 @@ const POLLING_INTERVAL = 7000; // 7 seconds
 // Get bus icon based on status
 const getBusIcon = (status) => {
   const s = (status || '').toLowerCase();
-  if (s.includes('transit') || s === 'in transit') return greenbusicon;  // 🟢 Green bus
-  if (s.includes('stop') || s === 'at stop') return orangebusicon;       // 🟠 Orange bus
-  return redbusicon;  // 🔴 Red bus for idle/unknown
+  if (s.includes('transit') || s === 'in transit') return greenbusicon;  // ðŸŸ¢ Green bus
+  if (s.includes('stop') || s === 'at stop') return orangebusicon;       // ðŸŸ  Orange bus
+  return redbusicon;  // ðŸ”´ Red bus for idle/unknown
 };
 
 const tabsData = [
@@ -134,11 +134,11 @@ const RealTimeTracking = () => {
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [map, setMap] = useState(null);
 
-  // ✅ NEW: All active vehicles (main map - page load + polling)
+  // âœ… NEW: All active vehicles (main map - page load + polling)
   const [allActiveVehicles, setAllActiveVehicles] = useState([]);
   const [loadingAllVehicles, setLoadingAllVehicles] = useState(false);
 
-  // ✅ NEW: Selected vehicle detail + polyline path
+  // âœ… NEW: Selected vehicle detail + polyline path
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicleDetail, setVehicleDetail] = useState(null);
   const [vehiclePath, setVehiclePath] = useState([]); // for polyline
@@ -146,13 +146,13 @@ const RealTimeTracking = () => {
   const [vehiclePathSource, setVehiclePathSource] = useState('idle');
   const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
 
-  // ✅ NEW: Polling control + last update time
+  // âœ… NEW: Polling control + last update time
   const [isPollingEnabled, setIsPollingEnabled] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const pollingRef = useRef(null);
   const pathRequestIdRef = useRef(0);
 
-  // ✅ Track if initial fit bounds done (don't re-fit on polling)
+  // âœ… Track if initial fit bounds done (don't re-fit on polling)
   const hasInitialFit = useRef(false);
   const lastMarkerCount = useRef(0);
 
@@ -166,13 +166,13 @@ const RealTimeTracking = () => {
   const initialUsCenter = { lat: 39.8283, lng: -98.5795 };
   const initialUsZoom = 5;
 
-  const defaultCenter = { lat: 20, lng: 0 }; // world view — vehicles load hone par auto-zoom hoga
+  const defaultCenter = { lat: 20, lng: 0 }; // world view â€” vehicles load hone par auto-zoom hoga
   const defaultZoom = 3;
 
   // ---------- MARKERS ----------
   const mapMarkers = useMemo(() => {
     const markers = [];
-    const seenIds = new Set(); // ✅ Track seen IDs to prevent duplicates
+    const seenIds = new Set(); // âœ… Track seen IDs to prevent duplicates
 
     // Helper to add marker only if not duplicate
     const addMarker = (marker) => {
@@ -182,7 +182,7 @@ const RealTimeTracking = () => {
       }
     };
 
-    // ✅ Show ALL active vehicles when no terminal/school selected (default view)
+    // âœ… Show ALL active vehicles when no terminal/school selected (default view)
     if (selectedInfo === 'Track School' && !selectedTab && !selectedSchool && allActiveVehicles.length > 0) {
       allActiveVehicles.forEach((vehicle) => {
         if (
@@ -286,7 +286,7 @@ const RealTimeTracking = () => {
     (mapInstance) => {
       setMap(mapInstance);
       if (mapMarkers.length > 0 && window.google?.maps?.LatLngBounds) {
-        // ✅ For single/few markers - pan directly to marker position
+        // âœ… For single/few markers - pan directly to marker position
         if (mapMarkers.length <= 3) {
           const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
           const avgLng = mapMarkers.reduce((sum, m) => sum + m.position.lng, 0) / mapMarkers.length;
@@ -353,7 +353,7 @@ const RealTimeTracking = () => {
   }, [selectedRouteId, activeTab]);
 
   // ---------- FIT BOUNDS ----------
-  // ✅ Only fit bounds on initial load or when selection changes (NOT during polling)
+  // âœ… Only fit bounds on initial load or when selection changes (NOT during polling)
   useEffect(() => {
     if (!map || mapMarkers.length === 0 || !window.google?.maps?.LatLngBounds) return;
 
@@ -481,7 +481,7 @@ const RealTimeTracking = () => {
     }
   };
 
-  // ✅ Fetch ALL active vehicles (main map - page load + polling)
+  // âœ… Fetch ALL active vehicles (main map - page load + polling)
   const fetchAllActiveVehicles = async (silent = false) => {
     try {
       if (!silent) setLoadingAllVehicles(true);
@@ -497,7 +497,7 @@ const RealTimeTracking = () => {
     }
   };
 
-  // ✅ Fetch single vehicle detail (on marker click)
+  // âœ… Fetch single vehicle detail (on marker click)
   const fetchVehicleDetail = async (vehicleId) => {
     try {
       setLoadingVehicleDetail(true);
@@ -506,35 +506,24 @@ const RealTimeTracking = () => {
         setVehicleDetail(response.data);
       }
     } catch (error) {
-      // silently fail — fallback to selectedVehicle data
+      // silently fail â€” fallback to selectedVehicle data
     } finally {
       setLoadingVehicleDetail(false);
     }
   };
 
-  // ✅ Fetch vehicle path/history (for polyline)
+  // âœ… Fetch vehicle path/history (for polyline)
   const fetchVehiclePath = async (vehicleId) => {
     const requestId = ++pathRequestIdRef.current;
     try {
-      console.log('[RealTimeTracking] Fetching vehicle history for Roads API test:', vehicleId);
       const response = await trackingService.getVehicleHistory(vehicleId, { limit: 200 });
-      console.log('[RealTimeTracking] Vehicle history raw response:', response);
       if (response.ok && response.data) {
         const historyData = extractHistoryArray(response.data);
-        console.log('[RealTimeTracking] Vehicle history summary:', {
-          responseType: typeof response.data,
-          isArray: Array.isArray(response.data),
-          topLevelKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : [],
-          extractedCount: historyData.length,
-          firstItem: historyData[0] || null,
-        });
-        console.log('[RealTimeTracking] Vehicle history extracted payload:', historyData);
         const path = historyData.map((point) => ({
           lat: point.Latitude ?? point.latitude ?? point.lat ?? point.Lat,
           lng: point.Longitude ?? point.longitude ?? point.lng ?? point.Lng,
         }));
         const normalizedPath = normalizePathPoints(path);
-        console.log('[RealTimeTracking] Vehicle history normalized path:', normalizedPath);
 
         if (pathRequestIdRef.current !== requestId) return;
 
@@ -542,13 +531,11 @@ const RealTimeTracking = () => {
         setVehiclePathSource('raw');
 
         if (normalizedPath.length <= 1) {
-          console.log('[RealTimeTracking] Roads API skipped: not enough history points', normalizedPath.length);
           setVehiclePathSource('not_enough_points');
           return;
         }
 
         if (!googleMapsApiKey) {
-          console.warn('[RealTimeTracking] Roads API skipped: missing Google Maps API key');
           setVehiclePathSource('missing_key');
           return;
         }
@@ -560,10 +547,8 @@ const RealTimeTracking = () => {
           if (pathRequestIdRef.current === requestId && snappedPath.length > 1) {
             setVehiclePath(snappedPath);
             setVehiclePathSource('roads');
-            console.log('[RealTimeTracking] Roads API success. Snapped points:', snappedPath.length);
           }
         } catch (error) {
-          console.warn('Roads API snap failed. Falling back to raw vehicle path.', error);
           setVehiclePathSource('roads_failed');
         } finally {
           if (pathRequestIdRef.current === requestId) {
@@ -580,7 +565,7 @@ const RealTimeTracking = () => {
     }
   };
 
-  // ✅ NEW: Handle vehicle marker click
+  // âœ… NEW: Handle vehicle marker click
   const handleVehicleClick = async (vehicle) => {
     const vehicleId = vehicle.vehicleId || vehicle.VehicleId;
     
@@ -600,7 +585,7 @@ const RealTimeTracking = () => {
     ]);
   };
 
-  // ✅ NEW: Close vehicle detail panel
+  // âœ… NEW: Close vehicle detail panel
   const handleCloseVehiclePanel = () => {
     setSelectedVehicle(null);
     setVehicleDetail(null);
@@ -609,7 +594,7 @@ const RealTimeTracking = () => {
     setVehiclePathSource('idle');
   };
 
-  // ✅ NEW: Toggle polling
+  // âœ… NEW: Toggle polling
   const togglePolling = () => {
     setIsPollingEnabled((prev) => !prev);
   };
@@ -641,9 +626,9 @@ const RealTimeTracking = () => {
     if (studentOrDriver?.routeId) setSelectedRouteId(studentOrDriver.routeId);
   };
 
-  // ✅ School select => terminal auto-select + (polish) terminal vehicles sync
+  // âœ… School select => terminal auto-select + (polish) terminal vehicles sync
   const toggleSchoolPanel = (school) => {
-    // ✅ Reset fit bounds so new school gets proper zoom
+    // âœ… Reset fit bounds so new school gets proper zoom
     hasInitialFit.current = false;
     lastMarkerCount.current = 0;
 
@@ -723,11 +708,11 @@ const RealTimeTracking = () => {
     selectedInfo, activeTab, studentsOnBoard, students, selectedSchool,
   ]);
 
-  // ✅ Main fix: tab switch pe hard reset (mix + stale list khatam)
+  // âœ… Main fix: tab switch pe hard reset (mix + stale list khatam)
   const handleSelectedTabInfo = (tab) => {
     setSelectedInfo(tab);
 
-    // ✅ Reset fit bounds so new selection gets proper zoom
+    // âœ… Reset fit bounds so new selection gets proper zoom
     hasInitialFit.current = false;
     lastMarkerCount.current = 0;
 
@@ -762,7 +747,7 @@ const RealTimeTracking = () => {
   const handleTerminalSelect = (terminalId) => {
     if (selectedInfo !== 'Track School') return;
 
-    // ✅ Reset fit bounds so new terminal gets proper zoom
+    // âœ… Reset fit bounds so new terminal gets proper zoom
     hasInitialFit.current = false;
     lastMarkerCount.current = 0;
 
@@ -837,9 +822,9 @@ const RealTimeTracking = () => {
             </div>
           )}
 
-          {/* ✅ Scroll fix: fixed height + overflow hidden - reduced height for status bar */}
+          {/* âœ… Scroll fix: fixed height + overflow hidden - reduced height for status bar */}
           <div className="flex md:flex-row flex-col md:space-y-0 space-y-5 mt-6 border shadow-sm rounded-md space-x-1 relative h-[calc(100vh-270px)] overflow-hidden">
-            {/* ✅ Remount fix + scroll fix */}
+            {/* âœ… Remount fix + scroll fix */}
             <div
               key={selectedInfo}
               className="bg-white w-full md:max-w-[280px] pt-2 h-full overflow-y-auto overscroll-contain"
@@ -880,7 +865,7 @@ const RealTimeTracking = () => {
                             schoolManagementSummary && schoolManagementSummary.length > 0
                               ? schoolManagementSummary.filter((item) => {
                                   const schoolTerminalId = item.TerminalId || item.terminalId;
-                                  // ✅ If terminal not selected => show ALL schools
+                                  // âœ… If terminal not selected => show ALL schools
                                   const matchTerminal = selectedTab ? schoolTerminalId === selectedTab : true;
 
                                   const hasInstitute = !!(item.InstituteId != null && item.InstituteName);
@@ -921,7 +906,7 @@ const RealTimeTracking = () => {
                                         schoolName: school.InstituteName,
                                         instituteId,
                                         type: school.InstituteType || 'School',
-                                        terminalId: terminalIdForSchool, // ✅ important
+                                        terminalId: terminalIdForSchool, // âœ… important
                                       })
                                     }
                                   >
@@ -1191,7 +1176,7 @@ const RealTimeTracking = () => {
               </div>
             )}
 
-            {/* ✅ NEW: Vehicle Detail Panel (when marker clicked) */}
+            {/* âœ… NEW: Vehicle Detail Panel (when marker clicked) */}
             {selectedVehicle && (
               <div className="absolute md:left-[18rem] left-0 w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-4 overflow-y-auto z-[500]">
                 {loadingVehicleDetail ? (
@@ -1201,7 +1186,7 @@ const RealTimeTracking = () => {
                   </div>
                 ) : (
                   <>
-                    {/* ✅ Use vehicleDetail if available, otherwise fallback to selectedVehicle */}
+                    {/* âœ… Use vehicleDetail if available, otherwise fallback to selectedVehicle */}
                     {(() => {
                       // Merge data: prefer vehicleDetail, fallback to selectedVehicle
                       const v = vehicleDetail || {};
@@ -1297,7 +1282,7 @@ const RealTimeTracking = () => {
                             {vehiclePath.length > 1 && (
                               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                                 <p className="text-xs font-medium text-blue-600">
-                                  📍 Path history shown on map ({vehiclePath.length} points)
+                                  ðŸ“ Path history shown on map ({vehiclePath.length} points)
                                 </p>
                               </div>
                             )}
@@ -1349,12 +1334,12 @@ const RealTimeTracking = () => {
                       fullscreenControl: true,
                     }}
                   >
-                  {/* ✅ Vehicle/Driver Markers with beautiful bus icons */}
+                  {/* âœ… Vehicle/Driver Markers with beautiful bus icons */}
                   {mapMarkers.map((marker) => {
                     const isGoogleReady =
                       !!window.google?.maps?.Size && !!window.google?.maps?.Point;
 
-                    // 🚌 Beautiful Bus Icon based on status
+                    // ðŸšŒ Beautiful Bus Icon based on status
                     const busIcon = marker.type === 'driver' 
                       ? 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' // Driver stays as dot
                       : getBusIcon(marker.status);
@@ -1380,7 +1365,7 @@ const RealTimeTracking = () => {
                     );
                   })}
 
-                  {/* ✅ Vehicle Path Polyline (when vehicle selected) */}
+                  {/* âœ… Vehicle Path Polyline (when vehicle selected) */}
                   {vehiclePath.length > 1 && (
                     <PolylineF
                       path={vehiclePath}
@@ -1399,7 +1384,7 @@ const RealTimeTracking = () => {
             </div>
           </div>
 
-          {/* ✅ Status Bar - OUTSIDE the main flex container */}
+          {/* âœ… Status Bar - OUTSIDE the main flex container */}
           <div className="mt-2 bg-gray-100 border-2 border-gray-400 rounded-md px-4 py-3 shadow-md">
             <div className="flex items-center justify-between">
               {/* Vehicle Status Counts */}

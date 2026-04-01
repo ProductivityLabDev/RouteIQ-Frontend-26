@@ -30,10 +30,14 @@ export const createStudent = createAsyncThunk(
   "students/createStudent",
   async (studentData, { rejectWithValue }) => {
     try {
+      let instituteId = studentData?.instituteId;
       const token = getAuthToken();
       const decoded = token ? decodeToken(token) : null;
-      let instituteId = decoded?.instituteId || decoded?.InstituteId || decoded?.sub;
       
+      if (!instituteId) {
+        instituteId = decoded?.instituteId || decoded?.InstituteId || decoded?.sub;
+      }
+
       if (!instituteId) {
         const storedInstituteId = localStorage.getItem("instituteId");
         if (storedInstituteId) instituteId = parseInt(storedInstituteId, 10);
@@ -45,11 +49,7 @@ export const createStudent = createAsyncThunk(
         firstName: studentData.firstName || "",
         lastName: studentData.lastName || "",
         pickupLocation: studentData.pickupLocation || "",
-        pickupLatitude: studentData.pickupLatitude !== null && studentData.pickupLatitude !== undefined ? Number(studentData.pickupLatitude) : null,
-        pickupLongitude: studentData.pickupLongitude !== null && studentData.pickupLongitude !== undefined ? Number(studentData.pickupLongitude) : null,
         dropLocation: studentData.dropLocation || "",
-        dropLatitude: studentData.dropLatitude !== null && studentData.dropLatitude !== undefined ? Number(studentData.dropLatitude) : null,
-        dropLongitude: studentData.dropLongitude !== null && studentData.dropLongitude !== undefined ? Number(studentData.dropLongitude) : null,
         grade: studentData.grade || "",
         emergencyContact: studentData.emergencyContact || "",
         enrollmentNo: studentData.enrollmentNo || "",
@@ -57,11 +57,9 @@ export const createStudent = createAsyncThunk(
         guardian1: studentData.guardian1 || "",
         guardian2: studentData.guardian2 || "",
         guardianEmail: studentData.guardianEmail || "",
-        busNo: studentData.busNo || "",
-        instituteId: Number(instituteId),
       };
 
-      const response = await studentService.createStudent(payload);
+      const response = await studentService.createStudent(Number(instituteId), payload);
       // response is backend envelope: { ok, message, data: { studentId, smartMatch, ... } }
       return response;
     } catch (error) {
@@ -149,4 +147,3 @@ const studentSlice = createSlice({
 
 export const { clearStudentErrors, clearStudents } = studentSlice.actions;
 export default studentSlice.reducer;
-

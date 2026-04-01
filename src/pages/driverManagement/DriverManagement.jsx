@@ -39,12 +39,9 @@ const DriverManagement = () => {
         }
     };
     const handleInfractionClick = (event) => {
-        console.log("pressed it ", event);
         if (event) {
             setAnchorEl1(event.currentTarget);
             setInfractionMenu(true);
-        } else {
-            console.error("Event is undefined");
         }
     };
 
@@ -66,7 +63,7 @@ const DriverManagement = () => {
         setEditDriver(false)
     }
     const menuItems = [
-        { label: 'Download License', onClick: () => console.log('Profile Clicked') },
+        { label: 'Download License', onClick: () => {} },
         { label: 'Infraction', onClick: handleInfractionClick },
         { label: 'Edit', onClick: handleDriverEdit },
     ];

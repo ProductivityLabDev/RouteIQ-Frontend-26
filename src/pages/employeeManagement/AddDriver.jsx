@@ -22,6 +22,27 @@ const SectionTitle = ({ children }) => (
     <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide col-span-2 border-b pb-1 mb-1">{children}</h3>
 );
 
+const getFlagEmoji = (countryCode) =>
+    String.fromCodePoint(...countryCode.toUpperCase().split('').map((char) => 127397 + char.charCodeAt()));
+
+const PHONE_COUNTRIES = [
+    { code: "US", label: "United States", flag: "🇺🇸", dialCode: "+1", maxLength: 10 },
+    { code: "CA", label: "Canada", flag: "🇨🇦", dialCode: "+1", maxLength: 10 },
+    { code: "MX", label: "Mexico", flag: "🇲🇽", dialCode: "+52", maxLength: 10 },
+    { code: "GB", label: "United Kingdom", flag: "🇬🇧", dialCode: "+44", maxLength: 10 },
+    { code: "DE", label: "Germany", flag: "🇩🇪", dialCode: "+49", maxLength: 11 },
+    { code: "FR", label: "France", flag: "🇫🇷", dialCode: "+33", maxLength: 9 },
+    { code: "ES", label: "Spain", flag: "🇪🇸", dialCode: "+34", maxLength: 9 },
+    { code: "IT", label: "Italy", flag: "🇮🇹", dialCode: "+39", maxLength: 10 },
+    { code: "PK", label: "Pakistan", flag: "🇵🇰", dialCode: "+92", maxLength: 10 },
+    { code: "IN", label: "India", flag: "🇮🇳", dialCode: "+91", maxLength: 10 },
+    { code: "BD", label: "Bangladesh", flag: "🇧🇩", dialCode: "+880", maxLength: 10 },
+    { code: "SA", label: "Saudi Arabia", flag: "🇸🇦", dialCode: "+966", maxLength: 9 },
+    { code: "AE", label: "UAE", flag: "🇦🇪", dialCode: "+971", maxLength: 9 },
+    { code: "QA", label: "Qatar", flag: "🇶🇦", dialCode: "+974", maxLength: 8 },
+    { code: "AU", label: "Australia", flag: "🇦🇺", dialCode: "+61", maxLength: 9 },
+];
+
 // ── File upload box ─────────────────────────────────────────────────────────
 const FileUpload = ({ label, file, fileRef, onChange, onRemove }) => (
     <div>
@@ -64,12 +85,19 @@ const INITIAL_FORM = {
     name: '', address: '', city: '', stateId: '', zipCode: '',
     dateOfBirth: '', joiningDate: '', positionType: '', email: '',
     payGrade: '', routeRate: '', payCycle: '', payTypeId: '',
-    fuelCardCode: '', terminalAssigned: '', phone: '',
+    fuelCardCode: '', terminalAssigned: '', phone: '', phoneCountry: 'US',
     socialSecurityNo: '', bankName: '', accountNumber: '', routingNo: '',
 };
 
 const validateField = (name, value, allValues = {}) => {
     const str = value == null ? '' : String(value).trim();
+    if (name === 'phone') {
+        if (!str) return '';
+        const digits = str.replace(/\D/g, '');
+        const selectedCountry = PHONE_COUNTRIES.find((country) => country.code === allValues.phoneCountry) || PHONE_COUNTRIES[0];
+        if (digits.length < 6 || digits.length > selectedCountry.maxLength) return `Must be 6-${selectedCountry.maxLength} digits`;
+        return '';
+    }
     switch (name) {
         case 'name':
             if (!str) return 'Name is required';
@@ -157,6 +185,8 @@ const AddDriver = ({ handleCancel }) => {
     const [citySearch, setCitySearch]         = useState('');
     const [showCityDropdown, setShowCityDropdown] = useState(false);
     const [selectedCityName, setSelectedCityName] = useState('');
+    const phoneCountryDropdownRef = useRef(null);
+    const [showPhoneCountryDropdown, setShowPhoneCountryDropdown] = useState(false);
 
     useEffect(() => {
         dispatch(fetchPayTypes());
@@ -171,6 +201,8 @@ const AddDriver = ({ handleCancel }) => {
         const handler = (e) => {
             if (cityDropdownRef.current && !cityDropdownRef.current.contains(e.target))
                 setShowCityDropdown(false);
+            if (phoneCountryDropdownRef.current && !phoneCountryDropdownRef.current.contains(e.target))
+                setShowPhoneCountryDropdown(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
@@ -183,7 +215,13 @@ const AddDriver = ({ handleCancel }) => {
     // ── Handlers ───────────────────────────────────────────────────────────
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((p) => ({ ...p, [name]: value }));
+        if (name === 'phone') {
+            const selectedCountry = PHONE_COUNTRIES.find((country) => country.code === formData.phoneCountry) || PHONE_COUNTRIES[0];
+            const digitsOnly = value.replace(/\D/g, '').slice(0, selectedCountry.maxLength);
+            setFormData((p) => ({ ...p, [name]: digitsOnly }));
+        } else {
+            setFormData((p) => ({ ...p, [name]: value }));
+        }
         if (errors[name]) setErrors((p) => ({ ...p, [name]: '' }));
     };
 
@@ -191,6 +229,21 @@ const AddDriver = ({ handleCancel }) => {
         const { name, value } = e.target;
         setTouched((p) => ({ ...p, [name]: true }));
         setErrors((p) => ({ ...p, [name]: validateField(name, value, { ...formData, [name]: value }) }));
+    };
+
+    const handlePhoneCountryChange = (e) => {
+        const nextCountry = e.target.value;
+        const selectedCountry = PHONE_COUNTRIES.find((country) => country.code === nextCountry) || PHONE_COUNTRIES[0];
+        setFormData((p) => ({
+            ...p,
+            phoneCountry: nextCountry,
+            phone: String(p.phone || '').replace(/\D/g, '').slice(0, selectedCountry.maxLength),
+        }));
+        setTouched((p) => ({ ...p, phone: true }));
+        setErrors((p) => ({
+            ...p,
+            phone: validateField('phone', formData.phone, { ...formData, phoneCountry: nextCountry }),
+        }));
     };
 
     const handleCitySelect = (city) => {
@@ -209,6 +262,7 @@ const AddDriver = ({ handleCancel }) => {
     const photoHandlers  = makeFileHandler(setSelectedFile, fileRef);
     const licenseHandlers = makeFileHandler(setLicenseFile, licenseRef);
     const certHandlers   = makeFileHandler(setCertFile, certRef);
+    const selectedPhoneCountry = PHONE_COUNTRIES.find((country) => country.code === formData.phoneCountry) || PHONE_COUNTRIES[0];
 
     // ── Submit ─────────────────────────────────────────────────────────────
     const handleSubmit = async (e) => {
@@ -239,7 +293,7 @@ const AddDriver = ({ handleCancel }) => {
                 filePath: fileRef.current?.files?.[0] || selectedFile || null,
                 drivingLicenses: licenseRef.current?.files?.[0] || licenseFile || null,
                 certificates: certRef.current?.files?.[0] || certFile || null,
-                emergencyContact: formData.phone || '',
+                emergencyContact: `${selectedPhoneCountry.dialCode}${formData.phone || ''}`,
             }));
 
             if (createEmployee.fulfilled.match(result)) {
@@ -295,10 +349,55 @@ const AddDriver = ({ handleCancel }) => {
                     </Field>
 
                     <Field label="Phone" error={errors.phone} touched={touched.phone}>
-                        <input type="tel" name="phone" value={formData.phone}
-                            onChange={handleChange} onBlur={handleBlur}
-                            placeholder="e.g. 555-0101"
-                            className={inputCls(errors.phone, touched.phone)} />
+                        <div className="flex gap-2">
+                            <div className="relative w-[220px]" ref={phoneCountryDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPhoneCountryDropdown((prev) => !prev)}
+                                    className={`flex w-full items-center justify-between rounded-md border bg-[#F5F6FA] px-3 py-2.5 text-sm ${errors.phone && touched.phone ? 'border-red-500' : 'border-[#D5D5D5]'}`}
+                                >
+                                    <span className="truncate text-left">
+                                        {getFlagEmoji(selectedPhoneCountry.code)} {selectedPhoneCountry.label} ({selectedPhoneCountry.dialCode})
+                                    </span>
+                                    <span className="ml-2 text-xs text-gray-500">▼</span>
+                                </button>
+                                {showPhoneCountryDropdown && (
+                                    <div className="absolute left-0 top-[calc(100%+6px)] z-20 max-h-64 w-full overflow-y-auto rounded-md border border-[#D5D5D5] bg-white shadow-lg">
+                                        {PHONE_COUNTRIES.map((country) => (
+                                            <button
+                                                key={country.code}
+                                                type="button"
+                                                onClick={() => {
+                                                    handlePhoneCountryChange({ target: { value: country.code } });
+                                                    setShowPhoneCountryDropdown(false);
+                                                }}
+                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[#F5F6FA]"
+                                            >
+                                                <span>{getFlagEmoji(country.code)}</span>
+                                                <span className="truncate">{country.label}</span>
+                                                <span className="ml-auto text-gray-500">{country.dialCode}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="relative flex-1">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                                    {getFlagEmoji(selectedPhoneCountry.code)} {selectedPhoneCountry.dialCode}
+                                </span>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleChange}
+                                    onBlur={handleBlur}
+                                    inputMode="numeric"
+                                    maxLength={selectedPhoneCountry.maxLength}
+                                    placeholder={`Phone number (${selectedPhoneCountry.maxLength} digits max)`}
+                                    className={`${inputCls(errors.phone, touched.phone)} pl-20`}
+                                />
+                            </div>
+                        </div>
                     </Field>
 
                     <Field label="Email" required error={errors.email} touched={touched.email}>

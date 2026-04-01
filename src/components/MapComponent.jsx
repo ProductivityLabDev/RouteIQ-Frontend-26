@@ -128,7 +128,6 @@ const MapComponent = ({
         if (status === "OK" && result) {
           setDirectionsResult(result);
         } else {
-          console.warn("Directions request failed:", status);
           setDirectionsResult(null);
         }
       }
@@ -266,8 +265,8 @@ const MapComponent = ({
     ));
   }, [routes, isLoaded]);
 
-  const handleImport = () => console.log("Import button clicked");
-  const handleOk = () => console.log(`OK clicked with distance: ${distance} km`);
+  const handleImport = () => {};
+  const handleOk = () => {};
 
   const handleOpenInGoogleMaps = () => {
     const query = destinationLatLng

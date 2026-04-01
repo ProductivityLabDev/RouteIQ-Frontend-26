@@ -135,12 +135,10 @@ const RepairSchedule = ({
   };
 
   const handleEditClick = (item) => {
-    console.log("Edit Clicked:", item);
     // TODO: Open edit modal/form with item data
   };
 
   const handleNotes = (item) => {
-    console.log("Notes Clicked:", item);
     // TODO: Show notes modal
   };
 

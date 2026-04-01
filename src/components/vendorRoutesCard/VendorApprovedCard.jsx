@@ -261,7 +261,6 @@ export function VendorApprovedCard({
                 size='sm'
                 className='bg-[#C01824] text-white'
                 onClick={() => {
-                  console.log('Send communication to:', selectedRecipients);
                   setShowCommModal(false);
                 }}
               >

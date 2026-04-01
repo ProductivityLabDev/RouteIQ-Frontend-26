@@ -10,7 +10,7 @@ import { Autocomplete } from '@react-google-maps/api';
 const fieldLabelClass = "text-[13px] font-semibold uppercase tracking-[0.08em] text-[#6D7280]";
 const fieldInputClass = "w-full rounded-xl border border-[#D9DEE8] bg-[#F8FAFC] px-4 py-3 text-[14px] text-[#1F2937] outline-none transition focus:border-[#C01824] focus:bg-white";
 
-export function StudentManagementModal({ open, handleOpen, editDriver, studentEditData, refreshStudents, isGoogleMapsLoaded }) {
+export function StudentManagementModal({ open, handleOpen, editDriver, studentEditData, refreshStudents, isGoogleMapsLoaded, instituteId }) {
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.students);
   
@@ -18,14 +18,6 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
   // This ensures script loads before modal opens
   const isLoaded = isGoogleMapsLoaded !== undefined ? isGoogleMapsLoaded : false;
   
-  useEffect(() => {
-    console.log("🔍 [StudentModal] Google Maps Status:", {
-      isLoaded,
-      modalOpen: open,
-      receivedFromParent: isGoogleMapsLoaded !== undefined
-    });
-  }, [isLoaded, open, isGoogleMapsLoaded]);
-
   useEffect(() => {
     if (open && isLoaded) {
       const handlePacClick = (e) => {
@@ -65,7 +57,6 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
     guardian1: '',
     guardian2: '',
     guardianEmail: '',
-    busNo: '',
   });
 
   const [previewImg, setPreviewImg] = useState('');
@@ -89,7 +80,6 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
         guardian1: studentEditData?.Guardian1 || studentEditData?.guardian1 || '',
         guardian2: studentEditData?.Guardian2 || studentEditData?.guardian2 || '',
         guardianEmail: studentEditData?.GuardianEmail || studentEditData?.guardianEmail || '',
-        busNo: studentEditData?.BusNo || studentEditData?.busNo || '',
       });
       setPreviewImg(studentEditData?.studentPic || '');
     } else {
@@ -109,7 +99,6 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
         guardian1: '',
         guardian2: '',
         guardianEmail: '',
-        busNo: '',
       });
       setPreviewImg('');
       setSelectedFile(null);
@@ -118,12 +107,10 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
 
   // Google Places Autocomplete handlers - Exact same as Route Management
   const onPickupLoad = (autocomplete) => {
-    console.log("✅ [StudentModal] Pickup Autocomplete loaded!");
     setAutocompletePickup(autocomplete);
   };
   
   const onDropoffLoad = (autocomplete) => {
-    console.log("✅ [StudentModal] Dropoff Autocomplete loaded!");
     setAutocompleteDropoff(autocomplete);
   };
 
@@ -172,7 +159,7 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
     e.preventDefault();
     
     try {
-      const result = await dispatch(createStudent(formData));
+      const result = await dispatch(createStudent({ ...formData, instituteId }));
 
       if (createStudent.fulfilled.match(result)) {
         toast.success(result.payload?.message || "Student created successfully!");
@@ -194,7 +181,6 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
           guardian1: '',
           guardian2: '',
           guardianEmail: '',
-          busNo: '',
         });
         setPreviewImg('');
         setSelectedFile(null);
@@ -210,7 +196,6 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
         toast.error(result.payload || "Failed to create student. Please try again.");
       }
     } catch (err) {
-      console.error("❌ Error creating student:", err);
       toast.error(err.message || "Failed to create student. Please try again.");
     }
   };
@@ -318,11 +303,6 @@ export function StudentManagementModal({ open, handleOpen, editDriver, studentEd
                   <div>
                     <label className={fieldLabelClass}>Enrollment No</label>
                     <input type="text" name="enrollmentNo" placeholder="Enter enrollment number" className={fieldInputClass} value={formData.enrollmentNo} onChange={handleChange} />
-                  </div>
-
-                  <div>
-                    <label className={fieldLabelClass}>Bus No</label>
-                    <input type="text" name="busNo" placeholder="Enter assigned bus number" className={fieldInputClass} value={formData.busNo} onChange={handleChange} />
                   </div>
 
                   <div>
