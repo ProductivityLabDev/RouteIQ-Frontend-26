@@ -130,7 +130,7 @@ const RouteManagement = () => {
   const terminalAddressInputRef = useRef(null);
 
   const { isLoaded: isGooglePlacesLoaded } = useJsApiLoader({
-    id: "route-management-terminal-places",
+    id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
     libraries: GOOGLE_LIBRARIES,
   });

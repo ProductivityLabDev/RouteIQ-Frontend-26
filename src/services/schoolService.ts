@@ -22,6 +22,28 @@ export interface SchoolSummary {
   // ... add more fields
 }
 
+export interface StudentsBySchoolResponse {
+  rows: any[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface UpdateStudentPayload {
+  StudentName?: string;
+  BusNo?: string | null;
+  RouteNo?: string | null;
+  Grade?: string;
+  EmergencyContact?: string;
+  Enrollment?: string;
+  Address?: string;
+  Guardian1?: string;
+  Guardian2?: string | null;
+  GuardianEmail?: string;
+  Guardian1Phone?: string;
+  Guardian2Phone?: string | null;
+}
+
 export interface CreateInstitutePayload {
   District: string | null;
   Principle: string | null;
@@ -71,15 +93,52 @@ export const schoolService = {
   /**
    * Fetch students for a specific school (used in the nested table)
    */
-  getStudentsBySchool: async (instituteId: number | string): Promise<ApiResponse<any[]>> => {
-    const response = await apiClient.get(`/institute/students-by-institute?instituteId=${instituteId}`);
+  getStudentsBySchool: async (
+    instituteId: number | string,
+    options: { limit?: number; offset?: number } = {}
+  ): Promise<ApiResponse<StudentsBySchoolResponse>> => {
+    const { limit = 10, offset = 0 } = options;
+    const response = await apiClient.get(
+      `/institute/students-by-institute?instituteId=${instituteId}&limit=${limit}&offset=${offset}`
+    );
     const data = response.data;
     const studentsArray = Array.isArray(data)
       ? data
-      : (data?.ok && Array.isArray(data.data))
+      : data?.ok && Array.isArray(data.data)
       ? data.data
-      : data.data || [];
-    return { ok: true, data: studentsArray };
+      : Array.isArray(data?.data)
+      ? data.data
+      : [];
+
+    return {
+      ok: true,
+      data: {
+        rows: studentsArray,
+        total: Number(data?.total ?? studentsArray.length ?? 0),
+        limit: Number(data?.limit ?? limit),
+        offset: Number(data?.offset ?? offset),
+      },
+    };
+  },
+
+  updateStudent: async (
+    instituteId: number | string,
+    studentId: number | string,
+    payload: UpdateStudentPayload
+  ): Promise<ApiResponse<any>> => {
+    const response = await apiClient.patch(
+      `/institute/${instituteId}/students/${studentId}`,
+      payload
+    );
+    return { ok: true, data: response.data };
+  },
+
+  deleteStudent: async (
+    instituteId: number | string,
+    studentId: number | string
+  ): Promise<ApiResponse<any>> => {
+    const response = await apiClient.delete(`/institute/${instituteId}/students/${studentId}`);
+    return { ok: true, data: response.data };
   },
 
   createInstitute: async (payload: CreateInstitutePayload): Promise<ApiResponse<any>> => {
