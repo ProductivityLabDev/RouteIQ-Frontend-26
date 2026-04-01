@@ -445,9 +445,31 @@ const RouteManagement = () => {
 
     const studentsRaw =
       (selectedRouteId ? studentsByRoute?.[selectedRouteId] : null) ||
+      payload.students?.data ||
       payload.students ||
+      payload.data?.students?.data ||
       payload.data?.students ||
       [];
+
+    const studentsByStopId = (Array.isArray(studentsRaw) ? studentsRaw : []).reduce((acc, stu, idx) => {
+      const stopId = stu.stopId ?? stu.StopId;
+      if (stopId == null) return acc;
+
+      const first = stu.firstName ?? stu.FirstName ?? "";
+      const last = stu.lastName ?? stu.LastName ?? "";
+      const name =
+        (first || last)
+          ? `${first} ${last}`.trim()
+          : (stu.studentName || stu.StudentName || `Student ${idx + 1}`);
+
+      if (!acc[stopId]) acc[stopId] = [];
+      acc[stopId].push({
+        id: String(stu.studentId ?? stu.StudentId ?? idx),
+        name,
+        address: stu.studentAddress || stu.StudentAddress || "",
+      });
+      return acc;
+    }, {});
 
     const stops = (Array.isArray(stopsRaw) ? stopsRaw : [])
       .map((stop, idx) => {
@@ -477,6 +499,7 @@ const RouteManagement = () => {
           title: stop.stopName || stop.StopName || `Stop ${Number.isFinite(order) ? order : idx + 1}`,
           position: { lat: latNum, lng: lngNum },
           address: stop.stopAddress || stop.StopAddress || "",
+          students: studentsByStopId[stop.stopId || stop.StopId] || [],
         };
       })
       .filter(Boolean)
@@ -489,7 +512,7 @@ const RouteManagement = () => {
       stopRole: i === 0 ? "start" : i === stops.length - 1 ? "end" : "mid",
       title: s.title,
       position: s.position,
-      details: { address: s.address },
+      details: { address: s.address, students: s.students || [] },
     }));
 
     const studentMarkers = (Array.isArray(studentsRaw) ? studentsRaw : [])
@@ -531,18 +554,16 @@ const RouteManagement = () => {
       })
       .filter(Boolean);
 
-    // Don't show student (red pin) on first/last stop — only stop marker (red circle) should show there (pickup/school)
-    const firstStopPos = stops[0]?.position;
-    const lastStopPos = stops.length > 1 ? stops[stops.length - 1]?.position : undefined;
+    // Do not render separate student pins on top of stop pins.
+    // Route Management should show stop markers and expose assigned students inside the stop popup.
+    const stopPositions = stops.map((stop) => stop.position).filter(Boolean);
     const samePosition = (a, b) =>
       a && b &&
       Math.abs(a.lat - b.lat) < 1e-5 &&
       Math.abs(a.lng - b.lng) < 1e-5;
 
     const studentMarkersFiltered = studentMarkers.filter((sm) => {
-      const atFirst = samePosition(sm.position, firstStopPos);
-      const atLast = samePosition(sm.position, lastStopPos);
-      return !atFirst && !atLast;
+      return !stopPositions.some((stopPos) => samePosition(sm.position, stopPos));
     });
 
     const markers = [...stopMarkers, ...studentMarkersFiltered];

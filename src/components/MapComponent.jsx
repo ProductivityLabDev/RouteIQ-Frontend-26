@@ -244,6 +244,18 @@ const MapComponent = ({
     });
   }, [markers, isLoaded]);
 
+  useEffect(() => {
+    if (!selectedMarker || !Array.isArray(markers) || markers.length === 0) return;
+
+    const latestMarker = markers.find(
+      (marker) => String(marker.id) === String(selectedMarker.id)
+    );
+
+    if (latestMarker) {
+      setSelectedMarker(latestMarker);
+    }
+  }, [markers, selectedMarker]);
+
   // Non-route screens (keep your old behavior)
   const renderedRoutes = useMemo(() => {
     if (!isLoaded) return null;
@@ -338,6 +350,32 @@ const MapComponent = ({
                      selectedMarker.type === "student" ? "Student Stop" : selectedMarker.type}
                   </p>
                 )}
+                {Array.isArray(selectedMarker.details?.students) && selectedMarker.details.students.length > 0 && (
+                  <div className="mb-2 space-y-2">
+                    {selectedMarker.details.students.slice(0, 3).map((student) => (
+                      <div key={student.id} className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2FF] text-[11px] font-bold text-[#4338CA]">
+                          {String(student.name || "S").trim().charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-[12px] font-bold text-black">
+                            {student.name}
+                          </p>
+                          {student.address && (
+                            <p className="truncate text-[10px] font-semibold text-black">
+                              {student.address}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {selectedMarker.details.students.length > 3 && (
+                      <p className="text-[10px] text-gray-500">
+                        +{selectedMarker.details.students.length - 3} more students
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="bg-[#C01824] text-white rounded-md px-2 py-1 flex items-center gap-1 mt-1">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -347,7 +385,7 @@ const MapComponent = ({
                   </span>
                 </div>
                 {selectedMarker.position && (
-                  <p className="text-gray-400 text-[10px] mt-1">
+                  <p className="text-black text-[10px] font-bold mt-1">
                     {Number(selectedMarker.position.lat).toFixed(5)}, {Number(selectedMarker.position.lng).toFixed(5)}
                   </p>
                 )}
