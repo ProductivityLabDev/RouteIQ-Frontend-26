@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import MainLayout from "@/layouts/SchoolLayout";
 import MapComponent from "@/components/MapComponent";
 import VendorApprovedCard from "@/components/vendorRoutesCard/VendorApprovedCard";
 import SchoolList from "./SchoolList";
 import CreateRoute from "./CreateRoute";
 import VendorGlobalModal from "@/components/Modals/VendorGlobalModal";
+import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
 
 import {
   Button,
@@ -26,6 +27,7 @@ import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import { FaArrowDown, FaArrowUp, FaPlus } from "react-icons/fa";
 import { FaEllipsisVertical } from "react-icons/fa6";
+import { HiOutlineLocationMarker } from "react-icons/hi";
 import { Toaster, toast } from "react-hot-toast";
 
 import {
@@ -57,6 +59,8 @@ const INITIAL_TERMINAL_FORM = {
   state: "",
   zipCode: "",
 };
+
+const GOOGLE_LIBRARIES = ["places"];
 
 const normalizeTripRecord = (trip) => ({
   ...trip,
@@ -121,6 +125,15 @@ const RouteManagement = () => {
   const [terminalForm, setTerminalForm] = useState(INITIAL_TERMINAL_FORM);
   const [terminalErrors, setTerminalErrors] = useState({});
   const [citySearch, setCitySearch] = useState("");
+  const [terminalAddressAutocomplete, setTerminalAddressAutocomplete] = useState(null);
+  const [isFetchingTerminalLocation, setIsFetchingTerminalLocation] = useState(false);
+  const terminalAddressInputRef = useRef(null);
+
+  const { isLoaded: isGooglePlacesLoaded } = useJsApiLoader({
+    id: "route-management-terminal-places",
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: GOOGLE_LIBRARIES,
+  });
 
   // ---------------------------
   // ✅ LOAD INITIAL DATA
@@ -155,6 +168,98 @@ const RouteManagement = () => {
     const { name, value } = e.target;
     setTerminalForm((prev) => ({ ...prev, [name]: value }));
     if (terminalErrors[name]) setTerminalErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const applyAddressComponentsToTerminalForm = (formattedAddress, addressComponents = []) => {
+    const componentMap = addressComponents.reduce((acc, component) => {
+      component.types.forEach((type) => {
+        acc[type] = component;
+      });
+      return acc;
+    }, {});
+
+    const city =
+      componentMap.locality?.long_name ||
+      componentMap.sublocality?.long_name ||
+      componentMap.administrative_area_level_2?.long_name ||
+      "";
+    const stateName = componentMap.administrative_area_level_1?.long_name || "";
+    const zipCode = componentMap.postal_code?.long_name || "";
+    const matchedState = (Array.isArray(states) ? states : []).find((state) => {
+      const name = state.StateName || state.stateName || state.name || "";
+      return name.toLowerCase() === stateName.toLowerCase();
+    });
+    const stateValue = matchedState
+      ? String(matchedState.StateId || matchedState.stateId || matchedState.id || "")
+      : "";
+
+    setTerminalForm((prev) => ({
+      ...prev,
+      address: formattedAddress || prev.address,
+      city: city || prev.city,
+      state: stateValue || prev.state,
+      zipCode: zipCode || prev.zipCode,
+    }));
+  };
+
+  const handleTerminalAddressPlaceChanged = () => {
+    const place = terminalAddressAutocomplete?.getPlace?.();
+    if (!place) return;
+
+    applyAddressComponentsToTerminalForm(
+      place.formatted_address || place.name || "",
+      place.address_components || []
+    );
+  };
+
+  const handleUseCurrentTerminalLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Location access is not supported in this browser");
+      return;
+    }
+
+    if (!window.google?.maps?.Geocoder) {
+      toast.error("Google location services are not ready yet");
+      return;
+    }
+
+    setIsFetchingTerminalLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const geocoder = new window.google.maps.Geocoder();
+          const response = await geocoder.geocode({
+            location: { lat: coords.latitude, lng: coords.longitude },
+          });
+
+          const result = response.results?.[0];
+          if (!result) {
+            toast.error("Unable to fetch address for current location");
+            return;
+          }
+
+          applyAddressComponentsToTerminalForm(
+            result.formatted_address || "",
+            result.address_components || []
+          );
+          toast.success("Current location fetched");
+        } catch (error) {
+          toast.error("Failed to fetch current location");
+        } finally {
+          setIsFetchingTerminalLocation(false);
+        }
+      },
+      () => {
+        setIsFetchingTerminalLocation(false);
+        toast.error("Location permission denied");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
   };
 
   const handleCreateTerminalSubmit = async () => {
@@ -744,6 +849,13 @@ const RouteManagement = () => {
         secondaryButtonText="Cancel"
         onPrimaryAction={handleCreateTerminalSubmit}
       >
+        <style>
+          {`
+            .pac-container {
+              z-index: 99999 !important;
+            }
+          `}
+        </style>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col">
             <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
@@ -783,15 +895,58 @@ const RouteManagement = () => {
             <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
               Address / Location
             </Typography>
-            <Input
-              size="lg"
-              placeholder="Enter full address"
-              name="address"
-              value={terminalForm.address}
-              onChange={handleTerminalFormChange}
-              className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
-              labelProps={{ className: "before:content-none after:content-none" }}
-            />
+            <div className="relative">
+              {isGooglePlacesLoaded && window.google?.maps?.places ? (
+                <Autocomplete
+                  onLoad={setTerminalAddressAutocomplete}
+                  onPlaceChanged={handleTerminalAddressPlaceChanged}
+                  options={{
+                    fields: ["formatted_address", "address_components", "name", "geometry"],
+                    types: ["address"],
+                  }}
+                >
+                  <Input
+                    inputRef={terminalAddressInputRef}
+                    size="lg"
+                    placeholder="Enter full address"
+                    name="address"
+                    value={terminalForm.address}
+                    onChange={handleTerminalFormChange}
+                    className="!border-t-blue-gray-200 focus:!border-t-gray-900 pr-12"
+                    labelProps={{ className: "before:content-none after:content-none" }}
+                  />
+                </Autocomplete>
+              ) : (
+                <Input
+                  inputRef={terminalAddressInputRef}
+                  size="lg"
+                  placeholder="Enter full address"
+                  name="address"
+                  value={terminalForm.address}
+                  onChange={handleTerminalFormChange}
+                  className="!border-t-blue-gray-200 focus:!border-t-gray-900 pr-12"
+                  labelProps={{ className: "before:content-none after:content-none" }}
+                />
+              )}
+
+              <button
+                type="button"
+                onClick={handleUseCurrentTerminalLocation}
+                disabled={!isGooglePlacesLoaded || isFetchingTerminalLocation}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[#C81E1E] transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-400"
+                title="Use current location"
+                aria-label="Use current location"
+              >
+                {isFetchingTerminalLocation ? (
+                  <Spinner className="h-4 w-4" />
+                ) : (
+                  <HiOutlineLocationMarker className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Type manually for Google suggestions, or use the location button.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

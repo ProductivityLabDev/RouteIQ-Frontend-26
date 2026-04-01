@@ -72,30 +72,14 @@ export const schoolService = {
    * Fetch students for a specific school (used in the nested table)
    */
   getStudentsBySchool: async (instituteId: number | string): Promise<ApiResponse<any[]>> => {
-    const endpoints = [
-      `/institute/GetStudentsByInstitute?instituteId=${instituteId}`,
-      `/institute/GetStudents?InstituteId=${instituteId}`,
-      `/institute/students-by-institute?instituteId=${instituteId}`,
-    ];
-
-    let lastError: any = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        const response = await apiClient.get(endpoint);
-        const data = response.data;
-        const studentsArray = Array.isArray(data)
-          ? data
-          : (data?.ok && Array.isArray(data.data))
-          ? data.data
-          : data.data || [];
-        return { ok: true, data: studentsArray };
-      } catch (error) {
-        lastError = error;
-      }
-    }
-
-    throw lastError;
+    const response = await apiClient.get(`/institute/students-by-institute?instituteId=${instituteId}`);
+    const data = response.data;
+    const studentsArray = Array.isArray(data)
+      ? data
+      : (data?.ok && Array.isArray(data.data))
+      ? data.data
+      : data.data || [];
+    return { ok: true, data: studentsArray };
   },
 
   createInstitute: async (payload: CreateInstitutePayload): Promise<ApiResponse<any>> => {
