@@ -9,7 +9,6 @@ const PAGE_SIZE = 10;
 const mapStudentToRow = (student) => ({
   id: student.StudentId,
   studentName: student.StudentName || '',
-  busNo: student.BusNo || '',
   routeNo: student.RouteNo || '',
   grade: student.Grade || '',
   emergencyContact: student.EmergencyContact || '',
@@ -32,6 +31,7 @@ const SchoolManagementUserTable = ({ instituteId }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRows, setTotalRows] = useState(0);
@@ -99,7 +99,6 @@ const SchoolManagementUserTable = ({ instituteId }) => {
 
       const payload = {
         StudentName: formData.studentName?.trim() || '',
-        BusNo: formData.busNo?.trim() || null,
         RouteNo: formData.routeNo?.trim() || null,
         Grade: formData.grade?.trim() || '',
         EmergencyContact: formData.emergencyContact?.trim() || '',
@@ -143,6 +142,7 @@ const SchoolManagementUserTable = ({ instituteId }) => {
       toast.error(err.response?.data?.message || err.message || 'Failed to delete student');
     } finally {
       setDeletingId(null);
+      setPendingDeleteId(null);
     }
   };
 
@@ -165,7 +165,6 @@ const SchoolManagementUserTable = ({ instituteId }) => {
   const inputStyle = 'w-full min-w-[130px] border border-gray-300 rounded px-2 py-1 text-sm';
   const headers = [
     'Student Name',
-    'Bus No',
     'Route No',
     'Grade',
     'Emergency Contact',
@@ -237,7 +236,6 @@ const SchoolManagementUserTable = ({ instituteId }) => {
                   {isEditing ? (
                     <>
                       <td className="px-3 py-2"><input name="studentName" value={formData.studentName || ''} onChange={handleChange} className={inputStyle} /></td>
-                      <td className="px-3 py-2"><input name="busNo" value={formData.busNo || ''} onChange={handleChange} className={inputStyle} /></td>
                       <td className="px-3 py-2"><input name="routeNo" value={formData.routeNo || ''} onChange={handleChange} className={inputStyle} /></td>
                       <td className="px-3 py-2"><input name="grade" value={formData.grade || ''} onChange={handleChange} className={inputStyle} /></td>
                       <td className="px-3 py-2"><input name="emergencyContact" value={formData.emergencyContact || ''} onChange={handleChange} className={inputStyle} /></td>
@@ -270,7 +268,6 @@ const SchoolManagementUserTable = ({ instituteId }) => {
                   ) : (
                     <>
                       <td className="px-3 py-2 text-sm">{row.studentName || 'N/A'}</td>
-                      <td className="px-3 py-2 text-sm">{row.busNo || 'N/A'}</td>
                       <td className="px-3 py-2 text-sm">{row.routeNo || 'N/A'}</td>
                       <td className="px-3 py-2 text-sm">{row.grade || 'N/A'}</td>
                       <td className="px-3 py-2 text-sm">{row.emergencyContact || 'N/A'}</td>
@@ -290,7 +287,7 @@ const SchoolManagementUserTable = ({ instituteId }) => {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDelete(row.id)}
+                            onClick={() => setPendingDeleteId(row.id)}
                             disabled={deletingId === row.id}
                             className="bg-red-600 text-white px-3 py-1 text-xs rounded disabled:opacity-60"
                           >
@@ -348,6 +345,35 @@ const SchoolManagementUserTable = ({ instituteId }) => {
       <p className="mt-2 text-center text-xs text-gray-500">
         Showing {rows.length} of {totalRows} students
       </p>
+
+      {pendingDeleteId && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-[#141516]">Delete Student</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this student?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteId(null)}
+                disabled={!!deletingId}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(pendingDeleteId)}
+                disabled={!!deletingId}
+                className="rounded-md bg-[#C01824] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#a91520] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

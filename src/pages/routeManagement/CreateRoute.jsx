@@ -432,7 +432,7 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
 
     const handleSubmitRoute = async () => {
         if (!isFormValid) {
-            alert("Please fill all required fields and select at least one student.");
+            toast.error("Please fill all required fields and select at least one student.");
             return;
         }
 
@@ -456,16 +456,15 @@ const StudentSeatSelection = ({ onBack, editRoute, isEditable, handleBackTrip })
         try {
             const result = await dispatch(createRoute(payload));
             if (createRoute.fulfilled.match(result)) {
-                alert("Route created successfully!");
+                toast.success("Route created successfully!");
                 // Clear state
                 setSelectedStudents([]);
                 if (onBack) onBack();
             } else {
-                alert(result.payload || "Failed to create route");
+                toast.error(result.payload || "Failed to create route");
             }
         } catch (err) {
-            console.error("Error creating route from UI:", err);
-            alert("Failed to create route");
+            toast.error("Failed to create route");
         }
     };
 
