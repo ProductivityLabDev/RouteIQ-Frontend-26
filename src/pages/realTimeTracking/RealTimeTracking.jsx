@@ -9,6 +9,10 @@ import trackingService from '@/services/trackingService';
 import { toast } from 'react-hot-toast';
 import { GoogleMap, useJsApiLoader, MarkerF, PolylineF } from '@react-google-maps/api';
 import { redbusicon, greenbusicon, orangebusicon } from '@/assets';
+import { io } from 'socket.io-client';
+import { BASE_URL, getAuthToken } from '@/configs/api';
+
+let trackingSocketSingleton = null;
 
 // Polling interval (milliseconds)
 const POLLING_INTERVAL = 7000; // 7 seconds
@@ -21,6 +25,34 @@ const getBusIcon = (status) => {
   return redbusicon;  // ðŸ”´ Red bus for idle/unknown
 };
 
+const createStudentPinSvg = ({ label = 'S', fill = '#ef4444', stroke = '#991b1b', textFill = '#111827' }) =>
+  `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="58" viewBox="0 0 44 58">
+      <defs>
+        <filter id="studentPinShadow" x="-25%" y="-20%" width="150%" height="160%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-opacity="0.28"/>
+        </filter>
+      </defs>
+      <path
+        d="M22 3C11.507 3 3 11.201 3 21.316c0 13.221 16.251 28.815 17.942 30.413a1.6 1.6 0 002.116 0C24.749 50.131 41 34.537 41 21.316 41 11.201 32.493 3 22 3z"
+        fill="${fill}"
+        stroke="${stroke}"
+        stroke-width="1.5"
+        filter="url(#studentPinShadow)"
+      />
+      <circle cx="22" cy="20" r="11" fill="white" />
+      <text
+        x="22"
+        y="24"
+        text-anchor="middle"
+        font-size="12"
+        font-weight="800"
+        fill="${textFill}"
+        font-family="Arial, Helvetica, sans-serif"
+      >${label}</text>
+    </svg>
+  `)}`;
+
 const tabsData = [
   { label: 'All Students', value: 'allstudents' },
   { label: 'On Board', value: 'onboard' },
@@ -30,6 +62,16 @@ const GOOGLE_LIBRARIES = ['places'];
 const GOOGLE_ROADS_CHUNK_SIZE = 100;
 
 const isValidCoordinate = (value) => Number.isFinite(Number(value));
+
+// Validate that coordinates are within reasonable bounds (not null, not 0,0, not out of range)
+const isReasonableLocation = (lat, lng) => {
+  const la = Number(lat);
+  const ln = Number(lng);
+  if (!Number.isFinite(la) || !Number.isFinite(ln)) return false;
+  if (la === 0 && ln === 0) return false; // null island
+  if (la < -90 || la > 90 || ln < -180 || ln > 180) return false;
+  return true;
+};
 
 const normalizePathPoints = (points = []) =>
   points
@@ -142,15 +184,28 @@ const RealTimeTracking = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [vehicleDetail, setVehicleDetail] = useState(null);
   const [vehiclePath, setVehiclePath] = useState([]); // for polyline
+  const [studentRoutePath, setStudentRoutePath] = useState([]);
   const [isSnappingVehiclePath, setIsSnappingVehiclePath] = useState(false);
   const [vehiclePathSource, setVehiclePathSource] = useState('idle');
   const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
+  const [liveStudentStatusById, setLiveStudentStatusById] = useState({});
+  const [liveStopStatusById, setLiveStopStatusById] = useState({});
+  const [liveRouteEtaByStopId, setLiveRouteEtaByStopId] = useState({});
+  const [socketDebug, setSocketDebug] = useState({
+    connected: false,
+    routeJoined: null,
+    lastEvent: 'waiting',
+    lastEventAt: null,
+  });
 
   // âœ… NEW: Polling control + last update time
   const [isPollingEnabled, setIsPollingEnabled] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [currentTimestamp, setCurrentTimestamp] = useState(Date.now());
   const pollingRef = useRef(null);
   const pathRequestIdRef = useRef(0);
+  const trackingSocketRef = useRef(null);
+  const joinedRouteRef = useRef(null);
 
   // âœ… Track if initial fit bounds done (don't re-fit on polling)
   const hasInitialFit = useRef(false);
@@ -163,18 +218,89 @@ const RealTimeTracking = () => {
     libraries: GOOGLE_LIBRARIES,
   });
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-  const initialUsCenter = { lat: 39.8283, lng: -98.5795 };
-  const initialUsZoom = 5;
+  // Default to Chicago (most schools are here) instead of ocean/world view
+  const initialUsCenter = { lat: 41.8781, lng: -87.6298 };
+  const initialUsZoom = 11;
 
-  const defaultCenter = { lat: 20, lng: 0 }; // world view â€” vehicles load hone par auto-zoom hoga
-  const defaultZoom = 3;
+  // ---------- STUDENTS LIST ----------
+  const filterStudents = () => {
+    if (selectedInfo !== 'Track School') return [];
+
+    if (activeTab === 'onboard') {
+      return studentsOnBoard.map((student) => ({
+        name: student.studentName || student.StudentName || 'Student',
+        busNo: student.busNo || student.BusNo || student.busNumber || 'N/A',
+        imgSrc: student.profilePicture || student.ProfilePicture || '',
+        studentId: student.studentId || student.StudentId,
+        pickupLocation: student.pickupLocation || student.PickupLocation || student.studentAddress || '',
+        dropoffLocation: student.dropoffLocation || student.DropLocation || student.stopAddress || '',
+        status:
+          liveStudentStatusById[student.studentId || student.StudentId] ||
+          student.status ||
+          student.assignmentType ||
+          'Active',
+        routeNo: student.routeNo || student.RouteNo || 'N/A',
+        routeId: student.routeId || student.RouteId || null,
+        pickupLatitude: Number(
+          student.pickupLatitude ?? student.PickupLatitude ?? student.studentLatitude ?? student.StudentLatitude
+        ),
+        pickupLongitude: Number(
+          student.pickupLongitude ?? student.PickupLongitude ?? student.studentLongitude ?? student.StudentLongitude
+        ),
+        dropLatitude: Number(student.dropLatitude ?? student.DropLatitude ?? student.stopLatitude ?? student.StopLatitude),
+        dropLongitude: Number(
+          student.dropLongitude ?? student.DropLongitude ?? student.stopLongitude ?? student.StopLongitude
+        ),
+      }));
+    }
+
+    if (activeTab === 'allstudents' && selectedSchool?.instituteId) {
+      const allStudents = students || [];
+      return allStudents
+        .filter((item) => !!(item.id || item.StudentId || item.studentId))
+        .map((student) => {
+          const firstName = student.firstName || student.FirstName || student.first_name || '';
+          const lastName = student.lastName || student.LastName || student.last_name || '';
+          const fullName =
+            firstName && lastName
+              ? `${firstName} ${lastName}`
+              : student.name ||
+                student.Name ||
+                student.studentName ||
+                student.StudentName ||
+                `Student ${student.id || student.StudentId || student.studentId || ''}`;
+
+          return {
+            name: fullName,
+            busNo: student.busNo || student.BusNo || student.busNumber || 'N/A',
+            imgSrc: student.profilePicture || student.ProfilePicture || '',
+            studentId: student.id || student.StudentId || student.studentId,
+            pickupLocation: student.pickupLocation || student.PickupLocation || '',
+            dropoffLocation: student.dropLocation || student.DropLocation || student.dropoffLocation || '',
+            status: liveStudentStatusById[student.id || student.StudentId || student.studentId] || student.status || 'Active',
+            routeNo: student.routeNo || student.RouteNo || 'N/A',
+            routeId: student.routeId || student.RouteId || null,
+            pickupLatitude: Number(student.pickupLatitude ?? student.PickupLatitude),
+            pickupLongitude: Number(student.pickupLongitude ?? student.PickupLongitude),
+            dropLatitude: Number(student.dropLatitude ?? student.DropLatitude),
+            dropLongitude: Number(student.dropLongitude ?? student.DropLongitude),
+          };
+        });
+    }
+
+    return [];
+  };
+
+  const filteredStudentsList = useMemo(() => filterStudents(), [
+    selectedInfo, activeTab, studentsOnBoard, students, selectedSchool, liveStudentStatusById,
+  ]);
+  const showBusMarkersInSchoolMode = false;
 
   // ---------- MARKERS ----------
   const mapMarkers = useMemo(() => {
     const markers = [];
-    const seenIds = new Set(); // âœ… Track seen IDs to prevent duplicates
+    const seenIds = new Set();
 
-    // Helper to add marker only if not duplicate
     const addMarker = (marker) => {
       if (!seenIds.has(marker.id)) {
         seenIds.add(marker.id);
@@ -182,133 +308,133 @@ const RealTimeTracking = () => {
       }
     };
 
-    // âœ… Show ALL active vehicles when no terminal/school selected (default view)
-    if (selectedInfo === 'Track School' && !selectedTab && !selectedSchool && allActiveVehicles.length > 0) {
-      allActiveVehicles.forEach((vehicle) => {
-        if (
-          vehicle.currentLocation?.latitude != null &&
-          vehicle.currentLocation?.longitude != null
-        ) {
-          addMarker({
-            id: `all-vehicle-${vehicle.vehicleId}`,
-            position: {
-              lat: vehicle.currentLocation.latitude,
-              lng: vehicle.currentLocation.longitude,
-            },
-            title: `${vehicle.vehicleName} - ${vehicle.numberPlate}`,
-            type: 'vehicle',
-            status: vehicle.status,
-            vehicleData: vehicle,
-          });
-        }
+    // Helper: only add vehicle marker if location is valid
+    const addVehicleMarker = (prefix, vehicle) => {
+      const lat = vehicle.currentLocation?.latitude;
+      const lng = vehicle.currentLocation?.longitude;
+      if (!isReasonableLocation(lat, lng)) return;
+      addMarker({
+        id: `${prefix}-${vehicle.vehicleId}`,
+        position: { lat: Number(lat), lng: Number(lng) },
+        title: `${vehicle.vehicleName} - ${vehicle.numberPlate}`,
+        type: 'vehicle',
+        status: vehicle.status,
+        vehicleData: vehicle,
       });
-    }
+    };
 
-    // Terminal vehicles markers
-    if (selectedTab && terminalVehicles.length > 0) {
-      terminalVehicles.forEach((vehicle) => {
-        if (
-          vehicle.currentLocation?.latitude != null &&
-          vehicle.currentLocation?.longitude != null
-        ) {
-          addMarker({
-            id: `vehicle-${vehicle.vehicleId}`,
-            position: {
-              lat: vehicle.currentLocation.latitude,
-              lng: vehicle.currentLocation.longitude,
-            },
-            title: `${vehicle.vehicleName} - ${vehicle.numberPlate}`,
-            type: 'vehicle',
-            status: vehicle.status,
-            vehicleData: vehicle,
-          });
-        }
-      });
-    }
-
-    // School vehicles markers
-    if (selectedSchool?.instituteId && schoolVehicles.length > 0) {
-      schoolVehicles.forEach((vehicle) => {
-        if (
-          vehicle.currentLocation?.latitude != null &&
-          vehicle.currentLocation?.longitude != null
-        ) {
-          addMarker({
-            id: `school-vehicle-${vehicle.vehicleId}`,
-            position: {
-              lat: vehicle.currentLocation.latitude,
-              lng: vehicle.currentLocation.longitude,
-            },
-            title: `${vehicle.vehicleName} - ${vehicle.numberPlate}`,
-            type: 'vehicle',
-            status: vehicle.status,
-            vehicleData: vehicle,
-          });
-        }
-      });
-    }
-
-    // Active drivers markers (Track Drivers mode)
-    if (selectedInfo === 'Track Drivers' && activeDrivers.length > 0) {
+    // =============================================
+    // MODE: Track Drivers → only bus icons on map
+    // =============================================
+    if (selectedInfo === 'Track Drivers') {
       activeDrivers.forEach((driver) => {
-        if (
-          driver.currentLocation?.latitude != null &&
-          driver.currentLocation?.longitude != null
-        ) {
+        const lat = driver.currentLocation?.latitude;
+        const lng = driver.currentLocation?.longitude;
+        if (!isReasonableLocation(lat, lng)) return;
+        addMarker({
+          id: `driver-${driver.driverId}`,
+          position: { lat: Number(lat), lng: Number(lng) },
+          title: `${driver.name} - ${driver.busNo}`,
+          type: 'vehicle', // bus icon for drivers too
+          status: driver.status || 'In Transit',
+          vehicleData: driver,
+        });
+      });
+    }
+
+    // =============================================
+    // MODE: Track School → school pin + students
+    // (bus icons only when no school selected yet)
+    // =============================================
+    if (selectedInfo === 'Track School') {
+      if (!selectedTab && !selectedSchool && showBusMarkersInSchoolMode) {
+        // Default view: show all active vehicles as bus icons
+        allActiveVehicles.forEach((v) => addVehicleMarker('all-vehicle', v));
+      }
+
+      // Terminal selected → show terminal vehicles
+      if (selectedTab && !selectedSchool && showBusMarkersInSchoolMode) {
+        terminalVehicles.forEach((v) => addVehicleMarker('vehicle', v));
+      }
+
+      // School selected → show school pin (NO bus icons in school view)
+      if (selectedSchool?.instituteId) {
+        // School location pin
+        if (isReasonableLocation(selectedSchool.lat, selectedSchool.lng)) {
           addMarker({
-            id: `driver-${driver.driverId}`,
-            position: {
-              lat: driver.currentLocation.latitude,
-              lng: driver.currentLocation.longitude,
-            },
-            title: `${driver.name} - ${driver.busNo}`,
-            type: 'driver',
-            status: driver.status || 'Unknown',
-            vehicleData: driver,
+            id: `school-pin-${selectedSchool.instituteId}`,
+            position: { lat: Number(selectedSchool.lat), lng: Number(selectedSchool.lng) },
+            title: selectedSchool.schoolName || 'School',
+            type: 'school',
+            status: 'school',
+            schoolData: selectedSchool,
           });
         }
-      });
+
+        filteredStudentsList.forEach((student) => {
+          if (!isReasonableLocation(student.pickupLatitude, student.pickupLongitude)) return;
+          if (selectedStudent?.studentId && student.studentId === selectedStudent.studentId) return;
+          addMarker({
+            id: `student-${student.studentId}`,
+            position: { lat: Number(student.pickupLatitude), lng: Number(student.pickupLongitude) },
+            title: student.name || 'Student',
+            type: 'student',
+            status: student.status || 'Active',
+            studentData: student,
+          });
+        });
+
+        if (selectedStudent && !selectedStudent?.role) {
+          if (isReasonableLocation(selectedStudent.pickupLatitude, selectedStudent.pickupLongitude)) {
+            addMarker({
+              id: `selected-student-pickup-${selectedStudent.studentId || 'active'}`,
+              position: {
+                lat: Number(selectedStudent.pickupLatitude),
+                lng: Number(selectedStudent.pickupLongitude),
+              },
+              title: `${selectedStudent.name || 'Student'} Pickup`,
+              type: 'selected-student-pickup',
+              status: selectedStudent.status || 'Active',
+              studentData: selectedStudent,
+            });
+          }
+
+          if (isReasonableLocation(selectedStudent.dropLatitude, selectedStudent.dropLongitude)) {
+            addMarker({
+              id: `selected-student-dropoff-${selectedStudent.studentId || 'active'}`,
+              position: {
+                lat: Number(selectedStudent.dropLatitude),
+                lng: Number(selectedStudent.dropLongitude),
+              },
+              title: `${selectedStudent.name || 'Student'} Dropoff`,
+              type: 'selected-student-dropoff',
+              status: selectedStudent.status || 'Active',
+              studentData: selectedStudent,
+            });
+          }
+        }
+      }
+    }
+
+    // =============================================
+    // MODE: Track Terminals (if exists)
+    // =============================================
+    if (selectedInfo === 'Track Terminals' && selectedTab) {
+      terminalVehicles.forEach((v) => addVehicleMarker('terminal-vehicle', v));
     }
 
     return markers;
-  }, [terminalVehicles, schoolVehicles, activeDrivers, allActiveVehicles, selectedTab, selectedSchool, selectedInfo]);
+  }, [terminalVehicles, schoolVehicles, activeDrivers, allActiveVehicles, selectedTab, selectedSchool, selectedInfo, filteredStudentsList, selectedStudent]);
 
-  const mapCenter = useMemo(() => {
-    if (mapMarkers.length === 0) return initialUsCenter;
-    if (mapMarkers.length === 1) return mapMarkers[0].position;
+  // FIXED: Only used as INITIAL center — never changes after mount.
+  // This prevents map from jumping on every poll update.
+  // All subsequent centering is handled by fitBounds effect + user interaction.
+  const [mapInitialCenter] = useState(initialUsCenter);
 
-    const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
-    const avgLng = mapMarkers.reduce((sum, m) => sum + m.position.lng, 0) / mapMarkers.length;
-    return { lat: avgLat, lng: avgLng };
-  }, [mapMarkers]);
-
-  const onMapLoad = useCallback(
-    (mapInstance) => {
-      setMap(mapInstance);
-      if (mapMarkers.length > 0 && window.google?.maps?.LatLngBounds) {
-        // âœ… For single/few markers - pan directly to marker position
-        if (mapMarkers.length <= 3) {
-          const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
-          const avgLng = mapMarkers.reduce((sum, m) => sum + m.position.lng, 0) / mapMarkers.length;
-          const targetCenter = mapMarkers.length === 1 ? mapMarkers[0].position : { lat: avgLat, lng: avgLng };
-          mapInstance.panTo(targetCenter);
-          mapInstance.setZoom(15);
-        } else {
-          // For many markers, use fitBounds
-          const bounds = new window.google.maps.LatLngBounds();
-          mapMarkers.forEach((m) => bounds.extend(m.position));
-          mapInstance.fitBounds(bounds, { top: 50, bottom: 80, left: 50, right: 50 });
-
-          window.google.maps.event.addListenerOnce(mapInstance, 'idle', () => {
-            const currentZoom = mapInstance.getZoom();
-            if (currentZoom > 17) mapInstance.setZoom(17);
-            if (currentZoom < 8) mapInstance.setZoom(10);
-          });
-        }
-      }
-    },
-    [mapMarkers]
-  );
+  const onMapLoad = useCallback((mapInstance) => {
+    setMap(mapInstance);
+    // fitBounds effect will handle centering once markers arrive
+  }, []);
 
   const onMapUnmount = useCallback(() => setMap(null), []);
 
@@ -353,41 +479,25 @@ const RealTimeTracking = () => {
   }, [selectedRouteId, activeTab]);
 
   // ---------- FIT BOUNDS ----------
-  // âœ… Only fit bounds on initial load or when selection changes (NOT during polling)
+  // Only fit bounds on SELECTION change (school/terminal/mode), never during polling updates
   useEffect(() => {
     if (!map || mapMarkers.length === 0 || !window.google?.maps?.LatLngBounds) return;
 
-    // Check if this is a significant change (initial load or marker count changed significantly)
-    const markerCountChanged = Math.abs(mapMarkers.length - lastMarkerCount.current) > 0;
     const isInitialFit = !hasInitialFit.current;
+    if (!isInitialFit) return; // after first fit, user controls zoom manually
 
-    // Only fit bounds if: first time OR markers appeared/disappeared (not just position updates)
-    if (!isInitialFit && !markerCountChanged) {
-      // Just a polling update with same markers - don't move the map
-      return;
-    }
-
-    // Update tracking refs
     hasInitialFit.current = true;
-    lastMarkerCount.current = mapMarkers.length;
 
-    // Calculate center of all markers
-    const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
-    const avgLng = mapMarkers.reduce((sum, m) => sum + m.position.lng, 0) / mapMarkers.length;
-    const markersCenter = { lat: avgLat, lng: avgLng };
-
-    // For single marker or few markers - directly pan and zoom to marker position
     if (mapMarkers.length <= 3) {
-      const targetCenter = mapMarkers.length === 1 ? mapMarkers[0].position : markersCenter;
+      const avgLat = mapMarkers.reduce((sum, m) => sum + m.position.lat, 0) / mapMarkers.length;
+      const avgLng = mapMarkers.reduce((sum, m) => sum + m.position.lng, 0) / mapMarkers.length;
+      const targetCenter = mapMarkers.length === 1 ? mapMarkers[0].position : { lat: avgLat, lng: avgLng };
       map.panTo(targetCenter);
-      map.setZoom(15); // Street level zoom
+      map.setZoom(15);
     } else {
-      // For many markers, use fitBounds
       const bounds = new window.google.maps.LatLngBounds();
       mapMarkers.forEach((m) => bounds.extend(m.position));
       map.fitBounds(bounds, { top: 50, bottom: 80, left: 50, right: 50 });
-
-      // Enforce zoom limits after fitBounds
       window.google.maps.event.addListenerOnce(map, 'idle', () => {
         const currentZoom = map.getZoom();
         if (currentZoom > 17) map.setZoom(17);
@@ -395,6 +505,11 @@ const RealTimeTracking = () => {
       });
     }
   }, [map, mapMarkers]);
+
+  // Re-fit bounds when user changes school, terminal, or mode selection
+  useEffect(() => {
+    hasInitialFit.current = false;
+  }, [selectedSchool?.instituteId, selectedTab, selectedInfo, selectedStudent?.studentId]);
 
   // ---------- API CALLS ----------
   const fetchTerminalVehicles = async (terminalId) => {
@@ -595,6 +710,44 @@ const RealTimeTracking = () => {
   };
 
   // âœ… NEW: Toggle polling
+  const activeTrackingRouteId = useMemo(
+    () =>
+      selectedRouteId ||
+      selectedVehicle?.routeId ||
+      selectedVehicle?.RouteId ||
+      selectedStudent?.routeId ||
+      null,
+    [selectedRouteId, selectedVehicle, selectedStudent]
+  );
+
+  const updateVehicleInCollection = useCallback((collection = [], liveData) => {
+    const incomingVehicleId = Number(
+      liveData?.vehicleId ?? liveData?.VehicleId ?? liveData?.id ?? liveData?.vehicle?.vehicleId
+    );
+    if (!incomingVehicleId) return collection;
+
+    return collection.map((item) => {
+      const currentVehicleId = Number(item?.vehicleId ?? item?.VehicleId ?? item?.id);
+      if (currentVehicleId !== incomingVehicleId) return item;
+
+      const nextLocation = {
+        ...(item.currentLocation || {}),
+        latitude: Number(liveData?.lat ?? liveData?.latitude ?? liveData?.Latitude ?? item?.currentLocation?.latitude),
+        longitude: Number(liveData?.lng ?? liveData?.longitude ?? liveData?.Longitude ?? item?.currentLocation?.longitude),
+        speed: liveData?.speed ?? liveData?.Speed ?? item?.currentLocation?.speed,
+        timestamp: liveData?.timestamp ?? liveData?.Timestamp ?? new Date().toISOString(),
+        routeId: liveData?.routeId ?? liveData?.RouteId ?? item?.currentLocation?.routeId,
+      };
+
+      return {
+        ...item,
+        routeId: liveData?.routeId ?? liveData?.RouteId ?? item?.routeId,
+        status: liveData?.status ?? liveData?.Status ?? item?.status,
+        currentLocation: nextLocation,
+      };
+    });
+  }, []);
+
   const togglePolling = () => {
     setIsPollingEnabled((prev) => !prev);
   };
@@ -619,6 +772,214 @@ const RealTimeTracking = () => {
       }
     };
   }, [isPollingEnabled]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTimestamp(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    const socket =
+      trackingSocketSingleton ||
+      io(`${BASE_URL}/tracking`, {
+        auth: token ? { token } : undefined,
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+      });
+
+    trackingSocketSingleton = socket;
+
+    trackingSocketRef.current = socket;
+
+    const markSocketEvent = (eventName) => {
+      setSocketDebug((current) => ({
+        ...current,
+        connected: socket.connected,
+        lastEvent: eventName,
+        lastEventAt: new Date(),
+      }));
+    };
+
+    const handleConnect = () => {
+      setSocketDebug((current) => ({
+        ...current,
+        connected: true,
+        lastEvent: 'connect',
+        lastEventAt: new Date(),
+      }));
+    };
+
+    const handleDisconnect = () => {
+      setSocketDebug((current) => ({
+        ...current,
+        connected: false,
+        lastEvent: 'disconnect',
+        lastEventAt: new Date(),
+      }));
+    };
+
+    const handleConnectError = () => {
+      setSocketDebug((current) => ({
+        ...current,
+        connected: false,
+        lastEvent: 'connect_error',
+        lastEventAt: new Date(),
+      }));
+    };
+
+    const handleVehicleLocation = (data) => {
+      markSocketEvent('vehicle:location');
+      setLastUpdated(new Date());
+      setAllActiveVehicles((current) => updateVehicleInCollection(current, data));
+      setTerminalVehicles((current) => updateVehicleInCollection(current, data));
+      setSchoolVehicles((current) => updateVehicleInCollection(current, data));
+      setActiveDrivers((current) => updateVehicleInCollection(current, data));
+      setSelectedVehicle((current) => {
+        if (!current) return current;
+        const currentVehicleId = Number(current?.vehicleId ?? current?.VehicleId ?? current?.id);
+        const incomingVehicleId = Number(data?.vehicleId ?? data?.VehicleId ?? data?.id);
+        if (!currentVehicleId || currentVehicleId !== incomingVehicleId) return current;
+
+        return updateVehicleInCollection([current], data)[0];
+      });
+      setVehicleDetail((current) => {
+        if (!current) return current;
+        const currentVehicleId = Number(current?.VehicleId ?? current?.vehicleId ?? current?.id);
+        const incomingVehicleId = Number(data?.vehicleId ?? data?.VehicleId ?? data?.id);
+        if (!currentVehicleId || currentVehicleId !== incomingVehicleId) return current;
+
+        return {
+          ...current,
+          Latitude: Number(data?.lat ?? data?.latitude ?? data?.Latitude ?? current?.Latitude),
+          Longitude: Number(data?.lng ?? data?.longitude ?? data?.Longitude ?? current?.Longitude),
+          Speed: data?.speed ?? data?.Speed ?? current?.Speed,
+          Timestamp: data?.timestamp ?? data?.Timestamp ?? new Date().toISOString(),
+          Status: data?.status ?? data?.Status ?? current?.Status,
+          RouteId: data?.routeId ?? data?.RouteId ?? current?.RouteId,
+        };
+      });
+    };
+
+    const handleStudentStatus = (data) => {
+      markSocketEvent('student:status');
+      const studentId = Number(data?.studentId ?? data?.StudentId);
+      const nextStatus = data?.status ?? data?.Status;
+      if (!studentId || !nextStatus) return;
+
+      setLastUpdated(new Date());
+      setLiveStudentStatusById((current) => ({
+        ...current,
+        [studentId]: nextStatus,
+      }));
+      setStudentsOnBoard((current) =>
+        current.map((student) =>
+          Number(student?.studentId ?? student?.StudentId) === studentId
+            ? { ...student, status: nextStatus }
+            : student
+        )
+      );
+      setSelectedStudent((current) =>
+        Number(current?.studentId) === studentId ? { ...current, status: nextStatus } : current
+      );
+    };
+
+    const handleStopUpdate = (data) => {
+      markSocketEvent('stop:update');
+      const stopId = Number(data?.stopId ?? data?.StopId);
+      if (!stopId) return;
+
+      setLastUpdated(new Date());
+      setLiveStopStatusById((current) => ({
+        ...current,
+        [stopId]: data?.event ?? data?.status ?? 'updated',
+      }));
+    };
+
+    const handleRouteEta = (data) => {
+      markSocketEvent('route:eta');
+      const stops = Array.isArray(data?.stops) ? data.stops : [];
+      if (stops.length === 0) return;
+
+      setLastUpdated(new Date());
+      setLiveRouteEtaByStopId((current) => {
+        const nextState = { ...current };
+        stops.forEach((stop) => {
+          const stopId = Number(stop?.stopId ?? stop?.StopId);
+          if (!stopId) return;
+          nextState[stopId] = stop?.minutesAway ?? stop?.eta ?? null;
+        });
+        return nextState;
+      });
+    };
+
+    socket.off('connect', handleConnect);
+    socket.off('disconnect', handleDisconnect);
+    socket.off('connect_error', handleConnectError);
+    socket.off('vehicle:location', handleVehicleLocation);
+    socket.off('student:status', handleStudentStatus);
+    socket.off('stop:update', handleStopUpdate);
+    socket.off('route:eta', handleRouteEta);
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+    socket.on('vehicle:location', handleVehicleLocation);
+    socket.on('student:status', handleStudentStatus);
+    socket.on('stop:update', handleStopUpdate);
+    socket.on('route:eta', handleRouteEta);
+
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    return () => {
+      if (joinedRouteRef.current) {
+        socket.emit('leave:route', { routeId: joinedRouteRef.current });
+        joinedRouteRef.current = null;
+      }
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+      socket.off('vehicle:location', handleVehicleLocation);
+      socket.off('student:status', handleStudentStatus);
+      socket.off('stop:update', handleStopUpdate);
+      socket.off('route:eta', handleRouteEta);
+      trackingSocketRef.current = null;
+    };
+  }, [updateVehicleInCollection]);
+
+  useEffect(() => {
+    const socket = trackingSocketRef.current;
+    if (!socket) return;
+
+    if (joinedRouteRef.current && joinedRouteRef.current !== activeTrackingRouteId) {
+      socket.emit('leave:route', { routeId: joinedRouteRef.current });
+      setSocketDebug((current) => ({
+        ...current,
+        routeJoined: null,
+        lastEvent: 'leave:route',
+        lastEventAt: new Date(),
+      }));
+      joinedRouteRef.current = null;
+    }
+
+    if (activeTrackingRouteId && joinedRouteRef.current !== activeTrackingRouteId) {
+      socket.emit('join:route', { routeId: activeTrackingRouteId });
+      joinedRouteRef.current = activeTrackingRouteId;
+      setSocketDebug((current) => ({
+        ...current,
+        routeJoined: activeTrackingRouteId,
+        lastEvent: 'join:route',
+        lastEventAt: new Date(),
+      }));
+    }
+  }, [activeTrackingRouteId]);
 
   // ---------- UI ACTIONS ----------
   const toggleStudentPanel = (studentOrDriver) => {
@@ -655,58 +1016,127 @@ const RealTimeTracking = () => {
   const handleClosePanel = () => {
     setSelectedStudent(null);
     setSelectedRouteId(null);
+    setStudentRoutePath([]);
   };
 
-  // ---------- STUDENTS LIST ----------
-  const filterStudents = () => {
-    if (selectedInfo !== 'Track School') return [];
+  const selectedStudentPath = useMemo(() => {
+    if (selectedInfo !== 'Track School' || !selectedStudent || selectedStudent?.role === 'driver') return [];
 
-    if (activeTab === 'onboard') {
-      return studentsOnBoard.map((student) => ({
-        name: student.studentName,
-        busNo: 'N/A',
-        imgSrc: '',
-        studentId: student.studentId,
-        pickupLocation: student.pickupLocation,
-        dropoffLocation: student.dropoffLocation,
-        status: student.status,
-      }));
+    const startLat = Number(selectedStudent.pickupLatitude);
+    const startLng = Number(selectedStudent.pickupLongitude);
+    const destinationLat = Number(selectedStudent.dropLatitude);
+    const destinationLng = Number(selectedStudent.dropLongitude);
+
+    if (!isReasonableLocation(startLat, startLng) || !isReasonableLocation(destinationLat, destinationLng)) {
+      return [];
     }
 
-    if (activeTab === 'allstudents' && selectedSchool?.instituteId) {
-      const allStudents = students || [];
-      return allStudents
-        .filter((item) => !!(item.id || item.StudentId || item.studentId))
-        .map((student) => {
-          const firstName = student.firstName || student.FirstName || student.first_name || '';
-          const lastName = student.lastName || student.LastName || student.last_name || '';
-          const fullName =
-            firstName && lastName
-              ? `${firstName} ${lastName}`
-              : student.name ||
-                student.Name ||
-                student.studentName ||
-                student.StudentName ||
-                `Student ${student.id || student.StudentId || student.studentId || ''}`;
+    return [
+      { lat: startLat, lng: startLng },
+      { lat: destinationLat, lng: destinationLng },
+    ].filter((point, index, array) => index === 0 || point.lat !== array[index - 1].lat || point.lng !== array[index - 1].lng);
+  }, [selectedInfo, selectedStudent, selectedSchool]);
 
-          return {
-            name: fullName,
-            busNo: student.busNo || student.BusNo || student.busNumber || 'N/A',
-            imgSrc: '',
-            studentId: student.id || student.StudentId || student.studentId,
-            pickupLocation: student.pickupLocation || student.PickupLocation || '',
-            dropoffLocation: student.dropLocation || student.DropLocation || student.dropoffLocation || '',
-            status: student.status || 'Active',
-          };
-        });
+  useEffect(() => {
+    let cancelled = false;
+
+    if (selectedInfo !== 'Track School' || !window.google?.maps?.DirectionsService || selectedStudentPath.length < 2) {
+      setStudentRoutePath([]);
+      return () => {
+        cancelled = true;
+      };
     }
 
-    return [];
-  };
+    const directionsService = new window.google.maps.DirectionsService();
+    directionsService.route(
+      {
+        origin: selectedStudentPath[0],
+        destination: selectedStudentPath[selectedStudentPath.length - 1],
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (cancelled) return;
 
-  const filteredStudentsList = useMemo(() => filterStudents(), [
-    selectedInfo, activeTab, studentsOnBoard, students, selectedSchool,
-  ]);
+        if (status === 'OK' && result?.routes?.[0]?.overview_path?.length) {
+          setStudentRoutePath(
+            result.routes[0].overview_path.map((point) => ({
+              lat: point.lat(),
+              lng: point.lng(),
+            }))
+          );
+          return;
+        }
+
+        setStudentRoutePath([]);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInfo, selectedStudentPath]);
+
+  const activeStudentRoutePath = studentRoutePath.length > 1 ? studentRoutePath : selectedStudentPath;
+
+  const freshnessMeta = useMemo(() => {
+    if (!lastUpdated) {
+      return {
+        secondsSinceUpdate: null,
+        relativeLabel: 'Waiting for first sync',
+        toneClass: 'bg-gray-100 text-gray-600',
+        dotClass: 'bg-gray-400',
+      };
+    }
+
+    const secondsSinceUpdate = Math.max(0, Math.floor((currentTimestamp - lastUpdated.getTime()) / 1000));
+    const isFresh = secondsSinceUpdate <= POLLING_INTERVAL / 1000 + 3;
+    const isAging = secondsSinceUpdate > POLLING_INTERVAL / 1000 + 3 && secondsSinceUpdate <= 30;
+    const relativeLabel =
+      secondsSinceUpdate < 2
+        ? 'Updated just now'
+        : `Updated ${secondsSinceUpdate}s ago`;
+
+    return {
+      secondsSinceUpdate,
+      relativeLabel,
+      toneClass: isFresh
+        ? 'bg-green-100 text-green-700'
+        : isAging
+        ? 'bg-yellow-100 text-yellow-700'
+        : 'bg-red-100 text-red-700',
+      dotClass: isFresh ? 'bg-green-500' : isAging ? 'bg-yellow-500' : 'bg-red-500',
+    };
+  }, [currentTimestamp, lastUpdated]);
+
+  const trackingSummary = useMemo(() => {
+    if (selectedInfo === 'Track Drivers') {
+      return {
+        title: 'Driver Tracking',
+        subtitle: selectedVehicle
+          ? `${selectedVehicle.vehicleName || selectedVehicle.busNo || 'Selected bus'} focused`
+          : `${activeDrivers.length} active buses on map`,
+      };
+    }
+
+    if (selectedStudent) {
+      return {
+        title: 'Student Journey',
+        subtitle: `${selectedStudent.name || 'Student'} pickup to dropoff path`,
+      };
+    }
+
+    if (selectedSchool) {
+      return {
+        title: selectedSchool.schoolName || 'School Tracking',
+        subtitle: `${filteredStudentsList.length} students available for tracking`,
+      };
+    }
+
+    return {
+      title: 'School Tracking',
+      subtitle: 'Select a school to view pickup points and student journey',
+    };
+  }, [selectedInfo, selectedVehicle, activeDrivers.length, selectedStudent, selectedSchool, filteredStudentsList.length]);
 
   // âœ… Main fix: tab switch pe hard reset (mix + stale list khatam)
   const handleSelectedTabInfo = (tab) => {
@@ -823,6 +1253,58 @@ const RealTimeTracking = () => {
           )}
 
           {/* âœ… Scroll fix: fixed height + overflow hidden - reduced height for status bar */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e8e2d4] bg-white px-4 py-3 shadow-sm">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8b6f4e]">
+                {selectedInfo}
+              </p>
+              <h3 className="truncate text-[18px] font-bold text-[#141516]">{trackingSummary.title}</h3>
+              <p className="text-[13px] font-medium text-[#6b7280]">{trackingSummary.subtitle}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${freshnessMeta.toneClass}`}>
+                <span className={`h-2.5 w-2.5 rounded-full ${freshnessMeta.dotClass}`}></span>
+                {freshnessMeta.relativeLabel}
+              </span>
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${
+                  socketDebug.connected ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                }`}
+              >
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    socketDebug.connected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                  }`}
+                ></span>
+                {socketDebug.connected ? 'Socket connected' : 'Socket disconnected'}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-[#f3f4f6] px-3 py-1.5 text-xs font-semibold text-[#374151]">
+                {selectedInfo === 'Track Drivers' ? `${activeDrivers.length} buses visible` : `${mapMarkers.length} map points visible`}
+              </span>
+              {Object.keys(liveRouteEtaByStopId).length > 0 && (
+                <span className="inline-flex items-center rounded-full bg-[#eff6ff] px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]">
+                  Live ETA active
+                </span>
+              )}
+              {Object.keys(liveStopStatusById).length > 0 && (
+                <span className="inline-flex items-center rounded-full bg-[#ecfdf5] px-3 py-1.5 text-xs font-semibold text-[#15803d]">
+                  Stop updates active
+                </span>
+              )}
+              {activeStudentRoutePath.length > 1 && (
+                <span className="inline-flex items-center rounded-full bg-[#fdecef] px-3 py-1.5 text-xs font-semibold text-[#c01824]">
+                  Student route active
+                </span>
+              )}
+              <span className="inline-flex items-center rounded-full bg-[#f8fafc] px-3 py-1.5 text-xs font-medium text-[#4b5563]">
+                Route: {socketDebug.routeJoined || 'not joined'}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-[#f8fafc] px-3 py-1.5 text-xs font-medium text-[#4b5563]">
+                Event: {socketDebug.lastEvent}
+                {socketDebug.lastEventAt ? ` @ ${socketDebug.lastEventAt.toLocaleTimeString()}` : ''}
+              </span>
+            </div>
+          </div>
           <div className="flex md:flex-row flex-col md:space-y-0 space-y-5 mt-6 border shadow-sm rounded-md space-x-1 relative h-[calc(100vh-270px)] overflow-hidden">
             {/* âœ… Remount fix + scroll fix */}
             <div
@@ -906,7 +1388,10 @@ const RealTimeTracking = () => {
                                         schoolName: school.InstituteName,
                                         instituteId,
                                         type: school.InstituteType || 'School',
-                                        terminalId: terminalIdForSchool, // âœ… important
+                                        terminalId: terminalIdForSchool,
+                                        lat: school.lat ?? school.Lat ?? school.latitude ?? school.Latitude,
+                                        lng: school.lng ?? school.Lng ?? school.longitude ?? school.Longitude,
+                                        address: school.Address || school.address || '',
                                       })
                                     }
                                   >
@@ -1034,7 +1519,7 @@ const RealTimeTracking = () => {
             </div>
 
             {selectedStudent && (
-              <div className="absolute md:left-[18rem] left-0 w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-3 overflow-y-auto z-[500]">
+              <div className="absolute md:left-[18rem] left-0 w-full top-0 md:w-full max-w-[370px] rounded-[20px] border border-[#d8dee8] bg-white/98 p-4 shadow-[0_20px_50px_rgba(15,23,42,0.18)] overflow-y-auto z-[500] backdrop-blur">
                 {selectedStudent?.role === 'driver' || selectedStudent?.driverId ? (
                   <div className="flex justify-between">
                     <div className="bg-[#DDDDE1] text-[#141516] leading-tight rounded-md px-3 py-1 text-center h-[6vh]">
@@ -1062,21 +1547,36 @@ const RealTimeTracking = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3 w-full bg-none">
-                      <img
-                        src={selectedStudent.imgSrc}
-                        alt={selectedStudent.name}
-                        className="rounded-full w-[60px] h-[60px]"
-                      />
-                      <div className="text-center leading-tight text-[#141516] group-hover:text-white">
-                        <h6 className="font-bold text-[18px]">{selectedStudent.name}</h6>
-                        <p className="font-normal text-[14px]">Student</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {selectedStudent.imgSrc ? (
+                        <img
+                          src={selectedStudent.imgSrc}
+                          alt={selectedStudent.name}
+                          className="h-[64px] w-[64px] rounded-2xl border border-[#dde6f0] object-cover shadow-sm"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                            const sibling = event.currentTarget.nextElementSibling;
+                            if (sibling) sibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="h-[64px] w-[64px] items-center justify-center rounded-2xl border border-[#dbe4ef] bg-[linear-gradient(135deg,#eef3ff,#dfe9ff)] shadow-sm"
+                        style={{ display: selectedStudent.imgSrc ? 'none' : 'flex' }}
+                      >
+                        <span className="text-[24px] font-extrabold text-[#36518c]">
+                          {selectedStudent.name?.charAt(0)?.toUpperCase() || 'S'}
+                        </span>
+                      </div>
+                      <div className="min-w-0 leading-tight text-[#141516]">
+                        <h6 className="truncate font-bold text-[20px]">{selectedStudent.name}</h6>
+                        <p className="pt-1 text-[13px] font-medium uppercase tracking-[0.12em] text-[#7b8794]">Student</p>
                       </div>
                     </div>
-                    <div className="bg-[#DDDDE1] text-[#141516] leading-tight rounded-md px-3 py-1 text-center">
-                      <p className="text-[14px] font-normal">BUS NO.</p>
-                      <p className="text-[14px] font-bold">{selectedStudent.busNo}</p>
+                    <div className="min-w-[74px] rounded-2xl bg-[#edf0f4] px-3 py-2 text-center text-[#141516] shadow-sm">
+                      <p className="text-[11px] font-semibold tracking-[0.12em] text-[#6b7280]">BUS NO.</p>
+                      <p className="pt-1 text-[18px] font-extrabold leading-tight">{selectedStudent.busNo}</p>
                     </div>
                   </div>
                 )}
@@ -1100,69 +1600,82 @@ const RealTimeTracking = () => {
                     </div>
                   )
                 ) : (
-                  <>
+                  <div className="mt-4 space-y-3">
                     {selectedStudent?.pickupLocation && (
-                      <div className="text-black pt-3">
-                        <p className="text-[13.5px] font-medium">Pickup Location</p>
-                        <p className="text-[14px] font-bold">{selectedStudent.pickupLocation}</p>
+                      <div className="rounded-2xl border border-[#edf1f5] bg-[#f8fafc] px-4 py-3 text-black">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b8794]">Pickup Location</p>
+                        <p className="pt-1 text-[15px] font-bold leading-snug">{selectedStudent.pickupLocation}</p>
                       </div>
                     )}
                     {selectedStudent?.dropoffLocation && (
-                      <div className="text-black pt-2">
-                        <p className="text-[13.5px] font-medium">Dropoff Location</p>
-                        <p className="text-[14px] font-bold">{selectedStudent.dropoffLocation}</p>
+                      <div className="rounded-2xl border border-[#edf1f5] bg-[#f8fafc] px-4 py-3 text-black">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b8794]">Dropoff Location</p>
+                        <p className="pt-1 text-[15px] font-bold leading-snug">{selectedStudent.dropoffLocation}</p>
                       </div>
                     )}
                     {selectedStudent?.status && (
-                      <div className="text-black pt-2">
-                        <p className="text-[13.5px] font-medium">Status</p>
-                        <p className="text-[14px] font-bold">{selectedStudent.status}</p>
+                      <div className="rounded-2xl border border-[#edf1f5] bg-[#f8fafc] px-4 py-3 text-black">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b8794]">Status</p>
+                        <p className="pt-1 text-[15px] font-bold">{selectedStudent.status}</p>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
 
-                <div className="rounded-lg border border-black/25 mt-3 h-full max-h-[570px] overflow-y-auto">
+                <div className="mt-4 h-full max-h-[570px] overflow-y-auto rounded-[18px] border border-[#d9e0e7] bg-[#fcfdff] p-3">
                   {tripDetails.map((trip, index) => (
-                    <div key={index} className="bg-black rounded-lg p-3 text-white leading-tight">
-                      <div className="flex justify-between items-center">
-                        <div className="space-y-1">
-                          <div className="flex pb-2 space-x-2 text-white font-semibold text-[11.5px]">
+                    <div key={index} className="rounded-[18px] bg-[#0f172a] p-4 text-white leading-tight shadow-sm">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex pb-2 space-x-2 text-white/80 font-semibold text-[11.5px]">
                             <p>{trip.time}</p>
                             <p>{trip.date}</p>
                           </div>
-                          {trip.places.map((place, idx) => (
-                            <div key={idx} className="flex items-center space-x-2">
+                          {[
+                            selectedStudent?.pickupLocation || trip.places?.[0],
+                            selectedStudent?.dropoffLocation || trip.places?.[1],
+                          ].filter(Boolean).map((place, idx) => (
+                            <div key={`${place}-${idx}`} className="flex items-center space-x-2">
                               <img src={trip.iconSrc} className="w-4 h-4" alt="not found" />
-                              <p className="text-[13.5px] text-white font-semibold">{place}</p>
+                              <p className="text-[13.5px] text-white font-semibold leading-snug break-words">{place}</p>
                             </div>
                           ))}
                         </div>
-                        <div className="text-end text-white mt-5">
-                          <p className="font-semibold text-[11.5px]">TRIP NO.</p>
-                          <p className="font-extrabold text-[20px]">{trip.tripNo}</p>
+                        <div className="mt-4 min-w-[92px] text-end text-white">
+                          <p className="text-[11.5px] font-semibold text-white/75">ROUTE NO.</p>
+                          <p className="whitespace-nowrap text-[24px] font-extrabold tracking-tight">{selectedStudent?.routeNo || 'N/A'}</p>
                         </div>
                       </div>
                     </div>
                   ))}
 
-                  {tripStages.map((stage, index) => (
-                    <div key={index} className="my-4 flex justify-center space-x-3 items-center">
-                      <div className="flex flex-col items-center justify-center bg-[#DDDDE1] rounded-lg py-2.5 w-[75px]">
+                  {tripStages
+                    .filter((stage) => ['Pickup', 'Drop-off'].includes(stage.label))
+                    .map((stage, index) => (
+                    <div key={index} className="my-3 flex items-center space-x-3 rounded-2xl border border-[#e7edf4] bg-white px-3 py-3 shadow-sm">
+                      <div className="flex w-[82px] flex-col items-center justify-center rounded-2xl bg-[#eef2f6] py-3">
                         <img src={stage.iconSrc} className="w-[43px] h-[23px]" alt="not found" />
-                        <p className="text-[13.5px] font-bold pt-2">{stage.label}</p>
+                        <p className="pt-2 text-[12px] font-bold uppercase tracking-[0.08em]">{stage.label}</p>
                       </div>
-                      <div className="flex flex-col items-start justify-start text-black">
-                        <p className="text-[11.5px] font-semibold">{stage.time}</p>
-                        <p className="text-[16px] font-bold">{stage.location}</p>
-                        <p className="text-[13.5px] font-medium">{stage.address}</p>
+                      <div className="flex min-w-0 flex-1 flex-col items-start justify-start text-black">
+                        <p className="text-[11.5px] font-semibold text-[#7b8794]">{stage.time}</p>
+                        <p className="text-[16px] font-bold leading-snug">
+                          {stage.label === 'Pickup'
+                            ? (selectedStudent?.pickupLocation || stage.location)
+                            : (selectedStudent?.dropoffLocation || stage.location)}
+                        </p>
+                        <p className="text-[13px] font-medium text-[#4b5563] leading-snug">
+                          {stage.label === 'Pickup'
+                            ? (selectedStudent?.pickupLocation || stage.address)
+                            : (selectedStudent?.dropoffLocation || stage.address)}
+                        </p>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 <button
-                  className="absolute top-0 right-0 p-2 bg-gray-200 rounded-lg transition-all hover:bg-gray-300"
+                  className="absolute right-3 top-3 rounded-full bg-[#eef2f6] p-2 text-gray-700 transition-all hover:bg-[#dde5ee]"
                   onClick={handleClosePanel}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
@@ -1322,8 +1835,8 @@ const RealTimeTracking = () => {
                 ) : (
                   <GoogleMap
                     mapContainerStyle={{ width: '100%', height: '100%' }}
-                    center={mapCenter}
-                    zoom={mapMarkers.length === 0 ? initialUsZoom : defaultZoom}
+                    center={mapInitialCenter}
+                    zoom={initialUsZoom}
                     onLoad={onMapLoad}
                     onUnmount={onMapUnmount}
                     options={{
@@ -1332,6 +1845,7 @@ const RealTimeTracking = () => {
                       mapTypeControl: true,
                       streetViewControl: false,
                       fullscreenControl: true,
+                      gestureHandling: 'greedy', // allow zoom/pan freely without ctrl
                     }}
                   >
                   {/* âœ… Vehicle/Driver Markers with beautiful bus icons */}
@@ -1339,18 +1853,67 @@ const RealTimeTracking = () => {
                     const isGoogleReady =
                       !!window.google?.maps?.Size && !!window.google?.maps?.Point;
 
-                    // ðŸšŒ Beautiful Bus Icon based on status
-                    const busIcon = marker.type === 'driver' 
-                      ? 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' // Driver stays as dot
-                      : getBusIcon(marker.status);
+                    // Red teardrop SVG for school pins
+                    const schoolPinSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
+                        <defs>
+                          <filter id="s" x="-20%" y="-10%" width="140%" height="130%">
+                            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.3"/>
+                          </filter>
+                        </defs>
+                        <path d="M20 1C10.06 1 2 8.82 2 18.4c0 12.6 16.2 30.4 17 31.3a1.3 1.3 0 002 0c.8-.9 17-18.7 17-31.3C38 8.82 29.94 1 20 1z"
+                              fill="#C01824" stroke="#8B0000" stroke-width="1" filter="url(#s)"/>
+                        <circle cx="20" cy="17" r="8" fill="white"/>
+                        <text x="20" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#C01824" font-family="Arial">S</text>
+                      </svg>
+                    `)}`;
+
+                    const studentLabel = marker.studentData?.name?.charAt(0)?.toUpperCase() || 'S';
+                    const pickupPinSvg = createStudentPinSvg({
+                      label: studentLabel,
+                      fill: '#2563eb',
+                      stroke: '#1d4ed8',
+                      textFill: '#1e3a8a',
+                    });
+                    const dropoffPinSvg = createStudentPinSvg({
+                      label: studentLabel,
+                      fill: '#22c55e',
+                      stroke: '#15803d',
+                      textFill: '#166534',
+                    });
+                    const studentPinSvg = createStudentPinSvg({
+                      label: studentLabel,
+                      fill: '#f97316',
+                      stroke: '#c2410c',
+                      textFill: '#9a3412',
+                    });
+
+                    // Icon based on marker type
+                    const markerIcon =
+                      marker.type === 'school'
+                        ? schoolPinSvg
+                        : marker.type === 'selected-student-pickup'
+                        ? pickupPinSvg
+                        : marker.type === 'selected-student-dropoff'
+                        ? dropoffPinSvg
+                        : marker.type === 'student'
+                        ? studentPinSvg
+                        : getBusIcon(marker.status);
+
+                    const isStudentDot =
+                      marker.type === 'student' ||
+                      marker.type === 'selected-student-pickup' ||
+                      marker.type === 'selected-student-dropoff';
+                    const iconSize = marker.type === 'school' ? 40 : isStudentDot ? 44 : 40;
+                    const iconHeight = marker.type === 'school' ? 52 : isStudentDot ? 58 : 40;
 
                     const iconConfig = {
-                      url: busIcon,
+                      url: markerIcon,
                       scaledSize: isGoogleReady
-                        ? new window.google.maps.Size(40, 40)  // Slightly larger for bus
+                        ? new window.google.maps.Size(iconSize, iconHeight)
                         : undefined,
                       anchor: isGoogleReady
-                        ? new window.google.maps.Point(20, 40)
+                        ? new window.google.maps.Point(iconSize / 2, iconHeight)
                         : undefined,
                     };
 
@@ -1360,7 +1923,25 @@ const RealTimeTracking = () => {
                         position={marker.position}
                         title={marker.title}
                         icon={iconConfig}
-                        onClick={() => marker.vehicleData && handleVehicleClick(marker.vehicleData)}
+                        onClick={() => {
+                          if (marker.studentData) {
+                            setSelectedVehicle(null);
+                            setVehicleDetail(null);
+                            setVehiclePath([]);
+                            setVehiclePathSource('idle');
+                            toggleStudentPanel(marker.studentData);
+                            return;
+                          }
+
+                          if (marker.vehicleData) handleVehicleClick(marker.vehicleData);
+                        }}
+                        onDblClick={() => {
+                          // Double-click: zoom in to marker location
+                          if (map) {
+                            map.panTo(marker.position);
+                            map.setZoom(Math.min((map.getZoom() || 12) + 4, 18));
+                          }
+                        }}
                       />
                     );
                   })}
@@ -1379,61 +1960,72 @@ const RealTimeTracking = () => {
                       }}
                     />
                   )}
+                  {activeStudentRoutePath.length > 1 && (
+                    <PolylineF
+                      path={activeStudentRoutePath}
+                      options={{
+                        strokeColor: '#C01824',
+                        strokeOpacity: 0.85,
+                        strokeWeight: 4,
+                        clickable: false,
+                        geodesic: true,
+                        zIndex: 6,
+                      }}
+                    />
+                  )}
                   </GoogleMap>
                 )}
             </div>
           </div>
 
           {/* âœ… Status Bar - OUTSIDE the main flex container */}
-          <div className="mt-2 bg-gray-100 border-2 border-gray-400 rounded-md px-4 py-3 shadow-md">
-            <div className="flex items-center justify-between">
-              {/* Vehicle Status Counts */}
-              <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                  <span className="font-medium">
-                    {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('transit')).length} In Transit
-                  </span>
+          <div className="mt-2 rounded-2xl border border-[#d7dce3] bg-white px-4 py-3 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1.5 font-semibold text-green-700">
+                  <span className="h-2.5 w-2.5 rounded-full bg-green-500"></span>
+                  {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('transit')).length} In Transit
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
-                  <span className="font-medium">
-                    {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('stop')).length} At Stop
-                  </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5 font-semibold text-yellow-700">
+                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-500"></span>
+                  {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('stop')).length} At Stop
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-gray-400"></span>
-                  <span className="font-medium">
-                    {allActiveVehicles.filter((v) => {
-                      const s = (v.status || '').toLowerCase();
-                      return !s.includes('transit') && !s.includes('stop');
-                    }).length} Idle
-                  </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 font-semibold text-gray-700">
+                  <span className="h-2.5 w-2.5 rounded-full bg-gray-400"></span>
+                  {allActiveVehicles.filter((v) => {
+                    const s = (v.status || '').toLowerCase();
+                    return !s.includes('transit') && !s.includes('stop');
+                  }).length} Idle
                 </span>
+                {freshnessMeta.secondsSinceUpdate !== null && freshnessMeta.secondsSinceUpdate > 30 && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 font-semibold text-red-700">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500"></span>
+                    Location feed looks stale
+                  </span>
+                )}
               </div>
 
-              {/* Polling Status + Toggle */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 {lastUpdated && (
-                  <span className="text-xs text-gray-500">
-                    Updated: {lastUpdated.toLocaleTimeString()}
+                  <span className="rounded-full bg-[#f8fafc] px-3 py-1.5 text-xs font-medium text-[#6b7280]">
+                    Last sync: {lastUpdated.toLocaleTimeString()}
                   </span>
                 )}
                 <button
                   onClick={togglePolling}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
                     isPollingEnabled
                       ? 'bg-green-100 text-green-700 hover:bg-green-200'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${isPollingEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
-                  {isPollingEnabled ? 'Live' : 'Paused'}
+                  <span className={`h-2.5 w-2.5 rounded-full ${isPollingEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                  {isPollingEnabled ? 'Auto refresh on' : 'Auto refresh paused'}
                 </button>
                 <button
                   onClick={() => fetchAllActiveVehicles()}
                   disabled={loadingAllVehicles}
-                  className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-200 disabled:opacity-50"
                 >
                   {loadingAllVehicles ? (
                     <Spinner className="h-3 w-3" />
@@ -1442,7 +2034,7 @@ const RealTimeTracking = () => {
                       <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                     </svg>
                   )}
-                  Refresh
+                  Refresh now
                 </button>
               </div>
             </div>
