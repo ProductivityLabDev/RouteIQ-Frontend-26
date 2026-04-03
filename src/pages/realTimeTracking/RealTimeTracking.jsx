@@ -59,7 +59,13 @@ const tabsData = [
 ];
 
 const GOOGLE_LIBRARIES = ['places'];
+
+// Pre-computed module-level SVG constants (never change, safe outside JSX)
+const SCHOOL_PIN_SVG = createStudentPinSvg({ label: 'S', fill: '#C01824', stroke: '#8B0000', textFill: '#fff' });
+const ROUTE_START_PIN_SVG = createStudentPinSvg({ label: 'S', fill: '#16a34a', stroke: '#166534', textFill: '#14532d' });
+const ROUTE_END_PIN_SVG = createStudentPinSvg({ label: 'E', fill: '#7c3aed', stroke: '#5b21b6', textFill: '#ffffff' });
 const GOOGLE_ROADS_CHUNK_SIZE = 100;
+const MAX_TRACKING_POINT_JUMP_KM = 10;
 
 const isValidCoordinate = (value) => Number.isFinite(Number(value));
 
@@ -73,6 +79,36 @@ const isReasonableLocation = (lat, lng) => {
   return true;
 };
 
+const toMapPoint = (source = {}) => {
+  const lat = Number(source?.lat ?? source?.Lat ?? source?.latitude ?? source?.Latitude);
+  const lng = Number(source?.lng ?? source?.Lng ?? source?.longitude ?? source?.Longitude);
+  if (!isReasonableLocation(lat, lng)) return null;
+  return { lat, lng };
+};
+
+const dedupeSequentialPoints = (points = []) =>
+  points.filter(
+    (point, index, array) =>
+      index === 0 || point.lat !== array[index - 1]?.lat || point.lng !== array[index - 1]?.lng
+  );
+
+const getClosestPathPointIndex = (path = [], targetPoint) => {
+  if (!Array.isArray(path) || path.length === 0 || !targetPoint) return 0;
+
+  let closestIndex = 0;
+  let smallestDistance = Number.POSITIVE_INFINITY;
+
+  path.forEach((point, index) => {
+    const distance = getDistanceInKm(point, targetPoint);
+    if (distance < smallestDistance) {
+      smallestDistance = distance;
+      closestIndex = index;
+    }
+  });
+
+  return closestIndex;
+};
+
 const normalizePathPoints = (points = []) =>
   points
     .map((point) => ({
@@ -80,6 +116,40 @@ const normalizePathPoints = (points = []) =>
       lng: Number(point?.lng ?? point?.Longitude),
     }))
     .filter((point) => isValidCoordinate(point.lat) && isValidCoordinate(point.lng));
+
+const toRadians = (value) => (Number(value) * Math.PI) / 180;
+
+const getDistanceInKm = (start, end) => {
+  const earthRadiusKm = 6371;
+  const deltaLat = toRadians(end.lat - start.lat);
+  const deltaLng = toRadians(end.lng - start.lng);
+  const startLat = toRadians(start.lat);
+  const endLat = toRadians(end.lat);
+
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const filterPathOutliers = (points = [], maxJumpKm = MAX_TRACKING_POINT_JUMP_KM) => {
+  if (points.length <= 2) return points;
+
+  const filteredPoints = [points[0]];
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previousPoint = filteredPoints[filteredPoints.length - 1];
+    const currentPoint = points[index];
+    const distanceKm = getDistanceInKm(previousPoint, currentPoint);
+
+    if (distanceKm <= maxJumpKm) {
+      filteredPoints.push(currentPoint);
+    }
+  }
+
+  return filteredPoints;
+};
 
 const extractHistoryArray = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -174,6 +244,7 @@ const RealTimeTracking = () => {
   const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [selectedRouteId, setSelectedRouteId] = useState(null);
+  const [focusedDriverRouteId, setFocusedDriverRouteId] = useState(null);
   const [map, setMap] = useState(null);
 
   // âœ… NEW: All active vehicles (main map - page load + polling)
@@ -182,9 +253,12 @@ const RealTimeTracking = () => {
 
   // âœ… NEW: Selected vehicle detail + polyline path
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [isVehiclePanelOpen, setIsVehiclePanelOpen] = useState(false);
   const [vehicleDetail, setVehicleDetail] = useState(null);
   const [vehiclePath, setVehiclePath] = useState([]); // for polyline
+  const [selectedRouteMap, setSelectedRouteMap] = useState(null);
   const [studentRoutePath, setStudentRoutePath] = useState([]);
+  const [routeDirectionsPath, setRouteDirectionsPath] = useState([]);
   const [isSnappingVehiclePath, setIsSnappingVehiclePath] = useState(false);
   const [vehiclePathSource, setVehiclePathSource] = useState('idle');
   const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
@@ -340,6 +414,63 @@ const RealTimeTracking = () => {
           vehicleData: driver,
         });
       });
+
+      if (focusedDriverRouteId && selectedRouteMap) {
+        const orderedStops = Array.isArray(selectedRouteMap.stops)
+          ? [...selectedRouteMap.stops].sort(
+              (left, right) => Number(left?.stopOrder || 0) - Number(right?.stopOrder || 0)
+            )
+          : [];
+
+        const startPoint = toMapPoint(selectedRouteMap.startLocation || {});
+        const endPoint = toMapPoint(selectedRouteMap.endLocation || {});
+
+        if (startPoint) {
+          addMarker({
+            id: `route-start-${selectedRouteMap.routeId || focusedDriverRouteId || 'active'}`,
+            position: startPoint,
+            title:
+              selectedRouteMap.startLocation?.name ||
+              selectedRouteMap.startLocation?.address ||
+              'Route Start',
+            type: 'route-start',
+            status: 'route-start',
+          });
+        }
+
+        orderedStops.forEach((stop, index) => {
+          const point = toMapPoint(stop);
+          if (!point) return;
+
+          const stopId = stop?.stopId ?? stop?.StopId ?? `index-${index}`;
+          const stopOrder = stop?.stopOrder ?? stop?.StopOrder ?? index + 1;
+          const eta = liveRouteEtaByStopId[Number(stopId)];
+          const liveStatus = liveStopStatusById[Number(stopId)];
+          addMarker({
+            id: `route-stop-${stopId}`,
+            position: point,
+            title: `${stop?.stopName || stop?.StopName || `Stop ${stopOrder}`}${
+              eta !== undefined && eta !== null ? ` • ${eta} min away` : ''
+            }${liveStatus ? ` • ${liveStatus}` : ''}`,
+            type: 'route-stop',
+            status: liveStatus || 'route-stop',
+            stopData: stop,
+          });
+        });
+
+        if (endPoint) {
+          addMarker({
+            id: `route-end-${selectedRouteMap.routeId || focusedDriverRouteId || 'active'}`,
+            position: endPoint,
+            title:
+              selectedRouteMap.endLocation?.name ||
+              selectedRouteMap.endLocation?.address ||
+              'Route End',
+            type: 'route-end',
+            status: 'route-end',
+          });
+        }
+      }
     }
 
     // =============================================
@@ -424,7 +555,22 @@ const RealTimeTracking = () => {
     }
 
     return markers;
-  }, [terminalVehicles, schoolVehicles, activeDrivers, allActiveVehicles, selectedTab, selectedSchool, selectedInfo, filteredStudentsList, selectedStudent]);
+  }, [
+    terminalVehicles,
+    schoolVehicles,
+    activeDrivers,
+    allActiveVehicles,
+    selectedTab,
+    selectedSchool,
+    selectedInfo,
+    filteredStudentsList,
+    selectedStudent,
+    selectedVehicle,
+    selectedRouteMap,
+    focusedDriverRouteId,
+    liveRouteEtaByStopId,
+    liveStopStatusById,
+  ]);
 
   // FIXED: Only used as INITIAL center — never changes after mount.
   // This prevents map from jumping on every poll update.
@@ -437,6 +583,59 @@ const RealTimeTracking = () => {
   }, []);
 
   const onMapUnmount = useCallback(() => setMap(null), []);
+
+  const routeMapPath = useMemo(() => {
+    if (selectedInfo !== 'Track Drivers' || !focusedDriverRouteId || !selectedRouteMap) return [];
+
+    const orderedStops = Array.isArray(selectedRouteMap.stops)
+      ? [...selectedRouteMap.stops].sort(
+          (left, right) => Number(left?.stopOrder || 0) - Number(right?.stopOrder || 0)
+        )
+      : [];
+
+    const pathPoints = [
+      toMapPoint(selectedRouteMap.startLocation || {}),
+      ...orderedStops.map((stop) => toMapPoint(stop)).filter(Boolean),
+      toMapPoint(selectedRouteMap.endLocation || {}),
+    ].filter(Boolean);
+
+    return dedupeSequentialPoints(pathPoints);
+  }, [selectedInfo, focusedDriverRouteId, selectedRouteMap]);
+
+  const selectedVehicleLivePoint = useMemo(() => {
+    const lat = Number(
+      vehicleDetail?.Latitude ??
+        vehicleDetail?.latitude ??
+        selectedVehicle?.currentLocation?.latitude ??
+        selectedVehicle?.currentLocation?.Latitude
+    );
+    const lng = Number(
+      vehicleDetail?.Longitude ??
+        vehicleDetail?.longitude ??
+        selectedVehicle?.currentLocation?.longitude ??
+        selectedVehicle?.currentLocation?.Longitude
+    );
+
+    return isReasonableLocation(lat, lng) ? { lat, lng } : null;
+  }, [selectedVehicle, vehicleDetail]);
+
+  const activeRouteDisplayPath = routeDirectionsPath.length > 1 ? routeDirectionsPath : routeMapPath;
+  const remainingRoutePath = useMemo(() => {
+    if (activeRouteDisplayPath.length <= 1) return [];
+    if (!selectedVehicleLivePoint) return activeRouteDisplayPath;
+
+    const closestPointIndex = getClosestPathPointIndex(activeRouteDisplayPath, selectedVehicleLivePoint);
+    const slicedPath = activeRouteDisplayPath.slice(closestPointIndex);
+
+    return dedupeSequentialPoints([selectedVehicleLivePoint, ...slicedPath]);
+  }, [activeRouteDisplayPath, selectedVehicleLivePoint]);
+
+  const activeVehicleFocusPath =
+    remainingRoutePath.length > 1
+      ? remainingRoutePath
+      : activeRouteDisplayPath.length > 1
+      ? activeRouteDisplayPath
+      : vehiclePath;
 
   // ---------- MOUNT ----------
   useEffect(() => {
@@ -505,6 +704,19 @@ const RealTimeTracking = () => {
       });
     }
   }, [map, mapMarkers]);
+
+  useEffect(() => {
+    if (!map || activeVehicleFocusPath.length <= 1 || !window.google?.maps?.LatLngBounds || !selectedVehicle) return;
+
+    const bounds = new window.google.maps.LatLngBounds();
+    activeVehicleFocusPath.forEach((point) => bounds.extend(point));
+    map.fitBounds(bounds, { top: 80, bottom: 80, left: 120, right: 120 });
+
+    window.google.maps.event.addListenerOnce(map, 'idle', () => {
+      const currentZoom = map.getZoom();
+      if (currentZoom > 16) map.setZoom(16);
+    });
+  }, [map, activeVehicleFocusPath, selectedVehicle]);
 
   // Re-fit bounds when user changes school, terminal, or mode selection
   useEffect(() => {
@@ -628,6 +840,19 @@ const RealTimeTracking = () => {
   };
 
   // âœ… Fetch vehicle path/history (for polyline)
+  const fetchRouteMap = async (routeId) => {
+    try {
+      const response = await trackingService.getRouteMap(routeId);
+      if (response.ok && response.data) {
+        setSelectedRouteMap(response.data);
+        return;
+      }
+      setSelectedRouteMap(null);
+    } catch (error) {
+      setSelectedRouteMap(null);
+    }
+  };
+
   const fetchVehiclePath = async (vehicleId) => {
     const requestId = ++pathRequestIdRef.current;
     try {
@@ -639,13 +864,14 @@ const RealTimeTracking = () => {
           lng: point.Longitude ?? point.longitude ?? point.lng ?? point.Lng,
         }));
         const normalizedPath = normalizePathPoints(path);
+        const filteredPath = filterPathOutliers(normalizedPath);
 
         if (pathRequestIdRef.current !== requestId) return;
 
-        setVehiclePath(normalizedPath);
+        setVehiclePath(filteredPath);
         setVehiclePathSource('raw');
 
-        if (normalizedPath.length <= 1) {
+        if (filteredPath.length <= 1) {
           setVehiclePathSource('not_enough_points');
           return;
         }
@@ -658,7 +884,7 @@ const RealTimeTracking = () => {
         setIsSnappingVehiclePath(true);
         setVehiclePathSource('snapping');
         try {
-          const snappedPath = await snapPathToRoads(normalizedPath, googleMapsApiKey);
+          const snappedPath = await snapPathToRoads(filteredPath, googleMapsApiKey);
           if (pathRequestIdRef.current === requestId && snappedPath.length > 1) {
             setVehiclePath(snappedPath);
             setVehiclePathSource('roads');
@@ -683,41 +909,47 @@ const RealTimeTracking = () => {
   // âœ… NEW: Handle vehicle marker click
   const handleVehicleClick = async (vehicle) => {
     const vehicleId = vehicle.vehicleId || vehicle.VehicleId;
-    
-    // Set selected vehicle immediately (so panel shows with existing data)
+    const routeId = vehicle.routeId || vehicle.RouteId;
+
     setSelectedVehicle(vehicle);
-    setSelectedStudent(null); // close student panel if open
-    setVehicleDetail(null); // reset previous detail
-    setVehiclePath([]); // reset previous path
+    setIsVehiclePanelOpen(true);
+    setSelectedStudent(null);
+    setVehicleDetail(null);
+    setVehiclePath([]);
+    setSelectedRouteMap(null);
     setVehiclePathSource('idle');
+    setSelectedRouteId(routeId || null);
+    setFocusedDriverRouteId(routeId || null);
 
     if (!vehicleId) return;
 
-    // Try to fetch extra details (but don't block if it fails)
-    await Promise.all([
+    const requests = [
       fetchVehicleDetail(vehicleId).catch(() => {}),
       fetchVehiclePath(vehicleId).catch(() => {}),
-    ]);
+    ];
+
+    if (routeId) {
+      requests.push(fetchRouteMap(routeId).catch(() => {}));
+    }
+
+    await Promise.all(requests);
   };
 
   // âœ… NEW: Close vehicle detail panel
   const handleCloseVehiclePanel = () => {
-    setSelectedVehicle(null);
-    setVehicleDetail(null);
-    setVehiclePath([]);
-    setIsSnappingVehiclePath(false);
-    setVehiclePathSource('idle');
+    setIsVehiclePanelOpen(false);
   };
 
   // âœ… NEW: Toggle polling
   const activeTrackingRouteId = useMemo(
     () =>
-      selectedRouteId ||
-      selectedVehicle?.routeId ||
-      selectedVehicle?.RouteId ||
-      selectedStudent?.routeId ||
+      (selectedInfo === 'Track Drivers'
+        ? focusedDriverRouteId ||
+          selectedVehicle?.routeId ||
+          selectedVehicle?.RouteId
+        : selectedRouteId || selectedStudent?.routeId) ||
       null,
-    [selectedRouteId, selectedVehicle, selectedStudent]
+    [selectedInfo, focusedDriverRouteId, selectedRouteId, selectedVehicle, selectedStudent]
   );
 
   const updateVehicleInCollection = useCallback((collection = [], liveData) => {
@@ -984,6 +1216,10 @@ const RealTimeTracking = () => {
   // ---------- UI ACTIONS ----------
   const toggleStudentPanel = (studentOrDriver) => {
     setSelectedStudent(studentOrDriver);
+    setIsVehiclePanelOpen(false);
+    setFocusedDriverRouteId(null);
+    setSelectedVehicle(null);
+    setSelectedRouteMap(null);
     if (studentOrDriver?.routeId) setSelectedRouteId(studentOrDriver.routeId);
   };
 
@@ -1000,6 +1236,10 @@ const RealTimeTracking = () => {
     setSelectedStudent(null);
     setSelectedRouteId(null);
     setStudentsOnBoard([]);
+    setIsVehiclePanelOpen(false);
+    setFocusedDriverRouteId(null);
+    setSelectedVehicle(null);
+    setSelectedRouteMap(null);
 
     // Auto select terminal
     const tId = school?.terminalId ?? null;
@@ -1016,7 +1256,9 @@ const RealTimeTracking = () => {
   const handleClosePanel = () => {
     setSelectedStudent(null);
     setSelectedRouteId(null);
+    setFocusedDriverRouteId(null);
     setStudentRoutePath([]);
+    setRouteDirectionsPath([]);
   };
 
   const selectedStudentPath = useMemo(() => {
@@ -1078,6 +1320,77 @@ const RealTimeTracking = () => {
 
   const activeStudentRoutePath = studentRoutePath.length > 1 ? studentRoutePath : selectedStudentPath;
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (
+      selectedInfo !== 'Track Drivers' ||
+      !selectedRouteMap ||
+      !window.google?.maps?.DirectionsService ||
+      !selectedRouteMap.startLocation ||
+      !selectedRouteMap.endLocation
+    ) {
+      setRouteDirectionsPath([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const origin = toMapPoint(selectedRouteMap.startLocation || {});
+    const destination = toMapPoint(selectedRouteMap.endLocation || {});
+    if (!origin || !destination) {
+      setRouteDirectionsPath([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const orderedStops = Array.isArray(selectedRouteMap.stops)
+      ? [...selectedRouteMap.stops].sort(
+          (left, right) => Number(left?.stopOrder || 0) - Number(right?.stopOrder || 0)
+        )
+      : [];
+
+    const waypoints = orderedStops
+      .map((stop) => toMapPoint(stop))
+      .filter(Boolean)
+      .slice(0, 23)
+      .map((point) => ({
+        location: point,
+        stopover: true,
+      }));
+
+    const directionsService = new window.google.maps.DirectionsService();
+    directionsService.route(
+      {
+        origin,
+        destination,
+        waypoints,
+        optimizeWaypoints: false,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (cancelled) return;
+
+        if (status === 'OK' && result?.routes?.[0]?.overview_path?.length) {
+          setRouteDirectionsPath(
+            result.routes[0].overview_path.map((point) => ({
+              lat: point.lat(),
+              lng: point.lng(),
+            }))
+          );
+          return;
+        }
+
+        setRouteDirectionsPath([]);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInfo, selectedRouteMap]);
+
   const freshnessMeta = useMemo(() => {
     if (!lastUpdated) {
       return {
@@ -1138,6 +1451,21 @@ const RealTimeTracking = () => {
     };
   }, [selectedInfo, selectedVehicle, activeDrivers.length, selectedStudent, selectedSchool, filteredStudentsList.length]);
 
+  const vehicleStatusCounts = useMemo(() => {
+    const inTransit = allActiveVehicles.filter((vehicle) =>
+      (vehicle.status || '').toLowerCase().includes('transit')
+    ).length;
+    const atStop = allActiveVehicles.filter((vehicle) =>
+      (vehicle.status || '').toLowerCase().includes('stop')
+    ).length;
+    const idle = allActiveVehicles.filter((vehicle) => {
+      const normalizedStatus = (vehicle.status || '').toLowerCase();
+      return !normalizedStatus.includes('transit') && !normalizedStatus.includes('stop');
+    }).length;
+
+    return { inTransit, atStop, idle };
+  }, [allActiveVehicles]);
+
   // âœ… Main fix: tab switch pe hard reset (mix + stale list khatam)
   const handleSelectedTabInfo = (tab) => {
     setSelectedInfo(tab);
@@ -1150,6 +1478,10 @@ const RealTimeTracking = () => {
     setSelectedStudent(null);
     setSelectedRouteId(null);
     setStudentsOnBoard([]);
+    setIsVehiclePanelOpen(false);
+    setFocusedDriverRouteId(null);
+    setSelectedVehicle(null);
+    setSelectedRouteMap(null);
     setTerminalVehicles([]);
     setSchoolVehicles([]);
     dispatch(clearStudents());
@@ -1188,6 +1520,10 @@ const RealTimeTracking = () => {
     setSelectedStudent(null);
     setSelectedRouteId(null);
     setStudentsOnBoard([]);
+    setIsVehiclePanelOpen(false);
+    setFocusedDriverRouteId(null);
+    setSelectedVehicle(null);
+    setSelectedRouteMap(null);
     setSchoolVehicles([]);
     dispatch(clearStudents());
   };
@@ -1690,7 +2026,7 @@ const RealTimeTracking = () => {
             )}
 
             {/* âœ… NEW: Vehicle Detail Panel (when marker clicked) */}
-            {selectedVehicle && (
+            {selectedVehicle && isVehiclePanelOpen && (
               <div className="absolute md:left-[18rem] left-0 w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-4 overflow-y-auto z-[500]">
                 {loadingVehicleDetail ? (
                   <div className="flex items-center justify-center py-8">
@@ -1794,8 +2130,11 @@ const RealTimeTracking = () => {
 
                             {vehiclePath.length > 1 && (
                               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                <p className="text-xs font-medium text-blue-600">
-                                  ðŸ“ Path history shown on map ({vehiclePath.length} points)
+                                <p className="text-xs font-medium text-blue-700">
+                                  Live route history active: {vehiclePath.length} valid points
+                                </p>
+                                <p className="mt-1 text-[11px] font-medium text-blue-600">
+                                  Map auto-focused on the latest valid route segment
                                 </p>
                               </div>
                             )}
@@ -1821,53 +2160,35 @@ const RealTimeTracking = () => {
               </div>
             )}
 
-            <div className="relative h-full md:h-full md:w-full w-auto overflow-hidden">
-                {mapLoadError ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 p-6 text-center">
-                    <p className="text-red-600 font-bold">Map Loading Error</p>
-                    <p className="text-gray-600 mt-2">Please check your Google Maps API key</p>
-                  </div>
-                ) : !isMapLoaded ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <Spinner className="h-8 w-8" />
-                    <span className="ml-3 text-sm">Loading map...</span>
-                  </div>
-                ) : (
-                  <GoogleMap
-                    mapContainerStyle={{ width: '100%', height: '100%' }}
-                    center={mapInitialCenter}
-                    zoom={initialUsZoom}
-                    onLoad={onMapLoad}
-                    onUnmount={onMapUnmount}
-                    options={{
-                      disableDefaultUI: false,
-                      zoomControl: true,
-                      mapTypeControl: true,
-                      streetViewControl: false,
-                      fullscreenControl: true,
-                      gestureHandling: 'greedy', // allow zoom/pan freely without ctrl
-                    }}
-                  >
-                  {/* âœ… Vehicle/Driver Markers with beautiful bus icons */}
+            <div className="relative h-full w-auto overflow-hidden md:h-full md:w-full">
+              {mapLoadError ? (
+                <div className="flex h-full w-full flex-col items-center justify-center bg-red-50 p-6 text-center">
+                  <p className="font-bold text-red-600">Map Loading Error</p>
+                  <p className="mt-2 text-gray-600">Please check your Google Maps API key</p>
+                </div>
+              ) : !isMapLoaded ? (
+                <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                  <Spinner className="h-8 w-8" />
+                  <span className="ml-3 text-sm">Loading map...</span>
+                </div>
+              ) : (
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '100%' }}
+                  center={mapInitialCenter}
+                  zoom={initialUsZoom}
+                  onLoad={onMapLoad}
+                  onUnmount={onMapUnmount}
+                  options={{
+                    disableDefaultUI: false,
+                    zoomControl: true,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: true,
+                    gestureHandling: 'greedy',
+                  }}
+                >
                   {mapMarkers.map((marker) => {
-                    const isGoogleReady =
-                      !!window.google?.maps?.Size && !!window.google?.maps?.Point;
-
-                    // Red teardrop SVG for school pins
-                    const schoolPinSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
-                        <defs>
-                          <filter id="s" x="-20%" y="-10%" width="140%" height="130%">
-                            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.3"/>
-                          </filter>
-                        </defs>
-                        <path d="M20 1C10.06 1 2 8.82 2 18.4c0 12.6 16.2 30.4 17 31.3a1.3 1.3 0 002 0c.8-.9 17-18.7 17-31.3C38 8.82 29.94 1 20 1z"
-                              fill="#C01824" stroke="#8B0000" stroke-width="1" filter="url(#s)"/>
-                        <circle cx="20" cy="17" r="8" fill="white"/>
-                        <text x="20" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#C01824" font-family="Arial">S</text>
-                      </svg>
-                    `)}`;
-
+                    const isGoogleReady = !!window.google?.maps?.Size && !!window.google?.maps?.Point;
                     const studentLabel = marker.studentData?.name?.charAt(0)?.toUpperCase() || 'S';
                     const pickupPinSvg = createStudentPinSvg({
                       label: studentLabel,
@@ -1887,11 +2208,32 @@ const RealTimeTracking = () => {
                       stroke: '#c2410c',
                       textFill: '#9a3412',
                     });
+                    const stopLabel = String(
+                      marker.stopData?.stopOrder ??
+                        marker.stopData?.StopOrder ??
+                        marker.stopData?.stopName ??
+                        marker.stopData?.StopName ??
+                        'T'
+                    )
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase();
+                    const routeStopPinSvg = createStudentPinSvg({
+                      label: stopLabel,
+                      fill: '#0f172a',
+                      stroke: '#334155',
+                      textFill: '#ffffff',
+                    });
 
-                    // Icon based on marker type
                     const markerIcon =
                       marker.type === 'school'
-                        ? schoolPinSvg
+                        ? SCHOOL_PIN_SVG
+                        : marker.type === 'route-start'
+                        ? ROUTE_START_PIN_SVG
+                        : marker.type === 'route-end'
+                        ? ROUTE_END_PIN_SVG
+                        : marker.type === 'route-stop'
+                        ? routeStopPinSvg
                         : marker.type === 'selected-student-pickup'
                         ? pickupPinSvg
                         : marker.type === 'selected-student-dropoff'
@@ -1903,18 +2245,17 @@ const RealTimeTracking = () => {
                     const isStudentDot =
                       marker.type === 'student' ||
                       marker.type === 'selected-student-pickup' ||
-                      marker.type === 'selected-student-dropoff';
+                      marker.type === 'selected-student-dropoff' ||
+                      marker.type === 'route-start' ||
+                      marker.type === 'route-end' ||
+                      marker.type === 'route-stop';
                     const iconSize = marker.type === 'school' ? 40 : isStudentDot ? 44 : 40;
                     const iconHeight = marker.type === 'school' ? 52 : isStudentDot ? 58 : 40;
 
                     const iconConfig = {
                       url: markerIcon,
-                      scaledSize: isGoogleReady
-                        ? new window.google.maps.Size(iconSize, iconHeight)
-                        : undefined,
-                      anchor: isGoogleReady
-                        ? new window.google.maps.Point(iconSize / 2, iconHeight)
-                        : undefined,
+                      scaledSize: isGoogleReady ? new window.google.maps.Size(iconSize, iconHeight) : undefined,
+                      anchor: isGoogleReady ? new window.google.maps.Point(iconSize / 2, iconHeight) : undefined,
                     };
 
                     return (
@@ -1933,10 +2274,11 @@ const RealTimeTracking = () => {
                             return;
                           }
 
-                          if (marker.vehicleData) handleVehicleClick(marker.vehicleData);
+                          if (marker.vehicleData) {
+                            handleVehicleClick(marker.vehicleData);
+                          }
                         }}
                         onDblClick={() => {
-                          // Double-click: zoom in to marker location
                           if (map) {
                             map.panTo(marker.position);
                             map.setZoom(Math.min((map.getZoom() || 12) + 4, 18));
@@ -1946,7 +2288,34 @@ const RealTimeTracking = () => {
                     );
                   })}
 
-                  {/* âœ… Vehicle Path Polyline (when vehicle selected) */}
+                  {activeRouteDisplayPath.length > 1 && (
+                    <PolylineF
+                      path={activeRouteDisplayPath}
+                      options={{
+                        strokeColor: '#111827',
+                        strokeOpacity: 0.22,
+                        strokeWeight: 5,
+                        clickable: false,
+                        geodesic: true,
+                        zIndex: 3,
+                      }}
+                    />
+                  )}
+
+                  {remainingRoutePath.length > 1 && (
+                    <PolylineF
+                      path={remainingRoutePath}
+                      options={{
+                        strokeColor: '#111827',
+                        strokeOpacity: 0.82,
+                        strokeWeight: 5,
+                        clickable: false,
+                        geodesic: true,
+                        zIndex: 5,
+                      }}
+                    />
+                  )}
+
                   {vehiclePath.length > 1 && (
                     <PolylineF
                       path={vehiclePath}
@@ -1960,6 +2329,7 @@ const RealTimeTracking = () => {
                       }}
                     />
                   )}
+
                   {activeStudentRoutePath.length > 1 && (
                     <PolylineF
                       path={activeStudentRoutePath}
@@ -1973,29 +2343,25 @@ const RealTimeTracking = () => {
                       }}
                     />
                   )}
-                  </GoogleMap>
-                )}
+                </GoogleMap>
+              )}
             </div>
           </div>
 
-          {/* âœ… Status Bar - OUTSIDE the main flex container */}
           <div className="mt-2 rounded-2xl border border-[#d7dce3] bg-white px-4 py-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1.5 font-semibold text-green-700">
                   <span className="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-                  {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('transit')).length} In Transit
+                  {vehicleStatusCounts.inTransit} In Transit
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5 font-semibold text-yellow-700">
                   <span className="h-2.5 w-2.5 rounded-full bg-yellow-500"></span>
-                  {allActiveVehicles.filter((v) => (v.status || '').toLowerCase().includes('stop')).length} At Stop
+                  {vehicleStatusCounts.atStop} At Stop
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 font-semibold text-gray-700">
                   <span className="h-2.5 w-2.5 rounded-full bg-gray-400"></span>
-                  {allActiveVehicles.filter((v) => {
-                    const s = (v.status || '').toLowerCase();
-                    return !s.includes('transit') && !s.includes('stop');
-                  }).length} Idle
+                  {vehicleStatusCounts.idle} Idle
                 </span>
                 {freshnessMeta.secondsSinceUpdate !== null && freshnessMeta.secondsSinceUpdate > 30 && (
                   <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 font-semibold text-red-700">
@@ -2046,3 +2412,7 @@ const RealTimeTracking = () => {
 };
 
 export default RealTimeTracking;
+
+
+
+

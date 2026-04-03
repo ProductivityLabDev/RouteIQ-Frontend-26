@@ -240,6 +240,31 @@ export interface RouteHistoryData {
   totalStops?: number;
 }
 
+export interface RouteMapPoint {
+  latitude: number;
+  longitude: number;
+  address?: string;
+  name?: string;
+}
+
+export interface RouteMapStop extends RouteMapPoint {
+  stopId?: number | null;
+  stopName?: string;
+  stopAddress?: string;
+  stopOrder?: number;
+  estimatedArrivalTime?: string | null;
+  isDropoff?: boolean;
+}
+
+export interface RouteMapData {
+  routeId?: number;
+  routeName?: string;
+  routeNumber?: string;
+  startLocation?: RouteMapPoint | null;
+  endLocation?: RouteMapPoint | null;
+  stops: RouteMapStop[];
+}
+
 // ============================================
 // Tracking Service Functions
 // ============================================
@@ -376,6 +401,47 @@ export const trackingService = {
     return {
       ok: true,
       data: response.data?.data || response.data,
+    };
+  },
+
+  /**
+   * Get Route Map (start/end + ordered stops)
+   * GET /tracking/routes/:routeId/map
+   */
+  getRouteMap: async (routeId: number): Promise<ApiResponse<RouteMapData>> => {
+    const response = await apiClient.get(`/tracking/routes/${routeId}/map`);
+    const raw = response.data?.data || response.data || {};
+    const source = raw?.stops || raw?.startLocation || raw?.endLocation ? raw : raw?.data || {};
+
+    return {
+      ok: true,
+      data: {
+        routeId: toNumber(pickFirst(source.routeId, source.RouteId)),
+        routeName: pickFirst(source.routeName, source.RouteName),
+        routeNumber: pickFirst(source.routeNumber, source.RouteNumber),
+        startLocation: source.startLocation || source.StartLocation || null,
+        endLocation: source.endLocation || source.EndLocation || null,
+        stops: Array.isArray(source.stops)
+          ? source.stops.map((stop: any) => ({
+              stopId: toNumber(pickFirst(stop.stopId, stop.StopId)),
+              stopName: pickFirst(stop.stopName, stop.StopName, stop.name, stop.Name),
+              stopAddress: pickFirst(stop.stopAddress, stop.StopAddress, stop.address, stop.Address),
+              latitude:
+                toNumber(pickFirst(stop.latitude, stop.Latitude, stop.lat, stop.Lat)) || 0,
+              longitude:
+                toNumber(pickFirst(stop.longitude, stop.Longitude, stop.lng, stop.Lng)) || 0,
+              stopOrder: toNumber(pickFirst(stop.stopOrder, stop.StopOrder)),
+              estimatedArrivalTime: pickFirst(
+                stop.estimatedArrivalTime,
+                stop.EstimatedArrivalTime,
+                stop.eta,
+                stop.ETA,
+                null
+              ),
+              isDropoff: Boolean(pickFirst(stop.isDropoff, stop.IsDropoff, false)),
+            }))
+          : [],
+      },
     };
   },
 
