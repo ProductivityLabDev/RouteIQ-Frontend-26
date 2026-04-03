@@ -54,6 +54,52 @@ const createStudentPinSvg = ({ label = 'S', fill = '#ef4444', stroke = '#991b1b'
     </svg>
   `)}`;
 
+const createSchoolPinSvg = () =>
+  `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="54" height="70" viewBox="0 0 54 70">
+      <defs>
+        <linearGradient id="schoolPinFill" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ef4444"/>
+          <stop offset="100%" stop-color="#991b1b"/>
+        </linearGradient>
+        <filter id="schoolPinShadow" x="-25%" y="-20%" width="150%" height="170%">
+          <feDropShadow dx="0" dy="4" stdDeviation="3.2" flood-opacity="0.24"/>
+        </filter>
+      </defs>
+      <path
+        d="M27 4C14.297 4 4 14.01 4 26.356c0 15.932 19.337 34.517 21.349 36.413a2 2 0 0 0 2.73 0C30.663 60.873 50 42.288 50 26.356 50 14.01 39.703 4 27 4z"
+        fill="url(#schoolPinFill)"
+        filter="url(#schoolPinShadow)"
+      />
+      <circle cx="27" cy="25" r="14.5" fill="#fff7ed" stroke="#ffffff" stroke-width="2"/>
+      <path
+        d="M19 29.5V20.8l8-4.1 8 4.1v8.7"
+        fill="none"
+        stroke="#991b1b"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M17.8 21.2 27 16.4l9.2 4.8"
+        fill="none"
+        stroke="#991b1b"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M22.8 29.5v-4.8h8.4v4.8"
+        fill="none"
+        stroke="#991b1b"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <circle cx="27" cy="21.9" r="1.4" fill="#991b1b"/>
+    </svg>
+  `)}`;
+
 const tabsData = [
   { label: 'All Students', value: 'allstudents' },
   { label: 'On Board', value: 'onboard' },
@@ -62,7 +108,7 @@ const tabsData = [
 const GOOGLE_LIBRARIES = ['places'];
 
 // Pre-computed module-level SVG constants (never change, safe outside JSX)
-const SCHOOL_PIN_SVG = createStudentPinSvg({ label: 'S', fill: '#C01824', stroke: '#8B0000', textFill: '#fff' });
+const SCHOOL_PIN_SVG = createSchoolPinSvg();
 const ROUTE_START_PIN_SVG = createStudentPinSvg({ label: 'S', fill: '#16a34a', stroke: '#166534', textFill: '#14532d' });
 const ROUTE_END_PIN_SVG = createStudentPinSvg({ label: 'E', fill: '#7c3aed', stroke: '#5b21b6', textFill: '#ffffff' });
 const GOOGLE_ROADS_CHUNK_SIZE = 100;
@@ -2643,14 +2689,12 @@ const RealTimeTracking = () => {
                       textFill: '#ffffff',
                     });
                     const markerLabelText =
-                      marker.type === 'selected-student-pickup'
-                        ? 'Pickup'
-                        : marker.type === 'selected-student-dropoff'
+                      marker.type === 'route-start'
+                        ? 'Start'
+                        : marker.type === 'route-end'
                         ? 'Dropoff'
-                        : marker.type === 'student'
-                        ? marker.studentData?.name || 'Student'
-                        : marker.type === 'school'
-                        ? marker.title || 'School'
+                        : marker.type === 'route-stop'
+                        ? marker.stopData?.stopName || `Stop ${marker.stopData?.stopOrder || ''}`.trim()
                         : '';
 
                     const markerIcon =
@@ -2734,6 +2778,18 @@ const RealTimeTracking = () => {
                             return;
                           }
 
+                          if (marker.schoolData) {
+                            setSelectedMapStopInfo({
+                              id: marker.id,
+                              position: marker.position,
+                              order: null,
+                              title: marker.schoolData?.schoolName || marker.title || 'School',
+                              eta: marker.schoolData?.address || 'School location',
+                              status: 'School',
+                            });
+                            return;
+                          }
+
                           if (marker.studentData) {
                             setSelectedVehicle(null);
                             setVehicleDetail(null);
@@ -2794,6 +2850,8 @@ const RealTimeTracking = () => {
                                 ? 'bg-green-100 text-green-700'
                                 : selectedMapStopInfo.status === 'Bus is here'
                                 ? 'bg-orange-100 text-orange-700'
+                                : selectedMapStopInfo.status === 'School'
+                                ? 'bg-red-100 text-red-700'
                                 : 'bg-slate-100 text-slate-700'
                             }`}
                           >
@@ -2873,8 +2931,8 @@ const RealTimeTracking = () => {
                       path={activeStudentRoutePath}
                       options={{
                         strokeColor: '#C01824',
-                        strokeOpacity: 0.85,
-                        strokeWeight: 4,
+                        strokeOpacity: 0.94,
+                        strokeWeight: 6,
                         clickable: false,
                         geodesic: true,
                         zIndex: 6,
