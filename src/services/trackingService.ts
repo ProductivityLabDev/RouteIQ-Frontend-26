@@ -122,6 +122,33 @@ const normalizeVehicleTracking = (vehicle: any): VehicleTracking => {
   };
 };
 
+const normalizeRouteMapPoint = (source: any): RouteMapPoint | null => {
+  if (!source) return null;
+
+  if (typeof source === "string") {
+    return {
+      latitude: 0,
+      longitude: 0,
+      address: source,
+      name: source,
+    };
+  }
+
+  const latitude = toNumber(
+    pickFirst(source.latitude, source.Latitude, source.lat, source.Lat)
+  );
+  const longitude = toNumber(
+    pickFirst(source.longitude, source.Longitude, source.lng, source.Lng)
+  );
+
+  return {
+    latitude: latitude ?? 0,
+    longitude: longitude ?? 0,
+    address: pickFirst(source.address, source.Address, source.location, source.Location),
+    name: pickFirst(source.name, source.Name, source.label, source.Label),
+  };
+};
+
 export interface StudentOnBoard {
   studentId: number;
   studentName: string;
@@ -254,6 +281,9 @@ export interface RouteMapStop extends RouteMapPoint {
   stopOrder?: number;
   estimatedArrivalTime?: string | null;
   isDropoff?: boolean;
+  // From /live endpoint — stop completion status
+  arrivedAt?: string | null;
+  departedAt?: string | null;
 }
 
 export interface RouteMapData {
@@ -412,6 +442,93 @@ export const trackingService = {
     const response = await apiClient.get(`/tracking/routes/${routeId}/map`);
     const raw = response.data?.data || response.data || {};
     const source = raw?.stops || raw?.startLocation || raw?.endLocation ? raw : raw?.data || {};
+    const normalizedStops = Array.isArray(source.stops)
+      ? source.stops.map((stop: any) => ({
+          stopId: toNumber(pickFirst(stop.stopId, stop.StopId)),
+          stopName: pickFirst(stop.stopName, stop.StopName, stop.name, stop.Name),
+          stopAddress: pickFirst(stop.stopAddress, stop.StopAddress, stop.address, stop.Address),
+          latitude:
+            toNumber(pickFirst(stop.latitude, stop.Latitude, stop.lat, stop.Lat)) || 0,
+          longitude:
+            toNumber(pickFirst(stop.longitude, stop.Longitude, stop.lng, stop.Lng)) || 0,
+          stopOrder: toNumber(pickFirst(stop.stopOrder, stop.StopOrder)),
+          estimatedArrivalTime: pickFirst(
+            stop.estimatedArrivalTime,
+            stop.EstimatedArrivalTime,
+            stop.eta,
+            stop.ETA,
+            null
+          ),
+          isDropoff: Boolean(pickFirst(stop.isDropoff, stop.IsDropoff, false)),
+        }))
+      : [];
+
+    const firstStop = normalizedStops[0];
+    const lastStop = normalizedStops[normalizedStops.length - 1];
+    const rawStart = normalizeRouteMapPoint(source.startLocation || source.StartLocation);
+    const rawEnd = normalizeRouteMapPoint(source.endLocation || source.EndLocation);
+    const startLocation = {
+      ...(rawStart || {}),
+      latitude:
+        toNumber(
+          pickFirst(
+            rawStart?.latitude,
+            source.startLatitude,
+            source.StartLatitude,
+            firstStop?.latitude
+          )
+        ) || 0,
+      longitude:
+        toNumber(
+          pickFirst(
+            rawStart?.longitude,
+            source.startLongitude,
+            source.StartLongitude,
+            firstStop?.longitude
+          )
+        ) || 0,
+      address:
+        rawStart?.address ||
+        rawStart?.name ||
+        firstStop?.stopAddress ||
+        firstStop?.stopName,
+      name:
+        rawStart?.name ||
+        rawStart?.address ||
+        firstStop?.stopName ||
+        firstStop?.stopAddress,
+    };
+    const endLocation = {
+      ...(rawEnd || {}),
+      latitude:
+        toNumber(
+          pickFirst(
+            rawEnd?.latitude,
+            source.endLatitude,
+            source.EndLatitude,
+            lastStop?.latitude
+          )
+        ) || 0,
+      longitude:
+        toNumber(
+          pickFirst(
+            rawEnd?.longitude,
+            source.endLongitude,
+            source.EndLongitude,
+            lastStop?.longitude
+          )
+        ) || 0,
+      address:
+        rawEnd?.address ||
+        rawEnd?.name ||
+        lastStop?.stopAddress ||
+        lastStop?.stopName,
+      name:
+        rawEnd?.name ||
+        rawEnd?.address ||
+        lastStop?.stopName ||
+        lastStop?.stopAddress,
+    };
 
     return {
       ok: true,
@@ -419,28 +536,9 @@ export const trackingService = {
         routeId: toNumber(pickFirst(source.routeId, source.RouteId)),
         routeName: pickFirst(source.routeName, source.RouteName),
         routeNumber: pickFirst(source.routeNumber, source.RouteNumber),
-        startLocation: source.startLocation || source.StartLocation || null,
-        endLocation: source.endLocation || source.EndLocation || null,
-        stops: Array.isArray(source.stops)
-          ? source.stops.map((stop: any) => ({
-              stopId: toNumber(pickFirst(stop.stopId, stop.StopId)),
-              stopName: pickFirst(stop.stopName, stop.StopName, stop.name, stop.Name),
-              stopAddress: pickFirst(stop.stopAddress, stop.StopAddress, stop.address, stop.Address),
-              latitude:
-                toNumber(pickFirst(stop.latitude, stop.Latitude, stop.lat, stop.Lat)) || 0,
-              longitude:
-                toNumber(pickFirst(stop.longitude, stop.Longitude, stop.lng, stop.Lng)) || 0,
-              stopOrder: toNumber(pickFirst(stop.stopOrder, stop.StopOrder)),
-              estimatedArrivalTime: pickFirst(
-                stop.estimatedArrivalTime,
-                stop.EstimatedArrivalTime,
-                stop.eta,
-                stop.ETA,
-                null
-              ),
-              isDropoff: Boolean(pickFirst(stop.isDropoff, stop.IsDropoff, false)),
-            }))
-          : [],
+        startLocation,
+        endLocation,
+        stops: normalizedStops,
       },
     };
   },
@@ -483,6 +581,35 @@ export const trackingService = {
     return {
       ok: true,
       data: response.data?.data || response.data,
+    };
+  },
+
+  /**
+   * Get Latest Route Location (lightweight polling fallback)
+   * GET /tracking/routes/:routeId/latest
+   */
+  getLatestRouteLocation: async (routeId: number): Promise<ApiResponse<CurrentLocation>> => {
+    const response = await apiClient.get(`/tracking/routes/${routeId}/latest`);
+    return {
+      ok: true,
+      data: response.data?.data || response.data,
+    };
+  },
+
+  /**
+   * Get All On-Board Students by Terminal (Vendor screen)
+   * GET /tracking/students/onboard
+   * GET /tracking/students/onboard?terminalId=1
+   */
+  getTerminalStudentsOnboard: async (terminalId?: number): Promise<ApiResponse<StudentOnBoard[]>> => {
+    const url = terminalId
+      ? `/tracking/students/onboard?terminalId=${terminalId}`
+      : `/tracking/students/onboard`;
+    const response = await apiClient.get(url);
+    const rawData = response.data?.data || response.data || [];
+    return {
+      ok: true,
+      data: Array.isArray(rawData) ? rawData : [],
     };
   },
 };

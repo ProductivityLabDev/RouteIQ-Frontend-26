@@ -45,7 +45,7 @@ const createStudentPinSvg = ({ label = 'S', fill = '#ef4444', stroke = '#991b1b'
         x="22"
         y="24"
         text-anchor="middle"
-        font-size="12"
+        font-size="${label.length <= 2 ? 11 : 8}"
         font-weight="800"
         fill="${textFill}"
         font-family="Arial, Helvetica, sans-serif"
@@ -66,6 +66,31 @@ const ROUTE_START_PIN_SVG = createStudentPinSvg({ label: 'S', fill: '#16a34a', s
 const ROUTE_END_PIN_SVG = createStudentPinSvg({ label: 'E', fill: '#7c3aed', stroke: '#5b21b6', textFill: '#ffffff' });
 const GOOGLE_ROADS_CHUNK_SIZE = 100;
 const MAX_TRACKING_POINT_JUMP_KM = 10;
+
+// ETA display formatter (from backend guide Section 6)
+const formatETA = (minutesAway) => {
+  if (minutesAway === null || minutesAway === undefined) return 'Calculating...';
+  if (minutesAway <= 1) return 'Arriving now';
+  if (minutesAway < 60) return `${minutesAway} min away`;
+  const hours = Math.floor(minutesAway / 60);
+  const mins = minutesAway % 60;
+  return mins > 0 ? `${hours} hr ${mins} min away` : `${hours} hr away`;
+};
+
+// Format stop estimated arrival time — API returns full ISO or time string
+// "1970-01-01T13:00:00.000Z" → "1:00 PM"  |  "08:15:00" → "8:15 AM"
+const formatStopTime = (value) => {
+  if (!value) return null;
+  try {
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return null;
+    // If it's a 1970 epoch date, the API is encoding time-only as seconds from midnight
+    // Just show the time portion in local format
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+  } catch {
+    return null;
+  }
+};
 
 const isValidCoordinate = (value) => Number.isFinite(Number(value));
 
@@ -257,6 +282,7 @@ const RealTimeTracking = () => {
   const [vehicleDetail, setVehicleDetail] = useState(null);
   const [vehiclePath, setVehiclePath] = useState([]); // for polyline
   const [selectedRouteMap, setSelectedRouteMap] = useState(null);
+  const [liveRouteStops, setLiveRouteStops] = useState([]); // from getLiveRoute — always has arrivedAt/departedAt
   const [studentRoutePath, setStudentRoutePath] = useState([]);
   const [routeDirectionsPath, setRouteDirectionsPath] = useState([]);
   const [isSnappingVehiclePath, setIsSnappingVehiclePath] = useState(false);
@@ -276,6 +302,10 @@ const RealTimeTracking = () => {
   const [isPollingEnabled, setIsPollingEnabled] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [currentTimestamp, setCurrentTimestamp] = useState(Date.now());
+
+  // AM/PM auto-detect based on time + manual override
+  const [tripType, setTripType] = useState(() => (new Date().getHours() < 12 ? 'AM' : 'PM'));
+
   const pollingRef = useRef(null);
   const pathRequestIdRef = useRef(0);
   const trackingSocketRef = useRef(null);
@@ -450,7 +480,7 @@ const RealTimeTracking = () => {
             id: `route-stop-${stopId}`,
             position: point,
             title: `${stop?.stopName || stop?.StopName || `Stop ${stopOrder}`}${
-              eta !== undefined && eta !== null ? ` • ${eta} min away` : ''
+              eta !== undefined && eta !== null ? ` • ${formatETA(eta)}` : ''
             }${liveStatus ? ` • ${liveStatus}` : ''}`,
             type: 'route-stop',
             status: liveStatus || 'route-stop',
@@ -675,7 +705,7 @@ const RealTimeTracking = () => {
     if (selectedRouteId && activeTab === 'onboard') {
       fetchStudentsOnBoard(selectedRouteId);
     }
-  }, [selectedRouteId, activeTab]);
+  }, [selectedRouteId, activeTab, tripType]);
 
   // ---------- FIT BOUNDS ----------
   // Only fit bounds on SELECTION change (school/terminal/mode), never during polling updates
@@ -795,9 +825,13 @@ const RealTimeTracking = () => {
   const fetchStudentsOnBoard = async (routeId) => {
     try {
       setLoadingStudents(true);
-      const response = await trackingService.getStudentsOnBoard(routeId, 'AM');
+      const response = await trackingService.getStudentsOnBoard(routeId, tripType);
       if (response.ok && response.data) {
-        setStudentsOnBoard(response.data.studentsOnBoard || []);
+        // Guide shows data is a flat array; legacy wrapped format also supported
+        const list = Array.isArray(response.data)
+          ? response.data
+          : response.data.studentsOnBoard || [];
+        setStudentsOnBoard(list);
       } else {
         toast.error('Failed to fetch students on board');
       }
@@ -917,6 +951,7 @@ const RealTimeTracking = () => {
     setVehicleDetail(null);
     setVehiclePath([]);
     setSelectedRouteMap(null);
+    setLiveRouteStops([]);
     setVehiclePathSource('idle');
     setSelectedRouteId(routeId || null);
     setFocusedDriverRouteId(routeId || null);
@@ -930,6 +965,26 @@ const RealTimeTracking = () => {
 
     if (routeId) {
       requests.push(fetchRouteMap(routeId).catch(() => {}));
+      // Load live route → stops list for panel + seed stop status
+      requests.push(
+        trackingService.getLiveRoute(routeId, tripType).then((res) => {
+          if (!res.ok || !res.data) return;
+          const data = res.data.data || res.data;
+          const stops = data.stops || [];
+          if (!Array.isArray(stops) || stops.length === 0) return;
+          setLiveRouteStops(stops);
+          setLiveStopStatusById((current) => {
+            const next = { ...current };
+            stops.forEach((stop) => {
+              const stopId = Number(stop.stopId ?? stop.StopId);
+              if (!stopId) return;
+              if (stop.departedAt) next[stopId] = 'departed';
+              else if (stop.arrivedAt) next[stopId] = 'arrived';
+            });
+            return next;
+          });
+        }).catch(() => {})
+      );
     }
 
     await Promise.all(requests);
@@ -1172,7 +1227,7 @@ const RealTimeTracking = () => {
 
     return () => {
       if (joinedRouteRef.current) {
-        socket.emit('leave:route', { routeId: joinedRouteRef.current });
+        socket.emit('leave:room', { room: `route:${joinedRouteRef.current}` });
         joinedRouteRef.current = null;
       }
       socket.off('connect', handleConnect);
@@ -1191,11 +1246,11 @@ const RealTimeTracking = () => {
     if (!socket) return;
 
     if (joinedRouteRef.current && joinedRouteRef.current !== activeTrackingRouteId) {
-      socket.emit('leave:route', { routeId: joinedRouteRef.current });
+      socket.emit('leave:room', { room: `route:${joinedRouteRef.current}` });
       setSocketDebug((current) => ({
         ...current,
         routeJoined: null,
-        lastEvent: 'leave:route',
+        lastEvent: 'leave:room',
         lastEventAt: new Date(),
       }));
       joinedRouteRef.current = null;
@@ -1323,37 +1378,24 @@ const RealTimeTracking = () => {
   useEffect(() => {
     let cancelled = false;
 
-    if (
-      selectedInfo !== 'Track Drivers' ||
-      !selectedRouteMap ||
-      !window.google?.maps?.DirectionsService ||
-      !selectedRouteMap.startLocation ||
-      !selectedRouteMap.endLocation
-    ) {
+    if (selectedInfo !== 'Track Drivers' || !selectedRouteMap || !window.google?.maps?.DirectionsService) {
       setRouteDirectionsPath([]);
       return () => {
         cancelled = true;
       };
     }
 
-    const origin = toMapPoint(selectedRouteMap.startLocation || {});
-    const destination = toMapPoint(selectedRouteMap.endLocation || {});
-    if (!origin || !destination) {
+    const baseRoutePoints = routeMapPath;
+    if (baseRoutePoints.length < 2) {
       setRouteDirectionsPath([]);
       return () => {
         cancelled = true;
       };
     }
-
-    const orderedStops = Array.isArray(selectedRouteMap.stops)
-      ? [...selectedRouteMap.stops].sort(
-          (left, right) => Number(left?.stopOrder || 0) - Number(right?.stopOrder || 0)
-        )
-      : [];
-
-    const waypoints = orderedStops
-      .map((stop) => toMapPoint(stop))
-      .filter(Boolean)
+    const [origin, ...restPoints] = baseRoutePoints;
+    const destination = restPoints[restPoints.length - 1];
+    const waypoints = restPoints
+      .slice(0, -1)
       .slice(0, 23)
       .map((point) => ({
         location: point,
@@ -1389,7 +1431,7 @@ const RealTimeTracking = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedInfo, selectedRouteMap]);
+  }, [selectedInfo, selectedRouteMap, routeMapPath]);
 
   const freshnessMeta = useMemo(() => {
     if (!lastUpdated) {
@@ -1598,6 +1640,22 @@ const RealTimeTracking = () => {
               <p className="text-[13px] font-medium text-[#6b7280]">{trackingSummary.subtitle}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {/* AM/PM Trip Type Toggle */}
+              <div className="inline-flex rounded-full border border-[#e5e7eb] bg-[#f9fafb] p-0.5">
+                {['AM', 'PM'].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setTripType(type)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                      tripType === type
+                        ? 'bg-[#C01824] text-white shadow-sm'
+                        : 'text-[#6b7280] hover:text-[#374151]'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
               <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${freshnessMeta.toneClass}`}>
                 <span className={`h-2.5 w-2.5 rounded-full ${freshnessMeta.dotClass}`}></span>
                 {freshnessMeta.relativeLabel}
@@ -2027,7 +2085,7 @@ const RealTimeTracking = () => {
 
             {/* âœ… NEW: Vehicle Detail Panel (when marker clicked) */}
             {selectedVehicle && isVehiclePanelOpen && (
-              <div className="absolute md:left-[18rem] left-0 w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-4 overflow-y-auto z-[500]">
+              <div className="absolute md:left-[18rem] left-0 w-full top-0 md:w-full max-w-[370px] bg-white shadow-lg rounded-lg p-4 overflow-y-auto z-[500] max-h-full">
                 {loadingVehicleDetail ? (
                   <div className="flex items-center justify-center py-8">
                     <Spinner className="h-6 w-6" />
@@ -2128,16 +2186,62 @@ const RealTimeTracking = () => {
                               </div>
                             )}
 
-                            {vehiclePath.length > 1 && (
-                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                <p className="text-xs font-medium text-blue-700">
-                                  Live route history active: {vehiclePath.length} valid points
+                            {/* Route Stop List with ETA — liveRouteStops first, fallback to routeMap stops */}
+                            {(() => {
+                              const panelStops = liveRouteStops.length > 0
+                                ? liveRouteStops
+                                : (selectedRouteMap?.stops || []);
+                              if (panelStops.length === 0) return null;
+                              return (
+                              <div className="rounded-lg border border-[#e2e8f0] overflow-hidden">
+                                <p className="text-xs font-semibold uppercase tracking-wide bg-[#f1f5f9] px-3 py-2 text-[#475569]">
+                                  Route Stops ({panelStops.length})
                                 </p>
-                                <p className="mt-1 text-[11px] font-medium text-blue-600">
-                                  Map auto-focused on the latest valid route segment
-                                </p>
+                                <div className="max-h-[260px] overflow-y-auto divide-y divide-[#f1f5f9]">
+                                  {[...panelStops]
+                                    .sort((a, b) => Number(a.stopOrder ?? 0) - Number(b.stopOrder ?? 0))
+                                    .map((stop, idx) => {
+                                      const sid = Number(stop.stopId ?? stop.StopId ?? 0);
+                                      const liveEta = sid ? liveRouteEtaByStopId[sid] : undefined;
+                                      const liveStatus = sid ? liveStopStatusById[sid] : undefined;
+                                      const isDone = liveStatus === 'departed';
+                                      const isActive = liveStatus === 'arrived';
+                                      const etaDisplay = liveEta != null
+                                        ? formatETA(liveEta)
+                                        : formatStopTime(stop.estimatedArrivalTime);
+                                      return (
+                                        <div
+                                          key={sid || idx}
+                                          className={`flex items-center gap-3 px-3 py-2.5 ${
+                                            isActive ? 'bg-orange-50' : isDone ? 'bg-green-50' : 'bg-white'
+                                          }`}
+                                        >
+                                          {/* Status dot */}
+                                          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                                            isDone ? 'bg-green-500' : isActive ? 'bg-orange-500' : 'bg-[#94a3b8]'
+                                          }`}>
+                                            {isDone ? '✓' : isActive ? '●' : String(stop.stopOrder ?? idx + 1)}
+                                          </div>
+                                          {/* Stop info */}
+                                          <div className="flex-1 min-w-0">
+                                            <p className={`text-[13px] font-semibold truncate ${isDone ? 'text-green-700 line-through' : 'text-[#1e293b]'}`}>
+                                              {stop.stopName || `Stop ${idx + 1}`}
+                                            </p>
+                                            {etaDisplay && (
+                                              <p className={`text-[11px] font-medium ${
+                                                isActive ? 'text-orange-600' : isDone ? 'text-green-600' : liveEta != null ? 'text-blue-600' : 'text-[#64748b]'
+                                              }`}>
+                                                {isActive ? 'Bus is here' : isDone ? 'Completed' : etaDisplay}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
                               </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         </>
                       );
@@ -2218,10 +2322,28 @@ const RealTimeTracking = () => {
                       .trim()
                       .charAt(0)
                       .toUpperCase();
+                    const stopMarkerId = Number(marker.stopData?.stopId ?? marker.stopData?.StopId ?? 0);
+                    const stopEtaMin = stopMarkerId ? liveRouteEtaByStopId[stopMarkerId] : undefined;
+                    const stopLiveStatus = stopMarkerId ? liveStopStatusById[stopMarkerId] : undefined;
+                    // Stop color: departed=green, arrived(active)=orange pulse, ETA=blue, upcoming=dark
+                    const stopFill =
+                      stopLiveStatus === 'departed' ? '#16a34a'
+                      : stopLiveStatus === 'arrived' ? '#f97316'
+                      : stopEtaMin != null ? '#1d4ed8'
+                      : '#0f172a';
+                    const stopStroke =
+                      stopLiveStatus === 'departed' ? '#166534'
+                      : stopLiveStatus === 'arrived' ? '#c2410c'
+                      : stopEtaMin != null ? '#1e40af'
+                      : '#334155';
+                    const stopPinLabel =
+                      stopLiveStatus === 'departed' ? '✓'
+                      : stopEtaMin != null ? `${stopEtaMin}m`
+                      : stopLabel;
                     const routeStopPinSvg = createStudentPinSvg({
-                      label: stopLabel,
-                      fill: '#0f172a',
-                      stroke: '#334155',
+                      label: stopPinLabel,
+                      fill: stopFill,
+                      stroke: stopStroke,
                       textFill: '#ffffff',
                     });
 
