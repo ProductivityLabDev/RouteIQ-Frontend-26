@@ -6,8 +6,9 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { fetchTerminals, fetchSchoolManagementSummary } from '@/redux/slices/schoolSlice';
 import { fetchStudentsByInstitute, clearStudents } from '@/redux/slices/studentSlice';
 import trackingService from '@/services/trackingService';
+import { vendorService } from '@/services/vendorService';
 import { toast } from 'react-hot-toast';
-import { GoogleMap, useJsApiLoader, MarkerF, PolylineF } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, MarkerF, PolylineF, InfoWindowF } from '@react-google-maps/api';
 import { redbusicon, greenbusicon, orangebusicon } from '@/assets';
 import { io } from 'socket.io-client';
 import { BASE_URL, getAuthToken } from '@/configs/api';
@@ -77,16 +78,35 @@ const formatETA = (minutesAway) => {
   return mins > 0 ? `${hours} hr ${mins} min away` : `${hours} hr away`;
 };
 
-// Format stop estimated arrival time — API returns full ISO or time string
-// "1970-01-01T13:00:00.000Z" → "1:00 PM"  |  "08:15:00" → "8:15 AM"
+// Format stop estimated arrival time as "X min away"
+// API sends "1970-01-01T13:00:00.000Z" (time-only as UTC epoch) or "08:15:00" plain string
+// Extract HH:MM, build today's date at that time, diff with now → minutes
 const formatStopTime = (value) => {
   if (!value) return null;
   try {
-    const d = new Date(value);
-    if (!Number.isFinite(d.getTime())) return null;
-    // If it's a 1970 epoch date, the API is encoding time-only as seconds from midnight
-    // Just show the time portion in local format
-    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+    let hours, minutes;
+
+    const plainMatch = String(value).match(/^(\d{1,2}):(\d{2})/);
+    if (plainMatch) {
+      hours = parseInt(plainMatch[1], 10);
+      minutes = parseInt(plainMatch[2], 10);
+    } else {
+      const d = new Date(value);
+      if (!Number.isFinite(d.getTime())) return null;
+      hours = d.getUTCHours();
+      minutes = d.getUTCMinutes();
+    }
+
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+    const diffMin = Math.round((target.getTime() - now.getTime()) / 60000);
+
+    if (diffMin < -60) return null; // long past, skip
+    if (diffMin <= 1) return 'Arriving now';
+    if (diffMin < 60) return `${diffMin} min away`;
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+    return m > 0 ? `${h} hr ${m} min away` : `${h} hr away`;
   } catch {
     return null;
   }
@@ -285,6 +305,8 @@ const RealTimeTracking = () => {
   const [liveRouteStops, setLiveRouteStops] = useState([]); // from getLiveRoute — always has arrivedAt/departedAt
   const [studentRoutePath, setStudentRoutePath] = useState([]);
   const [routeDirectionsPath, setRouteDirectionsPath] = useState([]);
+  const [busToNextStopPath, setBusToNextStopPath] = useState([]);
+  const [selectedMapStopInfo, setSelectedMapStopInfo] = useState(null);
   const [isSnappingVehiclePath, setIsSnappingVehiclePath] = useState(false);
   const [vehiclePathSource, setVehiclePathSource] = useState('idle');
   const [loadingVehicleDetail, setLoadingVehicleDetail] = useState(false);
@@ -294,9 +316,11 @@ const RealTimeTracking = () => {
   const [socketDebug, setSocketDebug] = useState({
     connected: false,
     routeJoined: null,
+    terminalJoined: null,
     lastEvent: 'waiting',
     lastEventAt: null,
   });
+  const [selectedDriverSnapshot, setSelectedDriverSnapshot] = useState(null);
 
   // âœ… NEW: Polling control + last update time
   const [isPollingEnabled, setIsPollingEnabled] = useState(true);
@@ -308,8 +332,10 @@ const RealTimeTracking = () => {
 
   const pollingRef = useRef(null);
   const pathRequestIdRef = useRef(0);
+  const selectedVehicleIdRef = useRef(null);
   const trackingSocketRef = useRef(null);
   const joinedRouteRef = useRef(null);
+  const joinedTerminalRef = useRef(null);
 
   // âœ… Track if initial fit bounds done (don't re-fit on polling)
   const hasInitialFit = useRef(false);
@@ -431,17 +457,17 @@ const RealTimeTracking = () => {
     // MODE: Track Drivers → only bus icons on map
     // =============================================
     if (selectedInfo === 'Track Drivers') {
-      activeDrivers.forEach((driver) => {
-        const lat = driver.currentLocation?.latitude;
-        const lng = driver.currentLocation?.longitude;
+      allActiveVehicles.forEach((vehicle) => {
+        const lat = vehicle.currentLocation?.latitude;
+        const lng = vehicle.currentLocation?.longitude;
         if (!isReasonableLocation(lat, lng)) return;
         addMarker({
-          id: `driver-${driver.driverId}`,
+          id: `driver-vehicle-${vehicle.vehicleId}`,
           position: { lat: Number(lat), lng: Number(lng) },
-          title: `${driver.name} - ${driver.busNo}`,
+          title: `${vehicle.driverName || 'Driver'} - ${vehicle.numberPlate || vehicle.vehicleName}`,
           type: 'vehicle', // bus icon for drivers too
-          status: driver.status || 'In Transit',
-          vehicleData: driver,
+          status: vehicle.status || 'In Transit',
+          vehicleData: vehicle,
         });
       });
 
@@ -649,16 +675,36 @@ const RealTimeTracking = () => {
     return isReasonableLocation(lat, lng) ? { lat, lng } : null;
   }, [selectedVehicle, vehicleDetail]);
 
+  const nextRouteStopPoint = useMemo(() => {
+    const sourceStops =
+      liveRouteStops.length > 0
+        ? liveRouteStops
+        : Array.isArray(selectedRouteMap?.stops)
+        ? selectedRouteMap.stops
+        : [];
+
+    if (sourceStops.length === 0) return null;
+
+    const orderedStops = [...sourceStops].sort(
+      (left, right) => Number(left?.stopOrder || left?.StopOrder || 0) - Number(right?.stopOrder || right?.StopOrder || 0)
+    );
+
+    const currentOrNextStop =
+      orderedStops.find((stop) => stop?.arrivedAt && !stop?.departedAt) ||
+      orderedStops.find((stop) => !stop?.departedAt) ||
+      orderedStops[orderedStops.length - 1];
+
+    return toMapPoint(currentOrNextStop || {});
+  }, [liveRouteStops, selectedRouteMap]);
+
   const activeRouteDisplayPath = routeDirectionsPath.length > 1 ? routeDirectionsPath : routeMapPath;
   const remainingRoutePath = useMemo(() => {
     if (activeRouteDisplayPath.length <= 1) return [];
-    if (!selectedVehicleLivePoint) return activeRouteDisplayPath;
+    if (!nextRouteStopPoint) return activeRouteDisplayPath;
 
-    const closestPointIndex = getClosestPathPointIndex(activeRouteDisplayPath, selectedVehicleLivePoint);
-    const slicedPath = activeRouteDisplayPath.slice(closestPointIndex);
-
-    return dedupeSequentialPoints([selectedVehicleLivePoint, ...slicedPath]);
-  }, [activeRouteDisplayPath, selectedVehicleLivePoint]);
+    const closestPointIndex = getClosestPathPointIndex(activeRouteDisplayPath, nextRouteStopPoint);
+    return dedupeSequentialPoints(activeRouteDisplayPath.slice(closestPointIndex));
+  }, [activeRouteDisplayPath, nextRouteStopPoint]);
 
   const activeVehicleFocusPath =
     remainingRoutePath.length > 1
@@ -789,27 +835,21 @@ const RealTimeTracking = () => {
   const fetchActiveDrivers = async () => {
     try {
       setLoadingDrivers(true);
-      const response = await trackingService.getActiveVehicles();
+      const response = await vendorService.getDrivers();
       if (response.ok && response.data) {
-        const seen = new Set();
         const driversList = response.data
-          .filter((vehicle) => {
-            const id = vehicle.driverId;
-            if (!id || seen.has(id)) return false;
-            seen.add(id);
-            return true;
-          })
-          .map((vehicle) => ({
-            name: vehicle.driverName || 'Unknown Driver',
-            busNo: vehicle.numberPlate || vehicle.vehicleName,
+          .map((driver) => ({
+            name: driver.name || 'Unknown Driver',
+            busNo: 'No active route',
             imgSrc: '',
             role: 'driver',
-            driverId: vehicle.driverId,
-            vehicleId: vehicle.vehicleId,
-            vehicleName: vehicle.vehicleName,
-            currentLocation: vehicle.currentLocation,
-            routeId: vehicle.routeId,
-            routeName: vehicle.routeName,
+            driverId: driver.id,
+            vehicleId: null,
+            vehicleName: '',
+            terminalId: null,
+            currentLocation: null,
+            routeId: null,
+            routeName: '',
           }));
         setActiveDrivers(driversList);
       } else {
@@ -887,6 +927,69 @@ const RealTimeTracking = () => {
     }
   };
 
+  const handleDriverSelect = async (driver) => {
+    setSelectedStudent(driver);
+    setIsVehiclePanelOpen(false);
+    setSelectedVehicle(null);
+    setSelectedRouteMap(null);
+    setSelectedRouteId(null);
+    setFocusedDriverRouteId(null);
+    setSelectedDriverSnapshot(null);
+    setLiveRouteStops([]);
+
+    const activeRouteResponse = await trackingService.getDriverActiveRoute(driver?.driverId);
+    const activeRoute = activeRouteResponse?.ok ? activeRouteResponse.data : null;
+
+    if (!activeRoute?.routeId) {
+      toast('No active route today');
+      return;
+    }
+
+    const matchedVehicle =
+      allActiveVehicles.find(
+        (vehicle) => Number(vehicle?.driverId ?? vehicle?.DriverId) === Number(driver?.driverId)
+      ) || {
+        driverId: driver?.driverId,
+        driverName: driver?.name,
+        routeId: activeRoute.routeId,
+        routeName: activeRoute.routeName || '',
+        vehicleId: activeRoute.vehicleId || null,
+        vehicleName: activeRoute.vehicleName || activeRoute.busNumber || '',
+        numberPlate: activeRoute.numberPlate || activeRoute.busNumber || '',
+        terminalId: activeRoute.terminalId || null,
+        currentLocation: activeRoute.currentLocation || null,
+        status: activeRoute.currentLocation ? 'In Transit' : 'Idle',
+      };
+
+    setActiveDrivers((current) =>
+      current.map((item) =>
+        Number(item?.driverId) === Number(driver?.driverId)
+          ? {
+              ...item,
+              busNo: matchedVehicle.numberPlate || matchedVehicle.vehicleName || activeRoute.busNumber || 'Assigned',
+              routeId: activeRoute.routeId || matchedVehicle.routeId || null,
+              routeName: activeRoute.routeName || matchedVehicle.routeName || '',
+              vehicleId: matchedVehicle.vehicleId || activeRoute.vehicleId || null,
+              vehicleName: matchedVehicle.vehicleName || activeRoute.vehicleName || '',
+              terminalId: matchedVehicle.terminalId || activeRoute.terminalId || null,
+              currentLocation: matchedVehicle.currentLocation || activeRoute.currentLocation || null,
+            }
+          : item
+      )
+    );
+
+    await handleVehicleClick({
+      ...matchedVehicle,
+      routeId: activeRoute.routeId || matchedVehicle.routeId || null,
+      routeName: activeRoute.routeName || matchedVehicle.routeName || '',
+      vehicleId: matchedVehicle.vehicleId || activeRoute.vehicleId || null,
+      vehicleName: matchedVehicle.vehicleName || activeRoute.vehicleName || activeRoute.busNumber || '',
+      numberPlate: matchedVehicle.numberPlate || activeRoute.numberPlate || activeRoute.busNumber || '',
+      terminalId: matchedVehicle.terminalId || activeRoute.terminalId || null,
+      currentLocation: matchedVehicle.currentLocation || activeRoute.currentLocation || null,
+    });
+  };
+
   const fetchVehiclePath = async (vehicleId) => {
     const requestId = ++pathRequestIdRef.current;
     try {
@@ -946,12 +1049,16 @@ const RealTimeTracking = () => {
     const routeId = vehicle.routeId || vehicle.RouteId;
 
     setSelectedVehicle(vehicle);
+    setSelectedDriverSnapshot(vehicle);
+    selectedVehicleIdRef.current = Number(vehicle?.vehicleId || vehicle?.VehicleId || 0);
     setIsVehiclePanelOpen(true);
     setSelectedStudent(null);
     setVehicleDetail(null);
     setVehiclePath([]);
     setSelectedRouteMap(null);
     setLiveRouteStops([]);
+    setBusToNextStopPath([]);
+    setSelectedMapStopInfo(null);
     setVehiclePathSource('idle');
     setSelectedRouteId(routeId || null);
     setFocusedDriverRouteId(routeId || null);
@@ -993,6 +1100,10 @@ const RealTimeTracking = () => {
   // âœ… NEW: Close vehicle detail panel
   const handleCloseVehiclePanel = () => {
     setIsVehiclePanelOpen(false);
+    setSelectedDriverSnapshot(null);
+    setBusToNextStopPath([]);
+    setSelectedMapStopInfo(null);
+    selectedVehicleIdRef.current = null;
   };
 
   // âœ… NEW: Toggle polling
@@ -1005,6 +1116,17 @@ const RealTimeTracking = () => {
         : selectedRouteId || selectedStudent?.routeId) ||
       null,
     [selectedInfo, focusedDriverRouteId, selectedRouteId, selectedVehicle, selectedStudent]
+  );
+
+  const activeTrackingTerminalId = useMemo(
+    () =>
+      selectedTab ||
+      selectedVehicle?.terminalId ||
+      selectedVehicle?.TerminalId ||
+      selectedVehicle?.currentLocation?.terminalId ||
+      selectedVehicle?.currentLocation?.TerminalId ||
+      null,
+    [selectedTab, selectedVehicle]
   );
 
   const updateVehicleInCollection = useCallback((collection = [], liveData) => {
@@ -1120,6 +1242,17 @@ const RealTimeTracking = () => {
       }));
     };
 
+    const handleJoined = (data) => {
+      const room = data?.room || '';
+      setSocketDebug((current) => ({
+        ...current,
+        routeJoined: room.startsWith('route:') ? room.replace('route:', '') : current.routeJoined,
+        terminalJoined: room.startsWith('terminal:') ? room.replace('terminal:', '') : current.terminalJoined,
+        lastEvent: `joined:${room}`,
+        lastEventAt: new Date(),
+      }));
+    };
+
     const handleVehicleLocation = (data) => {
       markSocketEvent('vehicle:location');
       setLastUpdated(new Date());
@@ -1151,6 +1284,23 @@ const RealTimeTracking = () => {
           RouteId: data?.routeId ?? data?.RouteId ?? current?.RouteId,
         };
       });
+
+      // Extend polyline live — only for the vehicle whose panel is open
+      const incomingLat = Number(data?.lat ?? data?.latitude ?? data?.Latitude);
+      const incomingLng = Number(data?.lng ?? data?.longitude ?? data?.Longitude);
+      const incomingVid = Number(data?.vehicleId ?? data?.VehicleId ?? data?.id);
+      if (
+        selectedVehicleIdRef.current &&
+        incomingVid === selectedVehicleIdRef.current &&
+        isReasonableLocation(incomingLat, incomingLng)
+      ) {
+        setVehiclePath((currentPath) => {
+          if (currentPath.length === 0) return currentPath;
+          const lastPoint = currentPath[currentPath.length - 1];
+          if (lastPoint && lastPoint.lat === incomingLat && lastPoint.lng === incomingLng) return currentPath;
+          return [...currentPath, { lat: incomingLat, lng: incomingLng }];
+        });
+      }
     };
 
     const handleStudentStatus = (data) => {
@@ -1167,25 +1317,54 @@ const RealTimeTracking = () => {
       setStudentsOnBoard((current) =>
         current.map((student) =>
           Number(student?.studentId ?? student?.StudentId) === studentId
-            ? { ...student, status: nextStatus }
+            ? {
+                ...student,
+                status: nextStatus,
+                pickupTime: data?.pickupTime ?? data?.PickupTime ?? student.pickupTime,
+                dropoffTime: data?.dropoffTime ?? data?.DropoffTime ?? student.dropoffTime,
+              }
             : student
         )
       );
       setSelectedStudent((current) =>
-        Number(current?.studentId) === studentId ? { ...current, status: nextStatus } : current
+        Number(current?.studentId) === studentId
+          ? { ...current, status: nextStatus }
+          : current
       );
     };
 
     const handleStopUpdate = (data) => {
       markSocketEvent('stop:update');
       const stopId = Number(data?.stopId ?? data?.StopId);
+      const event = data?.event ?? data?.status ?? 'updated';
       if (!stopId) return;
 
       setLastUpdated(new Date());
+
+      // Update stop status map (drives pin colors + panel state)
       setLiveStopStatusById((current) => ({
         ...current,
-        [stopId]: data?.event ?? data?.status ?? 'updated',
+        [stopId]: event,
       }));
+
+      // Also update liveRouteStops arrivedAt/departedAt so panel reflects reality
+      setLiveRouteStops((current) =>
+        current.map((stop) => {
+          const sid = Number(stop?.stopId ?? stop?.StopId);
+          if (sid !== stopId) return stop;
+          if (event === 'arrived') {
+            return { ...stop, arrivedAt: data?.timestamp ?? new Date().toISOString() };
+          }
+          if (event === 'departed') {
+            return {
+              ...stop,
+              arrivedAt: stop.arrivedAt || data?.timestamp || new Date().toISOString(),
+              departedAt: data?.timestamp ?? new Date().toISOString(),
+            };
+          }
+          return stop;
+        })
+      );
     };
 
     const handleRouteEta = (data) => {
@@ -1194,20 +1373,35 @@ const RealTimeTracking = () => {
       if (stops.length === 0) return;
 
       setLastUpdated(new Date());
-      setLiveRouteEtaByStopId((current) => {
-        const nextState = { ...current };
-        stops.forEach((stop) => {
-          const stopId = Number(stop?.stopId ?? stop?.StopId);
-          if (!stopId) return;
-          nextState[stopId] = stop?.minutesAway ?? stop?.eta ?? null;
-        });
-        return nextState;
+
+      // Build ETA lookup from incoming data
+      const etaLookup = {};
+      stops.forEach((stop) => {
+        const stopId = Number(stop?.stopId ?? stop?.StopId);
+        if (!stopId) return;
+        etaLookup[stopId] = stop?.minutesAway ?? stop?.eta ?? null;
       });
+
+      setLiveRouteEtaByStopId((current) => ({ ...current, ...etaLookup }));
+
+      // Also merge estimatedArrival into liveRouteStops
+      setLiveRouteStops((current) =>
+        current.map((stop) => {
+          const sid = Number(stop?.stopId ?? stop?.StopId);
+          const incoming = stops.find((s) => Number(s?.stopId ?? s?.StopId) === sid);
+          if (!incoming) return stop;
+          return {
+            ...stop,
+            estimatedArrivalTime: incoming.estimatedArrival || stop.estimatedArrivalTime,
+          };
+        })
+      );
     };
 
     socket.off('connect', handleConnect);
     socket.off('disconnect', handleDisconnect);
     socket.off('connect_error', handleConnectError);
+    socket.off('joined', handleJoined);
     socket.off('vehicle:location', handleVehicleLocation);
     socket.off('student:status', handleStudentStatus);
     socket.off('stop:update', handleStopUpdate);
@@ -1216,6 +1410,7 @@ const RealTimeTracking = () => {
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect_error', handleConnectError);
+    socket.on('joined', handleJoined);
     socket.on('vehicle:location', handleVehicleLocation);
     socket.on('student:status', handleStudentStatus);
     socket.on('stop:update', handleStopUpdate);
@@ -1230,9 +1425,14 @@ const RealTimeTracking = () => {
         socket.emit('leave:room', { room: `route:${joinedRouteRef.current}` });
         joinedRouteRef.current = null;
       }
+      if (joinedTerminalRef.current) {
+        socket.emit('leave:room', { room: `terminal:${joinedTerminalRef.current}` });
+        joinedTerminalRef.current = null;
+      }
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect_error', handleConnectError);
+      socket.off('joined', handleJoined);
       socket.off('vehicle:location', handleVehicleLocation);
       socket.off('student:status', handleStudentStatus);
       socket.off('stop:update', handleStopUpdate);
@@ -1266,7 +1466,29 @@ const RealTimeTracking = () => {
         lastEventAt: new Date(),
       }));
     }
-  }, [activeTrackingRouteId]);
+
+    if (joinedTerminalRef.current && joinedTerminalRef.current !== activeTrackingTerminalId) {
+      socket.emit('leave:room', { room: `terminal:${joinedTerminalRef.current}` });
+      setSocketDebug((current) => ({
+        ...current,
+        terminalJoined: null,
+        lastEvent: 'leave:room',
+        lastEventAt: new Date(),
+      }));
+      joinedTerminalRef.current = null;
+    }
+
+    if (activeTrackingTerminalId && joinedTerminalRef.current !== activeTrackingTerminalId) {
+      socket.emit('join:terminal', { terminalId: activeTrackingTerminalId });
+      joinedTerminalRef.current = activeTrackingTerminalId;
+      setSocketDebug((current) => ({
+        ...current,
+        terminalJoined: activeTrackingTerminalId,
+        lastEvent: 'join:terminal',
+        lastEventAt: new Date(),
+      }));
+    }
+  }, [activeTrackingRouteId, activeTrackingTerminalId]);
 
   // ---------- UI ACTIONS ----------
   const toggleStudentPanel = (studentOrDriver) => {
@@ -1275,6 +1497,8 @@ const RealTimeTracking = () => {
     setFocusedDriverRouteId(null);
     setSelectedVehicle(null);
     setSelectedRouteMap(null);
+    setBusToNextStopPath([]);
+    setSelectedMapStopInfo(null);
     if (studentOrDriver?.routeId) setSelectedRouteId(studentOrDriver.routeId);
   };
 
@@ -1295,6 +1519,8 @@ const RealTimeTracking = () => {
     setFocusedDriverRouteId(null);
     setSelectedVehicle(null);
     setSelectedRouteMap(null);
+    setBusToNextStopPath([]);
+    setSelectedMapStopInfo(null);
 
     // Auto select terminal
     const tId = school?.terminalId ?? null;
@@ -1314,6 +1540,8 @@ const RealTimeTracking = () => {
     setFocusedDriverRouteId(null);
     setStudentRoutePath([]);
     setRouteDirectionsPath([]);
+    setBusToNextStopPath([]);
+    setSelectedMapStopInfo(null);
   };
 
   const selectedStudentPath = useMemo(() => {
@@ -1392,30 +1620,86 @@ const RealTimeTracking = () => {
         cancelled = true;
       };
     }
-    const [origin, ...restPoints] = baseRoutePoints;
-    const destination = restPoints[restPoints.length - 1];
-    const waypoints = restPoints
-      .slice(0, -1)
-      .slice(0, 23)
-      .map((point) => ({
-        location: point,
-        stopover: true,
-      }));
+    const directionsService = new window.google.maps.DirectionsService();
+
+    const fetchSegment = (origin, destination) =>
+      new Promise((resolve, reject) => {
+        directionsService.route(
+          {
+            origin,
+            destination,
+            travelMode: window.google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === 'OK' && result?.routes?.[0]?.overview_path?.length) {
+              resolve(
+                result.routes[0].overview_path.map((point) => ({
+                  lat: point.lat(),
+                  lng: point.lng(),
+                }))
+              );
+              return;
+            }
+
+            reject(new Error(`Directions failed with status ${status}`));
+          }
+        );
+      });
+
+    (async () => {
+      try {
+        const segments = [];
+        for (let index = 0; index < baseRoutePoints.length - 1; index += 1) {
+          const segment = await fetchSegment(baseRoutePoints[index], baseRoutePoints[index + 1]);
+          if (cancelled) return;
+          segments.push(...segment);
+        }
+
+        if (segments.length > 1) {
+          setRouteDirectionsPath(dedupeSequentialPoints(segments));
+          return;
+        }
+
+        setRouteDirectionsPath([]);
+      } catch (error) {
+        if (!cancelled) {
+          setRouteDirectionsPath([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInfo, selectedRouteMap, routeMapPath]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (
+      selectedInfo !== 'Track Drivers' ||
+      !selectedVehicleLivePoint ||
+      !nextRouteStopPoint ||
+      !window.google?.maps?.DirectionsService
+    ) {
+      setBusToNextStopPath([]);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const directionsService = new window.google.maps.DirectionsService();
     directionsService.route(
       {
-        origin,
-        destination,
-        waypoints,
-        optimizeWaypoints: false,
+        origin: selectedVehicleLivePoint,
+        destination: nextRouteStopPoint,
         travelMode: window.google.maps.TravelMode.DRIVING,
       },
       (result, status) => {
         if (cancelled) return;
 
         if (status === 'OK' && result?.routes?.[0]?.overview_path?.length) {
-          setRouteDirectionsPath(
+          setBusToNextStopPath(
             result.routes[0].overview_path.map((point) => ({
               lat: point.lat(),
               lng: point.lng(),
@@ -1424,14 +1708,14 @@ const RealTimeTracking = () => {
           return;
         }
 
-        setRouteDirectionsPath([]);
+        setBusToNextStopPath([]);
       }
     );
 
     return () => {
       cancelled = true;
     };
-  }, [selectedInfo, selectedRouteMap, routeMapPath]);
+  }, [selectedInfo, selectedVehicleLivePoint, nextRouteStopPoint]);
 
   const freshnessMeta = useMemo(() => {
     if (!lastUpdated) {
@@ -1524,6 +1808,8 @@ const RealTimeTracking = () => {
     setFocusedDriverRouteId(null);
     setSelectedVehicle(null);
     setSelectedRouteMap(null);
+    setBusToNextStopPath([]);
+    setSelectedMapStopInfo(null);
     setTerminalVehicles([]);
     setSchoolVehicles([]);
     dispatch(clearStudents());
@@ -1566,6 +1852,8 @@ const RealTimeTracking = () => {
     setFocusedDriverRouteId(null);
     setSelectedVehicle(null);
     setSelectedRouteMap(null);
+    setBusToNextStopPath([]);
+    setSelectedMapStopInfo(null);
     setSchoolVehicles([]);
     dispatch(clearStudents());
   };
@@ -1673,7 +1961,7 @@ const RealTimeTracking = () => {
                 {socketDebug.connected ? 'Socket connected' : 'Socket disconnected'}
               </span>
               <span className="inline-flex items-center rounded-full bg-[#f3f4f6] px-3 py-1.5 text-xs font-semibold text-[#374151]">
-                {selectedInfo === 'Track Drivers' ? `${activeDrivers.length} buses visible` : `${mapMarkers.length} map points visible`}
+                {selectedInfo === 'Track Drivers' ? `${activeDrivers.length} drivers listed` : `${mapMarkers.length} map points visible`}
               </span>
               {Object.keys(liveRouteEtaByStopId).length > 0 && (
                 <span className="inline-flex items-center rounded-full bg-[#eff6ff] px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]">
@@ -1692,6 +1980,14 @@ const RealTimeTracking = () => {
               )}
               <span className="inline-flex items-center rounded-full bg-[#f8fafc] px-3 py-1.5 text-xs font-medium text-[#4b5563]">
                 Route: {socketDebug.routeJoined || 'not joined'}
+              </span>
+              {selectedInfo === 'Track Drivers' && selectedDriverSnapshot?.routeId && (
+                <span className="inline-flex items-center rounded-full bg-[#eff6ff] px-3 py-1.5 text-xs font-medium text-[#1d4ed8]">
+                  Clicked route: {selectedDriverSnapshot.routeId}
+                </span>
+              )}
+              <span className="inline-flex items-center rounded-full bg-[#f8fafc] px-3 py-1.5 text-xs font-medium text-[#4b5563]">
+                Terminal: {socketDebug.terminalJoined || 'not joined'}
               </span>
               <span className="inline-flex items-center rounded-full bg-[#f8fafc] px-3 py-1.5 text-xs font-medium text-[#4b5563]">
                 Event: {socketDebug.lastEvent}
@@ -1878,7 +2174,7 @@ const RealTimeTracking = () => {
                                   ? 'bg-black text-white'
                                   : 'bg-none hover:bg-black group'
                               }`}
-                              onClick={() => toggleStudentPanel(driver)}
+                              onClick={() => handleDriverSelect(driver)}
                             >
                               <div className="rounded-full w-[43px] h-[43px] bg-gray-300 flex items-center justify-center">
                                 <span className="text-lg font-bold text-gray-600">
@@ -2346,6 +2642,16 @@ const RealTimeTracking = () => {
                       stroke: stopStroke,
                       textFill: '#ffffff',
                     });
+                    const markerLabelText =
+                      marker.type === 'selected-student-pickup'
+                        ? 'Pickup'
+                        : marker.type === 'selected-student-dropoff'
+                        ? 'Dropoff'
+                        : marker.type === 'student'
+                        ? marker.studentData?.name || 'Student'
+                        : marker.type === 'school'
+                        ? marker.title || 'School'
+                        : '';
 
                     const markerIcon =
                       marker.type === 'school'
@@ -2386,7 +2692,48 @@ const RealTimeTracking = () => {
                         position={marker.position}
                         title={marker.title}
                         icon={iconConfig}
+                        label={
+                          markerLabelText
+                            ? {
+                                text: markerLabelText,
+                                color: '#0f172a',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                className: 'route-map-marker-label',
+                              }
+                            : undefined
+                        }
                         onClick={() => {
+                          if (marker.type === 'route-stop' || marker.type === 'route-start' || marker.type === 'route-end') {
+                            setSelectedMapStopInfo({
+                              id: marker.id,
+                              position: marker.position,
+                              order:
+                                marker.stopData?.stopOrder ||
+                                marker.stopData?.StopOrder ||
+                                null,
+                              title:
+                                marker.stopData?.stopName ||
+                                marker.stopData?.StopName ||
+                                marker.title ||
+                                'Route Stop',
+                              eta:
+                                stopEtaMin != null
+                                  ? formatETA(stopEtaMin)
+                                  : formatStopTime(
+                                      marker.stopData?.estimatedArrivalTime ||
+                                        marker.stopData?.EstimatedArrivalTime
+                                    ),
+                              status:
+                                stopLiveStatus === 'departed'
+                                  ? 'Completed'
+                                  : stopLiveStatus === 'arrived'
+                                  ? 'Bus is here'
+                                  : 'Upcoming',
+                            });
+                            return;
+                          }
+
                           if (marker.studentData) {
                             setSelectedVehicle(null);
                             setVehicleDetail(null);
@@ -2397,6 +2744,7 @@ const RealTimeTracking = () => {
                           }
 
                           if (marker.vehicleData) {
+                            setSelectedMapStopInfo(null);
                             handleVehicleClick(marker.vehicleData);
                           }
                         }}
@@ -2410,13 +2758,67 @@ const RealTimeTracking = () => {
                     );
                   })}
 
+                  {selectedMapStopInfo && (
+                    <InfoWindowF
+                      position={selectedMapStopInfo.position}
+                      onCloseClick={() => setSelectedMapStopInfo(null)}
+                      options={{
+                        pixelOffset: window.google?.maps?.Size
+                          ? new window.google.maps.Size(0, -36)
+                          : undefined,
+                      }}
+                    >
+                      <div className="min-w-[220px] rounded-[20px] border border-[#dbe4ee] bg-white px-3 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.18)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-start gap-2.5">
+                            <div className="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#111827]" />
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">
+                                Route Stop
+                              </p>
+                              <p className="mt-0.5 text-[14px] font-extrabold leading-tight text-[#0f172a]">
+                                {selectedMapStopInfo.title}
+                              </p>
+                            </div>
+                          </div>
+                          {selectedMapStopInfo.order ? (
+                            <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-full bg-[#111827] px-2 text-[11px] font-extrabold text-white">
+                              {selectedMapStopInfo.order}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                              selectedMapStopInfo.status === 'Completed'
+                                ? 'bg-green-100 text-green-700'
+                                : selectedMapStopInfo.status === 'Bus is here'
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {selectedMapStopInfo.status}
+                          </span>
+                        </div>
+                        <div className="mt-3 rounded-2xl bg-[#f8fafc] px-3 py-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">
+                            Estimated Arrival
+                          </p>
+                          <p className="mt-1 text-[12px] font-bold text-[#1e293b]">
+                            {selectedMapStopInfo.eta || 'ETA unavailable'}
+                          </p>
+                        </div>
+                      </div>
+                    </InfoWindowF>
+                  )}
+
                   {activeRouteDisplayPath.length > 1 && (
                     <PolylineF
                       path={activeRouteDisplayPath}
                       options={{
                         strokeColor: '#111827',
-                        strokeOpacity: 0.22,
-                        strokeWeight: 5,
+                        strokeOpacity: 0.38,
+                        strokeWeight: 6,
                         clickable: false,
                         geodesic: true,
                         zIndex: 3,
@@ -2429,11 +2831,25 @@ const RealTimeTracking = () => {
                       path={remainingRoutePath}
                       options={{
                         strokeColor: '#111827',
-                        strokeOpacity: 0.82,
-                        strokeWeight: 5,
+                        strokeOpacity: 0.96,
+                        strokeWeight: 7,
                         clickable: false,
                         geodesic: true,
                         zIndex: 5,
+                      }}
+                    />
+                  )}
+
+                  {busToNextStopPath.length > 1 && (
+                    <PolylineF
+                      path={busToNextStopPath}
+                      options={{
+                        strokeColor: '#111827',
+                        strokeOpacity: 0.96,
+                        strokeWeight: 7,
+                        clickable: false,
+                        geodesic: true,
+                        zIndex: 6,
                       }}
                     />
                   )}

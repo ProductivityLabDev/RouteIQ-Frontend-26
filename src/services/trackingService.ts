@@ -19,6 +19,7 @@ export interface VehicleTracking {
   numberPlate: string;
   driverId: number;
   driverName: string;
+  terminalId?: number;
   routeId?: number;
   routeName?: string;
   currentLocation: CurrentLocation;
@@ -105,6 +106,7 @@ const normalizeVehicleTracking = (vehicle: any): VehicleTracking => {
         vehicle.employeeName,
         "Unknown Driver"
       ) || "Unknown Driver",
+    terminalId: toNumber(pickFirst(vehicle.terminalId, vehicle.TerminalId)),
     routeId: toNumber(pickFirst(vehicle.routeId, vehicle.RouteId)),
     routeName: pickFirst(vehicle.routeName, vehicle.RouteName),
     currentLocation: currentLocation as CurrentLocation,
@@ -251,6 +253,17 @@ export interface DriverLocation {
   routeId?: number;
   routeName?: string;
   status: string;
+}
+
+export interface DriverActiveRoute {
+  routeId?: number | null;
+  routeName?: string;
+  vehicleId?: number | null;
+  vehicleName?: string;
+  busNumber?: string;
+  numberPlate?: string;
+  terminalId?: number | null;
+  currentLocation?: CurrentLocation | null;
 }
 
 // Route history (replay)
@@ -552,6 +565,67 @@ export const trackingService = {
     return {
       ok: true,
       data: response.data?.data || response.data,
+    };
+  },
+
+  /**
+   * Get today's active route for a driver
+   * GET /tracking/drivers/:driverId/active-route
+   */
+  getDriverActiveRoute: async (driverId: number): Promise<ApiResponse<DriverActiveRoute | null>> => {
+    const response = await apiClient.get(`/tracking/drivers/${driverId}/active-route`);
+    const raw = response.data?.data ?? response.data ?? null;
+
+    if (!raw) {
+      return {
+        ok: true,
+        data: null,
+      };
+    }
+
+    return {
+      ok: true,
+      data: {
+        routeId: toNumber(pickFirst(raw.routeId, raw.RouteId)),
+        routeName: pickFirst(raw.routeName, raw.RouteName),
+        vehicleId: toNumber(
+          pickFirst(raw.vehicleId, raw.VehicleId, raw.vehicle?.vehicleId, raw.vehicle?.VehicleId)
+        ),
+        vehicleName: pickFirst(
+          raw.vehicleName,
+          raw.VehicleName,
+          raw.busName,
+          raw.BusName,
+          raw.vehicle?.vehicleName,
+          raw.vehicle?.VehicleName,
+          raw.vehicle?.busName,
+          raw.vehicle?.BusName
+        ),
+        busNumber: pickFirst(
+          raw.busNumber,
+          raw.BusNumber,
+          raw.numberPlate,
+          raw.NumberPlate,
+          raw.vehicle?.busNumber,
+          raw.vehicle?.BusNumber,
+          raw.vehicle?.numberPlate,
+          raw.vehicle?.NumberPlate
+        ),
+        numberPlate: pickFirst(
+          raw.numberPlate,
+          raw.NumberPlate,
+          raw.busNumber,
+          raw.BusNumber,
+          raw.vehicle?.numberPlate,
+          raw.vehicle?.NumberPlate,
+          raw.vehicle?.busNumber,
+          raw.vehicle?.BusNumber
+        ),
+        terminalId: toNumber(
+          pickFirst(raw.terminalId, raw.TerminalId, raw.vehicle?.terminalId, raw.vehicle?.TerminalId)
+        ),
+        currentLocation: normalizeCurrentLocation(raw.currentLocation || raw.CurrentLocation || raw),
+      },
     };
   },
 
