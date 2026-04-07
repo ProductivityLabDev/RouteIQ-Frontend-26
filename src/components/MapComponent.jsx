@@ -561,6 +561,21 @@ const MapComponent = ({
         </div>
       )}
 
+      {/* Compact summary chip for top-level map (when full card is intentionally hidden) */}
+      {!showCard && (cardTitle || scheduleText) ? (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-full shadow-lg px-4 py-2 flex items-center gap-3">
+            <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wide">{cardTitle || "Route"}</span>
+            {scheduleText ? (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="text-xs font-semibold text-gray-600">{scheduleText}</span>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {/* Bottom Controls */}
       {isRouteMap && (
         <div className="absolute bottom-6 left-6 right-6 flex items-center gap-4 pointer-events-none">

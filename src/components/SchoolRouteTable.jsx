@@ -34,6 +34,7 @@ export default function SchoolRouteTable({
   loading = false,
   routesByInstitute = {},
   routesLoadingByInstitute = {},
+  terminalName = "",
 }) {
   const [expandedInstitutes, setExpandedInstitutes] = useState({});
   const [expandedRoutes, setExpandedRoutes] = useState({});
@@ -225,7 +226,13 @@ export default function SchoolRouteTable({
                   className="bg-[#C01824] text-white px-3 py-1 rounded flex items-center gap-1 text-sm"
                   onClick={() => {
                     const firstRouteId = routes.length > 0 ? getRouteId(routes[0]) : null;
-                    if (firstRouteId) handleMapScreenClick(firstRouteId);
+                    if (firstRouteId) {
+                      handleMapScreenClick({
+                        routeId: firstRouteId,
+                        instituteName,
+                        terminalName,
+                      });
+                    }
                   }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

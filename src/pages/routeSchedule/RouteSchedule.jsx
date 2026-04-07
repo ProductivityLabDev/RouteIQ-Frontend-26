@@ -165,12 +165,21 @@ const RouteSchedule = () => {
     // 1) routeId (number|string) -> legacy behavior
     // 2) student row object -> show only that student's pickup/drop + best-route polyline
     setOpenMapScreen(true);
-    setShowCard(true); // reset card visibility every time map opens
-
-    const isStudentPayload = payload && typeof payload === "object";
+    const isDomEventPayload =
+      payload &&
+      typeof payload === "object" &&
+      ("nativeEvent" in payload || ("target" in payload && "currentTarget" in payload));
+    const routeContextPayload =
+      payload &&
+      typeof payload === "object" &&
+      !isDomEventPayload &&
+      (payload.routeId != null || payload.RouteId != null);
+    const isStudentPayload =
+      payload && typeof payload === "object" && !isDomEventPayload && !routeContextPayload;
 
     // Student-specific map: show ONLY this student's pickup/drop markers + directions polyline
     if (isStudentPayload) {
+      setShowCard(true);
       const studentName = payload.studentName || payload.StudentName || "Student";
       const pickupLat = payload.pickupLat ?? payload.PickupLatitude ?? payload.PickupLat;
       const pickupLng = payload.pickupLng ?? payload.PickupLongitude ?? payload.PickupLng;
@@ -236,8 +245,12 @@ const RouteSchedule = () => {
     }
 
     // Legacy: routeId-based (kept for compatibility)
+    setShowCard(false);
     setMapCardInfo({ cardTitle: "Route", scheduleText: "", contactText: "", destinationName: "", destinationAddress: "" });
-    const routeIdNum = payload != null && payload !== "" ? Number(payload) : null;
+    const rawRouteId = routeContextPayload
+      ? (payload.routeId ?? payload.RouteId)
+      : payload;
+    const routeIdNum = rawRouteId != null && rawRouteId !== "" ? Number(rawRouteId) : null;
     if (!routeIdNum || Number.isNaN(routeIdNum)) return;
 
     try {
@@ -248,42 +261,92 @@ const RouteSchedule = () => {
         ? response.data
         : [];
 
-      const markers = (Array.isArray(list) ? list : [])
-        .flatMap((s, idx) => {
-          const studentId = s?.StudentId ?? s?.studentId ?? idx;
-          const studentName = s?.StudentName ?? s?.studentName ?? `Student ${studentId}`;
+      const rows = Array.isArray(list) ? list : [];
+      const rowsWithPickup = rows.filter((s) => {
+        const pickupLat = s?.PickupLatitude ?? s?.pickupLatitude;
+        const pickupLng = s?.PickupLongitude ?? s?.pickupLongitude;
+        return Number.isFinite(Number(pickupLat)) && Number.isFinite(Number(pickupLng));
+      });
 
-          const pickupLat = s?.PickupLatitude ?? s?.pickupLatitude;
-          const pickupLng = s?.PickupLongitude ?? s?.pickupLongitude;
+      // Prefer AM assignments for "towards school drop-off" optimization.
+      const amRows = rowsWithPickup.filter((s) =>
+        String(s?.AssignmentType ?? s?.assignmentType ?? "").toUpperCase() === "AM"
+      );
+      const drivingRows = amRows.length > 0 ? amRows : rowsWithPickup;
+
+      const pickupMarkers = drivingRows.map((s, idx) => {
+        const studentId = s?.StudentId ?? s?.studentId ?? idx;
+        const studentName = s?.StudentName ?? s?.studentName ?? `Student ${studentId}`;
+        const pickupLat = s?.PickupLatitude ?? s?.pickupLatitude;
+        const pickupLng = s?.PickupLongitude ?? s?.pickupLongitude;
+
+        return {
+          id: `route-${routeIdNum}-pickup-${studentId}-${idx}`,
+          type: "pickup",
+          stopRole: idx === 0 ? "start" : "mid",
+          order: idx + 1,
+          title: `${studentName} (Pickup)`,
+          position: { lat: Number(pickupLat), lng: Number(pickupLng) },
+        };
+      });
+
+      const dropCandidate =
+        drivingRows.find((s) => {
           const dropLat = s?.DropLatitude ?? s?.dropLatitude ?? s?.DropoffLatitude ?? s?.dropoffLatitude;
           const dropLng = s?.DropLongitude ?? s?.dropLongitude ?? s?.DropoffLongitude ?? s?.dropoffLongitude;
+          return Number.isFinite(Number(dropLat)) && Number.isFinite(Number(dropLng));
+        }) || null;
 
-          const pickupOk = Number.isFinite(Number(pickupLat)) && Number.isFinite(Number(pickupLng));
-          const dropOk = Number.isFinite(Number(dropLat)) && Number.isFinite(Number(dropLng));
+      const destinationMarker = dropCandidate
+        ? {
+            id: `route-${routeIdNum}-destination-dropoff`,
+            type: "dropoff",
+            stopRole: "end",
+            order: pickupMarkers.length + 1,
+            title: "School (Drop-off)",
+            position: {
+              lat: Number(
+                dropCandidate?.DropLatitude ??
+                  dropCandidate?.dropLatitude ??
+                  dropCandidate?.DropoffLatitude ??
+                  dropCandidate?.dropoffLatitude
+              ),
+              lng: Number(
+                dropCandidate?.DropLongitude ??
+                  dropCandidate?.dropLongitude ??
+                  dropCandidate?.DropoffLongitude ??
+                  dropCandidate?.dropoffLongitude
+              ),
+            },
+          }
+        : null;
 
-          const out = [];
-          if (pickupOk) {
-            out.push({
-              id: `route-${routeIdNum}-student-${studentId}-pickup`,
-              type: "student",
-              title: `${studentName} (Pickup)`,
-              position: { lat: Number(pickupLat), lng: Number(pickupLng) },
-            });
-          }
-          if (dropOk) {
-            out.push({
-              id: `route-${routeIdNum}-student-${studentId}-dropoff`,
-              type: "student",
-              title: `${studentName} (Dropoff)`,
-              position: { lat: Number(dropLat), lng: Number(dropLng) },
-            });
-          }
-          return out;
-        })
-        .filter(Boolean);
+      const markers = destinationMarker ? [...pickupMarkers, destinationMarker] : pickupMarkers;
 
       setMapMarkers(markers);
-      setIsRouteMap(false); // keep old route-schedule behavior
+      setIsRouteMap(true);
+      const instituteName = routeContextPayload
+        ? (payload.instituteName ?? payload.InstituteName ?? "")
+        : "";
+      const terminalName = routeContextPayload
+        ? (payload.terminalName ?? payload.TerminalName ?? "")
+        : "";
+      const contextParts = [terminalName, instituteName].filter(Boolean);
+      const destinationAddress =
+        dropCandidate?.DropoffAddress ??
+        dropCandidate?.dropoffAddress ??
+        dropCandidate?.DropoffLocation ??
+        dropCandidate?.dropoffLocation ??
+        "";
+
+      setMapCardInfo({
+        cardTitle: `Route #${routeIdNum}`,
+        scheduleText: `${drivingRows.length} stop${drivingRows.length === 1 ? "" : "s"}${contextParts.length ? ` • ${contextParts.join(" • ")}` : ""}`,
+        contactText: "",
+        destinationName: destinationAddress ? "Drop-off" : "",
+        destinationAddress,
+        destinationLatLng: destinationMarker ? destinationMarker.position : null,
+      });
 
       if (markers.length > 0) {
         const sum = markers.reduce(
@@ -839,6 +902,7 @@ const RouteSchedule = () => {
                         loading={institutesLoadingByTerminal[getTerminalId(terminal)] || false}
                         routesByInstitute={routesByInstitute}
                         routesLoadingByInstitute={routesLoadingByInstitute}
+                        terminalName={terminal?.TerminalName || terminal?.terminalName || ""}
                       />
                     </div>
                   ))}
