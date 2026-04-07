@@ -38,6 +38,10 @@ export interface CreateTripResponse {
   tripNumber: string;
 }
 
+export interface UpdateTripDto extends CreateTripDto {
+  status?: string;
+}
+
 export interface TripListItem {
   id?: number;
   TripId?: number;
@@ -87,6 +91,28 @@ export const routeSchedulingService = {
         ok: data?.ok ?? true,
         message: data?.message ?? "Trip created successfully",
         tripNumber: data?.tripNumber ?? "",
+      },
+    };
+  },
+
+  getTripById: async (tripId: number | string): Promise<ApiResponse<Record<string, any>>> => {
+    const response = await apiClient.get(`/route-scheduling/trips/${tripId}`);
+    const raw = response.data;
+    return { ok: true, data: raw?.data ?? raw };
+  },
+
+  updateTrip: async (
+    tripId: number | string,
+    dto: UpdateTripDto
+  ): Promise<ApiResponse<{ ok: boolean; message: string }>> => {
+    const response = await apiClient.put(`/route-scheduling/trips/${tripId}`, dto);
+    const raw = response.data;
+    const data = raw?.data ?? raw;
+    return {
+      ok: true,
+      data: {
+        ok: data?.ok ?? true,
+        message: data?.message ?? "Trip updated successfully",
       },
     };
   },

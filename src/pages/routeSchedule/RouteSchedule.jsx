@@ -51,6 +51,9 @@ const RouteSchedule = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
    const [addtrip, setAddTrip] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState(null);
+  const [selectedTripData, setSelectedTripData] = useState(null);
+  const [selectedTerminalId, setSelectedTerminalId] = useState(null);
   const [terminals, setTerminals] = useState([]);
   const [terminalsLoading, setTerminalsLoading] = useState(false);
   const [institutesByTerminal, setInstitutesByTerminal] = useState({});
@@ -148,17 +151,34 @@ const RouteSchedule = () => {
     setModalPosition(null);
   };
 
-  const handleEllipsisClick = (event) => {
+  const handleEllipsisClick = (event, trip, terminalId) => {
     const rect = event.currentTarget.getBoundingClientRect();
     setModalPosition({
       top: rect.top + window.scrollY + 30,
       left: rect.left + window.scrollX - 140,
     });
+    setSelectedTripId(
+      trip?.tripId ??
+      trip?.id ??
+      trip?.TripId ??
+      trip?.Id ??
+      trip?.tripID ??
+      null
+    );
+    setSelectedTripData(trip || null);
+    setSelectedTerminalId(terminalId ?? null);
     setIsModalOpen(true);
   };
-  const hanldeEditModal = () => {
+  const hanldeEditModal = async () => {
+    if (!selectedTripId) {
+      setIsModalOpen(false);
+      return;
+    }
+
+    // Open edit form immediately from row data so UX doesn't block on detail API.
+    setIsCreateTrip(true);
     setIsEditable(true);
-    setOpen(!open);
+    setIsModalOpen(false);
   };
   const handleMapScreenClick = async (payload) => {
     // Supports:
@@ -376,7 +396,12 @@ const RouteSchedule = () => {
         
     }
 
-    const handleCancel = () => setIsCreateTrip(false);
+    const handleCancel = () => {
+      setIsCreateTrip(false);
+      setIsEditable(false);
+      setSelectedTripId(null);
+      setSelectedTripData(null);
+    };
 
 
   const handleRouteMap = () => {
@@ -389,6 +414,12 @@ const RouteSchedule = () => {
 
   const getTerminalId = (terminal) =>
     terminal?.TerminalId ?? terminal?.terminalId ?? terminal?.id ?? null;
+
+  const handleTripSaved = () => {
+    if (selectedTerminalId) {
+      fetchTripsForTerminal(selectedTerminalId, activeTab);
+    }
+  };
 
   const fetchTripsForTerminal = async (terminalId, statusFilter) => {
     if (!terminalId) return;
@@ -497,7 +528,13 @@ const RouteSchedule = () => {
           destinationLatLng={mapCardInfo.destinationLatLng}
         />
       ) : isCreateTrip  ? (
-         <CreateTripForm handleCancel={handleCancel}/>
+         <CreateTripForm
+           handleCancel={handleCancel}
+           mode={isEditable ? "edit" : "create"}
+           initialData={selectedTripData}
+           tripId={selectedTripId}
+           onSaved={handleTripSaved}
+         />
       ) : (
         <section className="w-full h-full">
           <div className="flex w-[100%] justify-between flex-row h-[65px] mb-3 items-center">
@@ -615,6 +652,7 @@ const RouteSchedule = () => {
                 </div>
                 {isOpen === index &&
                   (selectedTab === "Trip Schedules" ? (
+                    <>
                     <div className="w-full">
                       {(() => {
                         const tid = getTerminalId(terminal);
@@ -622,7 +660,10 @@ const RouteSchedule = () => {
                         const tripsLoading = tripsLoadingByTerminal[tid];
                         const toRow = (t) => ({
                           id: t.id ?? t.TripId ?? t.tripId,
+                          tripId: t.TripId ?? t.tripId ?? t.id ?? t.Id,
+                          tripName: t.tripName ?? t.TripName ?? "",
                           flag: t.flag,
+                          flagColor: t.flagColor ?? t.FlagColor ?? "",
                           tripNo: t.tripNo ?? t.TripNumber ?? t.tripNumber ?? t.TripNo ?? "-",
                           date: t.date ?? t.StartTime ?? t.startTime ? format(new Date(t.StartTime || t.startTime), "M/d/yy") : "-",
                           startTime: t.startTime ?? t.StartTime ? format(new Date(t.StartTime || t.startTime), "H:mm") : "-",
@@ -699,8 +740,8 @@ const RouteSchedule = () => {
                       </div>
 
                       <div className="w-full p-4 overflow-hidden rounded-sm">
-                        <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-                          <table className="w-full border-collapse">
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
+                          <table className="min-w-[1900px] w-full border-collapse [&_th]:px-4 [&_th]:py-3 [&_th]:text-xs [&_th]:font-bold [&_th]:text-[#374151] [&_th]:border-b [&_th]:border-[#D9D9D9] [&_th]:whitespace-nowrap [&_td]:px-4 [&_td]:py-3 [&_td]:text-xs [&_td]:text-[#1F2937] [&_td]:align-top">
                             <thead className="bg-[#EEEEEE]">
                               <tr>
                                 {[
@@ -725,7 +766,7 @@ const RouteSchedule = () => {
                                 ].map((header) => (
                                   <th
                                     key={header}
-                                    className="px-6 py-4 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap"
+                                    className="text-left"
                                   >
                                     {header}
                                   </th>
@@ -734,13 +775,46 @@ const RouteSchedule = () => {
                             </thead>
 
                             <tbody>
-                              {rows?.map((trip) => (
+                              {rows.length === 0 ? (
+                                <tr>
+                                  <td colSpan={18} className="px-6 py-10 text-center">
+                                    <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="26"
+                                        height="26"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.8"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      >
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                      </svg>
+                                      <p className="text-sm font-medium">No trips found for this terminal.</p>
+                                      <p className="text-xs">Try changing status filter or create a new trip.</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ) : rows?.map((trip) => (
                                 <tr
                                   key={trip.id}
                                   className="border-t border-gray-200 hover:bg-gray-50"
                                 >
-                                  <td className="px-6 py-4 text-sm text-[#141516]">
-                                    {trip.flag ? <img src={trip.flag} alt="flag" /> : <span className="w-6 h-4 block bg-gray-200 rounded" />}
+                                  <td className="text-center align-middle">
+                                    {trip.flag ? (
+                                      <img src={trip.flag} alt="flag" />
+                                    ) : (
+                                      <span
+                                        className="w-4 h-3 inline-block rounded-sm border border-gray-200"
+                                        style={{ backgroundColor: trip.flagColor || "#E5E7EB" }}
+                                        title={trip.flagColor || "No flag color"}
+                                      />
+                                    )}
                                   </td>
                                   <td className="px-6 py-4 text-sm text-[#141516]">
                                     {trip.tripNo}
@@ -789,9 +863,9 @@ const RouteSchedule = () => {
                                   <td className="px-6 py-4 text-sm text-[#141516]">
                                     {trip.glCode}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-[#141516]">
+                                  <td>
                                     <div
-                                      className={`w-[100px] text-center justify-center items-center flex h-[35px] rounded 
+                                      className={`w-[90px] text-center justify-center items-center flex h-[28px] rounded text-[11px] font-medium
                                       ${
                                         trip.status === "Approved"
                                           ? "bg-[#CCFAEB] text-[#0BA071]"
@@ -809,17 +883,17 @@ const RouteSchedule = () => {
                                     N/A
                                   </td>
                                   <td
-                                    className="px-6 py-4 text-sm text-[#141516] cursor-pointer"
+                                    className="cursor-pointer text-center align-middle"
                                     onClick={handleMapScreenClick}
                                   >
-                                    <img src={ViewMap} alt="view map" />
+                                    <img src={ViewMap} alt="view map" className="inline-block" />
                                   </td>
                                   <td className="px-6 py-4 text-sm text-[#141516]">
                                     {trip.numberOfPersons}
                                   </td>
                                   <td
-                                    className="px-6 py-4 text-sm text-[#141516] cursor-pointer"
-                                    onClick={handleEllipsisClick}
+                                    className="cursor-pointer text-center align-middle"
+                                    onClick={(e) => handleEllipsisClick(e, trip, tid)}
                                   >
                                     <FaEllipsisVertical />
                                   </td>
@@ -827,29 +901,11 @@ const RouteSchedule = () => {
                               ))}
                             </tbody>
 
-                            {isModalOpen && (
-                              <div
-                                id="custom-modal"
-                                className="fixed w-40 bg-white border rounded shadow-lg z-50 text-left"
-                                style={{
-                                  top: modalPosition.top,
-                                  left: modalPosition.left,
-                                }}
-                              >
-                                <ul className="py-2">
-                                  <li
-                                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                                    onClick={hanldeEditModal}
-                                  >
-                                    Edit
-                                  </li>
-                                </ul>
-                              </div>
-                            )}
                           </table>
                         </div>
                       </div>
 
+                      {rows.length > 0 && (
                       <div className="flex justify-center mt-4 mb-2">
                         <button className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md bg-[#919EAB]">
                           <img src={leftArrow} />
@@ -890,10 +946,31 @@ const RouteSchedule = () => {
                           <img src={rightArrow} />
                         </button>
                       </div>
+                      )}
                     </>
                         );
                       })()}
                     </div>
+                    {isModalOpen && (
+                      <div
+                        id="custom-modal"
+                        className="fixed w-40 bg-white border rounded shadow-lg z-50 text-left"
+                        style={{
+                          top: modalPosition.top,
+                          left: modalPosition.left,
+                        }}
+                      >
+                        <ul className="py-2">
+                          <li
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                            onClick={hanldeEditModal}
+                          >
+                            Edit
+                          </li>
+                        </ul>
+                      </div>
+                    )}
+                    </>
                   ) : (
                     <div className="w-full bg-white border-t border-gray-200 shadow-sm">
                       <SchoolRouteTable

@@ -25,6 +25,7 @@ export function Schedule() {
   const [mapCenter,   setMapCenter]   = useState(undefined);
   const [mapCardInfo, setMapCardInfo] = useState({});
   const [showCard,    setShowCard]    = useState(false);
+  const [isRouteMap,  setIsRouteMap]  = useState(false);
 
   useEffect(() => {
     dispatch(fetchSchoolRoutes());
@@ -45,6 +46,7 @@ export function Schedule() {
     setSelectedStudent(null);
     setSearchQuery('');
     setShowCard(false);
+    setIsRouteMap(false);
     setMapMarkers([]);
 
     // Filter students linked to this route
@@ -84,22 +86,85 @@ export function Schedule() {
   const handleStudentClick = (student) => {
     setSelectedStudent(student);
     const name     = `${student?.firstName ?? ''} ${student?.lastName ?? ''}`.trim() || 'Student';
-    const pickup   = student?.pickupLocation ?? '';
+    const routeDropoff =
+      selectedRoute?.dropoffLocation ??
+      selectedRoute?.DropoffLocation ??
+      selectedRoute?.dropLocation ??
+      '';
+    const pickupAddress =
+      student?.pickupAddress ??
+      student?.PickupAddress ??
+      student?.pickupLocation ??
+      student?.PickupLocation ??
+      student?.address ??
+      '';
+    const dropAddress =
+      student?.dropoffAddress ??
+      student?.DropoffAddress ??
+      student?.dropoffLocation ??
+      student?.DropoffLocation ??
+      student?.dropLocation ??
+      student?.DropLocation ??
+      routeDropoff ??
+      '';
     const emergency = student?.emergencyContact ?? '';
+    const scheduleText = [
+      student?.grade ? `Grade ${student.grade}` : "",
+      student?.busNumberAM ? `AM ${student.busNumberAM}` : "",
+      student?.busNumberPM ? `PM ${student.busNumberPM}` : "",
+    ].filter(Boolean).join(" • ");
 
     setMapCardInfo({
       cardTitle:          name,
-      scheduleText:       pickup,
+      scheduleText:       scheduleText || pickupAddress || "Student schedule",
       contactText:        emergency,
-      destinationName:    '',
-      destinationAddress: '',
+      destinationName:    dropAddress ? 'Drop-off' : '',
+      destinationAddress: dropAddress || '',
       destinationLatLng:  null,
     });
     setShowCard(true);
 
-    const lat = Number(student?.pickupLatitude ?? student?.PickupLatitude);
-    const lng = Number(student?.pickupLongitude ?? student?.PickupLongitude);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) setMapCenter({ lat, lng });
+    const pickupLat = Number(student?.pickupLatitude ?? student?.PickupLatitude ?? student?.pickupLat);
+    const pickupLng = Number(student?.pickupLongitude ?? student?.PickupLongitude ?? student?.pickupLng);
+    const dropLat = Number(student?.dropLatitude ?? student?.DropLatitude ?? student?.dropLat);
+    const dropLng = Number(student?.dropLongitude ?? student?.DropLongitude ?? student?.dropLng);
+
+    const markers = [];
+    if (Number.isFinite(pickupLat) && Number.isFinite(pickupLng)) {
+      markers.push({
+        id: `pickup-${student?.id ?? "student"}`,
+        type: "pickup",
+        stopRole: "start",
+        order: 1,
+        title: `${name} (Pickup)`,
+        position: { lat: pickupLat, lng: pickupLng },
+      });
+    }
+    if (Number.isFinite(dropLat) && Number.isFinite(dropLng)) {
+      markers.push({
+        id: `dropoff-${student?.id ?? "student"}`,
+        type: "dropoff",
+        stopRole: "end",
+        order: 2,
+        title: `${name} (Drop-off)`,
+        position: { lat: dropLat, lng: dropLng },
+      });
+      setMapCardInfo((prev) => ({
+        ...prev,
+        destinationLatLng: { lat: dropLat, lng: dropLng },
+      }));
+    }
+
+    setMapMarkers(markers);
+    setIsRouteMap(markers.length >= 2);
+
+    if (markers.length > 0) {
+      const sum = markers.reduce(
+        (acc, m) => ({ lat: acc.lat + m.position.lat, lng: acc.lng + m.position.lng }),
+        { lat: 0, lng: 0 }
+      );
+      setMapCenter({ lat: sum.lat / markers.length, lng: sum.lng / markers.length });
+    }
   };
 
   const busNum = selectedRoute?.busName ?? selectedRoute?.busNumber ?? '--';
@@ -214,70 +279,112 @@ export function Schedule() {
 
         {/* Middle — Student Detail Panel (absolute overlay) */}
         {selectedStudent && (
-          <div style={{ position: 'absolute', left: '280px', top: 0, width: '370px', background: '#fff', boxShadow: '4px 0 12px rgba(0,0,0,0.15)', zIndex: 500, overflowY: 'auto', maxHeight: '100%', padding: '12px' }}>
+          <div style={{ position: 'absolute', left: '292px', top: 12, width: '390px', zIndex: 500 }}>
+            <div className="relative max-h-[calc(100vh-220px)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl">
             {(() => {
               const sName     = `${selectedStudent?.firstName ?? ''} ${selectedStudent?.lastName ?? ''}`.trim() || '--';
               const sEmergency = selectedStudent?.emergencyContact ?? '--';
-              const sPickup   = selectedStudent?.pickupLocation ?? '--';
-              const sDrop     = selectedStudent?.dropLocation ?? '';
+              const sPickup   =
+                selectedStudent?.pickupAddress ??
+                selectedStudent?.PickupAddress ??
+                selectedStudent?.pickupLocation ??
+                selectedStudent?.PickupLocation ??
+                selectedStudent?.address ??
+                '--';
+              const sDrop     =
+                selectedStudent?.dropoffAddress ??
+                selectedStudent?.DropoffAddress ??
+                selectedStudent?.dropoffLocation ??
+                selectedStudent?.DropoffLocation ??
+                selectedStudent?.dropLocation ??
+                selectedStudent?.DropLocation ??
+                selectedRoute?.dropoffLocation ??
+                selectedRoute?.DropoffLocation ??
+                '--';
               const sGrade    = selectedStudent?.grade ?? '';
               const sBusNo    = selectedStudent?.busNo ?? busNum;
+              const sEnroll   = selectedStudent?.enrollmentNo ?? selectedStudent?.enrollmentNumber ?? '--';
+              const sAttendance = selectedStudent?.attendanceStatus ?? '--';
+              const sDriver   = selectedStudent?.driverName ?? '--';
+              const sBusAm    = selectedStudent?.busNumberAM ?? '--';
+              const sBusPm    = selectedStudent?.busNumberPM ?? '--';
+              const sNotes    = selectedStudent?.notes ?? '--';
               return (
                 <>
-                  <div className='flex justify-between items-center'>
-                    <div className="flex items-center gap-3 w-full">
-                      <div className='rounded-full w-[60px] h-[60px] bg-[#C01824] flex items-center justify-center text-white font-bold text-[24px] flex-shrink-0'>
+                  <div className='flex items-start justify-between gap-3 border-b border-gray-100 px-4 pt-4 pb-3'>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className='rounded-full w-[56px] h-[56px] bg-[#C01824] flex items-center justify-center text-white font-bold text-[22px] flex-shrink-0'>
                         {sName.charAt(0).toUpperCase()}
                       </div>
-                      <div className='leading-tight text-[#141516]'>
-                        <h6 className="font-bold text-[18px]">{sName}</h6>
-                        <p className="font-normal text-[14px]">Student</p>
+                      <div className='leading-tight text-[#141516] min-w-0'>
+                        <h6 className="font-bold text-[24px] truncate">{sName}</h6>
+                        <p className="font-medium text-[14px] text-gray-600">Student</p>
                       </div>
                     </div>
-                    <div className='bg-[#DDDDE1] text-[#141516] leading-tight rounded-md px-3 py-1 text-center flex-shrink-0'>
-                      <p className='text-[14px] font-normal'>BUS NO.</p>
+                    <div className='bg-[#F3F4F6] text-[#141516] leading-tight rounded-md px-3 py-1.5 text-center flex-shrink-0'>
+                      <p className='text-[11px] font-semibold text-gray-500 uppercase tracking-wide'>Bus No</p>
                       <p className='text-[14px] font-bold'>{sBusNo}</p>
                     </div>
                   </div>
 
-                  <div className='flex flex-wrap gap-4 pt-3'>
-                    <div className='text-[#141516]'>
-                      <p className='text-[13px] font-medium'>Emergency Contact</p>
-                      <p className='text-[14px] font-bold'>{sEmergency}</p>
+                  <div className='grid grid-cols-3 gap-2 px-4 pt-3'>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-2 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Emergency</p>
+                      <p className='text-[13px] font-bold text-[#141516] break-words'>{sEmergency}</p>
+                    </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-2 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Enrollment</p>
+                      <p className='text-[13px] font-bold text-[#141516] break-words'>{sEnroll}</p>
+                    </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-2 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Attendance</p>
+                      <p className='text-[13px] font-bold text-[#141516]'>{sAttendance}</p>
                     </div>
                   </div>
 
+                  <div className="px-4 pt-3 pb-4">
                   {[
                     { label: 'Pickup Address', val: sPickup },
                     { label: 'Drop-off',       val: sDrop   },
                     { label: 'Grade',          val: sGrade  },
+                    { label: 'Driver Name',    val: sDriver },
+                    { label: 'Bus # AM',       val: sBusAm  },
+                    { label: 'Bus # PM',       val: sBusPm  },
+                    { label: 'Notes',          val: sNotes  },
                   ].map(({ label, val }) =>
                     val ? (
-                      <div key={label} className='text-black pt-2'>
-                        <p className='text-[13px]'>{label}</p>
-                        <p className='text-[14px] font-bold'>{val}</p>
+                      <div key={label} className='pt-2'>
+                        <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>{label}</p>
+                        <p className='text-[14px] font-bold text-[#141516] break-words'>{val}</p>
                       </div>
                     ) : null
                   )}
+                  </div>
                 </>
               );
             })()}
 
             <button
-              className='absolute top-2 right-2 p-2 bg-gray-200 rounded-lg hover:bg-gray-300'
-              onClick={() => setSelectedStudent(null)}
+              className='absolute top-3 right-3 p-2 bg-gray-100 rounded-lg hover:bg-gray-200'
+              onClick={() => {
+                setSelectedStudent(null);
+                setShowCard(false);
+                setIsRouteMap(false);
+                if (selectedRoute) handleSelectRoute(selectedRoute);
+              }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </button>
           </div>
+          </div>
         )}
 
         {/* Right — Google Map */}
         <div style={{ flex: 1, minWidth: 0, minHeight: '400px', position: 'relative' }}>
           <MapComponent
-            isRouteMap={false}
+            isRouteMap={isRouteMap}
             showCard={showCard}
             closeCard={() => setShowCard(false)}
             markers={mapMarkers}

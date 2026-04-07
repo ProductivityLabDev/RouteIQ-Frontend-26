@@ -181,6 +181,19 @@ export const chatService = {
       if (src && String(src).trim()) safeParams.sourceType = String(src).trim();
       const tgt = params.targetType;
       if (tgt && String(tgt).trim()) safeParams.targetType = String(tgt).trim();
+      // Optional monitoring filters supported by backend
+      if (params.terminalId !== undefined && String(params.terminalId).trim()) {
+        safeParams.terminalId = String(params.terminalId).trim();
+      }
+      if (params.instituteId !== undefined && String(params.instituteId).trim()) {
+        safeParams.instituteId = String(params.instituteId).trim();
+      }
+      if (params.studentId !== undefined && String(params.studentId).trim()) {
+        safeParams.studentId = String(params.studentId).trim();
+      }
+      if (params.from) safeParams.from = params.from;
+      if (params.to) safeParams.to = params.to;
+      if (params.q && String(params.q).trim()) safeParams.q = String(params.q).trim();
     }
     const response = await apiClient.get("/chat/monitoring/conversations", {
       params: safeParams,

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { schoolDashboardService } from '@/services/schoolDashboardService';
+import { routeSchedulingService } from '@/services/routeSchedulingService';
 import { Toaster, toast } from 'react-hot-toast';
 
-const TripBookingForm = ({ handleCancel }) => {
+const TripBookingForm = ({ handleCancel, mode = "create", initialData = null, tripId = null, onSaved }) => {
   const [submitting, setSubmitting] = useState(false);
   const [buses, setBuses] = useState([]);
   const [formData, setFormData] = useState({
@@ -41,6 +42,95 @@ const TripBookingForm = ({ handleCancel }) => {
       setBuses(Array.isArray(res?.data) ? res.data : []);
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (mode !== "edit" || !initialData) return;
+    const start = initialData?.startTime || initialData?.StartTime || "";
+    const end = initialData?.endTime || initialData?.EndTime || "";
+    const toDate = (v) => {
+      if (!v) return "";
+      const raw = String(v).trim();
+      if (!raw || raw === "-" || raw.toLowerCase() === "invalid date") return "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+    };
+    const toTime = (v) => {
+      if (!v) return "";
+      const raw = String(v).trim();
+      if (!raw || raw === "-" || raw.toLowerCase() === "invalid date") return "";
+      if (/^\d{1,2}:\d{2}$/.test(raw)) {
+        const [h, m] = raw.split(":");
+        return `${String(Number(h)).padStart(2, "0")}:${m}`;
+      }
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(11, 16);
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      companyGroupName:
+        initialData?.companyName ||
+        initialData?.CompanyName ||
+        initialData?.tripName ||
+        initialData?.TripName ||
+        prev.companyGroupName,
+      phoneNumber: initialData?.phoneNumber || initialData?.PhoneNumber || prev.phoneNumber,
+      emailAddress: initialData?.emailAddress || initialData?.EmailAddress || prev.emailAddress,
+      tripType: initialData?.tripType || initialData?.TripType || prev.tripType,
+      noOfBuses: initialData?.noOfBuses ?? initialData?.NoOfBuses ?? prev.noOfBuses,
+      noOfPassengers:
+        initialData?.noOfPersons ??
+        initialData?.NoOfPersons ??
+        initialData?.numberOfPersons ??
+        prev.noOfPassengers,
+      wheelchairRequired: initialData?.wheelchairLiftRequired ?? initialData?.WheelchairLiftRequired ?? prev.wheelchairRequired,
+      vehicleId: initialData?.vehicleId ?? initialData?.VehicleId ?? prev.vehicleId,
+      pickupDate: toDate(start),
+      pickupTime: toTime(start),
+      returnDate: toDate(end),
+      returnTime: toTime(end),
+      typeOfGroup: initialData?.groupType || initialData?.GroupType || prev.typeOfGroup,
+      pickupLocation:
+        initialData?.pickupLocation ||
+        initialData?.PickupLocation ||
+        initialData?.pickup ||
+        initialData?.Pickup ||
+        prev.pickupLocation,
+      name:
+        initialData?.busName ||
+        initialData?.BusName ||
+        initialData?.busNo ||
+        initialData?.BusNumber ||
+        prev.name,
+      pickupAddress:
+        initialData?.pickupAddress ||
+        initialData?.PickupAddress ||
+        initialData?.pickup ||
+        initialData?.Pickup ||
+        prev.pickupAddress,
+      pickupCity: initialData?.pickupCity || initialData?.PickupCity || prev.pickupCity,
+      pickupState: initialData?.pickupState || initialData?.PickupState || prev.pickupState,
+      pickupZip: initialData?.pickupZip || initialData?.PickupZip || prev.pickupZip,
+      destinationLocation:
+        initialData?.dropoffLocation ||
+        initialData?.DropoffLocation ||
+        initialData?.dropoff ||
+        initialData?.Dropoff ||
+        prev.destinationLocation,
+      destinationAddress:
+        initialData?.dropoffAddress ||
+        initialData?.DropoffAddress ||
+        initialData?.dropoff ||
+        initialData?.Dropoff ||
+        prev.destinationAddress,
+      destinationCity: initialData?.destinationCity || initialData?.DestinationCity || prev.destinationCity,
+      destinationState: initialData?.destinationState || initialData?.DestinationState || prev.destinationState,
+      destinationZip: initialData?.destinationZip || initialData?.DestinationZip || prev.destinationZip,
+      instructions: initialData?.specialInstructions || initialData?.SpecialInstructions || prev.instructions,
+      howReferred: initialData?.referralSource || initialData?.ReferralSource || prev.howReferred,
+    }));
+  }, [mode, initialData]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -86,9 +176,42 @@ const TripBookingForm = ({ handleCancel }) => {
     };
     setSubmitting(true);
     try {
-      const res = await schoolDashboardService.createTrip(dto);
-      const tripNumber = res?.data?.data?.tripNumber ?? res?.data?.tripNumber;
-      toast.success(tripNumber ? `Trip created: ${tripNumber}` : 'Trip created successfully.');
+      if (mode === "edit" && tripId) {
+        const updateDto = {
+          companyName: str(formData.companyGroupName),
+          phoneNumber: str(formData.phoneNumber),
+          emailAddress: str(formData.emailAddress),
+          tripType: str(formData.tripType),
+          noOfBuses: num(formData.noOfBuses),
+          noOfPersons: num(formData.noOfPassengers),
+          wheelchairLiftRequired: num(formData.wheelchairRequired),
+          busType: undefined,
+          startTime,
+          endTime: toISO(formData.returnDate, formData.returnTime) || undefined,
+          groupType: str(formData.typeOfGroup),
+          busName: str(formData.name),
+          pickupLocation,
+          pickupAddress: str(formData.pickupAddress),
+          pickupCity: str(formData.pickupCity),
+          pickupState: str(formData.pickupState),
+          pickupZip: str(formData.pickupZip),
+          dropoffLocation,
+          dropoffAddress: str(formData.destinationAddress),
+          destinationCity: str(formData.destinationCity),
+          destinationState: str(formData.destinationState),
+          destinationZip: str(formData.destinationZip),
+          specialInstructions: str(formData.instructions),
+          referralSource: str(formData.howReferred),
+          vehicleId: num(formData.vehicleId),
+        };
+        await routeSchedulingService.updateTrip(tripId, updateDto);
+        toast.success("Trip updated successfully.");
+      } else {
+        const res = await schoolDashboardService.createTrip(dto);
+        const tripNumber = res?.data?.data?.tripNumber ?? res?.data?.tripNumber;
+        toast.success(tripNumber ? `Trip created: ${tripNumber}` : 'Trip created successfully.');
+      }
+      if (typeof onSaved === "function") onSaved();
       handleCancel();
     } catch (err) {
       const status = err?.response?.status;
@@ -113,7 +236,7 @@ const TripBookingForm = ({ handleCancel }) => {
     <div className="p-6 w-[100%]">
         {/* Header */}
         <div className="flex justify-between items-center  border-b border-gray-200">
-          <h1 className="text-[32px] font-bold text-[#202224]">Create Trip</h1>
+              <h1 className="text-[32px] font-bold text-[#202224]">{mode === "edit" ? "Edit Trip" : "Create Trip"}</h1>
           <select className="bg-[#F5F6FA] w-[25%] border border-[#ABABAB] rounded px-3 py-3 text-sm">
             <option>Copy Trip #</option>
           </select>
@@ -236,8 +359,11 @@ const TripBookingForm = ({ handleCancel }) => {
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Select a bus</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
+                {buses.map((bus, idx) => (
+                  <option
+                    key={`${bus.id ?? "bus"}-${bus.numberPlate ?? bus.name ?? "unknown"}-${idx}`}
+                    value={bus.id}
+                  >
                     {bus.numberPlate ?? bus.name} {bus.name && bus.numberPlate ? `(${bus.name})` : ''}
                   </option>
                 ))}
@@ -545,7 +671,7 @@ const TripBookingForm = ({ handleCancel }) => {
               disabled={submitting}
               className="px-6 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              {submitting ? 'Creating...' : 'Submit'}
+              {submitting ? (mode === "edit" ? "Updating..." : "Creating...") : (mode === "edit" ? "Update" : "Submit")}
             </button>
           </div>
         </form>

@@ -49,6 +49,7 @@ export function Manage() {
   const [loading, setLoading] = useState(true);
   const [driversLoading, setDriversLoading] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const location = useLocation();
   const handleOpenNote = () => setOpenNote(!openNote);
   const handleOpenAddStudent = () => setOpenAddStudent(!openAddStudent);
@@ -129,17 +130,19 @@ export function Manage() {
         contact: student.emergencyContact || 'N/A',
         enrollment: student.enrollmentNo || student.enrollmentNumber || 'N/A',
         address: student.address || 'N/A',
-        present: student.present ?? (student.attendanceStatus === 'Present') ?? false,
+        attendanceStatus: student.attendanceStatus || (student.present ? "Present" : "Absent"),
+        present: (student.attendanceStatus || "").toLowerCase() === "present" || !!student.present,
         pickupLocation: student.pickupLocation || 'N/A',
         dropLocation: student.dropLocation || 'N/A',
         guardian1: student.guardian1 || 'N/A',
         guardian2: student.guardian2 || 'N/A',
+        notes: student.notes || 'N/A',
         busNo: student.busNo || 'N/A',
-        drivername: 'N/A',
-        busanimalam: 'N/A',
-        busnoam: 'N/A',
-        busanimalpm: 'N/A',
-        busnopm: 'N/A',
+        drivername: student.driverName || 'N/A',
+        busanimalam: student.busAnimalAM || '',
+        busnoam: student.busNumberAM || student.busNo || 'N/A',
+        busanimalpm: student.busAnimalPM || '',
+        busnopm: student.busNumberPM || student.busNo || 'N/A',
       }));
 
       setStudents(mappedStudents);
@@ -161,17 +164,22 @@ export function Manage() {
         ? res.data.data
         : Array.isArray(res?.data) ? res.data : [];
 
-      setDrivers(list.map((d, i) => ({
-        id: d.id ?? i,
-        name: d.name || '--',
-        phone: d.phoneNumber || d.phone || '--',
-        contactone: d.email || '--',
-        contacttwo: d.licenseNumber || '--',
-        email: d.email || '--',
-        present: d.attendanceStatus === 'Present' || d.status === 'active' || d.status === 'Active',
-        drivingLicense: d.drivingLicense || '',
-        profilePhoto: d.profilePhoto || '',
-      })));
+      setDrivers(list.map((d, i) => {
+        const attendanceRaw = String(d.attendanceStatus ?? d.status ?? "").toLowerCase();
+        const isPresent = attendanceRaw === "present" || attendanceRaw === "active";
+        return {
+          id: d.id ?? i,
+          name: d.name || '--',
+          phone: d.phoneNumber || d.phone || '--',
+          contactone: d.email || '--',
+          contacttwo: d.licenseNumber || '--',
+          email: d.email || '--',
+          attendanceStatus: d.attendanceStatus || (isPresent ? 'Present' : 'Absent'),
+          present: isPresent,
+          drivingLicense: d.drivingLicense || '',
+          profilePhoto: d.profilePhoto || '',
+        };
+      }));
     } catch (err) {
       console.error('Failed to load drivers:', err);
       setDrivers([]);
@@ -436,7 +444,7 @@ export function Manage() {
                         </Typography>
                       </td>
                       <td className={classes}>
-                        <Tooltip content="View Note">
+                        <Tooltip content={row.notes || "No notes"}>
                           <img
                             onClick={handleOpenNote}
                             src={readnoticon}
@@ -452,9 +460,11 @@ export function Manage() {
                       </td>
                   
                   <td className={classes}>
-                        <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
-                          {row.busanimalam}
-                        </Typography>
+                        {row.busanimalam ? (
+                          <img src={row.busanimalam} alt="Bus Animal AM" className="h-6 w-6 object-contain" />
+                        ) : (
+                          <Typography className="font-semibold text-[14px] leading-none text-[#141516]">N/A</Typography>
+                        )}
                        </td>
                        <td className={classes}>
                         <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
@@ -462,9 +472,11 @@ export function Manage() {
                         </Typography>
                       </td>
                       <td className={classes}>
-                        <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
-                          {row.busanimalpm}
-                        </Typography>
+                        {row.busanimalpm ? (
+                          <img src={row.busanimalpm} alt="Bus Animal PM" className="h-6 w-6 object-contain" />
+                        ) : (
+                          <Typography className="font-semibold text-[14px] leading-none text-[#141516]">N/A</Typography>
+                        )}
                       </td>
                         <td className={classes}>
                         <Typography className="font-semibold text-[14px] leading-none text-[#141516]">
@@ -507,11 +519,11 @@ export function Manage() {
                         variant="ghost"
                         size="sm"
                         className={
-                          row.present
-                            ? "bg-[#CCFAEB] text-[#0BA071] rounded-[4px] w-[81px] p-1 text-center capitalize text-[16px]"
-                            : "bg-[#F6DCDE] w-[81px] text-[#C01824] rounded-[4px] px-1 text-center capitalize text-[16px]"
+                          String(row.attendanceStatus || "").toLowerCase() === "present"
+                            ? "bg-[#CCFAEB] text-[#0BA071] rounded-[4px] w-[81px] p-1 text-center capitalize text-[14px]"
+                            : "bg-[#F6DCDE] w-[81px] text-[#C01824] rounded-[4px] px-1 text-center capitalize text-[14px]"
                         }
-                        value={row.present ? "Present" : "Absent"}
+                        value={row.attendanceStatus || (row.present ? "Present" : "Absent")}
                       />
                        
 
@@ -531,7 +543,11 @@ export function Manage() {
                       <div className="flex items-center gap-3">
                         <img
                           src={editicon}
-                          onClick={handleOpenEditStudent}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedStudent(row);
+                            handleOpenEditStudent();
+                          }}
                           className="cursor-pointer"
                           alt="Edit Icon"
                         />
@@ -543,19 +559,9 @@ export function Manage() {
                       </div>
                       </> 
                     ) : (
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={editicon}
-                          onClick={handleOpenEditDriver}
-                          className="cursor-pointer"
-                          alt="Edit Icon"
-                        />
-                        <RiDeleteBin6Line
-                          size={20}
-                          className="cursor-pointer text-[#C01824]"
-                         onClick={handleOpenDelete}
-                        />
-                      </div>
+                      <Typography className="font-semibold text-[12px] leading-none text-gray-400">
+                        N/A
+                      </Typography>
                     )}
                   </td>
                 </tr>
@@ -600,7 +606,12 @@ export function Manage() {
       <Note open={openNote} handleOpen={handleOpenNote} />
       <AddStudent open={openAddStudent} handleOpen={handleOpenAddStudent} refreshStudents={getStudents} />
       <EditDriver open={openEditDriver} handleOpen={handleOpenEditDriver} />
-      <EditStudent open={openEditStudent} handleOpen={handleOpenEditStudent} />
+      <EditStudent
+        open={openEditStudent}
+        handleOpen={handleOpenEditStudent}
+        student={selectedStudent}
+        onSaved={getStudents}
+      />
       <DrivingLicense open={openLicense} handleOpen={handleOpenLicense} driver={selectedDriver} />
     </section>
   );

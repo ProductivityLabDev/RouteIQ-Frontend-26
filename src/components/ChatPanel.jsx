@@ -22,7 +22,14 @@ import {
 } from "@/redux/slices/chatSlice";
 import { socketService } from "@/services/socketService";
 
-const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilters = {} }) => {
+const ChatPanel = ({
+  participantTypeFilter,
+  isMonitoring = false,
+  monitoringFilters = {},
+  autoSelectFirst = false,
+  starterMessage = "",
+  prefillTrigger = 0,
+}) => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
@@ -48,6 +55,10 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
       ? state.chat.activeMonitoringConversationId
       : state.chat.activeConversationId
   );
+  const activeConvRef = useRef(activeId);
+  useEffect(() => {
+    activeConvRef.current = activeId;
+  }, [activeId]);
   const allMessages = useSelector((state) =>
     isMonitoring ? state.chat.monitoringMessages : state.chat.messages
   );
@@ -84,6 +95,16 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
     setConvPage(1);
   }, [monitoringFiltersKey, isMonitoring]);
 
+  // Keep active monitoring conversation valid when list/filters/page changes
+  useEffect(() => {
+    if (!isMonitoring) return;
+    if (!activeId) return;
+    const exists = conversations.some((c) => c.id === activeId);
+    if (!exists) {
+      dispatch(setActiveMonitoringConversation(null));
+    }
+  }, [isMonitoring, conversations, activeId, dispatch]);
+
   // Fetch messages when active conversation changes
   useEffect(() => {
     if (!activeId) return;
@@ -102,12 +123,13 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
       const params = { ...monitoringFiltersRef.current, page: convPage, limit: 20, silent: true };
       if (participantTypeFilter) params.type = participantTypeFilter;
       dispatch(fetchMonitoringConversations(params));
-      if (activeId) {
-        dispatch(fetchMonitoringMessages({ conversationId: activeId, silent: true }));
+      const currentActiveId = activeConvRef.current;
+      if (currentActiveId) {
+        dispatch(fetchMonitoringMessages({ conversationId: currentActiveId, silent: true }));
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [isMonitoring, activeId, dispatch, monitoringFiltersKey, convPage, participantTypeFilter]);
+  }, [isMonitoring, dispatch, monitoringFiltersKey, convPage, participantTypeFilter]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -173,6 +195,24 @@ const ChatPanel = ({ participantTypeFilter, isMonitoring = false, monitoringFilt
       "";
     return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  // Optionally auto-select first conversation (used by quick actions like "Chat with Bus Team")
+  useEffect(() => {
+    if (!autoSelectFirst || filteredConversations.length === 0) return;
+    const activeExistsInList = filteredConversations.some((c) => c.id === activeId);
+    if (!activeId || !activeExistsInList) {
+      const firstId = filteredConversations[0]?.id;
+      if (firstId) handleSelectConversation(firstId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSelectFirst, filteredConversations, activeId]);
+
+  // Optional starter draft for quick chat actions
+  useEffect(() => {
+    if (isMonitoring) return;
+    if (!starterMessage) return;
+    setMessageText(starterMessage);
+  }, [prefillTrigger, starterMessage, isMonitoring]);
 
   return (
     <div className="flex flex-row w-full gap-5 h-[75vh]">

@@ -11,11 +11,28 @@ import { fetchSchoolCostChart, fetchSchoolDashboard } from "@/redux/slices/schoo
 import { useState } from "react";
 import { Menu, MenuHandler, MenuList, MenuItem } from "@material-tailwind/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { chatService } from "@/services/chatService";
+
+const formatTimeAgo = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d ago`;
+};
 
 export function Home() {
   const [openMenu, setOpenMenu] = useState(false);
   const [selectedToggle, setSelectedToggle] = useState("trips");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [communicationPreview, setCommunicationPreview] = useState([]);
+  const [communicationLoading, setCommunicationLoading] = useState(false);
   const dispatch = useDispatch();
   const { dashboardStats, costChart, loading } = useSelector((s) => s.schoolDashboard);
 
@@ -26,6 +43,49 @@ export function Home() {
   useEffect(() => {
     dispatch(fetchSchoolCostChart({ toggle: selectedToggle, year: selectedYear }));
   }, [dispatch, selectedToggle, selectedYear]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadCommunicationPreview = async () => {
+      try {
+        setCommunicationLoading(true);
+        const res = await chatService.getConversations();
+        const list = Array.isArray(res?.data) ? res.data : [];
+        const sorted = list
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b?.lastMessageAt || b?.updatedAt || 0).getTime() -
+              new Date(a?.lastMessageAt || a?.updatedAt || 0).getTime()
+          );
+        const preview = sorted.slice(0, 2).map((c) => {
+          const name =
+            c?.name ||
+            c?.participant?.name ||
+            (Array.isArray(c?.participants) ? c.participants[0]?.name : "") ||
+            "Conversation";
+          const rawMsg = c?.lastMessage;
+          const msg = typeof rawMsg === "string" ? rawMsg : rawMsg?.content;
+          return {
+            id: c?.id,
+            title: name,
+            message: msg || "No messages yet",
+            unreadCount: Number(c?.unreadCount || 0),
+            timeAgo: formatTimeAgo(c?.lastMessageAt || c?.updatedAt),
+          };
+        });
+        if (mounted) setCommunicationPreview(preview);
+      } catch {
+        if (mounted) setCommunicationPreview([]);
+      } finally {
+        if (mounted) setCommunicationLoading(false);
+      }
+    };
+    loadCommunicationPreview();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const isLoading = loading.dashboard;
   const isChartLoading = loading.costChart;
@@ -95,13 +155,51 @@ export function Home() {
           <div className="bg-white w-full rounded-[4px] shadow-md xl:h-[180px] px-2 md:px-5 py-2 xl:py-2 overflow-hidden">
             <div className="flex items-center justify-between">
               <Typography className="text-[#202224] text-[18px] md:text-[24px] font-extrabold">Communication</Typography>
-              <Link to={`/dashboard/feedback-and-support`}>
+              <Link to={`/dashboard/communication`}>
                 <Button variant="text" className="bg-transparent shadow-none text-[#C01824] font-extrabold text-[12px] capitalize">View All</Button>
               </Link>
             </div>
-            <Typography variant="paragraph" className="font-semibold leading-tight text-xs md:text-[14px] pt-2 px-3">Lorem ipsum dolor sit amet, consectetur adipiscing elit.Lorem ipsum dolor
-              sit amet, consectetur adipiscing elit</Typography>
-            <Typography variant="paragraph" className="font-semibold leading-tight text-xs md:text-[14px] border py-2 px-3 rounded-[10px] mt-2">Lorem ipsum dolor sit amet consectetur adipisicing elit. Enim ad eveniet eum illo! Aliquam deserunt dolores sed. Lorem ipsum dolor sit amet consectetur.</Typography>
+            {communicationLoading ? (
+              <Typography variant="paragraph" className="font-semibold leading-tight text-xs md:text-[14px] pt-2 px-3 text-gray-500">
+                Loading latest chats...
+              </Typography>
+            ) : communicationPreview.length === 0 ? (
+              <Typography variant="paragraph" className="font-semibold leading-tight text-xs md:text-[14px] pt-2 px-3 text-gray-500">
+                No recent communication found.
+              </Typography>
+            ) : (
+              <>
+                {communicationPreview.map((item, idx) => (
+                  <div
+                    key={item.id ?? idx}
+                    className={`${
+                      idx === 0 ? "pt-2 px-3" : "border py-2 px-3 rounded-[10px] mt-2"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <Typography variant="paragraph" className="font-semibold leading-tight text-xs md:text-[14px] min-w-0">
+                        <span className="font-extrabold">{item.title}:</span> {item.message}
+                      </Typography>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.timeAgo ? (
+                          <span className="text-[11px] text-gray-500">{item.timeAgo}</span>
+                        ) : null}
+                        {item.unreadCount > 0 ? (
+                          <span className="bg-[#C01824] text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1.5 flex items-center justify-center">
+                            {item.unreadCount > 99 ? "99+" : item.unreadCount}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {communicationPreview.length < 2 ? (
+                  <Typography variant="paragraph" className="font-semibold leading-tight text-xs md:text-[14px] border py-2 px-3 rounded-[10px] mt-2">
+                    Open communication to view full chat history.
+                  </Typography>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
         <div className="mb-6 grid grid-cols-1 gap-y-12 gap-x-6">
