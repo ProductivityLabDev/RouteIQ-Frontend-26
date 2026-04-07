@@ -348,14 +348,17 @@ export default function SchoolRouteTable({
                               <div className="text-center py-8 text-gray-400">Loading students...</div>
                             ) : (
                               <div className="overflow-x-auto">
-                                <table className="w-full border border-[#EEEEEE] rounded text-center">
+                                <table className="w-full min-w-[980px] table-fixed border border-[#EEEEEE] rounded">
                                   <thead className="bg-[#EEEEEE]">
                                     <tr>
-                                      {["Date", "Pick-up Time", "Student Name", "Drivers Name", "Pickup", "Dropoff", "View Map", "Action"].map(h => (
-                                        <th key={h} className="px-6 py-4 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap">
-                                          {h}
-                                        </th>
-                                      ))}
+                                      <th className="w-[110px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">Date</th>
+                                      <th className="w-[120px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">Pick-up Time</th>
+                                      <th className="w-[170px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Student Name</th>
+                                      <th className="w-[160px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Driver Name</th>
+                                      <th className="w-[210px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Pickup</th>
+                                      <th className="w-[210px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Dropoff</th>
+                                      <th className="w-[100px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">View Map</th>
+                                      <th className="w-[90px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">Action</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -369,17 +372,17 @@ export default function SchoolRouteTable({
                                       const globalIdx = `${routeId}-${(page - 1) * STUDENTS_PER_PAGE + idx}`;
                                       return (
                                         <tr key={globalIdx} className="border-b border-[#D9D9D9] hover:bg-gray-50">
-                                          <td className="px-4 py-2 text-sm text-left align-middle whitespace-nowrap">{row.date}</td>
-                                          <td className="px-4 py-2 text-sm text-left align-middle whitespace-nowrap">{row.pickupTime}</td>
-                                          <td className="px-4 py-2 text-sm text-left align-middle whitespace-nowrap">{row.studentName}</td>
-                                          <td className="px-4 py-2 text-sm text-left align-middle whitespace-nowrap">{row.driverName}</td>
-                                          <td className="px-4 py-2 text-sm text-left align-middle max-w-[180px]">
+                                          <td className="px-4 py-3 text-sm text-center align-middle whitespace-nowrap">{row.date}</td>
+                                          <td className="px-4 py-3 text-sm text-center align-middle whitespace-nowrap">{row.pickupTime}</td>
+                                          <td className="px-4 py-3 text-sm text-left align-middle whitespace-nowrap">{row.studentName}</td>
+                                          <td className="px-4 py-3 text-sm text-left align-middle whitespace-nowrap">{row.driverName}</td>
+                                          <td className="px-4 py-3 text-sm text-left align-middle max-w-[180px]">
                                             <span className="block truncate" title={row.pickup}>{row.pickup}</span>
                                           </td>
-                                          <td className="px-4 py-2 text-sm text-left align-middle max-w-[180px]">
+                                          <td className="px-4 py-3 text-sm text-left align-middle max-w-[180px]">
                                             <span className="block truncate" title={row.dropoff}>{row.dropoff}</span>
                                           </td>
-                                          <td className="px-4 py-2 text-center align-middle">
+                                          <td className="px-4 py-3 text-center align-middle">
                                             <div className="flex justify-center">
                                               <img
                                                 src={ViewMap}
@@ -389,7 +392,7 @@ export default function SchoolRouteTable({
                                               />
                                             </div>
                                           </td>
-                                          <td className="px-4 py-2 text-center align-middle relative">
+                                          <td className="px-4 py-3 text-center align-middle relative">
                                             <div className="flex justify-center">
                                               <HiOutlineDotsVertical
                                                 size={22}
