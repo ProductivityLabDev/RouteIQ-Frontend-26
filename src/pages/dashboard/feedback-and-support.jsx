@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@material-tailwind/react';
 import { ChatMessage } from '@/components/ChatMessage';
 import { apiClient } from '@/configs/api';
@@ -6,10 +6,11 @@ import { chatService } from '@/services/chatService';
 
 const tabNames = [
   "Report Issue",
-  "Report Concerns",
   "Seek Personal Assistance",
-  "Foster Collaboration",
-  "Feedback on Improving Transportation",
+  "Feedback On Improving Transportation",
+  // Backend currently rejects these categories:
+  // "Report Concerns",
+  // "Foster Collaboration",
 ];
 
 const pickConversationId = (payload) =>
@@ -28,6 +29,7 @@ export function FeedbackSupport() {
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const messagesEndRef = useRef(null);
 
   const currentCategory = tabNames[activeTab];
   const currentConversationId = conversationIds[currentCategory] ?? null;
@@ -110,6 +112,18 @@ export function FeedbackSupport() {
     };
   }, [activeTab]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [currentMessages, currentCategory]);
+
+  useEffect(() => {
+    if (!currentConversationId) return;
+    const interval = setInterval(() => {
+      loadMessages(currentConversationId, currentCategory).catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [currentConversationId, currentCategory]);
+
   const isOwnMessage = (msg) => {
     const senderName = String(msg?.senderName ?? msg?.sender?.name ?? '').toLowerCase();
     const senderType = String(msg?.senderType ?? msg?.sender?.type ?? '').toUpperCase();
@@ -183,13 +197,14 @@ export function FeedbackSupport() {
                   />
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
             <div className="border-t-2 border-gray-200 lg:px-4 pt-4 mb-2 sm:mb-0">
-              <div className="relative flex md:flex-nowrap flex-wrap bg-black">
+              <div className="relative flex md:flex-nowrap flex-wrap bg-white">
                 <input
                   type="text"
                   placeholder="Write your message!"
-                  className="w-full focus:outline-none focus:placeholder-gray-400 text-gray-600 placeholder-gray-500 pl-2 md:pl-6 py-2"
+                  className="w-full border border-gray-200 rounded-md focus:outline-none focus:placeholder-gray-400 text-gray-700 placeholder-gray-500 pl-3 md:pl-4 pr-28 py-2"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   onKeyDown={(e) => {

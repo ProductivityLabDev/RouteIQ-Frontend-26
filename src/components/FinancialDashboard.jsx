@@ -325,11 +325,12 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
         </div>
     );
 
-    const renderEditableItem = (item, section) => {
+    const renderEditableItem = (item, section, index = 0) => {
         const itemId = item.id ?? item.entryId;
         const isEditing = editingId === itemId;
+        const rowKey = `${section}-${String(itemId ?? "row")}-${index}`;
         return (
-            <div key={itemId} className="flex justify-between items-center py-1 px-2 bg-gray-100 group">
+            <div key={rowKey} className="flex justify-between items-center py-1 px-2 bg-gray-100 group">
                 <div className="flex-1 mr-2">
                     {isEditing ? (
                         <input
@@ -394,7 +395,7 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
                         </button>
                     )}
                 </div>
-                {items.map((item) => renderEditableItem(item, sectionKey))}
+                {items.map((item, index) => renderEditableItem(item, sectionKey, index))}
                 {!isIncomeStatement && addingSection === sectionKey && (
                     <div className="flex gap-2 p-2 bg-gray-50 border border-dashed border-gray-300">
                         <input

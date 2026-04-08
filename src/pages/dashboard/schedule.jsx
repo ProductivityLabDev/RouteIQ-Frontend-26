@@ -4,6 +4,7 @@ import { darksearchicon } from '@/assets';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSchoolRoutes, fetchSchoolStudents } from '@/redux/slices/schoolDashboardSlice';
 import MapComponent from '@/components/MapComponent';
+import { apiClient } from '@/configs/api';
 
 const tabsData = [
   { label: "All Students", value: "allstudents" },
@@ -18,6 +19,7 @@ export function Schedule() {
   const [activeTab,       setActiveTab]       = useState("allstudents");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [routeStudents,   setRouteStudents]   = useState([]);
+  const [routeStudentsLoading, setRouteStudentsLoading] = useState(false);
   const [searchQuery,     setSearchQuery]     = useState('');
 
   // Map
@@ -39,25 +41,92 @@ export function Schedule() {
     }
   }, [routes, students, loading.routes, loading.students]);
 
+  const getRouteId = (route) =>
+    route?.RouteId ??
+    route?.routeId ??
+    route?.routeID ??
+    route?.RouteID ??
+    route?.id ??
+    null;
+
+  const getRouteIdCandidates = (route) => {
+    const candidates = [
+      route?.RouteId,
+      route?.routeId,
+      route?.routeID,
+      route?.RouteID,
+      route?.id,
+    ]
+      .map((v) => (v == null || v === "" ? null : Number(v)))
+      .filter((v) => Number.isFinite(v));
+    return [...new Set(candidates)];
+  };
+
   // ── Select route → filter from Redux students ─────────────────────────────
-  const handleSelectRoute = (route, allStudents) => {
+  const handleSelectRoute = async (route, allStudents) => {
     const pool = allStudents ?? students;
+    const routeId = getRouteId(route);
+    const routeIdCandidates = getRouteIdCandidates(route);
     setSelectedRoute(route);
     setSelectedStudent(null);
     setSearchQuery('');
     setShowCard(false);
     setIsRouteMap(false);
     setMapMarkers([]);
+    setRouteStudentsLoading(true);
 
-    // Filter students linked to this route
-    const list = pool.filter(s => {
-      if (s.routeId != null && s.routeId === route.id) return true;
-      if (s.busNo && (s.busNo === route.busName || s.busNo === route.busNumber)) return true;
-      return false;
-    });
+    let displayList = [];
+    try {
+      // Prefer route-specific endpoint to avoid client-side mismatches.
+      if (routeIdCandidates.length > 0) {
+        for (const candidateId of routeIdCandidates) {
+          const response = await apiClient.get(`/route-scheduling/routes/${candidateId}/students`);
+          const apiList = Array.isArray(response?.data?.data)
+            ? response.data.data
+            : Array.isArray(response?.data)
+            ? response.data
+            : [];
+          if (Array.isArray(apiList) && apiList.length > 0) {
+            displayList = apiList;
+            break;
+          }
+          // If no records for this candidate, keep probing next id variant.
+          if (!displayList.length) displayList = apiList;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch selected route students:", error);
+    }
 
-    // Use filtered list, or fall back to all students
-    const displayList = list.length > 0 ? list : pool;
+    // Fallback: local filter if endpoint fails/empty.
+    if (!Array.isArray(displayList) || displayList.length === 0) {
+      const routeBusCandidates = [
+        route?.busNo,
+        route?.BusNo,
+        route?.busName,
+        route?.BusName,
+        route?.busNumber,
+        route?.BusNumber,
+      ]
+        .filter(Boolean)
+        .map((v) => String(v).trim().toLowerCase());
+
+      const list = (pool || []).filter((s) => {
+        const sRouteId = s?.routeId ?? s?.RouteId ?? s?.routeID ?? null;
+        if (routeId != null && sRouteId != null && Number(sRouteId) === Number(routeId)) return true;
+
+        const sBus = String(
+          s?.busNo ?? s?.BusNo ?? s?.busNumberAM ?? s?.busNumberPM ?? s?.busNumber ?? ""
+        )
+          .trim()
+          .toLowerCase();
+        if (sBus && routeBusCandidates.includes(sBus)) return true;
+
+        return false;
+      });
+      displayList = list;
+    }
+
     setRouteStudents(displayList);
 
     // Build markers from the SAME list that is displayed
@@ -80,6 +149,7 @@ export function Schedule() {
       const sum = markers.reduce((a, m) => ({ lat: a.lat + m.position.lat, lng: a.lng + m.position.lng }), { lat: 0, lng: 0 });
       setMapCenter({ lat: sum.lat / markers.length, lng: sum.lng / markers.length });
     }
+    setRouteStudentsLoading(false);
   };
 
   // ── Click student → detail panel ──────────────────────────────────────────
@@ -174,10 +244,13 @@ export function Schedule() {
   );
 
   const displayed = activeTab === 'onboard'
-    ? filtered.slice(0, Math.max(1, Math.ceil(filtered.length / 2)))
+    ? filtered.filter((s) => {
+        const status = String(s?.attendanceStatus ?? s?.status ?? '').toLowerCase();
+        return status === 'present' || status === 'onboard' || status === 'on board';
+      })
     : filtered;
 
-  const selectedRouteId = selectedRoute?.id;
+  const selectedRouteId = getRouteId(selectedRoute);
 
   return (
     <div className='mt-7' style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column' }}>
@@ -189,17 +262,17 @@ export function Schedule() {
         ) : routes.length === 0 ? (
           <span className="text-sm text-gray-400 px-2">No routes found</span>
         ) : (
-          routes.map((route) => (
+          routes.map((route, idx) => (
             <Button
-              key={route.id}
+              key={getRouteId(route) ?? idx}
               className={
-                selectedRouteId === route.id
+                selectedRouteId === getRouteId(route)
                   ? 'bg-[#C01824] hover:bg-[#C01824]/80 text-white text-xs md:text-[14px] capitalize font-medium'
                   : 'bg-white text-xs md:text-[14px] text-[#141516] capitalize font-medium border border-gray-200'
               }
               onClick={() => handleSelectRoute(route)}
             >
-              {route.routeNumber || route.routeName || `Route ${route.id}`}
+              {route.routeNumber || route.routeName || `Route ${getRouteId(route) ?? idx + 1}`}
             </Button>
           ))
         )}
@@ -239,7 +312,7 @@ export function Schedule() {
             </div>
 
             <TabsBody className='pt-2'>
-              {loading.students ? (
+              {(loading.students || routeStudentsLoading) ? (
                 <p className="text-center text-sm text-gray-400 py-6">Loading...</p>
               ) : displayed.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 py-6">

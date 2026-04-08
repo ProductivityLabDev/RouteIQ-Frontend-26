@@ -1,21 +1,14 @@
 import React from "react";
-import { AreaChart, Area, Line, LineChart, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Dot, YAxis } from "recharts";
+import { AreaChart, Area, Line, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, YAxis } from "recharts";
 
-const data = [
-    { name: "1", last: 8, current: 12 },
-    { name: "2", last: 11, current: 11 },
-    { name: "3", last: 10, current: 13 },
-    { name: "4", last: 8, current: 12 },
-    { name: "5", last: 7, current: 11 },
-    { name: "6", last: 7, current: 10 },
-    { name: "7", last: 8, current: 11 },
-    { name: "8", last: 8, current: 14 }
-];
-
-const formatLegend = (value) => {
-    if (value === "last") return "Last Month";
-    if (value === "current") return "This Month";
-    return value;
+const money = (v) =>
+    `$${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+const pctDelta = (prev, curr) => {
+    const p = Number(prev || 0);
+    const c = Number(curr || 0);
+    if (p === 0) return c === 0 ? "0.00%" : "+100.00%";
+    const d = ((c - p) / Math.abs(p)) * 100;
+    return `${d >= 0 ? "+" : ""}${d.toFixed(2)}%`;
 };
 
 const CustomLegend = () => (
@@ -32,12 +25,20 @@ const CustomLegend = () => (
     </div>
 );
 
-export default function CustomerSatisfactionCard() {
+export default function CustomerSatisfactionCard({ data = [], lastTotal = 0, currentTotal = 0, monthLabel = "", year = "", hasData = true }) {
     return (
         <div className="bg-white rounded-md shadow-sm p-4">
-            <h2 className="text-2xl font-extrabold mb-2 text-[#181c53] tracking-[-0.5px] font-sans" style={{ letterSpacing: "-0.5px" }}>
-                Customer Satisfaction
-            </h2>
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <h2 className="text-2xl font-extrabold text-[#181c53] tracking-[-0.5px] font-sans" style={{ letterSpacing: "-0.5px" }}>
+                    Customer Satisfaction
+                </h2>
+                <div className="text-right">
+                    <div className="text-xs text-gray-500">{monthLabel} {year}</div>
+                    <div className={`text-xs font-semibold ${Number(currentTotal) >= Number(lastTotal) ? "text-green-600" : "text-red-600"}`}>
+                        {pctDelta(lastTotal, currentTotal)}
+                    </div>
+                </div>
+            </div>
             <div className="relative mt-2 mb-3">
                 {/* Area Chart */}
                 <div className="w-full h-44">
@@ -78,11 +79,15 @@ export default function CustomerSatisfactionCard() {
                             <YAxis hide />
                             <CartesianGrid vertical={false} stroke="#f7f5f1" />
                             {/* Hide tooltip and built-in legend */}
-                            <Tooltip content={() => null} />
+                            <Tooltip
+                                formatter={(value, key) => [money(value), key === "current" ? "This Month" : "Last Month"]}
+                                labelFormatter={(label) => `Day ${label}`}
+                            />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
             </div>
+            {!hasData ? <div className="text-xs text-gray-400 mb-3">No satisfaction data for selected month/year.</div> : null}
             {/* Divider/line */}
             <div className="my-4 mx-auto" style={{ borderBottom: "1.5px solid #e7e6e2", width: "97%" }}></div>
             {/* Custom Legend */}
@@ -90,10 +95,10 @@ export default function CustomerSatisfactionCard() {
             {/* Stats */}
             <div className="flex items-start justify-center space-x-16 mt-1">
                 <div className="text-center">
-                    <div className="text-[#791622] text-xl font-semibold leading-tight -mt-1">$3,004</div>
+                    <div className="text-[#791622] text-xl font-semibold leading-tight -mt-1">{money(lastTotal)}</div>
                 </div>
                 <div className="text-center">
-                    <div className="text-[#C01824] text-xl font-semibold leading-tight -mt-1">$4,504</div>
+                    <div className="text-[#C01824] text-xl font-semibold leading-tight -mt-1">{money(currentTotal)}</div>
                 </div>
             </div>
         </div>
