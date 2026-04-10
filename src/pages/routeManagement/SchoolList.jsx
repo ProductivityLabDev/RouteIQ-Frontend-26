@@ -297,7 +297,6 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                 assigningStudentId: null,
             });
         } catch (error) {
-            console.error("Smart Match error:", error);
             const message = error?.response?.data?.message || "Smart Match failed";
             toast.error(message);
             setSmartMatch((prev) => ({ ...prev, loading: false }));
@@ -358,7 +357,6 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
                 }));
             }
         } catch (error) {
-            console.error("Error assigning student to route:", error);
             const message =
                 error?.response?.data?.message || "Failed to assign student";
             toast.error(message);

@@ -106,7 +106,6 @@ export function SignInVendor() {
         }
       );
 
-      console.log("Vendor login response:", res.data);
 
       const token =
         res.data?.token ||
@@ -159,7 +158,6 @@ export function SignInVendor() {
       // Dispatch to Redux
       dispatch(setUser({ user: realUser, token }));
 
-      console.log("Vendor logged in:", realUser);
       toast.success("Logged in successfully!");
 
       // Navigate to vendor dashboard
@@ -168,7 +166,6 @@ export function SignInVendor() {
       }, 500);
 
     } catch (err) {
-      console.error("Vendor login error:", err);
       if (err.response) {
         const errorMessage = err.response.data?.message || "Invalid credentials. Please try again.";
         setError(errorMessage);
@@ -207,7 +204,6 @@ export function SignInVendor() {
         headers: { "Content-Type": "application/json" },
       });
 
-      console.log("Signup step 1 response:", res.data);
       toast.success("Signup Step 1 completed! Proceed to next step.");
 
       // Optionally navigate to step 2
@@ -216,7 +212,6 @@ export function SignInVendor() {
 
       // safety check
       if (!vendorSignupId) {
-        console.error("Vendor Signup ID missing from response");
         toast.error("Signup failed: No vendor ID returned.");
         return;
       }
@@ -226,7 +221,6 @@ export function SignInVendor() {
       });
 
     } catch (err) {
-      console.error("Signup Error:", err);
 
       const errorMessage =
         err.response?.data?.message ||

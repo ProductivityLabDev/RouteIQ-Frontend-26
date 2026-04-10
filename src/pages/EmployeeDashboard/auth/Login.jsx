@@ -77,7 +77,6 @@ const Login = () => {
 
             navigate('/EmployeeDashboard/home')
         } catch (err) {
-            console.error('Employee login error:', err)
             if (err.response) {
                 setError(err.response.data?.message || 'Invalid credentials. Please try again.')
             } else {

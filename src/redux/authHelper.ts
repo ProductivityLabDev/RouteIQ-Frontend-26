@@ -10,7 +10,6 @@ export function decodeToken<T extends object = Record<string, unknown>>(
   try {
     return jwtDecode<T>(token);
   } catch (e) {
-    console.error("Invalid token", e);
     return null;
   }
 }

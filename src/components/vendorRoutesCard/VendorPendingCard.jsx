@@ -1,8 +1,111 @@
-import React from 'react';
-import { Button } from '@material-tailwind/react';
+import React, { useState } from 'react';
+import { Button, Dialog, Card, Typography } from '@material-tailwind/react';
 import { distance, locationicon, penicon, redbusicon, timeline } from '@/assets';
+import { closeicon } from '@/assets';
 
-export function VendorPendingCard({ trips, onEditClick, selectedTab, handleMapScreenClick, handleEditRoute }) {
+function ApproveModal({ open, onClose, onConfirm, submitting }) {
+    const [form, setForm] = useState({ quotedAmount: '', vehicleId: '', driverId: '' });
+
+    const onChange = (e) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onConfirm({
+            status: 'Accepted',
+            quotedAmount: Number(form.quotedAmount),
+            vehicleId: Number(form.vehicleId),
+            driverId: Number(form.driverId),
+        });
+    };
+
+    return (
+        <Dialog className="px-7 py-6 rounded-[4px]" open={open} handler={onClose}>
+            <Card color="transparent" shadow={false}>
+                <div className="flex justify-between items-center mb-5">
+                    <Typography className="text-[24px] text-[#202224] font-bold">Approve Trip</Typography>
+                    <Button className="p-1" variant="text" onClick={onClose}>
+                        <img src={closeicon} className="w-[17px] h-[17px]" alt="" />
+                    </Button>
+                </div>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <div>
+                        <Typography variant="paragraph" className="mb-1 text-[#2C2F32] text-[14px] font-bold">
+                            Quoted Amount
+                        </Typography>
+                        <input
+                            type="number"
+                            name="quotedAmount"
+                            value={form.quotedAmount}
+                            onChange={onChange}
+                            placeholder="e.g. 800"
+                            required
+                            className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                        />
+                    </div>
+                    <div>
+                        <Typography variant="paragraph" className="mb-1 text-[#2C2F32] text-[14px] font-bold">
+                            Vehicle ID
+                        </Typography>
+                        <input
+                            type="number"
+                            name="vehicleId"
+                            value={form.vehicleId}
+                            onChange={onChange}
+                            placeholder="e.g. 100"
+                            required
+                            className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                        />
+                    </div>
+                    <div>
+                        <Typography variant="paragraph" className="mb-1 text-[#2C2F32] text-[14px] font-bold">
+                            Driver ID
+                        </Typography>
+                        <input
+                            type="number"
+                            name="driverId"
+                            value={form.driverId}
+                            onChange={onChange}
+                            placeholder="e.g. 51"
+                            required
+                            className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
+                        />
+                    </div>
+                    <div className="flex justify-end space-x-4 mt-2">
+                        <Button
+                            onClick={onClose}
+                            className="px-10 py-2.5 border-2 border-[#C01824] text-[#C01824] capitalize rounded-[6px]"
+                            variant="outlined"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={submitting}
+                            className="px-10 py-2.5 bg-[#28A745] capitalize rounded-[6px]"
+                            variant="filled"
+                        >
+                            {submitting ? 'Approving...' : 'Confirm Approve'}
+                        </Button>
+                    </div>
+                </form>
+            </Card>
+        </Dialog>
+    );
+}
+
+export function VendorPendingCard({ trips, onEditClick, selectedTab, handleMapScreenClick, handleEditRoute, onApprove, onReject, updating }) {
+    const [approveTarget, setApproveTarget] = useState(null);
+
+    const handleApproveConfirm = (payload) => {
+        if (typeof onApprove === 'function') {
+            onApprove(approveTarget, payload);
+        }
+        setApproveTarget(null);
+    };
+
     return (
         <div className='w-full max-w-[530px]'>
             {trips.map((trip) => (
@@ -60,12 +163,35 @@ export function VendorPendingCard({ trips, onEditClick, selectedTab, handleMapSc
                                 :
                                 <Button className='text-[#C01824] border-[#C01824] text-[12px] w-[70px] rounded-[4px] py-0.5 flex items-center justify-center capitalize' variant='outlined' size='sm' onClick={handleEditRoute}><img src={penicon} className='w-4 h-4 mr-0.5' alt="not found" />Edit</Button>
                             }
-                            <Button className='text-white bg-[#28A745] text-[12px] w-[70px] rounded-[4px] py-1 flex items-center justify-center capitalize' variant='filled' size='sm'>Approve</Button>
-                            <Button className='text-white bg-[#C01824] text-[12px] w-[70px] rounded-[4px] py-1 flex items-center justify-center capitalize' variant='filled' size='sm'>Reject</Button>
+                            <Button
+                                className='text-white bg-[#28A745] text-[12px] w-[70px] rounded-[4px] py-1 flex items-center justify-center capitalize'
+                                variant='filled'
+                                size='sm'
+                                disabled={updating}
+                                onClick={() => setApproveTarget(trip)}
+                            >
+                                Approve
+                            </Button>
+                            <Button
+                                className='text-white bg-[#C01824] text-[12px] w-[70px] rounded-[4px] py-1 flex items-center justify-center capitalize'
+                                variant='filled'
+                                size='sm'
+                                disabled={updating}
+                                onClick={() => typeof onReject === 'function' && onReject(trip)}
+                            >
+                                Reject
+                            </Button>
                         </div>
                     </div>
                 </div>
             ))}
+
+            <ApproveModal
+                open={!!approveTarget}
+                onClose={() => setApproveTarget(null)}
+                onConfirm={handleApproveConfirm}
+                submitting={updating}
+            />
         </div>
     );
 }

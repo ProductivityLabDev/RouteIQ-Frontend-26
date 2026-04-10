@@ -33,13 +33,11 @@ export function ForgotPassword() {
 
     try {
       const res = await requestPasswordReset(email);
-      console.log(res);
       toast.success("OTP sent to your email!");
       setStep(2);
       setTimeLeft(120);
       setOtp(["", "", "", ""]);
     } catch (err) {
-      console.error("Reset request error:", err);
       toast.error(err.response?.data?.message || "Failed to send reset code.");
     }
   };
@@ -57,11 +55,9 @@ export function ForgotPassword() {
       const url = `${BASE_URL}/auth/verify-otp`;
       const payload = { email, otp: otpCode };
       const res = await axios.post(url, payload);
-      console.log("OTP response:", res.data);
 
       const resetTokenFromApi = res.data?.resetToken;
       if (!resetTokenFromApi) {
-        console.error("No resetToken returned from backend");
         toast.error("Reset token not received.");
         return;
       }
@@ -70,7 +66,6 @@ export function ForgotPassword() {
       toast.success("OTP verified");
       setStep(3);
     } catch (err) {
-      console.error("OTP Error:", err.response?.data || err.message);
       toast.error(err.response?.data?.message || "Failed to verify OTP.");
     }
   };
@@ -92,7 +87,6 @@ export function ForgotPassword() {
       }
       toast.success("OTP resent successfully!");
     } catch (err) {
-      console.error("Resend OTP error:", err);
       toast.error(err.response?.data?.message || "Failed to resend OTP.");
     }
   };
@@ -128,13 +122,10 @@ export function ForgotPassword() {
         newPassword,
       };
 
-      console.log("Reset Password Payload:", payload);
       const res = await axios.post(url, payload);
-      console.log("Password reset success:", res.data);
       toast.success("Password changed successfully");
       setStep(4);
     } catch (err) {
-      console.error("Password Reset Error:", err.response?.data || err.message);
       toast.error(err.response?.data?.message || "Failed to reset password.");
     }
   };

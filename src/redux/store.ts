@@ -24,6 +24,7 @@ import balanceSheetReducer from "./slices/balanceSheetSlice";
 import incomeStatementReducer from "./slices/incomeStatementSlice";
 import reportsReducer from "./slices/reportsSlice";
 import terminalTabReducer from "./slices/terminalTabSlice";
+import rfqReducer from "./slices/rfqSlice";
 
 const persistConfig = {
   key: "root",
@@ -62,6 +63,7 @@ const rootReducer = combineReducers({
   incomeStatement: incomeStatementReducer,
   reports: reportsReducer,
   terminalTab: terminalTabReducer,
+  rfq: rfqReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

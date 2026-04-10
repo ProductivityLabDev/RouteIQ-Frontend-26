@@ -95,7 +95,6 @@ export function Schedule() {
         }
       }
     } catch (error) {
-      console.error("Failed to fetch selected route students:", error);
     }
 
     // Fallback: local filter if endpoint fails/empty.

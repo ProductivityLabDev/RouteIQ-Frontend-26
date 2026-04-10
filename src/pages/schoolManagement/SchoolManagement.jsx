@@ -26,12 +26,10 @@ const SchoolManagement = () => {
 
   // Fetch real schools data on mount
   useEffect(() => {
-    console.log("📡 [SchoolManagement] Mounting, dispatching fetchSchoolManagementSummary...");
     dispatch(fetchSchoolManagementSummary());
   }, [dispatch]);
 
   const handleRefreshSchools = () => {
-    console.log("🔄 [SchoolManagement] Refreshing schools...");
     dispatch(fetchSchoolManagementSummary());
   };
 
@@ -47,10 +45,8 @@ const SchoolManagement = () => {
 
   // Build District -> Terminal -> Schools hierarchy from API
   const hierarchicalData = useMemo(() => {
-    console.log("📊 [SchoolManagement] schoolManagementSummary from Redux:", schoolManagementSummary);
 
     if (!Array.isArray(schoolManagementSummary) || schoolManagementSummary.length === 0) {
-      console.log("⚠️ [SchoolManagement] No summary data; hierarchy will be empty (static UI only).");
       return [];
     }
 
@@ -98,7 +94,6 @@ const SchoolManagement = () => {
       terminals: Object.values(terminals),
     }));
 
-    console.log("📊 [SchoolManagement] Built hierarchicalData:", result);
     return result;
   }, [schoolManagementSummary]);
 

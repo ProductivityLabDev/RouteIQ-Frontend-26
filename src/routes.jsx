@@ -11,6 +11,7 @@ import {
   Communication,
   Announcements,
   TripPlanner,
+  RFQ,
   CreateAnnouncement,
   Settings,
   FeedbackSupport,
@@ -70,6 +71,13 @@ export const sidenavRoutes = [
         path: "/trip-planner",
         element: <TripPlanner />,
         // Also tied to Routes module
+        modules: ["ROUTES"],
+      },
+      {
+        icon: <img src={routescheduleicon} alt="RFQ" className="w-5 h-5" />,
+        name: "rfq approvals",
+        path: "/rfq",
+        element: <RFQ />,
         modules: ["ROUTES"],
       },
     ],

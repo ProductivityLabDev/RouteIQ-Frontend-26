@@ -17,11 +17,9 @@ export default function ProtectedRoute() {
     const decoded = jwtDecode(token);
     const currentTime = Date.now() / 1000;
     if (decoded.exp && decoded.exp < currentTime) {
-      console.warn("Token expired");
       return <Navigate to="/account/sign-in" replace />;
     }
   } catch (error) {
-    console.error("Invalid token:", error);
     return <Navigate to="/account/sign-in" replace />;
   }
 
@@ -190,26 +188,12 @@ export default function ProtectedRoute() {
       resolvedModuleKey = foundKey;
       moduleAccess = userModules[foundKey];
       if (import.meta.env.DEV) {
-        console.log(
-          `⚠️ Module key normalized: Looking for '${moduleKey}', resolved to '${foundKey}'`
-        );
       }
     }
   }
 
   // Debug logging (always show in dev, or if access is denied)
   if (import.meta.env.DEV || !moduleAccess) {
-    console.log("🔍 Route Protection Debug:", {
-      path: location.pathname,
-      firstSegment,
-      moduleKey,
-      resolvedModuleKey,
-      userModules: userModules,
-      moduleKeys: moduleKeys,
-      moduleAccess,
-      userControl: user?.control,
-      fullUser: user,
-    });
   }
 
   // 🔒 Check read permission
@@ -224,15 +208,10 @@ export default function ProtectedRoute() {
     if (hasGlobalWrite && hasNoModules) {
       // User has all rights and no specific modules defined - allow access
       if (import.meta.env.DEV) {
-        console.log(`✅ Allowing access: User has global READ_WRITE control and no modules defined (all rights)`);
       }
       // Allow access - user has all rights
     } else {
       // Module doesn't exist and user doesn't have all rights - block access
-      console.warn(`🚫 Access denied: Module '${moduleKey}' not found in user permissions at path '${location.pathname}'`);
-      console.warn("Available module keys:", moduleKeys);
-      console.warn("Looking for module key:", moduleKey);
-      console.warn("User control:", user?.control);
       return <Navigate to="/unauthorized" replace />;
     }
   } else {
@@ -241,12 +220,10 @@ export default function ProtectedRoute() {
       // Check if user has global READ_WRITE as fallback
       const hasGlobalWrite = user?.control === "READ_WRITE";
       if (!hasGlobalWrite) {
-        console.warn(`🚫 Access denied: Module '${moduleKey}' has canRead: ${moduleAccess.canRead} (required: true) at path '${location.pathname}'`);
         return <Navigate to="/unauthorized" replace />;
       } else {
         // User has global READ_WRITE - allow access even if module canRead is false
         if (import.meta.env.DEV) {
-          console.log(`✅ Allowing access: User has global READ_WRITE control (all rights)`);
         }
       }
     }
@@ -281,7 +258,6 @@ export default function ProtectedRoute() {
     if (!hasModuleWrite) {
       const hasGlobalWrite = user?.control === "READ_WRITE";
       if (!hasGlobalWrite) {
-        console.warn(`Write blocked: No write permission for module '${moduleKey}' at path '${location.pathname}'`);
         return <Navigate to="/unauthorized" replace />;
       }
     }

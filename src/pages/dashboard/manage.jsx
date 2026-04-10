@@ -67,7 +67,6 @@ export function Manage() {
 
   const downloadAttendanceCsv = () => {
     if (!students || students.length === 0) {
-      console.warn("No students to export");
       return;
     }
 
@@ -148,7 +147,6 @@ export function Manage() {
       setStudents(mappedStudents);
       setSelectedRows(mappedStudents.map(() => false));
     } catch (err) {
-      console.error('Failed to load students:', err);
       setStudents([]);
       setSelectedRows([]);
     } finally {
@@ -181,7 +179,6 @@ export function Manage() {
         };
       }));
     } catch (err) {
-      console.error('Failed to load drivers:', err);
       setDrivers([]);
     } finally {
       setDriversLoading(false);

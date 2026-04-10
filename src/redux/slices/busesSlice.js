@@ -132,8 +132,6 @@ export const updateBus = createAsyncThunk(
   "buses/updateBus",
   async ({ vehicleId, busData }, { rejectWithValue }) => {
     try {
-      console.log("🔄 [busesSlice] updateBus called with vehicleId:", vehicleId);
-      console.log("🔄 [busesSlice] busData:", busData);
 
       const serviceIntervalValue = busData.serviceInterval || null;
 
@@ -175,12 +173,10 @@ export const updateBus = createAsyncThunk(
         undercarriageStorage: undercarriageStorageValue,
       };
 
-      console.log("🔄 [busesSlice] Final payload:", payload);
 
       const response = await busService.updateBus(vehicleId, payload);
       return response.data;
     } catch (error) {
-      console.error("❌ [busesSlice] Update error:", error);
       return rejectWithValue(error.response?.data?.message || error.message || "Failed to update bus");
     }
   }
@@ -233,105 +229,87 @@ const busesSlice = createSlice({
       .addCase(fetchDrivers.pending, (state) => {
         state.loading.drivers = true;
         state.error.drivers = null;
-        console.log("⏳ [Redux] Fetching drivers...");
       })
       .addCase(fetchDrivers.fulfilled, (state, action) => {
         state.loading.drivers = false;
         state.drivers = action.payload;
         state.error.drivers = null;
-        console.log("✅ [Redux] Drivers loaded:", action.payload.length);
       })
       .addCase(fetchDrivers.rejected, (state, action) => {
         state.loading.drivers = false;
         state.error.drivers = action.payload || "Failed to fetch drivers";
         state.drivers = [];
-        console.error("❌ [Redux] Fetch drivers failed:", action.payload);
       })
       // Fetch fuel types
       .addCase(fetchFuelTypes.pending, (state) => {
         state.loading.fuelTypes = true;
         state.error.fuelTypes = null;
-        console.log("⏳ [Redux] Fetching fuel types...");
       })
       .addCase(fetchFuelTypes.fulfilled, (state, action) => {
         state.loading.fuelTypes = false;
         state.fuelTypes = action.payload;
         state.error.fuelTypes = null;
-        console.log("✅ [Redux] Fuel types loaded:", action.payload.length);
       })
       .addCase(fetchFuelTypes.rejected, (state, action) => {
         state.loading.fuelTypes = false;
         state.error.fuelTypes = action.payload || "Failed to fetch fuel types";
         state.fuelTypes = [];
-        console.error("❌ [Redux] Fetch fuel types failed:", action.payload);
       })
       // Fetch terminals
       .addCase(fetchTerminals.pending, (state) => {
         state.loading.terminals = true;
         state.error.terminals = null;
-        console.log("⏳ [Redux] Fetching terminals...");
       })
       .addCase(fetchTerminals.fulfilled, (state, action) => {
         state.loading.terminals = false;
         state.terminals = action.payload;
         state.error.terminals = null;
-        console.log("✅ [Redux] Terminals loaded:", action.payload.length);
       })
       .addCase(fetchTerminals.rejected, (state, action) => {
         state.loading.terminals = false;
         state.error.terminals = action.payload || "Failed to fetch terminals";
         state.terminals = [];
-        console.error("❌ [Redux] Fetch terminals failed:", action.payload);
       })
       // Fetch buses
       .addCase(fetchBuses.pending, (state) => {
         state.loading.buses = true;
         state.error.buses = null;
-        console.log("⏳ [Redux] Fetching buses...");
       })
       .addCase(fetchBuses.fulfilled, (state, action) => {
         state.loading.buses = false;
         state.buses = action.payload;
         state.error.buses = null;
-        console.log("✅ [Redux] Buses loaded:", action.payload.length);
       })
       .addCase(fetchBuses.rejected, (state, action) => {
         state.loading.buses = false;
         state.error.buses = action.payload || "Failed to fetch buses";
         state.buses = [];
-        console.error("❌ [Redux] Fetch buses failed:", action.payload);
       })
       // Create bus
       .addCase(createBus.pending, (state) => {
         state.loading.creating = true;
         state.error.creating = null;
-        console.log("⏳ [Redux] Creating bus...");
       })
       .addCase(createBus.fulfilled, (state, action) => {
         state.loading.creating = false;
         state.error.creating = null;
-        console.log("✅ [Redux] Bus created");
       })
       .addCase(createBus.rejected, (state, action) => {
         state.loading.creating = false;
         state.error.creating = action.payload || "Failed to create bus";
-        console.error("❌ [Redux] Create bus failed:", action.payload);
       })
       // Update bus
       .addCase(updateBus.pending, (state) => {
         state.loading.updating = true;
         state.error.updating = null;
-        console.log("⏳ [Redux] Updating bus...");
       })
       .addCase(updateBus.fulfilled, (state, action) => {
         state.loading.updating = false;
         state.error.updating = null;
-        console.log("✅ [Redux] Bus updated");
       })
       .addCase(updateBus.rejected, (state, action) => {
         state.loading.updating = false;
         state.error.updating = action.payload || "Failed to update bus";
-        console.error("❌ [Redux] Update bus failed:", action.payload);
       })
       // Create terminal
       .addCase(createTerminal.pending, (state) => {
@@ -341,12 +319,10 @@ const busesSlice = createSlice({
       .addCase(createTerminal.fulfilled, (state, action) => {
         state.loading.creating = false;
         state.error.creating = null;
-        console.log("✅ [Redux] Terminal created");
       })
       .addCase(createTerminal.rejected, (state, action) => {
         state.loading.creating = false;
         state.error.creating = action.payload || "Failed to create terminal";
-        console.error("❌ [Redux] Create terminal failed:", action.payload);
       });
   },
 });

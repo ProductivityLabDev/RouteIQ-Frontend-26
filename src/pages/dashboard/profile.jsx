@@ -44,7 +44,6 @@ export function Profile() {
         const res = await schoolService.getStates();
         setStates(res?.data || []);
       } catch (e) {
-        console.error("Failed to fetch states:", e);
       } finally {
         setLoadingStates(false);
       }
@@ -59,7 +58,6 @@ export function Profile() {
         const res = await schoolService.getCities();
         setCities(res?.data || []);
       } catch (e) {
-        console.error("Failed to fetch cities:", e);
       } finally {
         setLoadingCities(false);
       }
@@ -88,7 +86,6 @@ export function Profile() {
         const logoUrl = d.logo ?? d.Logo ?? d.logoUrl ?? d.LogoUrl;
         if (logoUrl) setLogoPreview(logoUrl);
       } catch (e) {
-        console.error("Failed to fetch profile:", e);
       } finally {
         setLoadingProfile(false);
       }

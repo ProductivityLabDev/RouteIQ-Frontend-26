@@ -137,7 +137,6 @@ export default function SuperAdminVendorManagement() {
       }
 
       if (currentRole === "SUB_ADMIN") {
-        console.log("SUB_ADMIN impersonation token:", vendorSession.accessToken);
       }
 
       const resolvedVendorName =

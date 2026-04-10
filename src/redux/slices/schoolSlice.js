@@ -167,7 +167,6 @@ const schoolSlice = createSlice({
         state.loading.terminals = false;
         state.error.terminals = action.payload || "Failed to fetch terminals";
         state.terminals = [];
-        console.error("Fetch terminals failed:", action.payload);
       })
       // Fetch states
       .addCase(fetchStates.pending, (state) => {
@@ -183,7 +182,6 @@ const schoolSlice = createSlice({
         state.loading.states = false;
         state.error.states = action.payload || "Failed to fetch states";
         state.states = [];
-        console.error("Fetch states failed:", action.payload);
       })
       // Fetch cities
       .addCase(fetchCities.pending, (state) => {
@@ -199,7 +197,6 @@ const schoolSlice = createSlice({
         state.loading.cities = false;
         state.error.cities = action.payload || "Failed to fetch cities";
         state.cities = [];
-        console.error("Fetch cities failed:", action.payload);
       })
       // Fetch institute types
       .addCase(fetchInstituteTypes.pending, (state) => {
@@ -215,7 +212,6 @@ const schoolSlice = createSlice({
         state.loading.instituteTypes = false;
         state.error.instituteTypes = action.payload || "Failed to fetch institute types";
         state.instituteTypes = [];
-        console.error("Fetch institute types failed:", action.payload);
       })
       // Create institute
       .addCase(createInstitute.pending, (state) => {
@@ -229,7 +225,6 @@ const schoolSlice = createSlice({
       .addCase(createInstitute.rejected, (state, action) => {
         state.loading.creating = false;
         state.error.creating = action.payload || "Failed to create institute";
-        console.error("Create institute failed:", action.payload);
       })
       // Fetch school management summary
       .addCase(fetchSchoolManagementSummary.pending, (state) => {
@@ -240,13 +235,11 @@ const schoolSlice = createSlice({
         state.loading.summary = false;
         state.schoolManagementSummary = action.payload;
         state.error.summary = null;
-        console.log("✅ [SchoolSlice Reducer] schoolManagementSummary updated. Count:", action.payload?.length || 0);
       })
       .addCase(fetchSchoolManagementSummary.rejected, (state, action) => {
         state.loading.summary = false;
         state.error.summary = action.payload || "Failed to fetch school management summary";
         state.schoolManagementSummary = [];
-        console.error("Fetch school management summary failed:", action.payload);
       });
   },
 });

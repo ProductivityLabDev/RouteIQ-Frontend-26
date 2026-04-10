@@ -197,67 +197,55 @@ const usersSlice = createSlice({
       .addCase(fetchUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
-        console.log("⏳ [Redux] Fetching users...");
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
         state.users = action.payload;
         state.error = null;
-        console.log("✅ [Redux] Users loaded:", action.payload.length);
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Failed to fetch users";
         state.users = [];
-        console.error("❌ [Redux] Fetch failed:", action.payload);
       })
       // Create user
       .addCase(createUser.pending, (state) => {
         state.creating = true;
         state.error = null;
-        console.log("⏳ [Redux] Creating user...");
       })
       .addCase(createUser.fulfilled, (state, action) => {
         state.creating = false;
         state.error = null;
-        console.log("✅ [Redux] User created");
       })
       .addCase(createUser.rejected, (state, action) => {
         state.creating = false;
         state.error = action.payload || "Failed to create user";
-        console.error("❌ [Redux] Create failed:", action.payload);
       })
       // Update user
       .addCase(updateUser.pending, (state) => {
         state.updating = true;
         state.error = null;
-        console.log("⏳ [Redux] Updating user...");
       })
       .addCase(updateUser.fulfilled, (state, action) => {
         state.updating = false;
         state.error = null;
-        console.log("✅ [Redux] User updated");
       })
       .addCase(updateUser.rejected, (state, action) => {
         state.updating = false;
         state.error = action.payload || "Failed to update user";
-        console.error("❌ [Redux] Update failed:", action.payload);
       })
       // Delete user
       .addCase(deleteUser.pending, (state) => {
         state.deleting = true;
         state.error = null;
-        console.log("⏳ [Redux] Deleting user...");
       })
       .addCase(deleteUser.fulfilled, (state, action) => {
         state.deleting = false;
         state.error = null;
-        console.log("✅ [Redux] User deleted");
       })
       .addCase(deleteUser.rejected, (state, action) => {
         state.deleting = false;
         state.error = action.payload || "Failed to delete user";
-        console.error("❌ [Redux] Delete failed:", action.payload);
       });
   },
 });

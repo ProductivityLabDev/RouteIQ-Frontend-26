@@ -76,7 +76,6 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
         return userDetail.filter((user) => {
             const validation = validateUser(user);
             if (!validation.isValid) {
-                console.warn("⚠️ Invalid user data:", user, "Error:", validation.error);
             }
             return validation.isValid;
         });
@@ -86,7 +85,6 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
     // MUST be called before any early returns (Rules of Hooks)
     useEffect(() => {
         if (token) {
-            console.log("🔄 [UserCard] Dispatching fetchUsers action...");
             dispatch(fetchUsers());
         }
     }, [token, refreshTrigger, dispatch]);
@@ -95,19 +93,16 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
     const handleEdit = (user) => {
         const validation = validateUser(user);
         if (!validation.isValid) {
-            console.error("❌ Cannot edit invalid user:", validation.error);
             alert(`Cannot edit user: ${validation.error}`);
             return;
         }
 
         const userId = getUserId(user);
         if (!userId) {
-            console.error("❌ Cannot edit user: Missing user ID");
             alert("Cannot edit user: Missing user ID");
             return;
         }
 
-        console.log("✏️ Edit button clicked. User data:", user);
         if (handleEditUser) {
             handleEditUser(user);
         }
@@ -117,19 +112,16 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
     const handleDelete = (user) => {
         const validation = validateUser(user);
         if (!validation.isValid) {
-            console.error("❌ Cannot delete invalid user:", validation.error);
             alert(`Cannot delete user: ${validation.error}`);
             return;
         }
 
         const userId = getUserId(user);
         if (!userId) {
-            console.error("❌ Cannot delete user: Missing user ID");
             alert("Cannot delete user: Missing user ID");
             return;
         }
 
-        console.log("🗑️ Delete button clicked. User ID:", userId, "Full item:", user);
         if (handleOpenDeleteModal) {
             handleOpenDeleteModal(userId);
         }

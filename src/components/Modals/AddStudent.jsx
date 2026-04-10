@@ -16,10 +16,6 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
     // Google Maps API Loader - Exact same as Route Management
     const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
     
-    console.log("🔍 [AddStudent] Initializing Google Maps:", {
-        apiKey: googleApiKey ? "✅ Present" : "❌ Missing",
-        modalOpen: open
-    });
     
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
@@ -28,13 +24,6 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
     });
 
     useEffect(() => {
-        console.log("🔍 [AddStudent] Google Maps Status:", {
-            isLoaded,
-            loadError: loadError?.message || null,
-            modalOpen: open,
-            googleMapsAvailable: typeof window !== 'undefined' && window.google?.maps?.places ? '✅ Yes' : '❌ No',
-            apiKey: googleApiKey ? `✅ Present (${googleApiKey.substring(0, 10)}...)` : '❌ Missing'
-        });
     }, [isLoaded, loadError, open, googleApiKey]);
 
     const [autocompletePickup, setAutocompletePickup] = useState(null);
@@ -113,35 +102,22 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
 
     // Google Places Autocomplete handlers
     const onPickupLoad = (autocomplete) => {
-        console.log("✅ [AddStudent] Pickup Autocomplete loaded!", {
-            autocomplete,
-            hasGetPlace: typeof autocomplete?.getPlace === 'function',
-            hasSetFields: typeof autocomplete?.setFields === 'function'
-        });
         setAutocompletePickup(autocomplete);
         
         // Test if autocomplete is working
         if (autocomplete) {
-            console.log("🔍 [AddStudent] Autocomplete instance methods:", Object.keys(autocomplete));
         }
     };
     
     const onDropoffLoad = (autocomplete) => {
-        console.log("✅ [AddStudent] Dropoff Autocomplete loaded!", {
-            autocomplete,
-            hasGetPlace: typeof autocomplete?.getPlace === 'function',
-            hasSetFields: typeof autocomplete?.setFields === 'function'
-        });
         setAutocompleteDropoff(autocomplete);
         
         // Test if autocomplete is working
         if (autocomplete) {
-            console.log("🔍 [AddStudent] Autocomplete instance methods:", Object.keys(autocomplete));
         }
     };
 
     const onPickupPlaceChanged = (e) => {
-        console.log("🔄 [AddStudent] onPickupPlaceChanged triggered!");
         
         // Prevent any default behavior or event propagation
         if (e) {
@@ -151,11 +127,9 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
         
         if (autocompletePickup !== null) {
             const place = autocompletePickup.getPlace();
-            console.log("📍 [AddStudent] Place object:", place);
             
             // Prevent form submission/close when place is selected
             if (!place || !place.geometry) {
-                console.warn("⚠️ [AddStudent] Place has no geometry!");
                 return;
             }
             
@@ -175,7 +149,6 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                 }
             }
             
-            console.log("📍 [AddStudent] Extracted coordinates:", { lat, lng });
             
             setFormData(prev => ({
                 ...prev,
@@ -184,19 +157,11 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                 pickupLongitude: lng
             }));
             
-            console.log("📍 [AddStudent] Pickup place selected:", {
-                address: place.formatted_address || place.name,
-                lat,
-                lng,
-                placeId: place.place_id
-            });
         } else {
-            console.warn("⚠️ [AddStudent] autocompletePickup is null!");
         }
     };
 
     const onDropoffPlaceChanged = (e) => {
-        console.log("🔄 [AddStudent] onDropoffPlaceChanged triggered!");
         
         // Prevent any default behavior or event propagation
         if (e) {
@@ -206,11 +171,9 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
         
         if (autocompleteDropoff !== null) {
             const place = autocompleteDropoff.getPlace();
-            console.log("📍 [AddStudent] Place object:", place);
             
             // Prevent form submission/close when place is selected
             if (!place || !place.geometry) {
-                console.warn("⚠️ [AddStudent] Place has no geometry!");
                 return;
             }
             
@@ -230,7 +193,6 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                 }
             }
             
-            console.log("📍 [AddStudent] Extracted coordinates:", { lat, lng });
             
             setFormData(prev => ({
                 ...prev,
@@ -239,14 +201,7 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                 dropLongitude: lng
             }));
             
-            console.log("📍 [AddStudent] Dropoff place selected:", {
-                address: place.formatted_address || place.name,
-                lat,
-                lng,
-                placeId: place.place_id
-            });
         } else {
-            console.warn("⚠️ [AddStudent] autocompleteDropoff is null!");
         }
     };
 
@@ -298,7 +253,6 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                 toast.error(result.payload || "Failed to create student. Please try again.");
             }
         } catch (err) {
-            console.error("❌ Error creating student:", err);
             toast.error(err.message || "Failed to create student. Please try again.");
         }
     };

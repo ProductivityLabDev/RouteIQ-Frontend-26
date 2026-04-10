@@ -82,7 +82,6 @@ const RouteSchedule = () => {
       })
       .catch((err) => {
         if (!cancelled) {
-          console.error("Failed to fetch trips:", err);
           setTripsByTerminal((prev) => ({ ...prev, [tid]: [] }));
         }
       })
@@ -105,7 +104,6 @@ const RouteSchedule = () => {
           : [];
         if (isMounted) setTerminals(terminalList);
       } catch (error) {
-        console.error("Failed to fetch terminals:", error);
         if (isMounted) setTerminals([]);
       } finally {
         if (isMounted) setTerminalsLoading(false);
@@ -378,7 +376,6 @@ const RouteSchedule = () => {
         setMapCenter(undefined);
       }
     } catch (e) {
-      console.error("Failed to load map students:", e);
       setMapMarkers([]);
       setMapCenter(undefined);
     }
@@ -431,7 +428,6 @@ const RouteSchedule = () => {
       );
       setTripsByTerminal((prev) => ({ ...prev, [terminalId]: res?.data || [] }));
     } catch (err) {
-      console.error("Failed to fetch trips:", err);
       setTripsByTerminal((prev) => ({ ...prev, [terminalId]: [] }));
     } finally {
       setTripsLoadingByTerminal((prev) => ({ ...prev, [terminalId]: false }));
@@ -488,14 +484,12 @@ const RouteSchedule = () => {
             : [];
           setRoutesByInstitute((prev) => ({ ...prev, [instituteId]: routeList }));
         } catch (error) {
-          console.error("Failed to fetch routes by institute:", error);
           setRoutesByInstitute((prev) => ({ ...prev, [instituteId]: [] }));
         } finally {
           setRoutesLoadingByInstitute((prev) => ({ ...prev, [instituteId]: false }));
         }
       });
     } catch (error) {
-      console.error("Failed to fetch institutes:", error);
       setInstitutesByTerminal((prev) => ({ ...prev, [terminalId]: [] }));
     } finally {
       setInstitutesLoadingByTerminal((prev) => ({ ...prev, [terminalId]: false }));

@@ -53,7 +53,6 @@ export function EditStudent({ open, handleOpen, student, onSaved, instituteId = 
             if (typeof onSaved === "function") onSaved();
             handleOpen();
         } catch (err) {
-            console.error("Failed to update student:", err);
         } finally {
             setSubmitting(false);
         }

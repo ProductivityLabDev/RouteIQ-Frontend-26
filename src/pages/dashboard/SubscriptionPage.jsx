@@ -33,7 +33,6 @@ const SubscriptionPage = () => {
 
       const response = await axios.post(`${BASE_URL}/signup/vendor/payment`, payload);
 
-      console.log("API Success:", response.data);
 
       if (fromPath === "/BillingInvoice") {
         navigation("/BillingInvoice");
@@ -42,7 +41,6 @@ const SubscriptionPage = () => {
       }
 
     } catch (error) {
-      console.error("API Error:", error);
       alert("Payment failed. Try again.");
     }
   };

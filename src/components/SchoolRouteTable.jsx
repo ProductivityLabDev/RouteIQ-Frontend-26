@@ -102,7 +102,6 @@ export default function SchoolRouteTable({
           : [];
         setStudentsByRoute(prev => ({ ...prev, [routeId]: list }));
       } catch (e) {
-        console.error("Failed to fetch route students:", e);
         setStudentsByRoute(prev => ({ ...prev, [routeId]: [] }));
       } finally {
         setStudentsLoadingByRoute(prev => ({ ...prev, [routeId]: false }));

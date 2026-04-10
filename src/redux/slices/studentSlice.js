@@ -106,7 +106,6 @@ const studentSlice = createSlice({
       .addCase(createStudent.rejected, (state, action) => {
         state.loading.creating = false;
         state.error.creating = action.payload || "Failed to create student";
-        console.error("Create student failed:", action.payload);
       })
       // Fetch students by institute
       .addCase(fetchStudentsByInstitute.pending, (state) => {
@@ -115,9 +114,6 @@ const studentSlice = createSlice({
       })
       .addCase(fetchStudentsByInstitute.fulfilled, (state, action) => {
         const payload = action.payload || [];
-        console.log("✅ [Redux Reducer] fetchStudentsByInstitute fulfilled");
-        console.log("✅ [Redux Reducer] Payload received:", payload);
-        console.log("✅ [Redux Reducer] Payload length:", payload.length);
         state.loading.fetching = false;
         
         // Remove duplicates based on StudentId (keep first occurrence)
@@ -131,16 +127,13 @@ const studentSlice = createSlice({
         
         state.students = uniqueStudents;
         state.error.fetching = null;
-        console.log("✅ [Redux Reducer] State updated - unique students count:", state.students.length);
         if (payload.length !== uniqueStudents.length) {
-          console.log(`⚠️ [Redux Reducer] Removed ${payload.length - uniqueStudents.length} duplicate students`);
         }
       })
       .addCase(fetchStudentsByInstitute.rejected, (state, action) => {
         state.loading.fetching = false;
         state.error.fetching = action.payload || "Failed to fetch students";
         state.students = [];
-        console.error("Fetch students failed:", action.payload);
       });
   },
 });

@@ -111,7 +111,6 @@ export function SignIn() {
         getAxiosConfig()
       );
 
-      console.log("Login response:", res.data);
 
       const token =
         res.data?.token ||
@@ -138,15 +137,6 @@ export function SignIn() {
       // Decode JWT token to get user info
       const decoded = jwtDecode(token);
 
-      console.log("🔍 [SignIn] ========== TOKEN DECODING ==========");
-      console.log("🔍 [SignIn] Full decoded token:", decoded);
-      console.log("🔍 [SignIn] All token keys:", Object.keys(decoded));
-      console.log("🔍 [SignIn] Checking for instituteId...");
-      console.log("🔍 [SignIn] decoded.instituteId:", decoded.instituteId);
-      console.log("🔍 [SignIn] decoded.InstituteId:", decoded.InstituteId);
-      console.log("🔍 [SignIn] decoded.institute_id:", decoded.institute_id);
-      console.log("🔍 [SignIn] decoded.instituteID:", decoded.instituteID);
-      console.log("🔍 [SignIn] decoded.InstituteID:", decoded.InstituteID);
 
       // Extract instituteId from token (for school login)
       const instituteId = decoded.instituteId 
@@ -156,8 +146,6 @@ export function SignIn() {
         || decoded.InstituteID
         || null;
 
-      console.log("✅ [SignIn] Extracted instituteId:", instituteId);
-      console.log("🔍 [SignIn] ====================================");
 
       // Create modules map from decoded token
       const modulesMap = (decoded.modules || []).reduce((acc, mod) => {
@@ -190,13 +178,11 @@ export function SignIn() {
       // Dispatch to Redux
       dispatch(setUser({ user: realUser, token }));
 
-      console.log("User logged in:", realUser);
 
       // Navigate to schools dashboard
       navigate("/dashboard/home");
 
     } catch (err) {
-      console.error("Login error:", err);
       if (err.response) {
         setError(err.response.data?.message || "Invalid credentials. Please try again.");
       } else {

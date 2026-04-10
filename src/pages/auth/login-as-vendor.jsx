@@ -26,8 +26,6 @@ const LoginAsVendor = () => {
 
         const url = getApiUrl("auth/login");
 
-        console.log("🔐 Login attempt - Email:", email, "Password:", password ? "***" : "empty");
-        console.log("📤 Sending request to:", url);
 
         try {
             const res = await axios.post(
@@ -36,7 +34,6 @@ const LoginAsVendor = () => {
                 getAxiosConfig()
             );
 
-            console.log("✅ Login response:", res.data);
 
             const token =
                 res.data?.token ||
@@ -85,7 +82,6 @@ const LoginAsVendor = () => {
             setTimeout(() => navigate("/dashboard"), 500);
 
         } catch (err) {
-            console.error("Login error:", err);
 
             if (err.response) {
                 toast.error(err.response.data?.message || "Invalid credentials.");
@@ -99,7 +95,6 @@ const LoginAsVendor = () => {
 
     useEffect(() => {
         if (import.meta.env.DEV) {
-            console.log('Base URL:', BASE_URL, 'API_PREFIX:', API_PREFIX);
         }
         setLoading(false)
     }, [BASE_URL, API_PREFIX]);
@@ -144,7 +139,6 @@ const LoginAsVendor = () => {
                                     value={email}
                                     onChange={(e) => {
                                         const value = e.target.value;
-                                        console.log("📝 Email input changed:", value);
                                         setemail(value);
                                     }}
                                     required

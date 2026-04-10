@@ -153,12 +153,9 @@ export const busService = {
   },
 
   updateBus: async (vehicleId: number, payload: CreateBusPayload): Promise<ApiResponse<any>> => {
-    console.log("🔄 [busService] Updating vehicle with ID:", vehicleId);
-    console.log("🔄 [busService] Payload:", payload);
     
     // The payload already contains vehicleId, so we just send it as is
     const response = await apiClient.post(`/institute/updatevehicle`, payload);
-    console.log("✅ [busService] Update response:", response.data);
     
     return {
       ok: true,

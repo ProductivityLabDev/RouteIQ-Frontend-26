@@ -45,17 +45,13 @@ const DashboardSubcription = () => {
         packageName: "Premium Plan"
       };
 
-      console.log("Sending payload:", payload);
 
       const response = await axios.post(`${BASE_URL}/signup/vendor/package`, payload);
-      console.log("API Success:", response.data);
       const vendorSignupIdFromApi = response.data?.vendorSignupId;
-      console.log(vendorSignupIdFromApi,"here is the api ")
       navigation("/subscription_page", {
         state: { selectedCard, from: fromPath, vendorSignupId: vendorSignupIdFromApi },
       });
     } catch (error) {
-      console.error("API Error:", error);
       alert("Payment failed. Try again.");
     }
   };

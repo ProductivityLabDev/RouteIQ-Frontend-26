@@ -16,15 +16,12 @@ export const socketService = {
     });
 
     socket.on("connect", () => {
-      console.log("[Socket] Connected to /chat");
     });
 
     socket.on("disconnect", (reason) => {
-      console.log("[Socket] Disconnected:", reason);
     });
 
     socket.on("connect_error", (err) => {
-      console.error("[Socket] Connection error:", err.message);
     });
 
     return socket;
@@ -35,7 +32,6 @@ export const socketService = {
       socket.removeAllListeners();
       socket.disconnect();
       socket = null;
-      console.log("[Socket] Manually disconnected");
     }
   },
 
