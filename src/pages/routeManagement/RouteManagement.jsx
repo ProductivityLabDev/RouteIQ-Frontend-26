@@ -1006,7 +1006,7 @@ const RouteManagement = () => {
                 <MenuList className="max-h-96 w-72">
                   <div className="p-2">
                     <Input
-                      size="sm"
+                      size="md"
                       placeholder="Search city..."
                       value={citySearch}
                       onChange={(e) => setCitySearch(e.target.value)}

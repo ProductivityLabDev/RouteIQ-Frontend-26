@@ -898,8 +898,8 @@ const StudentSeatSelection = ({
                                         </div>
                                     </MenuHandler>
                                     <MenuList>
-                                        {drivers.map((driver) => (
-                                            <MenuItem key={driver}>{driver}</MenuItem>
+                                        {(realDrivers ?? []).map((driver) => (
+                                            <MenuItem key={driver?.id ?? driver}>{driver?.name ?? driver}</MenuItem>
                                         ))}
                                     </MenuList>
                                 </Menu>

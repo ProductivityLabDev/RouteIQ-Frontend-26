@@ -20,7 +20,9 @@ import {
   PopoverHandler,
 } from "@material-tailwind/react";
 import { format } from "date-fns";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { updateRFQStatus } from "@/redux/slices/rfqSlice";
 import { DayPicker } from "react-day-picker";
 import { FaArrowDown, FaArrowUp, FaPlus } from "react-icons/fa";
 import { FaEllipsisVertical } from "react-icons/fa6";
@@ -32,6 +34,11 @@ import { apiClient } from "@/configs/api";
 import { routeSchedulingService } from "@/services/routeSchedulingService";
 
 const RouteSchedule = () => {
+  const dispatch = useDispatch();
+  const { updating: rfqUpdating } = useSelector((s) => s.rfq);
+  const [approvingId, setApprovingId] = useState(null);
+  const [approveModal, setApproveModal] = useState(null); // { trip, tid }
+  const [approveForm, setApproveForm] = useState({ quotedAmount: '', vehicleId: '', driverId: '' });
   const [selectedTab, setSelectedTab] = useState("Trip Schedules");
   const [date, setDate] = useState();
   const [active, setActive] = useState(1);
@@ -147,6 +154,50 @@ const RouteSchedule = () => {
     setIsEditable(false);
     setIsModalOpen(false);
     setModalPosition(null);
+  };
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('#custom-modal') && !e.target.closest('.ellipsis-btn')) {
+        setIsModalOpen(false);
+        setModalPosition(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isModalOpen]);
+
+  const handleApproveClick = (trip) => {
+    setApproveForm({ quotedAmount: '', vehicleId: '', driverId: '' });
+    setApproveModal({ trip });
+  };
+
+  const handleApproveConfirm = (e) => {
+    e.preventDefault();
+    const id = approveModal?.trip?.tripId ?? approveModal?.trip?.id;
+    if (!id) return;
+    setApprovingId(id);
+    dispatch(updateRFQStatus({
+      id,
+      payload: {
+        status: 'Accepted',
+        quotedAmount: Number(approveForm.quotedAmount),
+        vehicleId: Number(approveForm.vehicleId),
+        driverId: Number(approveForm.driverId),
+      }
+    })).finally(() => {
+      setApprovingId(null);
+      setApproveModal(null);
+    });
+  };
+
+  const handleRejectClick = (trip) => {
+    const id = trip?.tripId ?? trip?.id;
+    if (!id) return;
+    setApprovingId(id);
+    dispatch(updateRFQStatus({ id, payload: { status: 'Rejected' } }))
+      .finally(() => setApprovingId(null));
   };
 
   const handleEllipsisClick = (event, trip, terminalId) => {
@@ -885,11 +936,38 @@ const RouteSchedule = () => {
                                   <td className="px-6 py-4 text-sm text-[#141516]">
                                     {trip.numberOfPersons}
                                   </td>
-                                  <td
-                                    className="cursor-pointer text-center align-middle"
-                                    onClick={(e) => handleEllipsisClick(e, trip, tid)}
-                                  >
-                                    <FaEllipsisVertical />
+                                  <td className="px-3 py-3 text-center align-middle">
+                                    {trip.status === "Pending" ? (
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          disabled={approvingId === (trip.tripId ?? trip.id)}
+                                          onClick={() => handleApproveClick(trip)}
+                                          className="bg-[#28A745] text-white text-[11px] px-2 py-1 rounded disabled:opacity-50"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          disabled={approvingId === (trip.tripId ?? trip.id)}
+                                          onClick={() => handleRejectClick(trip)}
+                                          className="bg-[#C01824] text-white text-[11px] px-2 py-1 rounded disabled:opacity-50"
+                                        >
+                                          Reject
+                                        </button>
+                                        <span
+                                          className="cursor-pointer ml-1 ellipsis-btn"
+                                          onClick={(e) => handleEllipsisClick(e, trip, tid)}
+                                        >
+                                          <FaEllipsisVertical />
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span
+                                        className="cursor-pointer ellipsis-btn"
+                                        onClick={(e) => handleEllipsisClick(e, trip, tid)}
+                                      >
+                                        <FaEllipsisVertical />
+                                      </span>
+                                    )}
                                   </td>
                                 </tr>
                               ))}
@@ -993,6 +1071,54 @@ const RouteSchedule = () => {
                         </div>
                     </div> */}
         </section>
+      )}
+
+      {/* Approve Modal */}
+      {approveModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-[360px] shadow-xl">
+            <h2 className="text-[20px] font-bold text-[#202224] mb-4">Approve Trip</h2>
+            <form onSubmit={handleApproveConfirm} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-[13px] font-semibold text-[#2C2F32] mb-1">Quoted Amount</label>
+                <input
+                  type="number" required placeholder="e.g. 800"
+                  value={approveForm.quotedAmount}
+                  onChange={(e) => setApproveForm(p => ({ ...p, quotedAmount: e.target.value }))}
+                  className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-2.5 px-3 bg-[#F5F6FA]"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold text-[#2C2F32] mb-1">Vehicle ID</label>
+                <input
+                  type="number" required placeholder="e.g. 100"
+                  value={approveForm.vehicleId}
+                  onChange={(e) => setApproveForm(p => ({ ...p, vehicleId: e.target.value }))}
+                  className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-2.5 px-3 bg-[#F5F6FA]"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold text-[#2C2F32] mb-1">Driver ID</label>
+                <input
+                  type="number" required placeholder="e.g. 51"
+                  value={approveForm.driverId}
+                  onChange={(e) => setApproveForm(p => ({ ...p, driverId: e.target.value }))}
+                  className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-2.5 px-3 bg-[#F5F6FA]"
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-1">
+                <button type="button" onClick={() => setApproveModal(null)}
+                  className="px-5 py-2 border-2 border-[#C01824] text-[#C01824] rounded-[6px] text-sm">
+                  Cancel
+                </button>
+                <button type="submit" disabled={rfqUpdating}
+                  className="px-5 py-2 bg-[#28A745] text-white rounded-[6px] text-sm disabled:opacity-50">
+                  {rfqUpdating ? 'Approving...' : 'Confirm'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* <TripPlannerModal open={open} handleOpen={handleOpen} isEditable={isEditable} /> */}

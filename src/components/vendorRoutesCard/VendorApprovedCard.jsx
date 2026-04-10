@@ -152,20 +152,6 @@ export function VendorApprovedCard({
                   </Button>
 
                   <Button
-                    className='text-[#C01824] border-[#C01824] text-[12px] w-[70px] rounded-[4px] py-0.5 flex items-center justify-center capitalize'
-                    variant='outlined'
-                    size='sm'
-                    onClick={onEditClick}
-                  >
-                    <img
-                      src={penicon}
-                      className='w-4 h-4 mr-0.5'
-                      alt='not found'
-                    />
-                    Edit
-                  </Button>
-
-                  <Button
                     className='text-[#C01824] border-[#C01824] text-[10px] px-3 rounded-[4px] py-0.5 flex items-center justify-center capitalize whitespace-nowrap'
                     variant='outlined'
                     size='sm'
@@ -179,21 +165,7 @@ export function VendorApprovedCard({
                     Send Communication
                   </Button>
                 </>
-              ) : (
-                <Button
-                  className='text-[#C01824] border-[#C01824] text-[12px] w-[70px] rounded-[4px] py-0.5 flex items-center justify-center capitalize'
-                  variant='outlined'
-                  size='sm'
-                  onClick={handleEditRoute}
-                >
-                  <img
-                    src={penicon}
-                    className='w-4 h-4 mr-0.5'
-                    alt='not found'
-                  />
-                  Edit
-                </Button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
