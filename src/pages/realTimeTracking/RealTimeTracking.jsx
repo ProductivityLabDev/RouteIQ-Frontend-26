@@ -113,6 +113,8 @@ const ROUTE_START_PIN_SVG = createStudentPinSvg({ label: 'S', fill: '#16a34a', s
 const ROUTE_END_PIN_SVG = createStudentPinSvg({ label: 'E', fill: '#7c3aed', stroke: '#5b21b6', textFill: '#ffffff' });
 const GOOGLE_ROADS_CHUNK_SIZE = 100;
 const MAX_TRACKING_POINT_JUMP_KM = 10;
+const MAX_DISPLAY_HISTORY_POINTS = 80;
+const MIN_TRACKING_STEP_KM = 0.04;
 
 // ETA display formatter (from backend guide Section 6)
 const formatETA = (minutesAway) => {
@@ -242,6 +244,35 @@ const filterPathOutliers = (points = [], maxJumpKm = MAX_TRACKING_POINT_JUMP_KM)
   return filteredPoints;
 };
 
+const compressPathPoints = (points = [], minStepKm = MIN_TRACKING_STEP_KM) => {
+  if (points.length <= 2) return points;
+
+  const compressedPoints = [points[0]];
+
+  for (let index = 1; index < points.length; index += 1) {
+    const currentPoint = points[index];
+    const lastKeptPoint = compressedPoints[compressedPoints.length - 1];
+
+    if (!lastKeptPoint || getDistanceInKm(lastKeptPoint, currentPoint) >= minStepKm) {
+      compressedPoints.push(currentPoint);
+    }
+  }
+
+  const lastPoint = points[points.length - 1];
+  const finalPoint = compressedPoints[compressedPoints.length - 1];
+  if (lastPoint && finalPoint && (lastPoint.lat !== finalPoint.lat || lastPoint.lng !== finalPoint.lng)) {
+    compressedPoints.push(lastPoint);
+  }
+
+  return dedupeSequentialPoints(compressedPoints);
+};
+
+const trimPathTail = (points = [], maxPoints = MAX_DISPLAY_HISTORY_POINTS) =>
+  points.length > maxPoints ? points.slice(points.length - maxPoints) : points;
+
+const prepareTrackingPath = (points = []) =>
+  trimPathTail(compressPathPoints(filterPathOutliers(normalizePathPoints(points))));
+
 const extractHistoryArray = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== 'object') return [];
@@ -261,6 +292,20 @@ const extractHistoryArray = (payload) => {
   }
 
   return [];
+};
+
+const getHistoryPointTimestamp = (point = {}) => {
+  const rawValue =
+    point?.timestamp ??
+    point?.Timestamp ??
+    point?.createdAt ??
+    point?.CreatedAt ??
+    point?.recordedAt ??
+    point?.RecordedAt;
+
+  if (!rawValue) return 0;
+  const timeValue = new Date(rawValue).getTime();
+  return Number.isFinite(timeValue) ? timeValue : 0;
 };
 
 const chunkPathPoints = (points, size) => {
@@ -346,6 +391,7 @@ const RealTimeTracking = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [isVehiclePanelOpen, setIsVehiclePanelOpen] = useState(false);
   const [vehicleDetail, setVehicleDetail] = useState(null);
+  const [rawVehiclePath, setRawVehiclePath] = useState([]);
   const [vehiclePath, setVehiclePath] = useState([]); // for polyline
   const [selectedRouteMap, setSelectedRouteMap] = useState(null);
   const [liveRouteStops, setLiveRouteStops] = useState([]); // from getLiveRoute — always has arrivedAt/departedAt
@@ -378,6 +424,7 @@ const RealTimeTracking = () => {
 
   const pollingRef = useRef(null);
   const pathRequestIdRef = useRef(0);
+  const snapRequestIdRef = useRef(0);
   const selectedVehicleIdRef = useRef(null);
   const trackingSocketRef = useRef(null);
   const joinedRouteRef = useRef(null);
@@ -1041,53 +1088,82 @@ const RealTimeTracking = () => {
     try {
       const response = await trackingService.getVehicleHistory(vehicleId, { limit: 200 });
       if (response.ok && response.data) {
-        const historyData = extractHistoryArray(response.data);
+        const historyData = extractHistoryArray(response.data)
+          .slice()
+          .sort((left, right) => getHistoryPointTimestamp(left) - getHistoryPointTimestamp(right));
         const path = historyData.map((point) => ({
           lat: point.Latitude ?? point.latitude ?? point.lat ?? point.Lat,
           lng: point.Longitude ?? point.longitude ?? point.lng ?? point.Lng,
         }));
-        const normalizedPath = normalizePathPoints(path);
-        const filteredPath = filterPathOutliers(normalizedPath);
+        const filteredPath = prepareTrackingPath(path);
 
         if (pathRequestIdRef.current !== requestId) return;
 
+        setRawVehiclePath(filteredPath);
         setVehiclePath(filteredPath);
         setVehiclePathSource('raw');
-
-        if (filteredPath.length <= 1) {
-          setVehiclePathSource('not_enough_points');
-          return;
-        }
-
-        if (!googleMapsApiKey) {
-          setVehiclePathSource('missing_key');
-          return;
-        }
-
-        setIsSnappingVehiclePath(true);
-        setVehiclePathSource('snapping');
-        try {
-          const snappedPath = await snapPathToRoads(filteredPath, googleMapsApiKey);
-          if (pathRequestIdRef.current === requestId && snappedPath.length > 1) {
-            setVehiclePath(snappedPath);
-            setVehiclePathSource('roads');
-          }
-        } catch (error) {
-          setVehiclePathSource('roads_failed');
-        } finally {
-          if (pathRequestIdRef.current === requestId) {
-            setIsSnappingVehiclePath(false);
-          }
-        }
       }
     } catch (error) {
       if (pathRequestIdRef.current === requestId) {
+        setRawVehiclePath([]);
         setVehiclePath([]);
         setIsSnappingVehiclePath(false);
         setVehiclePathSource('history_failed');
       }
     }
   };
+
+  useEffect(() => {
+    const normalizedRawPath = prepareTrackingPath(rawVehiclePath);
+    const activeSnapRequestId = ++snapRequestIdRef.current;
+
+    if (normalizedRawPath.length <= 1) {
+      setVehiclePath(normalizedRawPath);
+      setIsSnappingVehiclePath(false);
+      setVehiclePathSource(normalizedRawPath.length === 0 ? 'idle' : 'not_enough_points');
+      return undefined;
+    }
+
+    if (!googleMapsApiKey) {
+      setVehiclePath(normalizedRawPath);
+      setIsSnappingVehiclePath(false);
+      setVehiclePathSource('missing_key');
+      return undefined;
+    }
+
+    setVehiclePath(normalizedRawPath);
+    setIsSnappingVehiclePath(true);
+    setVehiclePathSource('snapping');
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const snappedPath = await snapPathToRoads(normalizedRawPath, googleMapsApiKey);
+        if (snapRequestIdRef.current !== activeSnapRequestId) return;
+
+        const cleanedSnappedPath = prepareTrackingPath(snappedPath);
+
+        if (cleanedSnappedPath.length > 1) {
+          setVehiclePath(cleanedSnappedPath);
+          setVehiclePathSource('roads');
+        } else {
+          setVehiclePath(normalizedRawPath);
+          setVehiclePathSource('raw');
+        }
+      } catch (error) {
+        if (snapRequestIdRef.current !== activeSnapRequestId) return;
+        setVehiclePath(normalizedRawPath);
+        setVehiclePathSource('roads_failed');
+      } finally {
+        if (snapRequestIdRef.current === activeSnapRequestId) {
+          setIsSnappingVehiclePath(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [rawVehiclePath, googleMapsApiKey]);
 
   // âœ… NEW: Handle vehicle marker click
   const handleVehicleClick = async (vehicle) => {
@@ -1100,6 +1176,7 @@ const RealTimeTracking = () => {
     setIsVehiclePanelOpen(true);
     setSelectedStudent(null);
     setVehicleDetail(null);
+    setRawVehiclePath([]);
     setVehiclePath([]);
     setSelectedRouteMap(null);
     setLiveRouteStops([]);
@@ -1149,6 +1226,9 @@ const RealTimeTracking = () => {
     setSelectedDriverSnapshot(null);
     setBusToNextStopPath([]);
     setSelectedMapStopInfo(null);
+    setRawVehiclePath([]);
+    setVehiclePath([]);
+    setVehiclePathSource('idle');
     selectedVehicleIdRef.current = null;
   };
 
@@ -1340,11 +1420,12 @@ const RealTimeTracking = () => {
         incomingVid === selectedVehicleIdRef.current &&
         isReasonableLocation(incomingLat, incomingLng)
       ) {
-        setVehiclePath((currentPath) => {
-          if (currentPath.length === 0) return currentPath;
+        setRawVehiclePath((currentPath) => {
+          if (currentPath.length === 0) return [{ lat: incomingLat, lng: incomingLng }];
           const lastPoint = currentPath[currentPath.length - 1];
           if (lastPoint && lastPoint.lat === incomingLat && lastPoint.lng === incomingLng) return currentPath;
-          return [...currentPath, { lat: incomingLat, lng: incomingLng }];
+          const nextPath = [...currentPath, { lat: incomingLat, lng: incomingLng }];
+          return prepareTrackingPath(nextPath);
         });
       }
     };
@@ -2793,6 +2874,7 @@ const RealTimeTracking = () => {
                           if (marker.studentData) {
                             setSelectedVehicle(null);
                             setVehicleDetail(null);
+                            setRawVehiclePath([]);
                             setVehiclePath([]);
                             setVehiclePathSource('idle');
                             toggleStudentPanel(marker.studentData);
@@ -2908,20 +2990,6 @@ const RealTimeTracking = () => {
                         clickable: false,
                         geodesic: true,
                         zIndex: 6,
-                      }}
-                    />
-                  )}
-
-                  {vehiclePath.length > 1 && (
-                    <PolylineF
-                      path={vehiclePath}
-                      options={{
-                        strokeColor: '#3b82f6',
-                        strokeOpacity: 0.8,
-                        strokeWeight: 4,
-                        clickable: false,
-                        geodesic: true,
-                        zIndex: 5,
                       }}
                     />
                   )}

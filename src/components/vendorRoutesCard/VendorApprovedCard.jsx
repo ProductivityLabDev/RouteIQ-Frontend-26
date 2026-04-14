@@ -19,6 +19,7 @@ export function VendorApprovedCard({
 }) {
   const [showCommModal, setShowCommModal] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState([]);
+  console.log('[VendorApprovedCard] full trip object:', trip);
   const pickupName = trip?.pickup?.location ?? trip?.pickup ?? '--';
   const pickupAddress = trip?.pickup?.address ?? trip?.pickupAddress ?? '';
   const dropoffName = trip?.dropoff?.location ?? trip?.dropoff ?? '--';

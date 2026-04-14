@@ -108,16 +108,23 @@ export function VendorPendingCard({ trips, onEditClick, selectedTab, handleMapSc
 
     return (
         <div className='w-full max-w-[530px]'>
-            {trips.map((trip) => (
-                <div key={trip.id} className='border-4 border-[#FEB700] rounded-md p-4 mb-4'>
+            {trips.map((trip, index) => {
+                const pickup = trip?.pickup || {};
+                const dropoff = trip?.dropoff || {};
+                const driver = trip?.driver || {};
+                const driverName = driver?.name || 'Driver not assigned';
+                const driverImage = driver?.image || '';
+
+                return (
+                <div key={trip?.id ?? `pending-trip-${index}`} className='border-4 border-[#FEB700] rounded-md p-4 mb-4'>
                     <div className='flex justify-between items-center md:flex-row flex-col'>
                         <div className='flex space-x-4 items-center'>
                             <img src={redbusicon} alt="not found" />
-                            <p className='text-black text-md md:text-[22px] font-semibold'>{trip.busNumber}</p>
-                            <p className='text-xs md:text-[12px] text-black font-medium bg-[#FEB700] px-2 py-1 rounded-[4px]'>{trip.status}</p>
+                            <p className='text-black text-md md:text-[22px] font-semibold'>{trip?.busNumber || 'N/A'}</p>
+                            <p className='text-xs md:text-[12px] text-black font-medium bg-[#FEB700] px-2 py-1 rounded-[4px]'>{trip?.status || 'Pending'}</p>
                         </div>
                         <div>
-                            <p className='font-semibold text-xs md:text-[14px] text-[#141516]/80 md:pt-0 pt-3'>{trip.time}</p>
+                            <p className='font-semibold text-xs md:text-[14px] text-[#141516]/80 md:pt-0 pt-3'>{trip?.time || 'Time unavailable'}</p>
                         </div>
                     </div>
                     <div className='flex justify-between items-center mt-5 md:flex-nowrap flex-wrap'>
@@ -131,15 +138,15 @@ export function VendorPendingCard({ trips, onEditClick, selectedTab, handleMapSc
                                 <div className='flex space-x-2'>
                                     <img src={locationicon} className='w-[25px] h-[25px] mt-2' alt="not found" />
                                     <div className='text-black'>
-                                        <h6 className='text-xs md:text-[14px] font-semibold'>{trip.pickup.location}</h6>
-                                        <p className='font-normal text-[12px]'>{trip.pickup.address}</p>
+                                        <h6 className='text-xs md:text-[14px] font-semibold'>{pickup.location || 'Pickup location unavailable'}</h6>
+                                        <p className='font-normal text-[12px]'>{pickup.address || 'Address unavailable'}</p>
                                     </div>
                                 </div>
                                 <div className='flex space-x-2'>
                                     <img src={locationicon} className='w-[25px] h-[25px] mt-2' alt="not found" />
                                     <div className='text-black'>
-                                        <h6 className='text-xs md:text-[14px] font-semibold'>{trip.dropoff.location}</h6>
-                                        <p className='font-normal text-[12px]'>{trip.dropoff.address}</p>
+                                        <h6 className='text-xs md:text-[14px] font-semibold'>{dropoff.location || 'Dropoff location unavailable'}</h6>
+                                        <p className='font-normal text-[12px]'>{dropoff.address || 'Address unavailable'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -147,10 +154,16 @@ export function VendorPendingCard({ trips, onEditClick, selectedTab, handleMapSc
                         <div className='flex flex-col relative mt-5'>
                             <div className='bg-[#fff] flex flex-col justify-end p-1.5 h-[75px] w-[120px] rounded-md text-center shadow-xl text-white'>
                                 <p className='text-[11px] font-normal text-[#000]'>Driver</p>
-                                <p className='text-[12.5px] font-semibold text-[#000]'>{trip.driver.name}</p>
-                                <img src={trip.driver.image} className='rounded-full w-14 h-14 object-cover absolute -top-8 left-8' alt="not found" />
+                                <p className='text-[12.5px] font-semibold text-[#000]'>{driverName}</p>
+                                {driverImage ? (
+                                    <img src={driverImage} className='rounded-full w-14 h-14 object-cover absolute -top-8 left-8' alt={driverName} />
+                                ) : (
+                                    <div className='rounded-full w-14 h-14 absolute -top-8 left-8 bg-[#FEB700] text-[#000] flex items-center justify-center text-lg font-bold'>
+                                        {driverName.trim().charAt(0).toUpperCase() || 'D'}
+                                    </div>
+                                )}
                             </div>
-                            <p className='text-[#565656] text-[14px] font-medium pt-2 text-[#000]'>No. of Persons: <span className='text-black font-semibold text-[#000]'>{trip.noOfPersons}</span></p>
+                            <p className='text-[#565656] text-[14px] font-medium pt-2 text-[#000]'>No. of Persons: <span className='text-black font-semibold text-[#000]'>{trip?.noOfPersons ?? 0}</span></p>
                         </div>
                         <div className='space-y-3'>
                             {selectedTab === "Trip Planner" ?
@@ -184,7 +197,7 @@ export function VendorPendingCard({ trips, onEditClick, selectedTab, handleMapSc
                         </div>
                     </div>
                 </div>
-            ))}
+            )})}
 
             <ApproveModal
                 open={!!approveTarget}
