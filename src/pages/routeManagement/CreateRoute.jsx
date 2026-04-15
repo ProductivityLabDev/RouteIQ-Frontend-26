@@ -168,6 +168,8 @@ const StudentSeatSelection = ({
                 routeData.PickupLocation ??
                 routeData.pickupAddress ??
                 routeData.PickupAddress ??
+                routeData.startLocation ??
+                routeData.StartLocation ??
                 prev.pickup,
             dropoff:
                 routeData.dropoff ??
@@ -175,14 +177,18 @@ const StudentSeatSelection = ({
                 routeData.DropoffLocation ??
                 routeData.dropoffAddress ??
                 routeData.DropoffAddress ??
+                routeData.endLocation ??
+                routeData.EndLocation ??
                 prev.dropoff,
             routeDate:
-                (routeData.routeDate ?? routeData.RouteDate ?? "").slice(0, 10) || prev.routeDate,
+                (routeData.routeDate ?? routeData.RouteDate ?? routeData.date ?? routeData.Date ?? "").slice(0, 10) || prev.routeDate,
             routeTime:
                 (routeData.routeTime ??
                     routeData.RouteTime ??
                     routeData.pickupTime ??
                     routeData.PickupTime ??
+                    routeData.time ??
+                    routeData.Time ??
                     ""
                 ).slice(0, 5) || prev.routeTime,
             driverId: driverId ? Number(driverId) : prev.driverId,

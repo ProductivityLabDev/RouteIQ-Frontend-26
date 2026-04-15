@@ -8,10 +8,13 @@ import "react-datepicker/dist/react-datepicker.css";
 import { fetchTerminals } from "@/redux/slices/schoolSlice";
 
 const NESTED_TYPES = {
+  Parent: "GUARDIAN",
   School: "SCHOOL",
   Driver: "DRIVER",
   Terminal: "VENDOR",
 };
+
+const MONITORING_SECTIONS = ["Parent", "School", "Driver", "Terminal"];
 
 // Backend uses sourceType / targetType (ParticipantType: DRIVER | GUARDIAN | SCHOOL | VENDOR)
 const PARTICIPANT_TYPES = [
@@ -255,7 +258,7 @@ export function VendorChat() {
         </div>
 
         <div className="w-full space-y-4">
-          {["School", "Driver", "Terminal"].map((title, index) => (
+          {MONITORING_SECTIONS.map((title, index) => (
             <div
               key={index}
               className="w-full bg-white rounded shadow-sm mb-4"
