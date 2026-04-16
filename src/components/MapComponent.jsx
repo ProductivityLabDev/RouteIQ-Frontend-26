@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { arrow_back_ios, BusIcon, Mapnotations, locationicon } from "@/assets";
+import { arrow_back_ios, Mapnotations, locationicon, redbusicon, greenbusicon, orangebusicon } from "@/assets";
 import { Button, Typography, Spinner } from "@material-tailwind/react";
 import {
   GoogleMap,
@@ -13,6 +13,13 @@ import {
 const containerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 44.9778, lng: -93.2650 };
 const GOOGLE_LIBRARIES = ["places"];
+
+const getBusIconByStatus = (status) => {
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (normalizedStatus.includes("transit") || normalizedStatus.includes("moving")) return greenbusicon;
+  if (normalizedStatus.includes("stop") || normalizedStatus.includes("idle")) return orangebusicon;
+  return redbusicon;
+};
 
 /**
  * ✅ Uber-style MapComponent (correct approach):
@@ -225,7 +232,7 @@ const MapComponent = ({
 
       const icon = isBus
         ? {
-            url: BusIcon,
+            url: getBusIconByStatus(marker.status),
             scaledSize: window.google?.maps?.Size ? new window.google.maps.Size(40, 40) : undefined,
           }
         : isStudent
@@ -489,7 +496,7 @@ const MapComponent = ({
               </div>
 
               <div className="bg-[#C01824] text-white p-3 gap-3 rounded-lg flex items-center justify-center mb-5 shadow-lg shadow-red-200">
-                <img src={BusIcon} className="w-6 h-6 invert" alt="Bus" />
+                <img src={getBusIconByStatus(selectedMarker?.status)} className="w-6 h-6" alt="Bus" />
                 <span className="font-bold text-lg">
                   {typeof durationMinutes === "number" ? `${durationMinutes} minutes` : "7 minutes"}
                 </span>

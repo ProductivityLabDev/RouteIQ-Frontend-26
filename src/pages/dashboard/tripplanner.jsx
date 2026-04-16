@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { burgerBar, calendar, leftArrow, rightArrow, routeTableIcon, ViewMap } from '@/assets';
 import VendorApprovedCard from '@/components/vendorRoutesCard/VendorApprovedCard';
-import VendorPendingCard from '@/components/vendorRoutesCard/VendorPendingCard';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSchoolTrips } from '@/redux/slices/schoolDashboardSlice';
-import { updateRFQStatus } from '@/redux/slices/rfqSlice';
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { Button, Input, Popover, PopoverContent, PopoverHandler } from '@material-tailwind/react';
 import { format } from "date-fns";
@@ -16,7 +14,6 @@ import CreateTripForm from '../../components/CreateTripForm';
 export function TripPlanner() {
   const dispatch = useDispatch();
   const { trips, loading } = useSelector((s) => s.schoolDashboard);
-  const { updating } = useSelector((s) => s.rfq);
 
   useEffect(() => {
     dispatch(fetchSchoolTrips());
@@ -42,16 +39,6 @@ export function TripPlanner() {
   const handleMapScreenClick = () => {};
   const handleOpenRoute = () => setIsCreateTrip(true);
   const handleRouteMap = () => {};
-
-  const handleApprove = (trip, payload) => {
-    if (!trip?.id) return;
-    dispatch(updateRFQStatus({ id: trip.id, payload }));
-  };
-
-  const handleReject = (trip) => {
-    if (!trip?.id) return;
-    dispatch(updateRFQStatus({ id: trip.id, payload: { status: 'Rejected' } }));
-  };
 
   const handleEllipsisClick = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -243,30 +230,16 @@ export function TripPlanner() {
                       /* Card view */
                       <div className="flex flex-wrap gap-4 justify-evenly p-4">
                         {terminalTrips.map((trip, idx) => (
-                          trip.status === 'Pending' ? (
-                            <VendorPendingCard
-                              key={trip.id ?? idx}
-                              trips={[trip]}
-                              onEditClick={hanldeEditModal}
-                              selectedTab={selectedTab}
-                              handleMapScreenClick={handleMapScreenClick}
-                              handleEditRoute={handleEditRoute}
-                              onApprove={handleApprove}
-                              onReject={handleReject}
-                              updating={updating}
-                            />
-                          ) : (
-                            <VendorApprovedCard
-                              key={trip.id ?? idx}
-                              trip={trip}
-                              trips={terminalTrips}
-                              onEditClick={hanldeEditModal}
-                              selectedTab={selectedTab}
-                              handleMapScreenClick={handleMapScreenClick}
-                              handleEditRoute={handleEditRoute}
-                              handleRouteMap={handleRouteMap}
-                            />
-                          )
+                          <VendorApprovedCard
+                            key={trip.id ?? idx}
+                            trip={trip}
+                            trips={terminalTrips}
+                            onEditClick={hanldeEditModal}
+                            selectedTab={selectedTab}
+                            handleMapScreenClick={handleMapScreenClick}
+                            handleEditRoute={handleEditRoute}
+                            handleRouteMap={handleRouteMap}
+                          />
                         ))}
                       </div>
                     )}

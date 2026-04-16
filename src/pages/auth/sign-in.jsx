@@ -215,8 +215,8 @@ export function SignIn() {
   return (
     <>
       {loading && <Loader />}
-      <section className="h-screen flex items-center justify-center bg-[url('./assets/auth-bg.png')] bg-cover bg-center bg-no-repeat px-2 md:px-4 overflow-auto">
-        <div className="w-full h-[90vh] scrollbar-hide overflow-y-auto max-w-[600px] mx-auto py-3 md:py-8 px-4 rounded-[10px] bg-white">
+      <section className="min-h-screen flex items-center justify-center bg-[url('./assets/auth-bg.png')] bg-cover bg-center bg-no-repeat px-2 md:px-4 py-6 overflow-auto">
+        <div className="w-full max-h-[90vh] scrollbar-hide overflow-y-auto max-w-[600px] mx-auto py-3 md:py-8 px-4 rounded-[10px] bg-white">
           <div className="mx-auto w-full max-w-[500px] pb-3">
             <img src={logo} className='w-full max-w-[180px] md:max-w-[200px] mt-3' alt="not found" />
             <Typography className="font-bold text-[24px] md:text-[32px] mt-5">Login to Account</Typography>

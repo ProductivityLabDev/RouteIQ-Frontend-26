@@ -38,7 +38,11 @@ const ChatPanel = ({
   const messagesEndRef = useRef(null);
   const messagesTopRef = useRef(null);
   const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const docInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const attachmentMenuRef = useRef(null);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
   // Stable key for object dependency — avoids infinite re-renders from new object refs
   const monitoringFiltersKey = JSON.stringify(monitoringFilters);
@@ -137,6 +141,19 @@ const ChatPanel = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!showAttachmentMenu) return;
+
+    const handleOutsideClick = (event) => {
+      if (!attachmentMenuRef.current?.contains(event.target)) {
+        setShowAttachmentMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [showAttachmentMenu]);
+
   const handleSelectConversation = (convId) => {
     if (isMonitoring) {
       dispatch(setActiveMonitoringConversation(convId));
@@ -185,6 +202,7 @@ const ChatPanel = ({
     const file = e.target.files?.[0];
     if (!file || !activeId) return;
     dispatch(sendMessage({ conversationId: activeId, file }));
+    setShowAttachmentMenu(false);
     e.target.value = "";
   };
 
@@ -422,23 +440,57 @@ const ChatPanel = ({
                 {!isMonitoring && (
                   <div className="border-t-2 border-gray-200 px-4 pt-4 pb-3">
                     <div className="flex space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-200 focus:outline-none flex-shrink-0"
-                      >
-                        <img
-                          src={addfileicon}
-                          alt=""
-                          className="md:h-[26px] md:w-[26px]"
+                      <div className="relative" ref={attachmentMenuRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowAttachmentMenu((prev) => !prev)}
+                          className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-200 focus:outline-none flex-shrink-0"
+                        >
+                          <img
+                            src={addfileicon}
+                            alt=""
+                            className="md:h-[26px] md:w-[26px]"
+                          />
+                        </button>
+                        {showAttachmentMenu && (
+                          <div className="absolute bottom-12 left-0 z-20 min-w-[170px] overflow-hidden rounded-xl border border-[#E8E1D6] bg-white shadow-lg">
+                            <button
+                              type="button"
+                              onClick={() => imageInputRef.current?.click()}
+                              className="block w-full px-4 py-3 text-left text-sm font-medium text-[#202224] transition hover:bg-[#FFF4F5]"
+                            >
+                              Upload photo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => docInputRef.current?.click()}
+                              className="block w-full border-t border-[#F2ECE2] px-4 py-3 text-left text-sm font-medium text-[#202224] transition hover:bg-[#FFF4F5]"
+                            >
+                              Upload document
+                            </button>
+                          </div>
+                        )}
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleFileSelect}
                         />
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        className="hidden"
-                        onChange={handleFileSelect}
-                      />
+                        <input
+                          ref={docInputRef}
+                          type="file"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                          className="hidden"
+                          onChange={handleFileSelect}
+                        />
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          className="hidden"
+                          onChange={handleFileSelect}
+                        />
+                      </div>
                       <input
                         type="text"
                         placeholder="Message"

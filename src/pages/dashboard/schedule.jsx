@@ -5,11 +5,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchSchoolRoutes, fetchSchoolStudents } from '@/redux/slices/schoolDashboardSlice';
 import MapComponent from '@/components/MapComponent';
 import { apiClient } from '@/configs/api';
+import { trackingService } from '@/services/trackingService';
 
 const tabsData = [
   { label: "All Students", value: "allstudents" },
   { label: "On Board",     value: "onboard"     },
 ];
+
+const LIVE_ROUTE_POLLING_INTERVAL = 10000;
 
 export function Schedule() {
   const dispatch = useDispatch();
@@ -28,6 +31,7 @@ export function Schedule() {
   const [mapCardInfo, setMapCardInfo] = useState({});
   const [showCard,    setShowCard]    = useState(false);
   const [isRouteMap,  setIsRouteMap]  = useState(false);
+  const [liveRouteData, setLiveRouteData] = useState(null);
 
   useEffect(() => {
     dispatch(fetchSchoolRoutes());
@@ -62,6 +66,29 @@ export function Schedule() {
     return [...new Set(candidates)];
   };
 
+  const getStudentId = (student) =>
+    student?.StudentId ??
+    student?.studentId ??
+    student?.id ??
+    null;
+
+  const getStudentName = (student, index = 0) =>
+    student?.StudentName ??
+    student?.studentName ??
+    student?.Name ??
+    student?.name ??
+    `${student?.firstName ?? ''} ${student?.lastName ?? ''}`.trim() ??
+    `Student ${index + 1}`;
+
+  const getStudentStatus = (student) =>
+    student?.attendanceStatus ??
+    student?.AttendanceStatus ??
+    student?.status ??
+    student?.Status ??
+    student?.assignmentType ??
+    student?.AssignmentType ??
+    '';
+
   // ── Select route → filter from Redux students ─────────────────────────────
   const handleSelectRoute = async (route, allStudents) => {
     const pool = allStudents ?? students;
@@ -73,6 +100,7 @@ export function Schedule() {
     setShowCard(false);
     setIsRouteMap(false);
     setMapMarkers([]);
+    setLiveRouteData(null);
     setRouteStudentsLoading(true);
 
     let displayList = [];
@@ -140,8 +168,8 @@ export function Schedule() {
         s?.longitude ?? s?.lng ?? s?.Longitude ?? s?.Lng
       );
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
-      const name = `${s?.firstName ?? ''} ${s?.lastName ?? ''}`.trim() || `Student ${idx + 1}`;
-      return [{ id: `s-${s.id ?? idx}`, type: 'student', title: name, position: { lat, lng } }];
+      const name = getStudentName(s, idx);
+      return [{ id: `s-${getStudentId(s) ?? idx}`, type: 'student', title: name, position: { lat, lng } }];
     });
     setMapMarkers(markers);
     if (markers.length > 0) {
@@ -154,7 +182,7 @@ export function Schedule() {
   // ── Click student → detail panel ──────────────────────────────────────────
   const handleStudentClick = (student) => {
     setSelectedStudent(student);
-    const name     = `${student?.firstName ?? ''} ${student?.lastName ?? ''}`.trim() || 'Student';
+    const name     = getStudentName(student) || 'Student';
     const routeDropoff =
       selectedRoute?.dropoffLocation ??
       selectedRoute?.DropoffLocation ??
@@ -201,7 +229,7 @@ export function Schedule() {
     const markers = [];
     if (Number.isFinite(pickupLat) && Number.isFinite(pickupLng)) {
       markers.push({
-        id: `pickup-${student?.id ?? "student"}`,
+        id: `pickup-${getStudentId(student) ?? "student"}`,
         type: "pickup",
         stopRole: "start",
         order: 1,
@@ -211,7 +239,7 @@ export function Schedule() {
     }
     if (Number.isFinite(dropLat) && Number.isFinite(dropLng)) {
       markers.push({
-        id: `dropoff-${student?.id ?? "student"}`,
+        id: `dropoff-${getStudentId(student) ?? "student"}`,
         type: "dropoff",
         stopRole: "end",
         order: 2,
@@ -237,19 +265,91 @@ export function Schedule() {
   };
 
   const busNum = selectedRoute?.busName ?? selectedRoute?.busNumber ?? '--';
+  const selectedRouteId = getRouteId(selectedRoute);
 
-  const filtered = routeStudents.filter(s =>
-    `${s?.firstName ?? ''} ${s?.lastName ?? ''}`.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    if (!selectedRouteId) {
+      setLiveRouteData(null);
+      return undefined;
+    }
+
+    let active = true;
+
+    const fetchLiveRoute = async () => {
+      try {
+        const response = await trackingService.getLiveRoute(Number(selectedRouteId));
+        if (!active) return;
+        setLiveRouteData(response?.data ?? null);
+      } catch {
+        if (!active) return;
+        setLiveRouteData(null);
+      }
+    };
+
+    fetchLiveRoute();
+    const intervalId = window.setInterval(fetchLiveRoute, LIVE_ROUTE_POLLING_INTERVAL);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [selectedRouteId]);
+
+  const liveOnBoardIds = new Set(
+    (liveRouteData?.studentsOnBoard || [])
+      .map((student) => getStudentId(student))
+      .filter(Boolean)
+  );
+
+  const filtered = routeStudents.filter((s, index) =>
+    getStudentName(s, index).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const displayed = activeTab === 'onboard'
     ? filtered.filter((s) => {
-        const status = String(s?.attendanceStatus ?? s?.status ?? '').toLowerCase();
+        const studentId = getStudentId(s);
+        if (studentId && liveOnBoardIds.has(studentId)) return true;
+        const status = String(getStudentStatus(s)).toLowerCase();
         return status === 'present' || status === 'onboard' || status === 'on board';
       })
     : filtered;
 
-  const selectedRouteId = getRouteId(selectedRoute);
+  const liveBusMarker = (() => {
+    const currentLocation = liveRouteData?.currentLocation;
+    const lat = Number(currentLocation?.latitude);
+    const lng = Number(currentLocation?.longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    return {
+      id: `live-bus-${selectedRouteId}`,
+      type: 'bus',
+      title: liveRouteData?.vehicleName || liveRouteData?.routeName || busNum || 'Live Bus',
+      position: { lat, lng },
+      status: liveRouteData?.status || 'Unknown',
+    };
+  })();
+
+  const effectiveMapMarkers = liveBusMarker
+    ? [...mapMarkers.filter((marker) => marker?.type !== 'bus'), liveBusMarker]
+    : mapMarkers;
+
+  useEffect(() => {
+    if (!selectedRoute) return;
+
+    // Debug selected route student resolution for route schedules screen.
+    console.log('[SchoolSchedule] selected route:', {
+      routeId: selectedRouteId,
+      route: selectedRoute,
+      activeTab,
+      searchQuery,
+    });
+
+    console.log('[SchoolSchedule] route students (raw):', routeStudents);
+    console.log('[SchoolSchedule] students displayed in list:', displayed);
+    console.log('[SchoolSchedule] map markers:', effectiveMapMarkers);
+    console.log('[SchoolSchedule] live route data:', liveRouteData);
+  }, [selectedRoute, selectedRouteId, activeTab, searchQuery, routeStudents, displayed, effectiveMapMarkers, liveRouteData]);
 
   return (
     <div className='mt-7' style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column' }}>
@@ -319,10 +419,10 @@ export function Schedule() {
                 </p>
               ) : (
                 displayed.map((student, index) => {
-                  const name = `${student?.firstName ?? ''} ${student?.lastName ?? ''}`.trim() || `Student ${index + 1}`;
-                  const isSelected = selectedStudent?.id === student?.id;
+                  const name = getStudentName(student, index);
+                  const isSelected = getStudentId(selectedStudent) === getStudentId(student);
                   return (
-                    <div key={student?.id ?? index}>
+                    <div key={getStudentId(student) ?? index}>
                       <Button
                         variant='gradient'
                         className={`flex items-center gap-3 py-3 pl-4 w-full rounded-none transition-all ${
@@ -354,8 +454,9 @@ export function Schedule() {
           <div style={{ position: 'absolute', left: '292px', top: 12, width: '390px', zIndex: 500 }}>
             <div className="relative max-h-[calc(100vh-220px)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl">
             {(() => {
-              const sName     = `${selectedStudent?.firstName ?? ''} ${selectedStudent?.lastName ?? ''}`.trim() || '--';
+              const sName     = getStudentName(selectedStudent) || '--';
               const sEmergency = selectedStudent?.emergencyContact ?? '--';
+              const sProfile  = selectedStudent?.profilePicture ?? selectedStudent?.ProfilePicture ?? '';
               const sPickup   =
                 selectedStudent?.pickupAddress ??
                 selectedStudent?.PickupAddress ??
@@ -373,21 +474,36 @@ export function Schedule() {
                 selectedRoute?.dropoffLocation ??
                 selectedRoute?.DropoffLocation ??
                 '--';
-              const sGrade    = selectedStudent?.grade ?? '';
-              const sBusNo    = selectedStudent?.busNo ?? busNum;
-              const sEnroll   = selectedStudent?.enrollmentNo ?? selectedStudent?.enrollmentNumber ?? '--';
-              const sAttendance = selectedStudent?.attendanceStatus ?? '--';
-              const sDriver   = selectedStudent?.driverName ?? '--';
+              const sGrade    = selectedStudent?.grade ?? selectedStudent?.Grade ?? '--';
+              const sBusNo    = selectedStudent?.busNo ?? selectedStudent?.BusNo ?? selectedStudent?.BusNumber ?? busNum;
+              const sEnroll   = selectedStudent?.enrollmentNo ?? selectedStudent?.enrollmentNumber ?? selectedStudent?.EnrollmentNumber ?? '--';
+              const sAttendance = selectedStudent?.attendanceStatus ?? selectedStudent?.status ?? selectedStudent?.AssignmentType ?? '--';
+              const sDriver   = selectedStudent?.driverName ?? selectedStudent?.DriverName ?? '--';
               const sBusAm    = selectedStudent?.busNumberAM ?? '--';
               const sBusPm    = selectedStudent?.busNumberPM ?? '--';
               const sNotes    = selectedStudent?.notes ?? '--';
+              const sPickupTime = selectedStudent?.pickupTime ?? selectedStudent?.PickupTime ?? '--';
+              const sPickupStop = selectedStudent?.pickupStopName ?? selectedStudent?.PickupStopName ?? '--';
+              const sAssignment = selectedStudent?.assignmentType ?? selectedStudent?.AssignmentType ?? '--';
+              const sStudentId = getStudentId(selectedStudent) ?? '--';
+              const sRouteId = selectedStudent?.routeId ?? selectedStudent?.RouteId ?? selectedRouteId ?? '--';
+              const sLiveVehicle = liveRouteData?.vehicleName ?? selectedRoute?.busName ?? selectedRoute?.busNumber ?? '--';
+              const sLiveBusStatus = liveRouteData?.status ?? '--';
               return (
                 <>
                   <div className='flex items-start justify-between gap-3 border-b border-gray-100 px-4 pt-4 pb-3'>
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className='rounded-full w-[56px] h-[56px] bg-[#C01824] flex items-center justify-center text-white font-bold text-[22px] flex-shrink-0'>
-                        {sName.charAt(0).toUpperCase()}
-                      </div>
+                      {sProfile ? (
+                        <img
+                          src={sProfile}
+                          alt={sName}
+                          className='w-[56px] h-[56px] rounded-full object-cover border border-gray-200 flex-shrink-0'
+                        />
+                      ) : (
+                        <div className='rounded-full w-[56px] h-[56px] bg-[#C01824] flex items-center justify-center text-white font-bold text-[22px] flex-shrink-0'>
+                          {sName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div className='leading-tight text-[#141516] min-w-0'>
                         <h6 className="font-bold text-[24px] truncate">{sName}</h6>
                         <p className="font-medium text-[14px] text-gray-600">Student</p>
@@ -399,7 +515,7 @@ export function Schedule() {
                     </div>
                   </div>
 
-                  <div className='grid grid-cols-3 gap-2 px-4 pt-3'>
+                  <div className='grid grid-cols-4 gap-2 px-4 pt-3'>
                     <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-2 py-2'>
                       <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Emergency</p>
                       <p className='text-[13px] font-bold text-[#141516] break-words'>{sEmergency}</p>
@@ -412,14 +528,45 @@ export function Schedule() {
                       <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Attendance</p>
                       <p className='text-[13px] font-bold text-[#141516]'>{sAttendance}</p>
                     </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-2 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Grade</p>
+                      <p className='text-[13px] font-bold text-[#141516] break-words'>{sGrade}</p>
+                    </div>
+                  </div>
+
+                  <div className='grid grid-cols-2 gap-2 px-4 pt-3'>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-3 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Pickup Time</p>
+                      <p className='text-[13px] font-bold text-[#141516]'>{sPickupTime}</p>
+                    </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-3 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Pickup Stop</p>
+                      <p className='text-[13px] font-bold text-[#141516] break-words'>{sPickupStop}</p>
+                    </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-3 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Student ID</p>
+                      <p className='text-[13px] font-bold text-[#141516]'>{sStudentId}</p>
+                    </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-3 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Route ID</p>
+                      <p className='text-[13px] font-bold text-[#141516]'>{sRouteId}</p>
+                    </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-3 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Live Bus</p>
+                      <p className='text-[13px] font-bold text-[#141516] break-words'>{sLiveVehicle}</p>
+                    </div>
+                    <div className='rounded-lg bg-[#F9FAFB] border border-gray-100 px-3 py-2'>
+                      <p className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>Bus Status</p>
+                      <p className='text-[13px] font-bold text-[#141516] break-words'>{sLiveBusStatus}</p>
+                    </div>
                   </div>
 
                   <div className="px-4 pt-3 pb-4">
                   {[
                     { label: 'Pickup Address', val: sPickup },
                     { label: 'Drop-off',       val: sDrop   },
-                    { label: 'Grade',          val: sGrade  },
                     { label: 'Driver Name',    val: sDriver },
+                    { label: 'Assignment Type', val: sAssignment },
                     { label: 'Bus # AM',       val: sBusAm  },
                     { label: 'Bus # PM',       val: sBusPm  },
                     { label: 'Notes',          val: sNotes  },
@@ -459,7 +606,7 @@ export function Schedule() {
             isRouteMap={isRouteMap}
             showCard={showCard}
             closeCard={() => setShowCard(false)}
-            markers={mapMarkers}
+            markers={effectiveMapMarkers}
             center={mapCenter}
             cardTitle={mapCardInfo.cardTitle}
             scheduleText={mapCardInfo.scheduleText}
