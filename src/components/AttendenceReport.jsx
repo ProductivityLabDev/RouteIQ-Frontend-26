@@ -1,19 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAttendanceReport } from '@/redux/slices/employeeDashboardSlice';
 import dayjs from 'dayjs';
 
 export default function AttendanceReport() {
-    const dispatch = useDispatch();
+    const [showAll, setShowAll] = useState(false);
     const employeeDashboard = useSelector((state) => state.employeeDashboard);
     const attendanceReport = employeeDashboard?.attendanceReport ?? null;
     const loading = employeeDashboard?.loading ?? { dashboard: false, punch: false, report: false };
 
-    useEffect(() => {
-        dispatch(fetchAttendanceReport({}));
-    }, [dispatch]);
-
     const records = attendanceReport?.records || [];
+    const visibleRecords = useMemo(
+        () => (showAll ? records : records.slice(0, 5)),
+        [records, showAll]
+    );
+    const canExpand = records.length > 5;
 
     // Handles both "HH:mm:ss" time-only strings and full ISO datetimes
     const formatTime = (val) => {
@@ -34,7 +34,15 @@ export default function AttendanceReport() {
         <div className="p-4 mt-[-20px]">
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-[#122539] text-lg font-medium">Attendance Report</h1>
-                <button className="text-[#1F4062] text-sm">View all</button>
+                {canExpand ? (
+                    <button
+                        type="button"
+                        onClick={() => setShowAll((prev) => !prev)}
+                        className="text-[#1F4062] text-sm font-medium transition hover:text-[#C01824]"
+                    >
+                        {showAll ? 'Show less' : 'View all'}
+                    </button>
+                ) : null}
             </div>
 
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -62,7 +70,7 @@ export default function AttendanceReport() {
                                 </td>
                             </tr>
                         ) : (
-                            records.map((row, index) => {
+                            visibleRecords.map((row, index) => {
                                 const breakMins = row.breakStart && row.breakEnd
                                     ? toMins(row.breakEnd) - toMins(row.breakStart)
                                     : null;
@@ -94,6 +102,11 @@ export default function AttendanceReport() {
                     </tbody>
                 </table>
             </div>
+            {!loading.report && canExpand && !showAll ? (
+                <div className="mt-3 text-xs font-medium text-[#6B7280]">
+                    Showing {visibleRecords.length} of {records.length} records
+                </div>
+            ) : null}
         </div>
     );
 }

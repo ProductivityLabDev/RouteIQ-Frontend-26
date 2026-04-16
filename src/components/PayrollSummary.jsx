@@ -18,6 +18,10 @@ const splitAmt = (v) => {
   const [whole, dec] = Number(v).toFixed(2).split(".");
   return [`$${Number(whole).toLocaleString("en-US")}`, `.${dec}`];
 };
+const safeNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
 
 const getRangeDates = (range) => {
   const today = dayjs().startOf("day");
@@ -51,12 +55,16 @@ export default function PayrollSummary({ onViewPayStub }) {
   const [showDropdown, setShowDropdown]   = useState(false);
 
   const payrollData     = useSelector((s) => s.employeeDashboard.payroll);
+  const payrollHistory  = useSelector((s) => s.employeeDashboard.payrollHistory);
   const dailyEarnings   = useSelector((s) => s.employeeDashboard.dailyEarnings);
   const earningsLoading = useSelector((s) => s.employeeDashboard.loading.dailyEarnings);
 
   const summary    = payrollData?.summary;
   const period     = payrollData?.period;
-  const prevPay    = payrollData?.previousPayroll;
+  const historyPreviousPay = Array.isArray(payrollHistory)
+    ? payrollHistory.find((item) => item?.payrollId && item.payrollId !== payrollData?.payrollId) ?? null
+    : null;
+  const prevPay    = payrollData?.previousPayroll ?? historyPreviousPay ?? null;
   const nextPay    = payrollData?.upcomingPayroll;
   const employeeId = payrollData?.employee?.employeeId;
 
@@ -85,7 +93,7 @@ export default function PayrollSummary({ onViewPayStub }) {
     ? `(From ${dayjs(period.start).format("D")} – ${dayjs(period.end).format("D MMMM YYYY")})`
     : "";
 
-  const netPct = grossPay && netPay ? Math.round((netPay / grossPay) * 100) : "--";
+  const netPct = grossPay && netPay ? `${Math.round((netPay / grossPay) * 100)}%` : "--";
 
   const [netWhole, netDec] = splitAmt(netPay);
   const [dedWhole, dedDec] = splitAmt(deductions);
@@ -93,11 +101,13 @@ export default function PayrollSummary({ onViewPayStub }) {
   const [benWhole, benDec] = splitAmt(benefits);
 
   const pieData = [
-    { name: "Benefits",  value: benefits   || 1, color: "#2e2e2e" },
-    { name: "Taxes",     value: taxes      || 1, color: "#cc0000" },
-    { name: "Deduction", value: deductions || 1, color: "#fda4af" },
-    { name: "Remaining", value: netPay     || 1, color: "#22c55e" },
-  ];
+    { name: "Net Pay", value: safeNum(netPay), color: "#22c55e" },
+    { name: "Taxes", value: safeNum(taxes), color: "#cc0000" },
+    { name: "Deductions", value: safeNum(deductions), color: "#fda4af" },
+    { name: "Benefits", value: safeNum(benefits), color: "#2e2e2e" },
+  ].filter((item) => item.value > 0);
+  const hasPieData = pieData.length > 0;
+  const pieCenterLabel = grossPay && netPay ? "Net Pay" : "Payroll";
 
   return (
     <>
@@ -138,14 +148,20 @@ export default function PayrollSummary({ onViewPayStub }) {
           {/* Pie */}
           <div className="relative w-80 h-80 mx-auto">
             <div className="absolute inset-6 bg-[#EBF3FE] rounded-full z-0" />
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} innerRadius={80} outerRadius={110} paddingAngle={1}
-                  dataKey="value" startAngle={90} endAngle={-270}>
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
+            {hasPieData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} innerRadius={80} outerRadius={110} paddingAngle={1}
+                    dataKey="value" startAngle={90} endAngle={-270}>
+                    {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-[220px] w-[220px] rounded-full border-[18px] border-[#D9E6F7] bg-white" />
+              </div>
+            )}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
               <button
                 onClick={onViewPayStub}
@@ -155,8 +171,9 @@ export default function PayrollSummary({ onViewPayStub }) {
                 View Pay Stub
               </button>
             </div>
-            <div className="absolute w-[60px] h-[60px] top-[40px] right-16 bg-white border border-gray-100 shadow text-[23px] rounded-full font-medium text-[#0A112F] flex items-center justify-center z-10">
-              {netPct}<span className="text-gray-400 text-xs">%</span>
+            <div className="absolute w-[78px] h-[78px] top-[34px] right-12 bg-white border border-gray-100 shadow text-center rounded-full font-medium text-[#0A112F] flex flex-col items-center justify-center z-10">
+              <span className="text-[22px] leading-none">{netPct}</span>
+              <span className="text-[10px] uppercase tracking-[0.12em] text-gray-400 mt-1">{pieCenterLabel}</span>
             </div>
           </div>
 

@@ -5,6 +5,16 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
   if (!paystub && !loading) return null;
 
   const fmt = (v) => (v != null && v !== '' ? Number(v).toFixed(2) : '0.00');
+  const formatDisplayDate = (value) => {
+    if (!value) return '--';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
 
   const toWords = (amount) => {
     if (!amount) return 'Zero And 00/100 Dollars';
@@ -33,10 +43,14 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
       company: {
         name: 'ROUTE IQ',
         dept: p.employee?.terminal,
+        address: p.company?.address,
+        city: p.company?.city,
+        phone: p.company?.phone,
       },
       period: {
         start: p.period?.start,
         end: p.period?.end,
+        payDate: p.createdAt ?? p.period?.end,
         totalHours: p.period?.totalHours,
       },
       summary: {
@@ -84,12 +98,12 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
   const empAddress = emp.address || '--';
   const empCity = emp.city || '--';
   const companyName = company.name || 'ROUTE IQ';
-  const companyAddress = company.address || '1235 Taylor St';
-  const companyCity = company.city || 'Lorem Ipsum dolor';
+  const companyAddress = company.address || '--';
+  const companyCity = company.city || '--';
   const companyPhone = company.phone || '';
-  const periodStart = period.start || fallback?.periodStart || '--';
-  const periodEnd = period.end || fallback?.periodEnd || '--';
-  const payDate = period.payDate || '--';
+  const periodStart = formatDisplayDate(period.start || fallback?.periodStart);
+  const periodEnd = formatDisplayDate(period.end || fallback?.periodEnd);
+  const payDate = formatDisplayDate(period.payDate);
   const totalHours = period.totalHours ?? fallback?.payroll?.totalHours ?? '--';
 
   return (
