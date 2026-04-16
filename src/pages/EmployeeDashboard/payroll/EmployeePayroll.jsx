@@ -34,18 +34,6 @@ const EmployeePayroll = () => {
         }
     }, [dispatch, payroll, payrollHistory])
 
-    useEffect(() => {
-        if (payroll) {
-            console.log('[EmployeePayroll] paystub payload:', payroll)
-        }
-    }, [payroll])
-
-    useEffect(() => {
-        if (Array.isArray(payrollHistory) && payrollHistory.length > 0) {
-            console.log('[EmployeePayroll] payroll history payload:', payrollHistory)
-        }
-    }, [payrollHistory])
-
     const handleOpenCurrentPayStub = () => {
         if (payroll) setPayStubData(payroll)
     }

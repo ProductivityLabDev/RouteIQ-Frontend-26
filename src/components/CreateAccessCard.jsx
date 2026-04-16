@@ -7,6 +7,16 @@ import axios from "axios";
 import { BASE_URL, getAxiosConfig } from "@/configs/api";
 
 const DEPARTMENTS = ["Vehicle", "Employee", "School", "Route", "Tracking", "Scheduling", "Chats", "Accounting"];
+const MODULE_ID_TO_NAME = {
+    1: "VEHICLE",
+    2: "EMPLOYEE",
+    3: "SCHOOL",
+    4: "ROUTE",
+    5: "TRACKING",
+    6: "SCHEDULING",
+    7: "CHATS",
+    8: "ACCOUNTING",
+};
 
 const INITIAL_FORM = {
     username: "",
@@ -71,33 +81,96 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
         }
     }, [token]);
 
+    const normalizeModules = (rawModules) => {
+        if (!Array.isArray(rawModules)) return [];
+
+        return rawModules
+            .map((module) => {
+                if (typeof module === "number") return MODULE_ID_TO_NAME[module] || null;
+                if (typeof module === "string") {
+                    const normalized = module.toUpperCase().trim();
+                    if (MODULE_ID_TO_NAME[Number(normalized)]) return MODULE_ID_TO_NAME[Number(normalized)];
+                    return normalized;
+                }
+                if (module && typeof module === "object") {
+                    const candidateName = module.name || module.Name || module.code || module.Code || module.moduleName || module.ModuleName;
+                    if (typeof candidateName === "string") return candidateName.toUpperCase().trim();
+                    const candidateId = Number(module.id || module.Id || module.moduleId || module.ModuleId);
+                    if (!Number.isNaN(candidateId)) return MODULE_ID_TO_NAME[candidateId] || null;
+                }
+                return null;
+            })
+            .filter(Boolean);
+    };
+
+    const normalizeTerminalIds = (rawTerminalValue) => {
+        const values = Array.isArray(rawTerminalValue) ? rawTerminalValue : rawTerminalValue ? [rawTerminalValue] : [];
+
+        return values
+            .map((value) => {
+                if (typeof value === "number") return value;
+                if (typeof value === "string") {
+                    const numeric = Number(value);
+                    if (!Number.isNaN(numeric)) return numeric;
+                    const matchedTerminal = terminal.find((item) => item.name === value);
+                    return matchedTerminal?.id ?? null;
+                }
+                if (value && typeof value === "object") {
+                    const candidateId = Number(value.id || value.Id || value.terminalId || value.TerminalId);
+                    return !Number.isNaN(candidateId) ? candidateId : null;
+                }
+                return null;
+            })
+            .filter((value) => value !== null);
+    };
+
+    const resolveRoleCode = (user) => {
+        const directRoleCode = user.RoleCode || user.roleCode || user.Role?.code;
+        if (directRoleCode) return directRoleCode;
+
+        const roleName = user.Role?.name || user.roleName || user.role || user.RoleName;
+        if (!roleName || roles.length === 0) return "";
+
+        const matchedRole = roles.find(
+            (role) => String(role.name || "").toLowerCase() === String(roleName).toLowerCase()
+        );
+        return matchedRole?.code || "";
+    };
+
     // ── Populate form in edit mode ───────────────────────────────────────────
     useEffect(() => {
         if (editUser) {
+            const rawModules = Array.isArray(editUser.Modules)
+                ? editUser.Modules
+                : Array.isArray(editUser.modules)
+                    ? editUser.modules
+                    : [];
+            const rawTerminalIds =
+                editUser.TerminalIds ||
+                editUser.terminalIds ||
+                editUser.TerminalId ||
+                editUser.terminalId ||
+                editUser.Terminal ||
+                editUser.terminal ||
+                [];
+            const controlValue = editUser.Control || editUser.control || "READ_ONLY";
+
             setFormData({
                 username:    editUser.Username    || editUser.username    || "",
                 password:    "",
                 email:       editUser.Email       || editUser.email       || "",
-                phoneNumber: editUser.PhoneNumber || editUser.phoneNumber || editUser.Phone || editUser.phone || "",
-                roleCode:    editUser.RoleCode    || editUser.roleCode    || editUser.Role?.code || "",
-                control:     editUser.Control     || editUser.control     || "READ_ONLY",
-                modules: Array.isArray(editUser.Modules)
-                    ? editUser.Modules
-                    : Array.isArray(editUser.modules)
-                        ? editUser.modules
-                        : [],
-                terminalIds: Array.isArray(editUser.TerminalIds)
-                    ? editUser.TerminalIds.map(Number)
-                    : Array.isArray(editUser.terminalIds)
-                        ? editUser.terminalIds.map(Number)
-                        : [],
+                phoneNumber: editUser.PhoneNumber || editUser.phoneNumber || editUser.Phone || editUser.phone || editUser.ContactNumber || "",
+                roleCode:    resolveRoleCode(editUser),
+                control:     controlValue,
+                modules: normalizeModules(rawModules),
+                terminalIds: normalizeTerminalIds(rawTerminalIds),
                 department:  "",
-                permission:  editUser.Control === "READ_WRITE" ? "Read & Write" : "Read Only",
+                permission:  controlValue === "READ_WRITE" ? "Read & Write" : "Read Only",
             });
         } else {
             setFormData(INITIAL_FORM);
         }
-    }, [editUser]);
+    }, [editUser, roles, terminal]);
 
     // ── Validation ───────────────────────────────────────────────────────────
     const validateForm = () => {

@@ -5,6 +5,52 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
   if (!paystub && !loading) return null;
 
   const fmt = (v) => (v != null && v !== '' ? Number(v).toFixed(2) : '0.00');
+  const numberToWords = (value) => {
+    const ones = [
+      '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+      'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+      'Seventeen', 'Eighteen', 'Nineteen',
+    ];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+    const belowThousand = (num) => {
+      let result = '';
+      if (num >= 100) {
+        result += `${ones[Math.floor(num / 100)]} Hundred`;
+        num %= 100;
+        if (num > 0) result += ' ';
+      }
+      if (num >= 20) {
+        result += tens[Math.floor(num / 10)];
+        num %= 10;
+        if (num > 0) result += `-${ones[num]}`;
+      } else if (num > 0) {
+        result += ones[num];
+      }
+      return result.trim();
+    };
+
+    if (!value) return 'Zero';
+
+    let num = Math.floor(Number(value));
+    if (!Number.isFinite(num) || num <= 0) return 'Zero';
+
+    const parts = [];
+    const scales = ['', 'Thousand', 'Million', 'Billion'];
+    let scaleIndex = 0;
+
+    while (num > 0) {
+      const chunk = num % 1000;
+      if (chunk > 0) {
+        const chunkWords = belowThousand(chunk);
+        parts.unshift([chunkWords, scales[scaleIndex]].filter(Boolean).join(' '));
+      }
+      num = Math.floor(num / 1000);
+      scaleIndex += 1;
+    }
+
+    return parts.join(' ').trim();
+  };
   const formatDisplayDate = (value) => {
     if (!value) return '--';
     const parsed = new Date(value);
@@ -19,7 +65,7 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
   const toWords = (amount) => {
     if (!amount) return 'Zero And 00/100 Dollars';
     const [dollars, cents] = Number(amount).toFixed(2).split('.');
-    return `${Number(dollars).toLocaleString()} And ${cents}/100 Dollars`;
+    return `${numberToWords(dollars)} And ${cents}/100 Dollars`;
   };
 
   const fallback = fallbackDriver || {};
@@ -28,7 +74,12 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
   const derived = useMemo(() => {
     if (!p) return null;
 
-    if (p.summary || p.company || p.earnings || p.taxes || p.deductions) {
+    const alreadyNormalized =
+      Array.isArray(p.earnings) ||
+      Boolean(p.taxes) ||
+      Array.isArray(p.deductions);
+
+    if (alreadyNormalized) {
       return p;
     }
 
@@ -41,7 +92,7 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
         dept: p.employee?.terminal,
       },
       company: {
-        name: 'ROUTE IQ',
+        name: p.company?.name || 'ROUTE IQ',
         dept: p.employee?.terminal,
         address: p.company?.address,
         city: p.company?.city,
@@ -60,15 +111,17 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
       },
       earnings: [
         {
-          type: 'Route Pay',
+          type: p.employee?.payType === 'Hourly' ? 'Hourly Pay' : 'Route Pay',
           rate: p.earnings?.routeRate,
-          hours: p.period?.totalHours,
-          currentPeriod: p.summary?.grossPay,
-          ytd: p.summary?.grossPay,
+          hours: p.earnings?.totalHours ?? p.period?.totalHours,
+          currentPeriod: p.earnings?.grossPay ?? p.summary?.grossPay,
+          ytd: p.earnings?.grossPay ?? p.summary?.grossPay,
         },
       ],
       taxes: {
         federalWH: { currentPeriod: p.withholdings?.federal?.amount, ytd: p.withholdings?.federal?.amount },
+        state: { currentPeriod: p.withholdings?.state?.amount, ytd: p.withholdings?.state?.amount },
+        local: { currentPeriod: p.withholdings?.local?.amount, ytd: p.withholdings?.local?.amount },
         medicare: { currentPeriod: p.withholdings?.medicare?.amount, ytd: p.withholdings?.medicare?.amount },
         socialSecurity: { currentPeriod: p.withholdings?.socialSecurity?.amount, ytd: p.withholdings?.socialSecurity?.amount },
       },
@@ -194,6 +247,16 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
                     <td className="py-0.5 text-right">{fmt(taxes.federalWH?.ytd ?? taxes.federal)}</td>
                   </tr>
                   <tr>
+                    <td className="py-0.5" colSpan={4}>State Tax</td>
+                    <td className="py-0.5 text-right">{fmt(taxes.state?.currentPeriod)}</td>
+                    <td className="py-0.5 text-right">{fmt(taxes.state?.ytd)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-0.5" colSpan={4}>Local Tax</td>
+                    <td className="py-0.5 text-right">{fmt(taxes.local?.currentPeriod)}</td>
+                    <td className="py-0.5 text-right">{fmt(taxes.local?.ytd)}</td>
+                  </tr>
+                  <tr>
                     <td className="py-0.5" colSpan={4}>Medicare</td>
                     <td className="py-0.5 text-right">{fmt(taxes.medicare?.currentPeriod ?? taxes.medicare)}</td>
                     <td className="py-0.5 text-right">{fmt(taxes.medicare?.ytd ?? taxes.medicare)}</td>
@@ -298,7 +361,7 @@ function SharedPayStubModal({ paystub, fallbackDriver, onClose, loading = false 
                   <span className="font-bold text-sm">Net Pay</span>
                   <span className="font-bold text-sm">{fmt(s.netPay)}</span>
                 </div>
-                <p className="italic mb-3">{toWords(s.netPay)}</p>
+                <p className="italic font-bold mb-3">{toWords(s.netPay)}</p>
                 <div className="flex justify-between items-end">
                   <div className="space-y-0.5">
                     <p className="font-semibold">{empName}</p>

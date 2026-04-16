@@ -151,8 +151,19 @@ export default function PayrollSummary({ onViewPayStub }) {
             {hasPieData ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} innerRadius={80} outerRadius={110} paddingAngle={1}
-                    dataKey="value" startAngle={90} endAngle={-270}>
+                  <Pie
+                    data={pieData}
+                    innerRadius={80}
+                    outerRadius={110}
+                    paddingAngle={1}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={-270}
+                    isAnimationActive
+                    animationBegin={180}
+                    animationDuration={2200}
+                    animationEasing="ease-in-out"
+                  >
                     {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
                 </PieChart>
