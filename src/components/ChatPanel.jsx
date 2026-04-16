@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { format, isToday, isYesterday } from "date-fns";
 import { useDispatch, useSelector, shallowEqual } from "react-redux";
 
 const EMPTY_ARRAY = []; // stable reference — avoids new [] on every render
@@ -195,6 +196,36 @@ const ChatPanel = ({
       "";
     return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
+  const activeConversation = conversations.find((conv) => conv.id === activeId) || null;
+  const activeParticipants = (activeConversation?.participants || [])
+    .filter((participant) => participant.id !== currentUserId)
+    .map((participant) => participant.name)
+    .filter(Boolean);
+  const activeConversationTitle =
+    activeConversation?.name ||
+    activeConversation?.participant?.name ||
+    activeParticipants[0] ||
+    "Conversation";
+  const activeConversationUpdatedAt =
+    activeConversation?.lastMessageAt ||
+    activeConversation?.lastMessage?.createdAt ||
+    activeConversation?.updatedAt ||
+    "";
+  const conversationCountLabel = `${filteredConversations.length} conversation${filteredConversations.length === 1 ? "" : "s"}`;
+  const getMonitoringMessageSide = useCallback((message) => {
+    const senderType = String(message?.senderType || message?.sender?.type || "").toUpperCase();
+    if (["GUARDIAN", "PARENT"].includes(senderType)) return false;
+    if (["DRIVER", "VENDOR", "SCHOOL", "ADMIN", "INSTITUTE"].includes(senderType)) return true;
+    return false;
+  }, []);
+  const formatConversationTimestamp = useCallback((value) => {
+    if (!value) return "No recent activity";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    if (isToday(date)) return `Today, ${format(date, "h:mm a")}`;
+    if (isYesterday(date)) return `Yesterday, ${format(date, "h:mm a")}`;
+    return format(date, "MMM d, yyyy - h:mm a");
+  }, []);
 
   // Optionally auto-select first conversation (used by quick actions like "Chat with Bus Team")
   useEffect(() => {
@@ -215,24 +246,39 @@ const ChatPanel = ({
   }, [prefillTrigger, starterMessage, isMonitoring]);
 
   return (
-    <div className="flex flex-row w-full gap-5 h-[75vh]">
+    <div className="flex w-full gap-4 h-[76vh] rounded-[16px] border border-[#E8E1D6] bg-[#FCFBF8] p-3">
       {/* Left sidebar - Conversation list */}
-      <div className="bg-white w-full max-w-[300px] rounded-[12px] border shadow-sm pt-2 capitalize md:block hidden flex-shrink-0">
-        <div className="relative flex items-center">
+      <div className="hidden w-full max-w-[370px] flex-shrink-0 rounded-[14px] border border-[#E8E1D6] bg-white shadow-sm md:flex md:flex-col">
+        <div className="border-b border-[#EFE7DB] px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9A7B59]">
+                Monitor Queue
+              </p>
+              <p className="mt-1 text-sm font-semibold text-[#202224]">{conversationCountLabel}</p>
+            </div>
+            {isMonitoring && (
+              <span className="rounded-full bg-[#FDE8EA] px-2.5 py-1 text-[11px] font-semibold text-[#C01824]">
+                Read Only
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="relative flex items-center px-3 pt-3">
           <img
             src={darksearchicon}
             alt=""
-            className="absolute left-3 h-4 w-4"
+            className="absolute left-6 h-4 w-4 text-[#9CA3AF]"
           />
           <input
-            className="bg-[#D2D2D2]/30 w-full pl-10 p-3 outline-none border-0"
+            className="w-full rounded-xl border border-[#E8E1D6] bg-[#FAF7F7] py-3 pl-10 pr-3 outline-none transition-colors focus:border-[#C01824]"
             type="search"
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="pt-2 overflow-y-auto" style={{ maxHeight: isMonitoring && convTotalPages > 1 ? "calc(75vh - 100px)" : "calc(75vh - 60px)" }}>
+        <div className="px-3 pt-3 overflow-y-auto" style={{ maxHeight: isMonitoring && convTotalPages > 1 ? "calc(76vh - 150px)" : "calc(76vh - 110px)" }}>
           {loading.conversations || loading.monitoringConversations ? (
             <p className="text-center text-gray-500 text-sm py-4">
               Loading...
@@ -242,20 +288,22 @@ const ChatPanel = ({
               No conversations
             </p>
           ) : (
-            filteredConversations.map((conv) => (
-              <ChatItem
-                key={conv.id}
-                conversation={conv}
-                isActive={conv.id === activeId}
-                onClick={() => handleSelectConversation(conv.id)}
-                currentUserId={currentUserId}
-              />
-            ))
+            <div className="space-y-2">
+              {filteredConversations.map((conv) => (
+                <ChatItem
+                  key={conv.id}
+                  conversation={conv}
+                  isActive={conv.id === activeId}
+                  onClick={() => handleSelectConversation(conv.id)}
+                  currentUserId={currentUserId}
+                />
+              ))}
+            </div>
           )}
         </div>
         {/* Conversation pagination for monitoring */}
         {isMonitoring && convTotalPages > 1 && (
-          <div className="flex items-center justify-between px-2 py-1.5 border-t border-gray-200 text-xs">
+          <div className="flex items-center justify-between border-t border-[#EFE7DB] px-3 py-2 text-xs">
             <button
               onClick={() => setConvPage((p) => Math.max(1, p - 1))}
               disabled={convPage <= 1 || loading.monitoringConversations}
@@ -278,24 +326,63 @@ const ChatPanel = ({
       </div>
 
       {/* Right panel - Messages */}
-      <div className="bg-white w-full rounded-[12px] border shadow-sm flex flex-col">
+      <div className="flex min-w-0 flex-1 rounded-[14px] border border-[#E8E1D6] bg-white shadow-sm">
         {!activeId ? (
           <div className="flex-1 flex items-center justify-center text-gray-400">
-            Select a conversation to start chatting
+            Select a conversation to inspect the monitored thread
           </div>
         ) : (
           <>
-            <div
-              className="flex-1 flex flex-col space-y-2 p-4 overflow-y-auto"
-            >
+            <div className="flex min-w-0 flex-1">
+              <div className="flex min-w-0 flex-1 flex-col">
+                {isMonitoring && activeConversation && (
+                  <div className="border-b border-[#EFE7DB] bg-[#FCFAF6] px-5 py-4 rounded-tl-[14px]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-base font-bold text-[#202224] truncate">
+                            {activeConversationTitle}
+                          </span>
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                              activeConversation.type === "GROUP"
+                                ? "bg-[#FFF1D6] text-[#B45309] border border-[#F6C56B]"
+                                : "bg-[#DCFCE7] text-[#166534] border border-[#86EFAC]"
+                            }`}
+                          >
+                            {activeConversation.type === "GROUP" ? "Group Chat" : "Direct Chat"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {activeConversation.type === "GROUP" && activeParticipants.length > 0
+                            ? `Participants: ${activeParticipants.join(", ")}`
+                            : "Open a thread from the queue to inspect monitored messages."}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9A7B59]">
+                          Last Activity
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-[#4B5563]">
+                          {formatConversationTimestamp(activeConversationUpdatedAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div
+                  className="flex-1 space-y-3 overflow-y-auto bg-[#FFFEFD] px-4 py-4"
+                >
               {/* Load older messages button for monitoring */}
               {hasOlderMessages && !loading.monitoringMessages && (
-                <button
-                  onClick={handleLoadOlder}
-                  className="self-center text-sm text-[#C01824] hover:underline py-1 px-3 rounded bg-red-50 hover:bg-red-100 transition-colors mb-2"
-                >
-                  Load older messages
-                </button>
+                <div className="flex justify-center pb-1">
+                  <button
+                    onClick={handleLoadOlder}
+                    className="inline-flex items-center rounded-full border border-[#F3C7CB] bg-[#FFF4F5] px-4 py-2 text-sm font-semibold text-[#C01824] shadow-sm transition-colors hover:bg-[#FDE8EA]"
+                  >
+                    Load older messages
+                  </button>
+                </div>
               )}
               <div ref={messagesTopRef} />
               {loading.messages || loading.monitoringMessages ? (
@@ -311,79 +398,127 @@ const ChatPanel = ({
                   <ChatMessage
                     key={msg.id}
                     message={msg}
-                    isOwnMessage={(msg.senderId || msg.sender?.id) === currentUserId}
+                    isOwnMessage={
+                      isMonitoring
+                        ? getMonitoringMessageSide(msg)
+                        : (msg.senderId || msg.sender?.id) === currentUserId
+                    }
                     showSenderName={isMonitoring}
                   />
                 ))
               )}
               <div ref={messagesEndRef} />
-            </div>
-
-            {/* Typing indicator */}
-            {typingUsers.length > 0 && (
-              <div className="px-4 pb-1 text-xs text-gray-500 italic">
-                {typingUsers.map((u) => u.name).join(", ")}{" "}
-                {typingUsers.length === 1 ? "is" : "are"} typing...
-              </div>
-            )}
-
-            {/* Input bar - hidden in monitoring mode */}
-            {!isMonitoring && (
-              <div className="border-t-2 border-gray-200 px-4 pt-4 pb-3">
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-200 focus:outline-none flex-shrink-0"
-                  >
-                    <img
-                      src={addfileicon}
-                      alt=""
-                      className="md:h-[26px] md:w-[26px]"
-                    />
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Message"
-                    className="w-full focus:outline-none bg-[#F0F4F8] rounded-lg focus:placeholder-gray-400 text-[#102A43] placeholder-gray-500 pl-4 py-2"
-                    value={messageText}
-                    onChange={(e) => {
-                      setMessageText(e.target.value);
-                      handleTyping();
-                    }}
-                    onKeyDown={handleKeyDown}
-                  />
-                  <Button
-                    size="lg"
-                    onClick={handleSend}
-                    disabled={loading.send}
-                    className="inline-flex ml-3 items-center justify-center rounded-md px-7 py-2 transition duration-500 ease-in-out text-white bg-[#C01824] hover:opacity-80 focus:outline-none flex-shrink-0"
-                  >
-                    <span className="font-normal capitalize text-xs md:text-[12px]">
-                      Send
-                    </span>
-                    <img
-                      src={sendicon}
-                      alt=""
-                      className="h-[14px] w-[12px] ml-1"
-                    />
-                  </Button>
                 </div>
-              </div>
-            )}
 
-            {/* Read-only indicator for monitoring */}
-            {isMonitoring && (
-              <div className="border-t border-gray-200 px-4 py-3 text-center text-sm text-gray-500 bg-gray-50 rounded-b-[12px]">
-                Read-only monitoring mode
+                {/* Typing indicator */}
+                {typingUsers.length > 0 && (
+                  <div className="px-4 pb-1 text-xs text-gray-500 italic">
+                    {typingUsers.map((u) => u.name).join(", ")}{" "}
+                    {typingUsers.length === 1 ? "is" : "are"} typing...
+                  </div>
+                )}
+
+                {/* Input bar - hidden in monitoring mode */}
+                {!isMonitoring && (
+                  <div className="border-t-2 border-gray-200 px-4 pt-4 pb-3">
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-200 focus:outline-none flex-shrink-0"
+                      >
+                        <img
+                          src={addfileicon}
+                          alt=""
+                          className="md:h-[26px] md:w-[26px]"
+                        />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Message"
+                        className="w-full focus:outline-none bg-[#F0F4F8] rounded-lg focus:placeholder-gray-400 text-[#102A43] placeholder-gray-500 pl-4 py-2"
+                        value={messageText}
+                        onChange={(e) => {
+                          setMessageText(e.target.value);
+                          handleTyping();
+                        }}
+                        onKeyDown={handleKeyDown}
+                      />
+                      <Button
+                        size="lg"
+                        onClick={handleSend}
+                        disabled={loading.send}
+                        className="inline-flex ml-3 items-center justify-center rounded-md px-7 py-2 transition duration-500 ease-in-out text-white bg-[#C01824] hover:opacity-80 focus:outline-none flex-shrink-0"
+                      >
+                        <span className="font-normal capitalize text-xs md:text-[12px]">
+                          Send
+                        </span>
+                        <img
+                          src={sendicon}
+                          alt=""
+                          className="h-[14px] w-[12px] ml-1"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Read-only indicator for monitoring */}
+                {isMonitoring && (
+                  <div className="rounded-bl-[14px] border-t border-[#EFE7DB] bg-[#FAF7F2] px-4 py-3 text-center text-sm text-gray-500">
+                    Read-only monitoring mode
+                  </div>
+                )}
               </div>
-            )}
+
+              {isMonitoring && (
+                <aside className="hidden w-full max-w-[240px] flex-shrink-0 border-l border-[#EFE7DB] bg-[#FCFAF6] p-4 lg:block rounded-r-[14px]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9A7B59]">
+                    Conversation Details
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
+                        Name
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-[#202224] break-words">
+                        {activeConversationTitle}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
+                        Type
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-[#374151]">
+                        {activeConversation?.type === "GROUP" ? "Group chat" : "Direct chat"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
+                        Participants
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-[#374151] break-words">
+                        {activeParticipants.length > 0 ? activeParticipants.join(", ") : "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
+                        Messages Loaded
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-[#374151]">
+                        {messages.length}
+                      </p>
+                    </div>
+                  </div>
+                </aside>
+              )}
+            </div>
           </>
         )}
       </div>

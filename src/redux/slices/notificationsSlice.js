@@ -138,11 +138,6 @@ const notificationsSlice = createSlice({
         state.loading.list = false;
         state.items = action.payload || [];
         state.error = null;
-        // derive unread if backend returns IsRead
-        state.unreadCount = (state.items || []).reduce((acc, n) => {
-          const isRead = n?.IsRead === 1 || n?.IsRead === true;
-          return acc + (isRead ? 0 : 1);
-        }, 0);
       })
       .addCase(fetchMyNotifications.rejected, (state, action) => {
         state.loading.list = false;

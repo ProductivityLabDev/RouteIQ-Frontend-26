@@ -36,7 +36,7 @@ import { fetchSchoolManagementSummary } from '@/redux/slices/schoolSlice'
 const NOTIFICATION_TYPE_COLORS = {
     alert: { bg: "#FEE2E2", text: "#DC2626" },
     warning: { bg: "#FEF3C7", text: "#D97706" },
-    info: { bg: "#DBEAFE", text: "#2563EB" },
+    info: { bg: "#FDE8EA", text: "#C01824" },
     update: { bg: "#D1FAE5", text: "#059669" },
     default: { bg: "#F3F4F6", text: "#6B7280" },
 }
@@ -48,6 +48,15 @@ const AUDIENCE_LABELS = {
     vendor: "Vendors",
     institute: "Institutes",
     admin: "Admins",
+}
+
+const AUDIENCE_HELPERS = {
+    general: "Broadcast to everyone in your current notification scope.",
+    parent: "Send to all parents or target one specific parent.",
+    driver: "Send to all drivers or target one specific driver.",
+    vendor: "Send to all vendors or target one specific vendor.",
+    institute: "Send to all institutes or target one institute user.",
+    admin: "Send to all admins.",
 }
 
 const Notification = () => {
@@ -135,10 +144,11 @@ const Notification = () => {
     }
 
     const handleOpenSend = () => {
+        const defaultAudience = "driver"
         setForm({
             title: "",
             message: "",
-            audience: "driver",
+            audience: defaultAudience,
             userId: "",
             terminalId: "",
             instituteId: "",
@@ -147,12 +157,13 @@ const Notification = () => {
         })
         setShowAdvanced(false)
         setSendOpen(true)
-        dispatch(fetchTerminals())
-        dispatch(fetchSchoolManagementSummary())
-        const aud = form.audience || "driver"
-        if (["driver", "parent", "vendor", "institute"].includes(aud)) {
-            dispatch(fetchRecipients(aud))
+        if (!terminals.length) {
+            dispatch(fetchTerminals())
         }
+        if (!institutes.length) {
+            dispatch(fetchSchoolManagementSummary())
+        }
+        dispatch(fetchRecipients(defaultAudience))
     }
     const handleCloseSend = () => {
         setSendOpen(false)
@@ -213,18 +224,47 @@ const Notification = () => {
     const activeList = activeTab === "sent" ? sentItems : items
     const activeLoading = activeTab === "sent" ? loadingSent : loadingList
     const emptyText = activeTab === "sent" ? "No sent notifications yet" : "No new notifications yet for you"
+    const selectedAudienceLabel = AUDIENCE_LABELS[form.audience] || form.audience
+    const canTargetSingleUser = ["driver", "parent", "vendor", "institute"].includes(form.audience)
+    const selectedRecipientName = recipients.find((recipient) => String(recipient.id) === String(form.userId))?.name || ""
+    const pillButtonSx = {
+        borderRadius: "999px",
+        boxShadow: "none",
+        borderColor: "#C01824",
+        color: "#C01824",
+        "&:hover": {
+            borderColor: "#A5121E",
+            backgroundColor: "#FDE8EA",
+        },
+    }
+    const activePillButtonSx = {
+        borderRadius: "999px",
+        boxShadow: "none",
+        backgroundColor: "#C01824",
+        color: "#FFFFFF",
+        "&:hover": {
+            backgroundColor: "#A5121E",
+        },
+    }
 
     return (
         <MainLayout>
             <section className='w-full h-full'>
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                    <VendorDashboardHeader title='Notifications' />
-                    <div className="flex items-center gap-3 pr-2">
-                        <div className="flex items-center gap-2">
+                <div className="rounded-2xl border border-[#E8E2D6] bg-white px-4 py-4 shadow-sm">
+                    <div className="flex items-start justify-between flex-wrap gap-4">
+                        <div className="min-w-0">
+                            <VendorDashboardHeader title='Notifications' />
+                            <Typography className="mt-1 text-[13px] font-medium text-[#7A7A7A]">
+                                Review inbox updates, inspect sent notifications, and compose audience-based announcements.
+                            </Typography>
+                        </div>
+                    <div className="flex items-center gap-3 pr-2 flex-wrap justify-end">
+                        <div className="flex items-center gap-2 rounded-full bg-[#F7F7F7] p-1">
                             <Button
                                 variant={activeTab === "inbox" ? "contained" : "outlined"}
                                 size="small"
                                 onClick={() => setActiveTab("inbox")}
+                                sx={{ minWidth: 88, ...(activeTab === "inbox" ? activePillButtonSx : pillButtonSx) }}
                             >
                                 Inbox{Number(unreadCount) > 0 ? ` (${Number(unreadCount)})` : ""}
                             </Button>
@@ -232,28 +272,66 @@ const Notification = () => {
                                 variant={activeTab === "sent" ? "contained" : "outlined"}
                                 size="small"
                                 onClick={() => setActiveTab("sent")}
+                                sx={{ minWidth: 76, ...(activeTab === "sent" ? activePillButtonSx : pillButtonSx) }}
                             >
                                 Sent
                             </Button>
                         </div>
                         <Button
-                            variant="contained"
+                            variant="outlined"
                             size="small"
                             disabled={loadingMarkAll || Number(unreadCount) === 0}
                             onClick={handleMarkAllRead}
+                            sx={pillButtonSx}
                         >
                             Mark all as read
                         </Button>
                         {canSend && (
-                            <Button variant="outlined" size="small" onClick={handleOpenSend}>
+                            <Button variant="contained" size="small" onClick={handleOpenSend} sx={{ ...activePillButtonSx, px: 2 }}>
                                 Send Notification
                             </Button>
                         )}
                     </div>
                 </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <div className="rounded-2xl border border-[#EFE6DA] bg-[#FCFAF6] px-4 py-3">
+                            <Typography className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9A7B59]">
+                                Inbox
+                            </Typography>
+                            <Typography className="mt-2 text-[26px] font-extrabold text-[#1F1F1F]">
+                                {Number(unreadCount)}
+                            </Typography>
+                            <Typography className="text-[13px] text-[#6B7280]">
+                                unread notifications
+                            </Typography>
+                        </div>
+                        <div className="rounded-2xl border border-[#EFE6DA] bg-white px-4 py-3">
+                            <Typography className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9A7B59]">
+                                Sent
+                            </Typography>
+                            <Typography className="mt-2 text-[26px] font-extrabold text-[#1F1F1F]">
+                                {sentItems.length}
+                            </Typography>
+                            <Typography className="text-[13px] text-[#6B7280]">
+                                cached sent items loaded
+                            </Typography>
+                        </div>
+                        <div className="rounded-2xl border border-[#EFE6DA] bg-white px-4 py-3">
+                            <Typography className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9A7B59]">
+                                Active View
+                            </Typography>
+                            <Typography className="mt-2 text-[18px] font-extrabold text-[#1F1F1F]">
+                                {activeTab === "sent" ? "Sent notifications" : "Inbox stream"}
+                            </Typography>
+                            <Typography className="text-[13px] text-[#6B7280]">
+                                {activeTab === "sent" ? "Review outbound notification history." : "Expand rows to inspect notification details."}
+                            </Typography>
+                        </div>
+                    </div>
+                </div>
 
                 {error ? (
-                    <div className="px-2 pb-2">
+                    <div className="px-2 py-3">
                         <Typography fontSize={14} fontWeight={700} className="font-Nunito Sans text-red-600">
                             {String(error)}
                         </Typography>
@@ -280,8 +358,8 @@ const Notification = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="px-2 pb-6">
-                        <div className="bg-white rounded-lg border border-[#E5E5E5] overflow-hidden">
+                    <div className="px-2 pb-6 pt-4">
+                        <div className="bg-white rounded-2xl border border-[#E5E5E5] overflow-hidden shadow-sm">
                             {(activeList || []).map((n) => {
                                 const id = n?.NotificationId ?? n?.id
                                 const title = n?.Title || n?.title || "Notification"
@@ -292,22 +370,23 @@ const Notification = () => {
                                 const typeColor = NOTIFICATION_TYPE_COLORS[notifType] || NOTIFICATION_TYPE_COLORS.default
                                 const audience = n?.audience || n?.Audience || ""
                                 const isExpanded = expandedId === id
+                                const showUnreadState = activeTab === "inbox" && !isRead
                                 return (
                                     <div
                                         key={String(id)}
-                                        className={`border-b border-[#F0F0F0] transition-colors ${!isRead ? "border-l-[3px] border-l-[#2563EB] bg-[#F8FAFF]" : ""}`}
+                                        className={`border-b border-[#F0F0F0] transition-colors ${showUnreadState ? "border-l-[4px] border-l-[#C01824] bg-[#FFF7F8]" : "bg-white"} ${isExpanded ? "bg-[#FCFCFC]" : ""}`}
                                     >
                                         <button
                                             onClick={() => handleItemClick(n)}
-                                            className="w-full text-left px-4 py-3 hover:bg-[#FAFAFA] transition-colors"
+                                            className="w-full text-left px-5 py-4 hover:bg-[#FAFAFA] transition-colors"
                                         >
                                             <div className="flex items-start justify-between gap-4">
                                                 <div className="flex flex-col gap-1 flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                        {!isRead && (
+                                                        {showUnreadState && (
                                                             <span className="inline-flex items-center justify-center w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
                                                         )}
-                                                        <Typography fontSize={15} fontWeight={isRead ? 600 : 800} className="font-Nunito Sans text-[#1F1F1F]">
+                                                        <Typography fontSize={15} fontWeight={isRead ? 700 : 800} className="font-Nunito Sans text-[#1F1F1F]">
                                                             {title}
                                                         </Typography>
                                                         {notifType && (
@@ -339,7 +418,7 @@ const Notification = () => {
                                                         )}
                                                     </div>
                                                     {!isExpanded && message ? (
-                                                        <Typography fontSize={13} fontWeight={400} className="font-Nunito Sans text-[#565656] line-clamp-1">
+                                                        <Typography fontSize={13} fontWeight={400} className="font-Nunito Sans text-[#565656] line-clamp-1 max-w-[90%]">
                                                             {message}
                                                         </Typography>
                                                     ) : null}
@@ -362,8 +441,8 @@ const Notification = () => {
                                             </div>
                                         </button>
                                         <Collapse in={isExpanded}>
-                                            <div className="px-4 pb-4 pt-1">
-                                                <div className="bg-[#F9FAFB] rounded-lg p-3 border border-[#E5E7EB]">
+                                            <div className="px-5 pb-5 pt-1">
+                                                <div className="bg-[#F9FAFB] rounded-xl p-4 border border-[#E5E7EB]">
                                                     {message ? (
                                                         <Typography fontSize={14} fontWeight={400} className="font-Nunito Sans text-[#374151] whitespace-pre-wrap">
                                                             {message}
@@ -397,15 +476,49 @@ const Notification = () => {
                     </div>
                 )}
 
-                <Dialog open={sendOpen} onClose={handleCloseSend} fullWidth maxWidth="sm">
-                    <DialogTitle>Send Notification</DialogTitle>
-                    <DialogContent sx={{ overflowX: "hidden" }}>
+                <Dialog
+                    open={sendOpen}
+                    onClose={handleCloseSend}
+                    fullWidth
+                    maxWidth="sm"
+                    PaperProps={{
+                        sx: {
+                            borderRadius: "20px",
+                            overflow: "hidden",
+                            boxShadow: "0 24px 80px rgba(15, 23, 42, 0.22)",
+                        },
+                    }}
+                >
+                    <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+                        <div>
+                            <Typography className="text-[24px] font-extrabold text-[#1F1F1F]">
+                                Send Notification
+                            </Typography>
+                            <Typography className="mt-1 text-[13px] text-[#6B7280]">
+                                Compose a broadcast or a targeted notification for a selected audience.
+                            </Typography>
+                        </div>
+                    </DialogTitle>
+                    <DialogContent sx={{ overflowX: "hidden", px: 3, pb: 1 }}>
                         <div className="flex flex-col gap-3 pt-2">
+                            <div className="rounded-2xl border border-[#E8E2D6] bg-[#FCFAF6] px-4 py-3">
+                                <Typography className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#9A7B59]">
+                                    Audience Summary
+                                </Typography>
+                                <Typography className="mt-2 text-[16px] font-extrabold text-[#1F1F1F]">
+                                    {selectedAudienceLabel}
+                                    {selectedRecipientName ? ` · ${selectedRecipientName}` : ""}
+                                </Typography>
+                                <Typography className="text-[13px] text-[#6B7280]">
+                                    {AUDIENCE_HELPERS[form.audience] || "Choose who should receive this notification."}
+                                </Typography>
+                            </div>
                             <TextField
                                 label="Title"
                                 value={form.title}
                                 onChange={(e) => updateForm("title", e.target.value)}
                                 fullWidth
+                                placeholder="e.g. Route delayed by 10 minutes"
                             />
                             <TextField
                                 label="Message"
@@ -414,6 +527,7 @@ const Notification = () => {
                                 fullWidth
                                 multiline
                                 minRows={3}
+                                placeholder="Write the notification body here..."
                             />
                             <FormControl fullWidth>
                                 <InputLabel>Audience</InputLabel>
@@ -426,6 +540,8 @@ const Notification = () => {
                                         updateForm("userId", "")
                                         if (["driver", "parent", "vendor", "institute"].includes(val)) {
                                             dispatch(fetchRecipients(val))
+                                        } else {
+                                            updateForm("userId", "")
                                         }
                                     }}
                                 >
@@ -438,7 +554,7 @@ const Notification = () => {
                                 </Select>
                             </FormControl>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <FormControl fullWidth disabled={!form.audience || ["general", "admin"].includes(form.audience)}>
+                                <FormControl fullWidth disabled={!canTargetSingleUser}>
                                     <InputLabel>User (optional)</InputLabel>
                                     <Select
                                         value={form.userId}
@@ -480,6 +596,9 @@ const Notification = () => {
                                     </Select>
                                 </FormControl>
                             </div>
+                            <Typography className="text-[12px] text-[#6B7280]">
+                                Leave `User`, `Terminal`, or `Institute` empty to broadcast within the selected scope.
+                            </Typography>
                             <FormControl fullWidth>
                                 <InputLabel>Institute (optional)</InputLabel>
                                 <Select
@@ -504,7 +623,7 @@ const Notification = () => {
                                 size="small"
                                 onClick={() => setShowAdvanced((prev) => !prev)}
                                 className="self-start"
-                                sx={{ textTransform: "none" }}
+                                sx={{ textTransform: "none", px: 0, fontWeight: 700 }}
                             >
                                 {showAdvanced ? "Hide advanced options" : "Show advanced options"}
                             </Button>
@@ -528,11 +647,12 @@ const Notification = () => {
                             </Collapse>
                         </div>
                     </DialogContent>
-                    <DialogActions>
+                    <DialogActions sx={{ px: 3, py: 2.5 }}>
                         <Button onClick={handleCloseSend} disabled={loadingSend}>Cancel</Button>
                         <Button
                             variant="contained"
                             onClick={handleSend}
+                            sx={activePillButtonSx}
                             disabled={
                                 loadingSend ||
                                 !String(form.title || "").trim() ||

@@ -18,17 +18,17 @@ export function ChatMessage({ message, isOwnMessage, showSenderName }) {
 
   return (
     <div
-      className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-3`}
+      className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-4`}
     >
       <div
-        className={`relative max-w-[70%] px-4 py-3 rounded-2xl ${
+        className={`relative w-fit max-w-[78%] px-4 py-3 rounded-2xl shadow-sm ${
           isOwnMessage
             ? "bg-[#C01824] text-white rounded-br-none"
-            : "bg-[#F9E8E9] text-[#102A43] rounded-bl-none"
+            : "bg-[#FCF4F5] text-[#102A43] rounded-bl-none border border-[#F1D9DB]"
         }`}
       >
         {showSenderName && !isOwnMessage && (
-          <p className="text-xs font-semibold mb-1 opacity-80">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] opacity-80">
             {senderName}
           </p>
         )}

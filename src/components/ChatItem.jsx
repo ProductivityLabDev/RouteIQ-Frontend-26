@@ -19,6 +19,25 @@ function getDisplayName(conversation, currentUserId) {
   return other?.name || "Unknown";
 }
 
+function getConversationMeta(conversation, currentUserId) {
+  if (conversation.type !== "GROUP") {
+    const participantType =
+      conversation.participant?.type ||
+      conversation.participants?.find((p) => p.id !== currentUserId)?.type ||
+      "";
+    return participantType ? `Direct chat - ${participantType}` : "Direct chat";
+  }
+
+  const participantNames = (conversation.participants || [])
+    .filter((participant) => participant.id !== currentUserId)
+    .map((participant) => participant.name)
+    .filter(Boolean);
+
+  if (participantNames.length === 0) return "Group chat";
+  if (participantNames.length <= 2) return `Group chat - ${participantNames.join(", ")}`;
+  return `Group chat - ${participantNames.slice(0, 2).join(", ")} +${participantNames.length - 2}`;
+}
+
 function getInitials(name) {
   return name
     ?.split(" ")
@@ -30,6 +49,7 @@ function getInitials(name) {
 
 export const ChatItem = ({ conversation, isActive, onClick, currentUserId }) => {
   const displayName = getDisplayName(conversation, currentUserId);
+  const conversationMeta = getConversationMeta(conversation, currentUserId);
   const lastMsg = conversation.lastMessage;
   // Backend may send lastMessage as string and lastMessageAt for time
   const lastContent = typeof lastMsg === "string" ? lastMsg : lastMsg?.content;
@@ -41,22 +61,29 @@ export const ChatItem = ({ conversation, isActive, onClick, currentUserId }) => 
   return (
     <div
       onClick={onClick}
-      className={`flex items-center p-3 cursor-pointer rounded-lg transition-all ${
-        isActive ? "bg-[#F9E8E9]" : "hover:bg-gray-50"
+      className={`flex items-start rounded-xl border p-3 cursor-pointer transition-all ${
+        isActive
+          ? "border-[#F3C7CB] bg-[#FFF4F5] shadow-sm"
+          : "border-transparent hover:border-[#F1E5E6] hover:bg-[#FCFAFA]"
       }`}
     >
-      <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold bg-[#C01824] text-sm">
+      <div className="mt-0.5 h-10 w-10 rounded-full flex-shrink-0 flex items-center justify-center bg-[#C01824] text-sm font-bold text-white">
         {getInitials(displayName)}
       </div>
       <div className="ml-3 flex-grow min-w-0">
         <div className="flex justify-between items-center">
-          <span className="font-semibold text-sm text-[#202224] truncate">
-            {displayName}
-          </span>
+          <div className="min-w-0 pr-2">
+            <span className="font-semibold text-sm text-[#202224] truncate block">
+              {displayName}
+            </span>
+            <span className="text-[11px] text-gray-500 truncate block">
+              {conversationMeta}
+            </span>
+          </div>
           <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{time}</span>
         </div>
-        <div className="flex justify-between items-center mt-0.5">
-          <p className="text-sm text-gray-600 truncate">
+        <div className="mt-1 flex justify-between items-start">
+          <p className="truncate pr-2 text-sm leading-5 text-gray-600">
             {lastContent || "No messages yet"}
           </p>
           {unread > 0 && (

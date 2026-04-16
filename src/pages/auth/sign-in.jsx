@@ -35,7 +35,7 @@ export function SignIn() {
     if (!token) {
       // Push a new state to prevent back navigation
       window.history.pushState(null, "", window.location.href);
-      
+
       const handlePopState = (event) => {
         // Prevent going back to previous page
         window.history.pushState(null, "", window.location.href);
@@ -139,8 +139,8 @@ export function SignIn() {
 
 
       // Extract instituteId from token (for school login)
-      const instituteId = decoded.instituteId 
-        || decoded.InstituteId 
+      const instituteId = decoded.instituteId
+        || decoded.InstituteId
         || decoded.institute_id
         || decoded.instituteID
         || decoded.InstituteID
@@ -169,7 +169,7 @@ export function SignIn() {
 
       // Store user in localStorage
       localStorage.setItem("user", JSON.stringify(realUser));
-      
+
       // Also store instituteId separately for easy access
       if (instituteId) {
         localStorage.setItem("instituteId", instituteId.toString());
@@ -215,12 +215,12 @@ export function SignIn() {
   return (
     <>
       {loading && <Loader />}
-      <section className="h-screen flex items-center justify-center bg-[url('./assets/auth-bg.png')] bg-cover bg-center bg-no-repeat px-2 md:px-4">
-        <div className="w-full max-w-[600px] mx-auto py-3 md:py-8 px-4 rounded-[10px] bg-white">
+      <section className="h-screen flex items-center justify-center bg-[url('./assets/auth-bg.png')] bg-cover bg-center bg-no-repeat px-2 md:px-4 overflow-auto">
+        <div className="w-full h-[90vh] scrollbar-hide overflow-y-auto max-w-[600px] mx-auto py-3 md:py-8 px-4 rounded-[10px] bg-white">
           <div className="mx-auto w-full max-w-[500px] pb-3">
             <img src={logo} className='w-full max-w-[180px] md:max-w-[200px] mt-3' alt="not found" />
             <Typography className="font-bold text-[24px] md:text-[32px] mt-5">Login to Account</Typography>
-            <Typography variant="paragraph" className="text-[14px] md:text-[18px] text-[#202224] font-normal">Please enter your email and password to continue</Typography>
+            <Typography variant="paragraph" className="text-[14px] md:text-[16px] text-[#202224] font-normal">Please enter your email and password to continue</Typography>
           </div>
           <form className="mt-4 mb-2 mx-auto w-full max-w-[500px]" onSubmit={handleSubmit}>
             <div className="mb-1 flex flex-col gap-5">
@@ -283,7 +283,7 @@ export function SignIn() {
                 />
                 <div className="flex justify-between items-center w-full max-w-[180px] border border-[#808080]/60 rounded-[6px] bg-[#FAFAFA]">
                   <Typography
-                    className="!border-t-blue-gray-200 select-none h-[50px] text-xl md:text-3xl font-extrabold text-black focus:!border-t-gray-900 line-through p-2"
+                    className="!border-t-blue-gray-200 select-none h-[50px] text-xl md:text-2xl font-extrabold text-black focus:!border-t-gray-900 line-through p-2"
                   >
                     {securityText}
                   </Typography>
@@ -326,7 +326,7 @@ export function SignIn() {
             </div>
 
             <Button
-              className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100"
+              className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[14px] rounded-[5px] py-4 opacity-100"
               fullWidth
               type="submit"
               disabled={loading}
@@ -334,10 +334,10 @@ export function SignIn() {
             >
               {loading ? 'Logging in...' : 'LOG IN AS A SCHOOL'}
             </Button>
-            <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleEmployeeLogin}            >
+            <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[14px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleEmployeeLogin}            >
               LOGIN AS A EMPLOYEE
             </Button>
-            <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[16px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleVendorLogin}            >
+            <Button className="mt-6 bg-[#C01824] font-normal text-[14px] md:text-[14px] rounded-[5px] py-4 opacity-100" fullWidth type="button" onClick={handleVendorLogin}            >
               LOGIN AS A VENDOR
             </Button>
           </form>

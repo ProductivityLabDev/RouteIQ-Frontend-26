@@ -41,7 +41,7 @@ export function SignInVendor() {
     if (!token) {
       // Push a new state to prevent back navigation
       window.history.pushState(null, "", window.location.href);
-      
+
       const handlePopState = (event) => {
         // Prevent going back to previous page
         window.history.pushState(null, "", window.location.href);
@@ -240,14 +240,14 @@ export function SignInVendor() {
       [name]: value
     }));
   };
- 
+
   useEffect(() => {
     const interval = setInterval(() => {
       setSecurityText(generateSecurityText());
-      setSecurityCode(''); 
-    }, 60000); 
+      setSecurityCode('');
+    }, 60000);
 
-    
+
     return () => {
       clearInterval(interval);
     };
@@ -267,7 +267,7 @@ export function SignInVendor() {
         }}
       />
       {loading && <Loader />}
-      <section className="h-screen flex items-center justify-center relative overflow-hidden bg-white">
+      <section className="h-screen flex items-center justify-center relative overflow-y-auto overflow-x-hidden bg-white">
         {/* Blurred Background Image */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"

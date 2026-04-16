@@ -68,10 +68,10 @@ export const notificationService = {
   },
 
   getRecipients: async (
-    audience: "Driver" | "Parent" | "Vendor" | "Institute"
+    audience: "driver" | "parent" | "vendor" | "institute"
   ): Promise<ApiResponse<{ id: number; name: string }[]>> => {
     const response = await apiClient.get("/notifications/recipients", {
-      params: { audience },
+      params: { audience: String(audience).toLowerCase() },
     });
     const raw = response.data;
     const recipients = Array.isArray(raw?.recipients)
