@@ -218,17 +218,18 @@ export function VendorProfile() {
     setSuccess(false);
 
     try {
+      const submittedForm = { ...form };
       const payload = {
-        fullName: form.fullName.trim() || undefined,
-        username: form.username.trim() || undefined,
-        companyName: form.companyName.trim() || undefined,
-        contactNumber: form.contactPhone.trim() || undefined,
-        officePhone: form.officePhone.trim() || undefined,
-        nameAndTitle: form.nameAndTitle.trim() || undefined,
-        address: form.address.trim() || undefined,
-        zipCode: form.zipCode.trim() || undefined,
-        stateId: toNumberValue(form.stateId),
-        cityId: toNumberValue(form.cityId),
+        fullName: submittedForm.fullName.trim() || undefined,
+        username: submittedForm.username.trim() || undefined,
+        companyName: submittedForm.companyName.trim() || undefined,
+        contactNumber: submittedForm.contactPhone.trim() || undefined,
+        officePhone: submittedForm.officePhone.trim() || undefined,
+        nameAndTitle: submittedForm.nameAndTitle.trim() || undefined,
+        address: submittedForm.address.trim() || undefined,
+        zipCode: submittedForm.zipCode.trim() || undefined,
+        stateId: toNumberValue(submittedForm.stateId),
+        cityId: toNumberValue(submittedForm.cityId),
       };
 
       const cleanPayload = Object.fromEntries(
@@ -250,25 +251,45 @@ export function VendorProfile() {
         setLogoFile(null);
       }
 
+      let latestProfileData = profileResponse?.data;
+      try {
+        const latestProfileResponse = await vendorService.getProfile();
+        latestProfileData = latestProfileResponse?.data || latestProfileData;
+      } catch (refreshError) {
+        latestProfileData = latestProfileData || {};
+      }
+
       const normalized = normalizeVendorProfile(
         {
-          ...(profileResponse?.data || {}),
+          ...(latestProfileData || {}),
+          fullName: submittedForm.fullName,
+          username: submittedForm.username,
+          companyName: submittedForm.companyName,
+          email: submittedForm.email,
+          contactNumber: submittedForm.contactPhone,
+          officePhone: submittedForm.officePhone,
+          nameAndTitle: submittedForm.nameAndTitle,
+          address: submittedForm.address,
+          zipCode: submittedForm.zipCode,
+          stateId: submittedForm.stateId,
+          cityId: submittedForm.cityId,
           logoUrl: nextLogoUrl,
         },
         {
           ...vendorUser,
-          email: form.email,
+          ...submittedForm,
+          email: submittedForm.email,
         }
       );
 
-      setForm((prev) => ({ ...prev, ...normalized, email: form.email || normalized.email }));
+      setForm((prev) => ({ ...prev, ...normalized, email: submittedForm.email || normalized.email }));
       setLogoPreview(nextLogoUrl || normalized.logoUrl || null);
 
       const nextVendorUser = {
         ...buildVendorSessionUser(
           {
             ...normalized,
-            email: form.email || normalized.email,
+            email: submittedForm.email || normalized.email,
             logoUrl: nextLogoUrl || normalized.logoUrl,
           },
           vendorUser
