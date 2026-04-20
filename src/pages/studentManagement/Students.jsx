@@ -41,41 +41,40 @@ const Students = () => {
     libraries: GOOGLE_LIBRARIES
   });
 
+  const loadStudents = async () => {
+    if (!instituteId) return;
+
+    try {
+      setLoading(true);
+      const result = await dispatch(fetchStudentsByInstitute(instituteId));
+      if (fetchStudentsByInstitute.fulfilled.match(result)) {
+        const apiStudents = result.payload || [];
+
+        const mapped = apiStudents.map((student, index) => ({
+          id: student.StudentId || index + 1,
+          studentPic: profileavatar,
+          studentName: student.StudentName || '',
+          busNo: student.BusNo || '',
+          routeNo: student.RouteNo || '',
+          grade: student.Grade || '',
+          emergencyContactName: student.EmergencyContactName || '',
+          emergencyPhone: student.EmergencyContact || '',
+          enrollment: student.Enrollment || '',
+          address: student.Address || '',
+        }));
+
+        setStudents(mapped);
+      }
+    } catch (e) {
+      toast.error('Failed to load students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // When coming from School Management with an instituteId, fetch students for that school
   useEffect(() => {
-    const loadStudents = async () => {
-      if (!instituteId) return;
-
-      try {
-        setLoading(true);
-        const result = await dispatch(fetchStudentsByInstitute(instituteId));
-        if (fetchStudentsByInstitute.fulfilled.match(result)) {
-          const apiStudents = result.payload || [];
-
-          const mapped = apiStudents.map((student, index) => ({
-            id: student.StudentId || index + 1,
-            // default human avatar icon for Photo column
-            studentPic: profileavatar,
-            studentName: student.StudentName || '',
-            busNo: student.BusNo || '',
-            routeNo: student.RouteNo || '',
-            grade: student.Grade || '',
-            emergencyContactName: student.EmergencyContactName || '',
-            emergencyPhone: student.EmergencyContact || '',
-            enrollment: student.Enrollment || '',
-            address: student.Address || '',
-          }));
-
-          setStudents(mapped);
-        }
-      } catch (e) {
-        toast.error('Failed to load students');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadStudents();
   }, [dispatch, instituteId]);
 
@@ -280,9 +279,7 @@ const menuItems = [
         studentEditData={studentEditData}
         instituteId={instituteId}
         isGoogleMapsLoaded={isGoogleMapsLoaded}
-        refreshStudents={() => {
-          // Add refresh logic here if needed
-        }}
+        refreshStudents={loadStudents}
       />
     </MainLayout>
   );

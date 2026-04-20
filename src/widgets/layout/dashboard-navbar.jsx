@@ -43,17 +43,31 @@ const SEARCH_SCOPE_BY_PATH = [
 
 const getSearchScopeFromPath = (pathname = "") => {
   const normalizedPath = String(pathname || "").toLowerCase();
+  if (normalizedPath === "/dashboard") {
+    return "vendor-dashboard";
+  }
   const matchedScope = SEARCH_SCOPE_BY_PATH.find(({ match }) =>
     match.some((prefix) => normalizedPath.startsWith(prefix))
   );
   return matchedScope?.scope || "global";
 };
 
+const getSearchScopeFamily = (scope = "global") => (
+  scope === "school-dashboard" ? "school-dashboard" : "vendor"
+);
+
+const getRecentSearchStorageKey = (scope = "global") => (
+  getSearchScopeFamily(scope) === "school-dashboard"
+    ? "schoolDashboardSearchRecent"
+    : "vendorGlobalSearchRecent"
+);
+
 const isPathAllowedInScope = (path = "", scope = "global") => {
   if (!path || scope === "global") return true;
 
   const normalizedPath = String(path).toLowerCase();
   const scopePrefixes = {
+    "vendor-dashboard": ["/dashboard", "/vendor-profile", "/vehiclemanagement", "/repair-schedule", "/reported-defects", "/notes", "/employeemanagement", "/drivermanagement", "/schoolmanagement", "/studentmanagement", "/routemanagement", "/routeschedule", "/realtimetracking", "/vendorchat", "/notification", "/accounting", "/billinginvoice", "/glcodes", "/accessmanagement", "/documents", "/feedback"],
     "school-dashboard": ["/dashboard/home", "/dashboard/manage", "/dashboard/route-schedules", "/dashboard/communication", "/dashboard/announcements", "/dashboard/trip-planner", "/dashboard/settings", "/dashboard/feedback-and-support"],
     employee: ["/employeemanagement", "/drivermanagement"],
     school: ["/schoolmanagement", "/studentmanagement"],
@@ -63,6 +77,12 @@ const isPathAllowedInScope = (path = "", scope = "global") => {
     access: ["/accessmanagement"],
     communication: ["/vendorchat", "/notification"],
   };
+
+  if (scope === "vendor-dashboard") {
+    if (normalizedPath !== "/dashboard" && normalizedPath.startsWith("/dashboard/")) {
+      return false;
+    }
+  }
 
   return (scopePrefixes[scope] || []).some((prefix) => normalizedPath.startsWith(prefix));
 };
@@ -74,14 +94,7 @@ export function DashboardNavbar({ user }) {
   const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
-  const [recentSearches, setRecentSearches] = useState(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem("vendorGlobalSearchRecent") || "[]");
-      return Array.isArray(raw) ? raw : [];
-    } catch (error) {
-      return [];
-    }
-  });
+  const [recentSearches, setRecentSearches] = useState([]);
   const searchRef = useRef(null);
   const searchInputRef = useRef(null);
   const navigate = useNavigate()
@@ -140,6 +153,10 @@ export function DashboardNavbar({ user }) {
     }
   }, [pathname]);
   const currentSearchScope = useMemo(() => getSearchScopeFromPath(pathname), [pathname]);
+  const currentRecentSearchStorageKey = useMemo(
+    () => getRecentSearchStorageKey(currentSearchScope),
+    [currentSearchScope]
+  );
   const deferredSearchValue = useDeferredValue(searchValue);
   const normalizedSearchValue = deferredSearchValue.trim().toLowerCase();
   const [vendorSearchResults, setVendorSearchResults] = useState([]);
@@ -377,8 +394,9 @@ export function DashboardNavbar({ user }) {
   const recentSearchItems = useMemo(() => (
     recentSearches
       .map((item) => searchablePages.find((link) => link.path === item.path) || item)
+      .filter((item) => isPathAllowedInScope(item.path, currentSearchScope))
       .slice(0, 5)
-  ), [recentSearches, searchablePages]);
+  ), [currentSearchScope, recentSearches, searchablePages]);
   const shortcutItems = useMemo(() => commandLinks.slice(0, 4), [commandLinks]);
   const browseItems = useMemo(() => quickLinks.slice(0, 5), [quickLinks]);
 
@@ -386,6 +404,15 @@ export function DashboardNavbar({ user }) {
     setAvatarLoaded(false);
     setAvatarFailed(false);
   }, [profileImage]);
+
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(currentRecentSearchStorageKey) || "[]");
+      setRecentSearches(Array.isArray(raw) ? raw : []);
+    } catch (error) {
+      setRecentSearches([]);
+    }
+  }, [currentRecentSearchStorageKey]);
   const idleSections = useMemo(() => {
     const sections = [];
     if (recentSearchItems.length > 0) {
@@ -545,6 +572,9 @@ export function DashboardNavbar({ user }) {
     navigate("/logout")
   };
   const rememberSearch = (item) => {
+    if (!item?.path || !isPathAllowedInScope(item.path, currentSearchScope)) {
+      return;
+    }
     const nextItem = {
       label: item.label,
       description: item.description,
@@ -552,21 +582,27 @@ export function DashboardNavbar({ user }) {
     };
     setRecentSearches((prev) => {
       const next = [nextItem, ...prev.filter((entry) => entry.path !== item.path)].slice(0, 5);
-      localStorage.setItem("vendorGlobalSearchRecent", JSON.stringify(next));
+      localStorage.setItem(currentRecentSearchStorageKey, JSON.stringify(next));
       return next;
     });
   };
   const clearRecentSearches = () => {
-    localStorage.removeItem("vendorGlobalSearchRecent");
+    localStorage.removeItem(currentRecentSearchStorageKey);
     setRecentSearches([]);
     setSelectedSearchIndex(0);
   };
   const handleQuickSearchNavigate = (path) => {
+    if (!isPathAllowedInScope(path, currentSearchScope)) {
+      return;
+    }
     setSearchOpen(false);
     setSearchValue("");
     navigate(path);
   };
   const handleSearchSelect = (item) => {
+    if (!item?.path || !isPathAllowedInScope(item.path, currentSearchScope)) {
+      return;
+    }
     rememberSearch(item);
     handleQuickSearchNavigate(item.path);
   };

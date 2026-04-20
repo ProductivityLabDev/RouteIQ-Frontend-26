@@ -2,6 +2,7 @@ import BalanceModal from '@/components/Modals/BalanceModal';
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTerminals, fetchTerminalDetail } from '@/redux/slices/payrollSlice';
+import { payrollService } from '@/services/payrollService';
 import DriverTable from './DriverTable';
 import EditTableData from './EditTableData';
 
@@ -78,8 +79,8 @@ const ToggleBar = () => {
                     const terminalId = getTerminalId(terminal);
                     if (!terminalId) return null;
                     try {
-                        const detail = await dispatch(fetchTerminalDetail({ terminalId, month, year })).unwrap();
-                        return [terminalId, derivePayrollStatus(detail, terminal)];
+                        const response = await payrollService.getTerminalDetail(terminalId, month, year);
+                        return [terminalId, derivePayrollStatus(response?.data, terminal)];
                     } catch {
                         return [terminalId, terminal?.payrollStatus || terminal?.PayrollStatus || 'Payroll In Process'];
                     }

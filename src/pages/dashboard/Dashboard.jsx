@@ -19,6 +19,30 @@ import { vendorService } from "@/services/vendorService";
 const SchoolDashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [visibleWidgets, setVisibleWidgets] = useState(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("vendorDashboardWidgets") || "null");
+      return raw || {
+        vehiclesCard: true,
+        schoolsCard: true,
+        tripsCard: true,
+        schoolsTable: true,
+        routesTable: true,
+        invoicesTable: true,
+        driversTable: true,
+      };
+    } catch (error) {
+      return {
+        vehiclesCard: true,
+        schoolsCard: true,
+        tripsCard: true,
+        schoolsTable: true,
+        routesTable: true,
+        invoicesTable: true,
+        driversTable: true,
+      };
+    }
+  });
   const dispatch = useDispatch();
   const { stats, loading } = useSelector((s) => s.vendorDashboard);
   const rawName = useSelector((s) => s.user?.user?.nameAndTitle || s.user?.user?.fullName || s.user?.user?.name || s.user?.user?.username || s.user?.user?.email || '');
@@ -42,10 +66,19 @@ const SchoolDashboard = () => {
     setIsEditing(false);
   };
 
+  const handleSaveDashboardWidgets = (nextWidgets) => {
+    setVisibleWidgets(nextWidgets);
+    localStorage.setItem("vendorDashboardWidgets", JSON.stringify(nextWidgets));
+  };
+
   return (
     <MainLayout>
       {isEditing ? (
-        <EditDashboard onBack={handleBackClick} />
+        <EditDashboard
+          onBack={handleBackClick}
+          visibleWidgets={visibleWidgets}
+          onSave={handleSaveDashboardWidgets}
+        />
       ) : (
         <div style={{ width: "100%", height: "100vh", marginTop: 12 }}>
           <div className="flex w-[98.3%] justify-between flex-row h-[65px] mb-3 items-center">
@@ -90,61 +123,71 @@ const SchoolDashboard = () => {
 
           {/* Updated Card Layout */}
           <Grid container spacing={3} mt={2} pl={3} pr={3}>
-            <Grid item xs={12} md={4}>
-              <CustomCardComponent
-                title="No. Of Vehicle"
-                value={loading.stats ? "..." : (stats?.vehicles?.total ?? "--")}
-                change={stats ? `${stats.vehicles.inactive} Vehicles Inactive` : ""}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <CustomCardComponent
-                title="No. Of Schools"
-                value={loading.stats ? "..." : (stats?.schools?.total ?? "--")}
-                change={stats ? `${stats.schools.pending} Schools Pending` : ""}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <CustomCardComponent
-                title="Total Trips"
-                value={loading.stats ? "..." : (stats?.trips?.total ?? "--")}
-                change={stats ? `${stats.trips.pending} Pending Trips` : ""}
-              />
-            </Grid>
+            {visibleWidgets.vehiclesCard && (
+              <Grid item xs={12} md={4}>
+                <CustomCardComponent
+                  title="No. Of Vehicle"
+                  value={loading.stats ? "..." : (stats?.vehicles?.total ?? "--")}
+                  change={stats ? `${stats.vehicles.inactive} Vehicles Inactive` : ""}
+                />
+              </Grid>
+            )}
+            {visibleWidgets.schoolsCard && (
+              <Grid item xs={12} md={4}>
+                <CustomCardComponent
+                  title="No. Of Schools"
+                  value={loading.stats ? "..." : (stats?.schools?.total ?? "--")}
+                  change={stats ? `${stats.schools.pending} Schools Pending` : ""}
+                />
+              </Grid>
+            )}
+            {visibleWidgets.tripsCard && (
+              <Grid item xs={12} md={4}>
+                <CustomCardComponent
+                  title="Total Trips"
+                  value={loading.stats ? "..." : (stats?.trips?.total ?? "--")}
+                  change={stats ? `${stats.trips.pending} Pending Trips` : ""}
+                />
+              </Grid>
+            )}
           </Grid>
 
           {/* Rest of the dashboard layout */}
           <Grid container spacing={3} mt={2} pl={3} pr={3}>
-            <Grid
-              item
-              xs={12}
-              sx={{
-                width: "100%",
-                display: "flex",
-                flexDirection: "row",
-                gap: 2,
-                flexWrap: "wrap",
-              }}
-            >
-              <SchoolTable />
-              <RoutesCard />
-            </Grid>
+            {(visibleWidgets.schoolsTable || visibleWidgets.routesTable) && (
+              <Grid
+                item
+                xs={12}
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "row",
+                  gap: 2,
+                  flexWrap: "wrap",
+                }}
+              >
+                {visibleWidgets.schoolsTable && <SchoolTable />}
+                {visibleWidgets.routesTable && <RoutesCard />}
+              </Grid>
+            )}
 
-            <Grid
-              item
-              xs={12}
-              sx={{
-                width: "100%",
-                display: "flex",
-                flexDirection: "row",
-                gap: 2,
-                marginBottom: 5,
-                flexWrap: "wrap",
-              }}
-            >
-              <Invoices />
-              <DriversCard />
-            </Grid>
+            {(visibleWidgets.invoicesTable || visibleWidgets.driversTable) && (
+              <Grid
+                item
+                xs={12}
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "row",
+                  gap: 2,
+                  marginBottom: 5,
+                  flexWrap: "wrap",
+                }}
+              >
+                {visibleWidgets.invoicesTable && <Invoices />}
+                {visibleWidgets.driversTable && <DriversCard />}
+              </Grid>
+            )}
           </Grid>
         </div>
       )}

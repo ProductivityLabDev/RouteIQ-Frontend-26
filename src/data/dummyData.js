@@ -9,23 +9,23 @@ export const leftColumnOptions = [
     'Routes',
     'Invoices',
     'Drivers',
-    'Total # of vehicle defects (ability to select date range)',
-    'Total number of trips to be scheduled',
-    'Total driver hrs per terminal'
+    // 'Total # of vehicle defects (ability to select date range)',
+    // 'Total number of trips to be scheduled',
+    // 'Total driver hrs per terminal'
 ];
 
 // Second column options
 export const rightColumnOptions = [
-    'Profit/Loss statement',
-    'Profit/Loss per terminal',
-    'Total accounts payable (date range)',
-    'Accounts payable per terminal (date range)',
-    'Total accounts receivable (date range)',
-    'Accounts receivable per terminal (date range)',
-    'Total Pending (quotes $)',
-    'Pending quotes (number of quotes that are:) 7 day old, 14 days old, greater than 30 days old',
-    'Total Pending (quotes $) per terminal',
-    'Total number of schedule conflicts per terminal'
+    // 'Profit/Loss statement',
+    // 'Profit/Loss per terminal',
+    // 'Total accounts payable (date range)',
+    // 'Accounts payable per terminal (date range)',
+    // 'Total accounts receivable (date range)',
+    // 'Accounts receivable per terminal (date range)',
+    // 'Total Pending (quotes $)',
+    // 'Pending quotes (number of quotes that are:) 7 day old, 14 days old, greater than 30 days old',
+    // 'Total Pending (quotes $) per terminal',
+    // 'Total number of schedule conflicts per terminal'
 ];
 
 export const columns = [

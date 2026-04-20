@@ -97,6 +97,7 @@ const Accounting = () => {
   const [createBatchInvoice, setCreateBatchInvoice] = useState(false);
   const [createInvoice, setCreateInvoice] = useState(false);
   const [highlightedTerminalId, setHighlightedTerminalId] = useState("");
+  const [selectedSchoolInvoiceIds, setSelectedSchoolInvoiceIds] = useState([]);
   const [selectedTripInvoiceIds, setSelectedTripInvoiceIds] = useState([]);
   const [activeTripTerminalId, setActiveTripTerminalId] = useState("");
   const [tripExportFormat, setTripExportFormat] = useState("pdf");
@@ -439,6 +440,11 @@ const dispatch = useDispatch();
     setSelectedInvoiceData(null);
   };
   const handleExport = () => {
+    if ((selectedTab === "School Invoices" || schoolData) && selectedSchoolInvoiceIds.length > 0) {
+      dispatch(exportSchoolInvoice({ id: selectedSchoolInvoiceIds[0], format: tripExportFormat }));
+      closeModal();
+      return;
+    }
     if (selectedTab === "Trip invoices" && selectedTripInvoiceIds.length > 0) {
       dispatch(exportTripInvoice({ id: selectedTripInvoiceIds[0], format: tripExportFormat }));
       closeModal();
@@ -585,11 +591,22 @@ const dispatch = useDispatch();
       checked ? [...new Set([...prev, invoiceId])] : prev.filter((id) => id !== invoiceId)
     );
   };
+  const handleSchoolInvoiceSelection = (invoiceId, checked) => {
+    setSelectedSchoolInvoiceIds((prev) =>
+      checked ? [...new Set([...prev, invoiceId])] : prev.filter((id) => id !== invoiceId)
+    );
+  };
   const handleTripSelectAll = (items, checked) => {
     const itemIds = items
       .map((invoice) => invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id)
       .filter(Boolean);
     setSelectedTripInvoiceIds(checked ? itemIds : []);
+  };
+  const handleSchoolSelectAll = (items, checked) => {
+    const itemIds = items
+      .map((invoice) => invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id)
+      .filter(Boolean);
+    setSelectedSchoolInvoiceIds(checked ? itemIds : []);
   };
   const submitTripInvoiceCreate = async () => {
     const normalizedLineItems = (tripInvoiceForm.lineItems || [])
@@ -836,6 +853,7 @@ const dispatch = useDispatch();
                       variant="filled"
                       size="lg"
                       onClick={openModal}
+                      disabled={selectedSchoolInvoiceIds.length === 0}
                     >
                       Export Invoice
                     </Button>
@@ -939,7 +957,16 @@ const dispatch = useDispatch();
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="p-3 border-b border-[#D9D9D9]">
-                            <input type="checkbox" className="w-4 h-4" />
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4"
+                              checked={
+                                (Array.isArray(siInvoices?.data) ? siInvoices.data : []).length > 0 &&
+                                (Array.isArray(siInvoices?.data) ? siInvoices.data : [])
+                                  .every((invoice) => selectedSchoolInvoiceIds.includes(invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id))
+                              }
+                              onChange={(e) => handleSchoolSelectAll(Array.isArray(siInvoices?.data) ? siInvoices.data : [], e.target.checked)}
+                            />
                           </th>
                           <th className="p-3 text-left font-bold text-[#141516] border-b border-[#D9D9D9]">
                             Date
@@ -980,7 +1007,12 @@ const dispatch = useDispatch();
                         {(Array.isArray(siInvoices?.data) ? siInvoices.data : []).map((invoice, index) => (
                           <tr key={invoice.invoiceId ?? index} className="bg-white">
                             <td className="p-8 border-b flex justify-center items-center border-[#D9D9D9]">
-                              <input type="checkbox" className="w-4 h-4" />
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4"
+                                checked={selectedSchoolInvoiceIds.includes(invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id)}
+                                onChange={(e) => handleSchoolInvoiceSelection(invoice.invoiceId ?? invoice.InvoiceId ?? invoice.id, e.target.checked)}
+                              />
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9] text-[#141516]">
                               {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
@@ -1004,7 +1036,7 @@ const dispatch = useDispatch();
                               {invoice.invoiceTotal != null ? `$${invoice.invoiceTotal}` : '-'}
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9]">
-                              <a className="text-[#C01824] font-bold cursor-pointer" onClick={handleInvoiceList}>View</a>
+                              <a className="text-[#C01824] font-bold cursor-pointer" onClick={() => handleInvoiceList(invoice)}>View</a>
                             </td>
                             <td className="p-3 border-b border-[#D9D9D9]">
                               <button

@@ -14,7 +14,6 @@ export const SEARCH_PAGE_LINKS = [
   { label: "Reported Defects", description: "Vehicle defect reports", path: "/reported-defects", keywords: ["defects", "issues", "damage", "problems"] },
   { label: "Vehicle Notes", description: "Vehicle notes and logs", path: "/notes", keywords: ["notes", "vehicle notes", "logs", "remarks"] },
   { label: "Employee Management", description: "Employees and roles", path: "/EmployeeManagement", keywords: ["employee", "driver", "staff", "team", "workers"] },
-  { label: "Driver Management", description: "Driver records and assignments", path: "/DriverManagement", keywords: ["driver", "chauffeur", "operator", "driver records"] },
   { label: "School Management", description: "Schools and institutes", path: "/SchoolManagement", keywords: ["school", "institute", "academy", "campus"] },
   { label: "Student Management", description: "Students and school riders", path: "/StudentManagement", keywords: ["student", "rider", "learner", "children"] },
   { label: "Route Management", description: "Routes and assignments", path: "/RouteManagement", keywords: ["route", "map", "assignment", "stops"] },

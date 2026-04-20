@@ -1,35 +1,61 @@
 import { leftColumnOptions, rightColumnOptions } from '@/data/dummyData';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
-const EditDashboard = ({ onBack }) => {
-    const [selectedOptions, setSelectedOptions] = useState({
-        'No of Vehicles': true,
-        'No of Schools': false,
-        'Total Trips': true,
-        'Schools': false,
-        'Routes': true,
-        'Invoices': false,
-        'Drivers': true,
-        'Total # of vehicle defects': false,
-        'Total number of trips to be scheduled': false,
-        'Total driver hrs per terminal': false,
-        'Profit/Loss statement': true,
-        'Profit/Loss per terminal': false,
-        'Total accounts payable (date range)': true,
-        'Accounts payable per terminal (date range)': true,
-        'Total accounts receivable (date range)': false,
-        'Accounts receivable per terminal (date range)': false,
-        'Total Pending (quotes $)': true,
-        'Pending quotes (number of quotes that are:)': true,
-        'Total Pending (quotes $) per terminal': false,
-        'Total number of schedule conflicts per terminal': false
+const OPTION_TO_WIDGET_KEY = {
+    'No of Vehicles': 'vehiclesCard',
+    'No of Schools': 'schoolsCard',
+    'Total Trips': 'tripsCard',
+    'Schools': 'schoolsTable',
+    'Routes': 'routesTable',
+    'Invoices': 'invoicesTable',
+    'Drivers': 'driversTable',
+};
+
+const DEFAULT_WIDGETS = {
+    vehiclesCard: true,
+    schoolsCard: true,
+    tripsCard: true,
+    schoolsTable: true,
+    routesTable: true,
+    invoicesTable: true,
+    driversTable: true,
+};
+
+const buildSelectedOptions = (visibleWidgets = {}) => {
+    const mergedWidgets = { ...DEFAULT_WIDGETS, ...visibleWidgets };
+    const initialSelections = {};
+
+    [...leftColumnOptions, ...rightColumnOptions].forEach((option) => {
+        const widgetKey = OPTION_TO_WIDGET_KEY[option];
+        initialSelections[option] = widgetKey ? mergedWidgets[widgetKey] !== false : false;
     });
+
+    return initialSelections;
+};
+
+const EditDashboard = ({ onBack, visibleWidgets, onSave }) => {
+    const [selectedOptions, setSelectedOptions] = useState(() => buildSelectedOptions(visibleWidgets));
+
+    const nextWidgets = useMemo(() => ({
+        vehiclesCard: selectedOptions['No of Vehicles'],
+        schoolsCard: selectedOptions['No of Schools'],
+        tripsCard: selectedOptions['Total Trips'],
+        schoolsTable: selectedOptions['Schools'],
+        routesTable: selectedOptions['Routes'],
+        invoicesTable: selectedOptions['Invoices'],
+        driversTable: selectedOptions['Drivers'],
+    }), [selectedOptions]);
 
     const handleChange = (option) => {
         setSelectedOptions({
             ...selectedOptions,
             [option]: !selectedOptions[option]
         });
+    };
+
+    const handleUpdate = () => {
+        onSave?.(nextWidgets);
+        onBack?.();
     };
 
 
@@ -97,7 +123,7 @@ const EditDashboard = ({ onBack }) => {
             <div className="mt-8 md:mt-16">
                 <button
                     className="bg-[#D21917] text-white py-2 px-8 md:py-3 md:px-12 rounded text-base md:text-lg font-[Nunito Sans]"
-                    onClick={onBack}
+                    onClick={handleUpdate}
                 >
                     Update
                 </button>
