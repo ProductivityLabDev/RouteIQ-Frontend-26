@@ -98,7 +98,6 @@ export const createUser = createAsyncThunk(
       
       const payload = {
         username: userData.username,
-        password: userData.password,
         roleCode: userData.roleCode,
         terminalIds: terminalIds,
         moduleIds: moduleIds,
@@ -149,6 +148,10 @@ export const updateUser = createAsyncThunk(
         permission: userData.permission || "",
         VendorSignupId: vendorSignupId || null,
       };
+
+      if (userData.password && String(userData.password).trim()) {
+        payload.password = userData.password;
+      }
 
       const response = await userService.updateUser(userId, payload);
       dispatch(fetchUsers());

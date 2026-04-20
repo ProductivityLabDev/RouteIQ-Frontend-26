@@ -9,6 +9,29 @@ import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import { Toaster, toast } from 'react-hot-toast';
 import { BASE_URL, API_PREFIX, getAxiosConfig, getApiUrl, setAuthTokens } from '@/configs';
+
+const getLatestVendorProfile = async (token) => {
+    const requestConfig = {
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        withCredentials: true,
+    };
+
+    try {
+        const response = await axios.get(`${BASE_URL}/vendor/profile`, requestConfig);
+        return response.data?.data ?? response.data ?? null;
+    } catch (error) {
+        const status = error?.response?.status;
+        if (status === 404 || status === 405) {
+            const response = await axios.get(`${BASE_URL}/institute/vendor/profile`, requestConfig);
+            return response.data?.data ?? response.data ?? null;
+        }
+        return null;
+    }
+};
+
 const LoginAsVendor = () => {
 
     const navigate = useNavigate();
@@ -66,8 +89,16 @@ const LoginAsVendor = () => {
                 ? "READ_WRITE"
                 : "READ_ONLY";
 
+            const profile = await getLatestVendorProfile(token);
+
             const realUser = {
-                username: decoded.username,
+                name: profile?.NameAndTitle || profile?.nameAndTitle || profile?.FullName || profile?.fullName || decoded.name || decoded.fullName || decoded.username || decoded.email,
+                fullName: profile?.FullName || profile?.fullName || profile?.NameAndTitle || profile?.nameAndTitle || "",
+                username: profile?.Username || profile?.username || decoded.username || decoded.email,
+                email: profile?.Email || profile?.email || decoded.email || decoded.username,
+                companyName: profile?.CompanyName || profile?.companyName || "",
+                nameAndTitle: profile?.NameAndTitle || profile?.nameAndTitle || "",
+                profileImage: profile?.Logo || profile?.logoUrl || profile?.LogoUrl || profile?.profileImage || profile?.ProfileImage || "",
                 role: decoded.role || "USER",
                 modules: modulesMap,
                 control: permission,

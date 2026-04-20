@@ -53,11 +53,10 @@ export const userService = {
     // Normalize response based on what backend returns
     const rawData = response.data;
     const list = Array.isArray(rawData) ? rawData : (rawData as any).data || [];
+    console.log("[AccessDebug][getUsersByVendor] vendorId:", vendorId);
+    console.log("[AccessDebug][getUsersByVendor] raw response:", rawData);
+    console.log("[AccessDebug][getUsersByVendor] normalized list length:", list.length);
 
-    console.log("GetUserCredentials vendorId:", vendorId);
-    console.log("GetUserCredentials raw response:", rawData);
-    console.log("GetUserCredentials normalized list:", list);
-    
     return {
       ok: true,
       data: list,
@@ -72,6 +71,27 @@ export const userService = {
     return {
       ok: true,
       data: response.data,
+    };
+  },
+
+  /**
+   * Fetch a single user with full access details (modules/terminals/control)
+   */
+  getUserById: async (userId: number | string): Promise<ApiResponse<User>> => {
+    const response = await apiClient.get<User | { data: User }>(`/vendor/users/${userId}`);
+    const rawData = response.data as any;
+    const data = rawData?.data ?? rawData;
+    console.log("[AccessDebug][getUserById] targetUserId:", Number(userId));
+    console.log("[AccessDebug][getUserById] raw response:", rawData);
+    console.log("[AccessDebug][getUserById] normalized user:", data);
+
+    if (!data || typeof data !== "object") {
+      throw new Error("User not found");
+    }
+
+    return {
+      ok: true,
+      data,
     };
   },
 

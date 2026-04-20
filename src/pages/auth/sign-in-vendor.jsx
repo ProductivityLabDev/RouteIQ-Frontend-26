@@ -12,6 +12,28 @@ import { Toaster, toast } from 'react-hot-toast';
 import authBg from '@/assets/authbg.png';
 import { BASE_URL, setAuthTokens } from '@/configs';
 
+const getLatestVendorProfile = async (token) => {
+  const requestConfig = {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    withCredentials: true,
+  };
+
+  try {
+    const response = await axios.get(`${BASE_URL}/vendor/profile`, requestConfig);
+    return response.data?.data ?? response.data ?? null;
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status === 404 || status === 405) {
+      const response = await axios.get(`${BASE_URL}/institute/vendor/profile`, requestConfig);
+      return response.data?.data ?? response.data ?? null;
+    }
+    return null;
+  }
+};
+
 export function SignInVendor() {
   const [activeTab, setActiveTab] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -141,10 +163,17 @@ export function SignInVendor() {
         ? "READ_WRITE"
         : "READ_ONLY";
 
+      const profile = await getLatestVendorProfile(token);
+
       // Create user object
       const realUser = {
-        name: decoded.name || decoded.fullName || decoded.firstName || decoded.username || decoded.email,
-        email: decoded.email || decoded.username,
+        name: profile?.NameAndTitle || profile?.nameAndTitle || profile?.FullName || profile?.fullName || decoded.name || decoded.fullName || decoded.firstName || decoded.username || decoded.email,
+        fullName: profile?.FullName || profile?.fullName || profile?.NameAndTitle || profile?.nameAndTitle || "",
+        username: profile?.Username || profile?.username || decoded.username || decoded.email,
+        email: profile?.Email || profile?.email || decoded.email || decoded.username,
+        companyName: profile?.CompanyName || profile?.companyName || "",
+        nameAndTitle: profile?.NameAndTitle || profile?.nameAndTitle || "",
+        profileImage: profile?.Logo || profile?.logoUrl || profile?.LogoUrl || profile?.profileImage || profile?.ProfileImage || "",
         role: decoded.role || "VENDOR",
         modules: modulesMap,
         control: permission,

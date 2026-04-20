@@ -32,6 +32,10 @@ const SchoolManagement = () => {
     dispatch(fetchSchoolManagementSummary());
   }, [dispatch]);
 
+  useEffect(() => {
+    console.log("[SchoolManagement] schoolManagementSummary raw:", schoolManagementSummary);
+  }, [schoolManagementSummary]);
+
   const handleRefreshSchools = () => {
     dispatch(fetchSchoolManagementSummary());
   };
@@ -99,6 +103,10 @@ const SchoolManagement = () => {
 
     return result;
   }, [schoolManagementSummary]);
+
+  useEffect(() => {
+    console.log("[SchoolManagement] hierarchicalData grouped:", hierarchicalData);
+  }, [hierarchicalData]);
 
   useEffect(() => {
     if (!hierarchicalData.length) return;
@@ -210,8 +218,7 @@ const useApiHierarchy = hierarchicalData.length > 0;
           hierarchicalData.map((district) => (
             <DropdownItem
               key={district.districtName}
-              // title={district.districtName}
-              title={'District'}
+              title={district.districtName}
               isOpen={openDistricts[district.districtName] || false}
               onToggle={() =>
                 setOpenDistricts((prev) => ({

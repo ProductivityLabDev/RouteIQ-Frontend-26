@@ -1,5 +1,13 @@
 export const SEARCH_PAGE_LINKS = [
   { label: "Dashboard", description: "Vendor dashboard overview", path: "/dashboard", keywords: ["home", "overview", "stats", "main"] },
+  { label: "Dashboard Home", description: "School dashboard home overview", path: "/dashboard/home", keywords: ["home", "school dashboard", "overview", "main"] },
+  { label: "Manage", description: "Manage students and drivers", path: "/dashboard/manage", keywords: ["manage", "students", "drivers", "school manage"] },
+  { label: "Route Schedules", description: "School route schedules", path: "/dashboard/route-schedules", keywords: ["route schedules", "routes", "schedule", "stops"] },
+  { label: "Communication", description: "School communication center", path: "/dashboard/communication", keywords: ["communication", "messages", "chat", "school communication"] },
+  { label: "Announcements", description: "School announcements board", path: "/dashboard/announcements", keywords: ["announcements", "notices", "updates"] },
+  { label: "Trip Planner", description: "School trip planner", path: "/dashboard/trip-planner", keywords: ["trip planner", "trips", "planning", "route planning"] },
+  { label: "Dashboard Settings", description: "School dashboard settings", path: "/dashboard/settings", keywords: ["settings", "preferences", "configuration"] },
+  { label: "Feedback and Support", description: "School dashboard feedback support center", path: "/dashboard/feedback-and-support", keywords: ["feedback support", "help center", "support center"] },
   { label: "Edit Profile", description: "Vendor profile settings", path: "/vendor-profile", keywords: ["profile", "account", "company", "settings", "vendor details"] },
   { label: "Vehicle Management", description: "Vehicles and maintenance", path: "/vehicleManagement", keywords: ["vehicle", "bus", "fleet", "maintenance", "garage"] },
   { label: "Repair Schedule", description: "Vehicle repairs and service schedule", path: "/repair-schedule", keywords: ["repair", "service", "maintenance", "workshop"] },
@@ -19,8 +27,6 @@ export const SEARCH_PAGE_LINKS = [
   { label: "Access Management", description: "Users and permissions", path: "/accessManagement", keywords: ["access", "permissions", "roles", "users"] },
   { label: "Documents", description: "Corporate and training documents", path: "/documents", keywords: ["documents", "files", "paperwork", "training"] },
   { label: "Feedback", description: "Vendor feedback and support", path: "/feedback", keywords: ["feedback", "support", "help", "complaint"] },
-  { label: "Settings", description: "Dashboard settings and profile links", path: "/dashboard/settings", keywords: ["settings", "preferences", "configuration"] },
-  { label: "Feedback and Support", description: "Dashboard feedback support center", path: "/dashboard/feedback-and-support", keywords: ["feedback support", "help center", "support center"] },
   { label: "Notifications", description: "Unread alerts and updates", path: "/notification", keywords: ["notifications", "alerts", "updates", "bell"] },
 ];
 

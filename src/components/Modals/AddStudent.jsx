@@ -48,8 +48,7 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                 address: "",
                 guardian1: "",
                 guardian2: "",
-                guardianEmail: "",
-                busNo: ""
+                guardianEmail: ""
             });
             // Reset autocomplete instances
             setAutocompletePickup(null);
@@ -96,8 +95,7 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
         address: "",
         guardian1: "" ,
         guardian2: "" ,
-        guardianEmail: "",
-        busNo: ""
+        guardianEmail: ""
     });
 
     // Google Places Autocomplete handlers
@@ -238,8 +236,7 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                     address: "",
                     guardian1: "",
                     guardian2: "",
-                    guardianEmail: "",
-                    busNo: ""
+                    guardianEmail: ""
                 });
 
                 // Refresh students list if callback provided
@@ -386,17 +383,6 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
                                     placeholder="Guardian one"
                                     className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                                 />
-                                <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
-                                    Bus No
-                                </Typography>
-                                <input
-                                    type="text"
-                                    name="busNo"
-                                    value={formData.busNo}
-                                    onChange={handleChange}
-                                    placeholder="Bus number"
-                                    className="outline-none border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
-                                />
                             </div>
                             <div className="mb-1 flex flex-col gap-5 w-full">
                                 <Typography variant="paragraph" className="-mb-3 text-[#2C2F32] text-[14px] font-bold">
@@ -533,4 +519,3 @@ export function AddStudent({ open, handleOpen, refreshStudents }) {
         </div>
     )
 }
-

@@ -42,7 +42,7 @@ const normalizeVendorProfile = (profile, fallbackUser = {}) => {
 
   return {
     fullName: toStringValue(
-      pickFirst(profile?.fullName, profile?.FullName, profile?.name, fallbackUser?.name, fallbackUser?.fullName)
+      pickFirst(profile?.fullName, profile?.FullName, profile?.name, profile?.NameAndTitle, fallbackUser?.name, fallbackUser?.fullName)
     ),
     username: toStringValue(
       pickFirst(profile?.username, profile?.Username, fallbackUser?.username, fallbackUser?.email)
@@ -71,15 +71,34 @@ const normalizeVendorProfile = (profile, fallbackUser = {}) => {
       pickFirst(profile?.zipCode, profile?.ZipCode, addressData?.zipCode, addressData?.ZipCode, fallbackUser?.zipCode)
     ),
     logoUrl: toStringValue(
-      pickFirst(profile?.logoUrl, profile?.LogoUrl, profile?.profileImage, profile?.ProfileImage, fallbackUser?.profileImage)
+      pickFirst(profile?.logoUrl, profile?.LogoUrl, profile?.Logo, profile?.profileImage, profile?.ProfileImage, fallbackUser?.profileImage, fallbackUser?.logoUrl, fallbackUser?.Logo)
     ),
   };
 };
+
+const buildVendorSessionUser = (normalized, fallbackUser = {}) => ({
+  ...(fallbackUser || {}),
+  name: normalized.nameAndTitle || normalized.fullName || fallbackUser?.name || "",
+  fullName: normalized.fullName || fallbackUser?.fullName || "",
+  username: normalized.username || fallbackUser?.username || "",
+  email: normalized.email || fallbackUser?.email || "",
+  companyName: normalized.companyName || fallbackUser?.companyName || "",
+  contactPhone: normalized.contactPhone || fallbackUser?.contactPhone || "",
+  officePhone: normalized.officePhone || fallbackUser?.officePhone || "",
+  nameAndTitle: normalized.nameAndTitle || fallbackUser?.nameAndTitle || "",
+  address: normalized.address || fallbackUser?.address || "",
+  stateId: normalized.stateId || fallbackUser?.stateId || "",
+  cityId: normalized.cityId || fallbackUser?.cityId || "",
+  zipCode: normalized.zipCode || fallbackUser?.zipCode || "",
+  profileImage: normalized.logoUrl || fallbackUser?.profileImage || "",
+  logoUrl: normalized.logoUrl || fallbackUser?.logoUrl || "",
+});
 
 export function VendorProfile() {
   const dispatch = useDispatch();
   const loggedInUser = useSelector((state) => state.user?.user);
   const vendorUser = useMemo(() => loggedInUser || readJson("vendor") || {}, [loggedInUser]);
+  const profileBootstrapUserRef = useRef(vendorUser);
   const cityRef = useRef(null);
 
   const [logoPreview, setLogoPreview] = useState(null);
@@ -121,14 +140,15 @@ export function VendorProfile() {
 
   useEffect(() => {
     const loadProfile = async () => {
+      const bootstrapUser = profileBootstrapUserRef.current || {};
       try {
         setLoadingProfile(true);
         const response = await vendorService.getProfile();
-        const normalized = normalizeVendorProfile(response?.data, vendorUser);
+        const normalized = normalizeVendorProfile(response?.data, bootstrapUser);
         setForm((prev) => ({ ...prev, ...normalized }));
         setLogoPreview(normalized.logoUrl || null);
       } catch (loadError) {
-        const fallbackProfile = normalizeVendorProfile({}, vendorUser);
+        const fallbackProfile = normalizeVendorProfile({}, bootstrapUser);
         setForm((prev) => ({ ...prev, ...fallbackProfile }));
         setLogoPreview(fallbackProfile.logoUrl || null);
         setError(loadError?.response?.data?.message || "Failed to load vendor profile.");
@@ -138,7 +158,7 @@ export function VendorProfile() {
     };
 
     loadProfile();
-  }, [vendorUser]);
+  }, [dispatch]);
 
   useEffect(() => {
     const loadStates = async () => {
@@ -245,21 +265,15 @@ export function VendorProfile() {
       setLogoPreview(nextLogoUrl || normalized.logoUrl || null);
 
       const nextVendorUser = {
-        ...(vendorUser || {}),
-        name: normalized.fullName || vendorUser?.name || "",
-        fullName: normalized.fullName || vendorUser?.fullName || "",
-        username: normalized.username || vendorUser?.username || "",
-        email: form.email || vendorUser?.email || "",
-        companyName: normalized.companyName,
-        contactPhone: normalized.contactPhone,
-        officePhone: normalized.officePhone,
-        nameAndTitle: normalized.nameAndTitle,
-        address: normalized.address,
-        stateId: normalized.stateId,
-        cityId: normalized.cityId,
+        ...buildVendorSessionUser(
+          {
+            ...normalized,
+            email: form.email || normalized.email,
+            logoUrl: nextLogoUrl || normalized.logoUrl,
+          },
+          vendorUser
+        ),
         cityName: getCityName(normalized.cityId),
-        zipCode: normalized.zipCode,
-        profileImage: nextLogoUrl || normalized.logoUrl || vendorUser?.profileImage || "",
       };
 
       localStorage.setItem("vendor", JSON.stringify(nextVendorUser));
@@ -327,7 +341,7 @@ export function VendorProfile() {
                 />
               </div>
               <div>
-                <div className="text-[17px] font-bold">{form.fullName || "Vendor Profile"}</div>
+                <div className="text-[17px] font-bold">{form.nameAndTitle || form.fullName || form.username || "Vendor Profile"}</div>
                 <div className="mt-1 text-[13px] text-white/80">{form.companyName || "Add company details"}</div>
                 <div className="mt-3 inline-flex rounded-full border border-white/20 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">
                   Upload new photo

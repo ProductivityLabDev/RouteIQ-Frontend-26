@@ -21,7 +21,7 @@ const SchoolDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const dispatch = useDispatch();
   const { stats, loading } = useSelector((s) => s.vendorDashboard);
-  const rawName = useSelector((s) => s.user?.user?.name || s.user?.user?.email || '');
+  const rawName = useSelector((s) => s.user?.user?.nameAndTitle || s.user?.user?.fullName || s.user?.user?.name || s.user?.user?.username || s.user?.user?.email || '');
   const vendorName = rawName.includes('@')
     ? rawName.split('@')[0].split('.')[0].replace(/^\w/, (c) => c.toUpperCase())
     : rawName;

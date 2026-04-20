@@ -5,6 +5,7 @@ import { createUser, updateUser } from "@/redux/slices/usersSlice";
 import { toast } from 'react-hot-toast';
 import axios from "axios";
 import { BASE_URL, getAxiosConfig } from "@/configs/api";
+import { userService } from "@/services/userService";
 
 const DEPARTMENTS = ["Vehicle", "Employee", "School", "Route", "Tracking", "Scheduling", "Chats", "Accounting"];
 const MODULE_ID_TO_NAME = {
@@ -16,6 +17,30 @@ const MODULE_ID_TO_NAME = {
     6: "SCHEDULING",
     7: "CHATS",
     8: "ACCOUNTING",
+};
+const MODULE_NAME_ALIASES = {
+    "VEHICLE MANAGEMENT": "VEHICLE",
+    VEHICLES: "VEHICLE",
+    "EMPLOYEE MANAGEMENT": "EMPLOYEE",
+    EMPLOYEES: "EMPLOYEE",
+    DRIVER: "EMPLOYEE",
+    DRIVERS: "EMPLOYEE",
+    "SCHOOL MANAGEMENT": "SCHOOL",
+    SCHOOLS: "SCHOOL",
+    STUDENT: "SCHOOL",
+    STUDENTS: "SCHOOL",
+    "ROUTE MANAGEMENT": "ROUTE",
+    ROUTES: "ROUTE",
+    TRACKING: "TRACKING",
+    "REAL TIME TRACKING": "TRACKING",
+    "REAL-TIME TRACKING": "TRACKING",
+    SCHEDULING: "SCHEDULING",
+    SCHEDULES: "SCHEDULING",
+    CHAT: "CHATS",
+    CHATS: "CHATS",
+    COMMUNICATION: "CHATS",
+    ACCOUNTING: "ACCOUNTING",
+    INVOICES: "ACCOUNTING",
 };
 
 const INITIAL_FORM = {
@@ -31,6 +56,12 @@ const INITIAL_FORM = {
     permission: "",
 };
 
+const getPermissionLabelFromControl = (controlValue) =>
+    controlValue === "READ_WRITE" ? "Read & Write" : "Read Only";
+
+const getControlFromPermissionLabel = (permissionValue) =>
+    permissionValue === "Read & Write" ? "READ_WRITE" : "READ_ONLY";
+
 /**
  * @type {React.FC<import('@/pages/accessManagement/AccessManagement').CreateAccessCardProps>}
  */
@@ -42,6 +73,8 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
     const [roles, setRoles] = useState([]);
     const [terminal, setTerminal] = useState([]);
     const [loadingDropdowns, setLoadingDropdowns] = useState(true);
+    const [loadingEditDetails, setLoadingEditDetails] = useState(false);
+    const [resolvedEditUser, setResolvedEditUser] = useState(editUser || null);
     const [formData, setFormData] = useState(INITIAL_FORM);
 
     const token = localStorage.getItem("token");
@@ -90,11 +123,14 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                 if (typeof module === "string") {
                     const normalized = module.toUpperCase().trim();
                     if (MODULE_ID_TO_NAME[Number(normalized)]) return MODULE_ID_TO_NAME[Number(normalized)];
-                    return normalized;
+                    return MODULE_NAME_ALIASES[normalized] || normalized;
                 }
                 if (module && typeof module === "object") {
                     const candidateName = module.name || module.Name || module.code || module.Code || module.moduleName || module.ModuleName;
-                    if (typeof candidateName === "string") return candidateName.toUpperCase().trim();
+                    if (typeof candidateName === "string") {
+                        const normalizedName = candidateName.toUpperCase().trim();
+                        return MODULE_NAME_ALIASES[normalizedName] || normalizedName;
+                    }
                     const candidateId = Number(module.id || module.Id || module.moduleId || module.ModuleId);
                     if (!Number.isNaN(candidateId)) return MODULE_ID_TO_NAME[candidateId] || null;
                 }
@@ -124,6 +160,11 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
             .filter((value) => value !== null);
     };
 
+    const getUserId = (user) => {
+        if (!user || typeof user !== "object") return null;
+        return user.Id || user.id || user.UserId || user.userId || user.ID || user._id || null;
+    };
+
     const resolveRoleCode = (user) => {
         const directRoleCode = user.RoleCode || user.roleCode || user.Role?.code;
         if (directRoleCode) return directRoleCode;
@@ -137,40 +178,110 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
         return matchedRole?.code || "";
     };
 
+    useEffect(() => {
+        let isMounted = true;
+
+        const hydrateEditUser = async () => {
+            if (!editUser) {
+                if (isMounted) {
+                    setResolvedEditUser(null);
+                }
+                return;
+            }
+
+            if (isMounted) {
+                setResolvedEditUser(null);
+            }
+            console.log("[AccessDebug][CreateAccessCard] incoming editUser:", editUser);
+
+            const userId = getUserId(editUser);
+            if (!userId) {
+                return;
+            }
+
+            try {
+                if (isMounted) setLoadingEditDetails(true);
+                console.log("[AccessDebug][CreateAccessCard] fetching full user details for id:", userId);
+                const response = await userService.getUserById(userId);
+                const detailedUser = response?.data;
+
+                if (isMounted && detailedUser) {
+                    console.log("[AccessDebug][CreateAccessCard] fetched detailed user:", detailedUser);
+                    setResolvedEditUser({ ...editUser, ...detailedUser });
+                }
+            } catch (error) {
+                console.log("[AccessDebug][CreateAccessCard] detail fetch failed, using list item only:", error);
+                if (isMounted) {
+                    // Keep fallback behavior instead of blocking edit if details API fails
+                    setResolvedEditUser(editUser);
+                }
+            } finally {
+                if (isMounted) setLoadingEditDetails(false);
+            }
+        };
+
+        hydrateEditUser();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [editUser]);
+
     // ── Populate form in edit mode ───────────────────────────────────────────
     useEffect(() => {
-        if (editUser) {
-            const rawModules = Array.isArray(editUser.Modules)
-                ? editUser.Modules
-                : Array.isArray(editUser.modules)
-                    ? editUser.modules
+        if (resolvedEditUser) {
+            const rawModules = Array.isArray(resolvedEditUser.Modules)
+                ? resolvedEditUser.Modules
+                : Array.isArray(resolvedEditUser.modules)
+                    ? resolvedEditUser.modules
+                    : Array.isArray(resolvedEditUser.ModuleIds)
+                        ? resolvedEditUser.ModuleIds
+                        : Array.isArray(resolvedEditUser.moduleIds)
+                            ? resolvedEditUser.moduleIds
                     : [];
             const rawTerminalIds =
-                editUser.TerminalIds ||
-                editUser.terminalIds ||
-                editUser.TerminalId ||
-                editUser.terminalId ||
-                editUser.Terminal ||
-                editUser.terminal ||
+                resolvedEditUser.TerminalIds ||
+                resolvedEditUser.terminalIds ||
+                resolvedEditUser.terminals ||
+                resolvedEditUser.Terminals ||
+                resolvedEditUser.TerminalId ||
+                resolvedEditUser.terminalId ||
+                resolvedEditUser.Terminal ||
+                resolvedEditUser.terminal ||
                 [];
-            const controlValue = editUser.Control || editUser.control || "READ_ONLY";
+            const controlValue = resolvedEditUser.Control || resolvedEditUser.control || "READ_ONLY";
 
             setFormData({
-                username:    editUser.Username    || editUser.username    || "",
+                username:    resolvedEditUser.Username    || resolvedEditUser.username    || "",
                 password:    "",
-                email:       editUser.Email       || editUser.email       || "",
-                phoneNumber: editUser.PhoneNumber || editUser.phoneNumber || editUser.Phone || editUser.phone || editUser.ContactNumber || "",
-                roleCode:    resolveRoleCode(editUser),
+                email:       resolvedEditUser.Email       || resolvedEditUser.email       || "",
+                phoneNumber: resolvedEditUser.PhoneNumber || resolvedEditUser.phoneNumber || resolvedEditUser.Phone || resolvedEditUser.phone || resolvedEditUser.ContactNumber || "",
+                roleCode:    resolveRoleCode(resolvedEditUser),
                 control:     controlValue,
                 modules: normalizeModules(rawModules),
                 terminalIds: normalizeTerminalIds(rawTerminalIds),
                 department:  "",
-                permission:  controlValue === "READ_WRITE" ? "Read & Write" : "Read Only",
+                permission:  getPermissionLabelFromControl(controlValue),
+            });
+            console.log("[AccessDebug][CreateAccessCard] form prefill payload:", {
+                roleCode: resolveRoleCode(resolvedEditUser),
+                modules: normalizeModules(rawModules),
+                terminalIds: normalizeTerminalIds(rawTerminalIds),
+                control: controlValue,
+                username: resolvedEditUser.Username || resolvedEditUser.username || "",
+                email: resolvedEditUser.Email || resolvedEditUser.email || "",
+                phoneNumber:
+                    resolvedEditUser.PhoneNumber ||
+                    resolvedEditUser.phoneNumber ||
+                    resolvedEditUser.Phone ||
+                    resolvedEditUser.phone ||
+                    resolvedEditUser.ContactNumber ||
+                    "",
             });
         } else {
             setFormData(INITIAL_FORM);
         }
-    }, [editUser, roles, terminal]);
+    }, [resolvedEditUser, roles, terminal]);
 
     // ── Validation ───────────────────────────────────────────────────────────
     const validateForm = () => {
@@ -222,6 +333,25 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        if (name === "permission") {
+            const nextControl = getControlFromPermissionLabel(value);
+            setFormData((prev) => ({
+                ...prev,
+                permission: value,
+                control: nextControl,
+            }));
+            return;
+        }
+
+        if (name === "control") {
+            setFormData((prev) => ({
+                ...prev,
+                control: value,
+                permission: getPermissionLabelFromControl(value),
+            }));
+            return;
+        }
+
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
@@ -242,6 +372,14 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
             </h2>
 
             <div className="bg-white rounded-lg shadow-sm p-6 w-full h-full max-h-[700px] overflow-y-auto">
+                {isEditMode && loadingEditDetails && !resolvedEditUser ? (
+                    <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
+                        <div className="mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[#F3D3D6] border-t-[#C01824]" />
+                        <p className="text-[18px] font-semibold text-[#202224]">Loading access details...</p>
+                        <p className="mt-2 text-sm text-[#667085]">Please wait while the latest user data is loaded.</p>
+                    </div>
+                ) : (
+                <>
 
                 {/* Basic Info */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
@@ -421,11 +559,17 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                         className="bg-[#C01824] px-12 py-2 capitalize text-sm md:text-[16px] font-normal flex items-center disabled:opacity-50"
                         variant="filled"
                         onClick={handleSave}
-                        disabled={isEditMode ? updating : creating}
+                        disabled={loadingEditDetails || (isEditMode ? updating : creating)}
                     >
-                        {isEditMode ? (updating ? "Updating..." : "Update") : (creating ? "Creating..." : "Save")}
+                        {loadingEditDetails
+                            ? "Loading..."
+                            : isEditMode
+                            ? (updating ? "Updating..." : "Update")
+                            : (creating ? "Creating..." : "Save")}
                     </Button>
                 </div>
+                </>
+                )}
             </div>
         </>
     );

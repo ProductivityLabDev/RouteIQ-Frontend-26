@@ -1,10 +1,25 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+const getBootstrappedUser = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawUser = localStorage.getItem("vendor");
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+const bootstrappedUser = getBootstrappedUser();
+
 const initialState = {
-  user: null,         // full user object from backend
-  token: null,        // auth token
-  permission: null,   // "READ_ONLY" or "READ_WRITE"
-  modules: [],        // e.g. ["VEHICLE", "ROUTE"]
+  user: bootstrappedUser, // full user object from backend
+  token: null, // auth token
+  permission: bootstrappedUser?.control || null, // "READ_ONLY" or "READ_WRITE"
+  modules: bootstrappedUser?.modules || [], // e.g. ["VEHICLE", "ROUTE"]
 };
 
 const userSlice = createSlice({

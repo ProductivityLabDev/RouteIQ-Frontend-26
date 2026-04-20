@@ -30,11 +30,50 @@ import { fetchTripInvoices } from "@/redux/slices/tripInvoicesSlice";
 import { SEARCH_COMMAND_LINKS, SEARCH_PAGE_LINKS, createFocusPath, scoreSearchItem } from "@/utils/globalSearch";
 import { vendorService } from "@/services/vendorService";
 
+const SEARCH_SCOPE_BY_PATH = [
+  { scope: "school-dashboard", match: ["/dashboard/home", "/dashboard/manage", "/dashboard/route-schedules", "/dashboard/communication", "/dashboard/announcements", "/dashboard/trip-planner", "/dashboard/settings", "/dashboard/feedback-and-support"] },
+  { scope: "employee", match: ["/employeemanagement", "/drivermanagement"] },
+  { scope: "school", match: ["/schoolmanagement", "/studentmanagement"] },
+  { scope: "vehicle", match: ["/vehiclemanagement", "/repair-schedule", "/reported-defects", "/notes"] },
+  { scope: "route", match: ["/routemanagement", "/routeschedule", "/realtimetracking"] },
+  { scope: "accounting", match: ["/accounting", "/billinginvoice", "/glcodes"] },
+  { scope: "access", match: ["/accessmanagement"] },
+  { scope: "communication", match: ["/vendorchat", "/notification"] },
+];
+
+const getSearchScopeFromPath = (pathname = "") => {
+  const normalizedPath = String(pathname || "").toLowerCase();
+  const matchedScope = SEARCH_SCOPE_BY_PATH.find(({ match }) =>
+    match.some((prefix) => normalizedPath.startsWith(prefix))
+  );
+  return matchedScope?.scope || "global";
+};
+
+const isPathAllowedInScope = (path = "", scope = "global") => {
+  if (!path || scope === "global") return true;
+
+  const normalizedPath = String(path).toLowerCase();
+  const scopePrefixes = {
+    "school-dashboard": ["/dashboard/home", "/dashboard/manage", "/dashboard/route-schedules", "/dashboard/communication", "/dashboard/announcements", "/dashboard/trip-planner", "/dashboard/settings", "/dashboard/feedback-and-support"],
+    employee: ["/employeemanagement", "/drivermanagement"],
+    school: ["/schoolmanagement", "/studentmanagement"],
+    vehicle: ["/vehiclemanagement", "/repair-schedule", "/reported-defects", "/notes"],
+    route: ["/routemanagement", "/routeschedule", "/realtimetracking"],
+    accounting: ["/accounting", "/billinginvoice", "/glcodes"],
+    access: ["/accessmanagement"],
+    communication: ["/vendorchat", "/notification"],
+  };
+
+  return (scopePrefixes[scope] || []).some((prefix) => normalizedPath.startsWith(prefix));
+};
+
 export function DashboardNavbar({ user }) {
   const [controller, dispatch] = useMaterialTailwindController();
   const [searchValue, setSearchValue] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [recentSearches, setRecentSearches] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem("vendorGlobalSearchRecent") || "[]");
@@ -68,6 +107,9 @@ export function DashboardNavbar({ user }) {
 
   const dispatchUser = useDispatch();
   const { user: loggedInUser } = useSelector((state) => state.user);
+  const displayName = loggedInUser?.nameAndTitle || loggedInUser?.fullName || loggedInUser?.name || loggedInUser?.username || "Guest User";
+  const profileImage = loggedInUser?.profileImage || loggedInUser?.logoUrl || loggedInUser?.Logo || profileavatar;
+  const profileInitial = String(displayName || "G").trim().charAt(0).toUpperCase() || "G";
   const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0);
   const buses = useSelector((state) => state.buses?.buses || []);
   const busTerminals = useSelector((state) => state.buses?.terminals || []);
@@ -97,6 +139,7 @@ export function DashboardNavbar({ user }) {
       return null;
     }
   }, [pathname]);
+  const currentSearchScope = useMemo(() => getSearchScopeFromPath(pathname), [pathname]);
   const deferredSearchValue = useDeferredValue(searchValue);
   const normalizedSearchValue = deferredSearchValue.trim().toLowerCase();
   const [vendorSearchResults, setVendorSearchResults] = useState([]);
@@ -142,24 +185,17 @@ export function DashboardNavbar({ user }) {
     }
 
     if (["route", "routes"].includes(resultType)) {
-      return {
-        id: `vendor-search-route-${resultId}`,
-        label,
-        description,
-        meta: "Route",
-        path: "/RouteManagement",
-        keywords: [item?.type, item?.subLabel],
-      };
-    }
-
     return {
-      id: `vendor-search-record-${resultId}`,
+      id: `vendor-search-route-${resultId}`,
       label,
       description,
-      meta: item?.type || "Record",
-      path: "/dashboard",
+      meta: "Route",
+      path: "/RouteManagement",
       keywords: [item?.type, item?.subLabel],
     };
+  }
+
+    return null;
   };
   const highlightMatch = (text, query) => {
     const source = String(text || "");
@@ -180,8 +216,14 @@ export function DashboardNavbar({ user }) {
       </>
     );
   };
-  const quickLinks = useMemo(() => SEARCH_PAGE_LINKS, []);
-  const commandLinks = useMemo(() => SEARCH_COMMAND_LINKS, []);
+  const quickLinks = useMemo(
+    () => SEARCH_PAGE_LINKS.filter((item) => isPathAllowedInScope(item.path, currentSearchScope)),
+    [currentSearchScope]
+  );
+  const commandLinks = useMemo(
+    () => SEARCH_COMMAND_LINKS.filter((item) => isPathAllowedInScope(item.path, currentSearchScope)),
+    [currentSearchScope]
+  );
   const searchablePages = useMemo(() => [...quickLinks, ...commandLinks], [quickLinks, commandLinks]);
   const filteredQuickLinks = useMemo(() => {
     const query = normalizedSearchValue;
@@ -310,8 +352,8 @@ export function DashboardNavbar({ user }) {
       ...terminalItems,
       ...schoolInvoiceItems,
       ...tripInvoiceItems,
-    ];
-  }, [buses, busTerminals, loggedInUser, normalizedSearchValue, schoolInvoices, tripInvoices, vendorSearchResults]);
+    ].filter((item) => isPathAllowedInScope(item.path, currentSearchScope));
+  }, [buses, busTerminals, currentSearchScope, loggedInUser, normalizedSearchValue, schoolInvoices, tripInvoices, vendorSearchResults]);
   const filteredDataItems = useMemo(() => {
     const query = normalizedSearchValue;
     if (!query) return [];
@@ -339,6 +381,11 @@ export function DashboardNavbar({ user }) {
   ), [recentSearches, searchablePages]);
   const shortcutItems = useMemo(() => commandLinks.slice(0, 4), [commandLinks]);
   const browseItems = useMemo(() => quickLinks.slice(0, 5), [quickLinks]);
+
+  useEffect(() => {
+    setAvatarLoaded(false);
+    setAvatarFailed(false);
+  }, [profileImage]);
   const idleSections = useMemo(() => {
     const sections = [];
     if (recentSearchItems.length > 0) {
@@ -388,7 +435,14 @@ export function DashboardNavbar({ user }) {
     if (!searchOpen) return;
 
     const query = normalizedSearchValue;
+    const allowVendorApiSearch = currentSearchScope === "global" || currentSearchScope === "employee" || currentSearchScope === "school" || currentSearchScope === "vehicle" || currentSearchScope === "route";
     if (query.length < 2) {
+      setVendorSearchResults([]);
+      setVendorSearchLoading(false);
+      return;
+    }
+
+    if (!allowVendorApiSearch) {
       setVendorSearchResults([]);
       setVendorSearchLoading(false);
       return;
@@ -402,7 +456,11 @@ export function DashboardNavbar({ user }) {
         const response = await vendorService.search(query);
         if (ignore) return;
         const rows = Array.isArray(response?.data) ? response.data : [];
-        setVendorSearchResults(rows.map((item, index) => mapVendorSearchResult(item, index)));
+        const mappedRows = rows
+          .map((item, index) => mapVendorSearchResult(item, index))
+          .filter(Boolean)
+          .filter((item) => isPathAllowedInScope(item.path, currentSearchScope));
+        setVendorSearchResults(mappedRows);
       } catch (error) {
         if (!ignore) {
           setVendorSearchResults([]);
@@ -418,7 +476,7 @@ export function DashboardNavbar({ user }) {
       ignore = true;
       window.clearTimeout(timer);
     };
-  }, [normalizedSearchValue, searchOpen]);
+  }, [currentSearchScope, normalizedSearchValue, searchOpen]);
 
   useEffect(() => {
     const handleOutside = (event) => {
@@ -435,20 +493,22 @@ export function DashboardNavbar({ user }) {
     const query = normalizedSearchValue;
     if (!query) return;
 
+    const allowVehicles = currentSearchScope === "global" || currentSearchScope === "vehicle";
+    const allowAccounting = currentSearchScope === "global" || currentSearchScope === "accounting";
     const wantsVehicles = ["bus", "vehicle", "fleet", "plate", "garage", "repair", "defect"].some((term) => query.includes(term));
     const wantsTerminals = ["terminal", "route", "stop", "schedule"].some((term) => query.includes(term));
     const wantsInvoices = ["invoice", "billing", "account", "payable", "receivable", "kpi", "balance", "income", "report", "trip"].some((term) => query.includes(term));
 
-    if (query.length >= 2 && (!Array.isArray(buses) || buses.length === 0) && !busesLoading.buses && wantsVehicles) {
+    if (allowVehicles && query.length >= 2 && (!Array.isArray(buses) || buses.length === 0) && !busesLoading.buses && wantsVehicles) {
       dispatchUser(fetchBuses());
     }
-    if (query.length >= 2 && (!Array.isArray(busTerminals) || busTerminals.length === 0) && !busesLoading.terminals && wantsTerminals) {
+    if (allowAccounting && query.length >= 2 && (!Array.isArray(busTerminals) || busTerminals.length === 0) && !busesLoading.terminals && wantsTerminals) {
       dispatchUser(fetchBusTerminals());
     }
-    if (query.length >= 2 && (!Array.isArray(schoolInvoices) || schoolInvoices.length === 0) && !schoolInvoiceLoading.invoices && wantsInvoices) {
+    if (allowAccounting && query.length >= 2 && (!Array.isArray(schoolInvoices) || schoolInvoices.length === 0) && !schoolInvoiceLoading.invoices && wantsInvoices) {
       dispatchUser(fetchSchoolInvoices({ limit: 8, offset: 0, search: query }));
     }
-    if (query.length >= 2 && (!Array.isArray(tripInvoices) || tripInvoices.length === 0) && !tripInvoiceLoading.invoices && wantsInvoices) {
+    if (allowAccounting && query.length >= 2 && (!Array.isArray(tripInvoices) || tripInvoices.length === 0) && !tripInvoiceLoading.invoices && wantsInvoices) {
       dispatchUser(fetchTripInvoices({ limit: 8, offset: 0, search: query }));
     }
   }, [
@@ -456,6 +516,7 @@ export function DashboardNavbar({ user }) {
     busTerminals,
     busesLoading.buses,
     busesLoading.terminals,
+    currentSearchScope,
     dispatchUser,
     normalizedSearchValue,
     schoolInvoiceLoading.invoices,
@@ -776,16 +837,28 @@ export function DashboardNavbar({ user }) {
           <Menu>
             <MenuHandler>
               <div className="flex shrink-0 items-center justify-end cursor-pointer">
-                <Avatar
-                  src={profileavatar}
-                  alt={loggedInUser?.username || "User"}
-                  variant="circular"
-                  className="w-10 md:w-12 border h-10 md:h-12"
-                />
+                <div className="relative h-10 w-10 md:h-12 md:w-12 shrink-0">
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full border bg-[#F3E8E9] text-sm font-bold text-[#C01824]">
+                    {profileInitial}
+                  </div>
+                  {!avatarFailed && (
+                    <Avatar
+                      src={profileImage}
+                      alt={displayName}
+                      variant="circular"
+                      className={`relative z-10 h-10 w-10 border md:h-12 md:w-12 ${avatarLoaded ? "opacity-100" : "opacity-0"}`}
+                      onLoad={() => setAvatarLoaded(true)}
+                      onError={() => {
+                        setAvatarFailed(true);
+                        setAvatarLoaded(false);
+                      }}
+                    />
+                  )}
+                </div>
 
                 <div className="ml-3 min-w-0 text-left md:block hidden">
                   <Typography variant="h6" className="max-w-[160px] truncate font-bold text-[14px] text-black">
-                    {loggedInUser?.username || "Guest User"}
+                    {displayName}
                   </Typography>
                   <Typography
                     variant="small"
