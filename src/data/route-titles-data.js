@@ -7,6 +7,7 @@ export const routeTitles = {
   '/dashboard/trip-planner': 'Route IQ - Trip Planner',
   '/dashboard/create-announcement': 'Route IQ - Create Announcement',
   '/dashboard/profile': 'Profile - MyApp',
+  '/vendor-profile': 'Route IQ - Vendor Profile',
   '/dashboard/feedback-and-support': 'Route IQ - Feedback and Support',
   '/dashboard/settings': 'Route IQ - Settings',
   '/account/sign-in': 'Route IQ - Sign In',

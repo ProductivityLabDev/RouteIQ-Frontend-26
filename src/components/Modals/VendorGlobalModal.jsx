@@ -7,6 +7,7 @@ const VendorGlobalModal = ({
     onClose,
     title,
     children,
+    contentClassName = "",
     primaryButtonText,
     secondaryButtonText,
     onPrimaryAction,
@@ -16,11 +17,11 @@ const VendorGlobalModal = ({
         <Modal
             isOpen={isOpen}
             onRequestClose={onClose}
-            className="fixed inset-0 flex items-center justify-center"
-            overlayClassName="fixed inset-0 bg-black bg-opacity-40"
+            className="fixed inset-0 z-[1101] flex items-center justify-center px-4"
+            overlayClassName="fixed inset-0 z-[1100] bg-black bg-opacity-40"
             ariaHideApp={false}
         >
-            <div className="bg-white rounded-md p-6 shadow-lg relative w-[35%] mx-auto">
+            <div className={`relative z-[1102] bg-white rounded-md p-6 shadow-lg w-[35%] mx-auto ${contentClassName}`}>
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-700 hover:text-gray-900"

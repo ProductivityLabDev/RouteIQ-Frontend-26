@@ -124,7 +124,6 @@ const validateField = (name, value, allValues = {}) => {
         }
         case 'joiningDate':
             if (!str) return 'Start date is required';
-            if (new Date(str) > new Date()) return 'Cannot be in the future';
             break;
         case 'email':
             if (!str) return 'Email is required';

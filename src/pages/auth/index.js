@@ -3,3 +3,4 @@ export * from "@/pages/auth/sign-in-vendor";
 export * from "@/pages/auth/sign-up";
 export * from "@/pages/auth/forgot-password"
 export * from "@/pages/auth/logout"
+export * from "@/pages/auth/accept-invite"

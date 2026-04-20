@@ -10,7 +10,7 @@ import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import { Toaster, toast } from 'react-hot-toast';
 import authBg from '@/assets/authbg.png';
-import { setAuthTokens } from '@/configs';
+import { BASE_URL, setAuthTokens } from '@/configs';
 
 export function SignInVendor() {
   const [activeTab, setActiveTab] = useState('login');
@@ -32,8 +32,6 @@ export function SignInVendor() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-
   // Prevent browser back button after logout
   useEffect(() => {
     // Check if user is logged out (no token)

@@ -53,6 +53,10 @@ export const userService = {
     // Normalize response based on what backend returns
     const rawData = response.data;
     const list = Array.isArray(rawData) ? rawData : (rawData as any).data || [];
+
+    console.log("GetUserCredentials vendorId:", vendorId);
+    console.log("GetUserCredentials raw response:", rawData);
+    console.log("GetUserCredentials normalized list:", list);
     
     return {
       ok: true,

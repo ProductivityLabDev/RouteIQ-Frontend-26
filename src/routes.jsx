@@ -3,9 +3,9 @@ import {
   ServerStackIcon,
   RectangleStackIcon,
 } from "@heroicons/react/24/solid";
+import { Navigate } from "react-router-dom";
 import {
   Home,
-  Profile,
   Schedule,
   Manage,
   Communication,
@@ -126,7 +126,7 @@ export const routes = [
         icon: <HomeIcon {...icon} />,
         name: "profile",
         path: "/profile",
-        element: <Profile />,
+        element: <Navigate to="/vendor-profile" replace />,
       },
       {
         icon: <HomeIcon {...icon} />,

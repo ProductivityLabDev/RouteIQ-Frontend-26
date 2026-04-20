@@ -14,22 +14,15 @@ export function VendorFeedbackChatMessage({ isOwnMessage, message, avatarUrl, ti
             )}
             <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} max-w-[80%]`}>
                 <div
-                    className={`px-4 py-3 rounded-2xl ${
+                    className={`px-4 py-3 rounded-2xl shadow-sm ${
                         isOwnMessage
                             ? 'bg-[#C01824] text-white rounded-br-none'
-                            : 'bg-[#F5F5F5] text-[#202224] rounded-bl-none'
+                            : 'bg-white text-[#202224] rounded-bl-none border border-[#ECECEC]'
                     }`}
                 >
-                    <div className='flex flex-row items-end content-center justify-center'>
-                        <p className="text-sm">{message}</p>
-                        <div className='flex flex-row items-center'>
-                            <span className="text-xs text-gray-500 mt-1">{timestamp}</span>
-                            {isOwnMessage && (
-                                <div className="flex flex-col items-end ml-2 mt-2">
-                                    <span className="text-gray-400 text-lg mb-1">...</span>
-                                </div>
-                            )}
-                        </div>
+                    <p className="text-sm leading-6">{message}</p>
+                    <div className={`mt-2 text-xs ${isOwnMessage ? 'text-white/80' : 'text-gray-500'}`}>
+                        {timestamp}
                     </div>
                 </div>
             </div>

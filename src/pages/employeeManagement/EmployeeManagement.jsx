@@ -11,6 +11,8 @@ import ToggleBar from './ToggleBar';
 import { FaAngleLeft, FaAngleRight } from 'react-icons/fa6';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import { useSearchParams } from 'react-router-dom';
+import { readFocusParams } from '@/utils/globalSearch';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3000';
 
@@ -52,6 +54,7 @@ const DetailRow = ({ label, value }) => (
 
 // ── Main component ──────────────────────────────────────────────────────────
 const EmployeeManagement = () => {
+  const [searchParams] = useSearchParams();
   const token = localStorage.getItem('token');
 
   const [selectedTab, setSelectedTab]   = useState('Employee Management');
@@ -74,6 +77,7 @@ const EmployeeManagement = () => {
   const [showLicense, setShowLicense]     = useState(false);
   const [showInfraction, setShowInfraction] = useState(false);
   const [avatarZoom, setAvatarZoom]       = useState(null);
+  const [highlightedEmployeeId, setHighlightedEmployeeId] = useState(null);
 
   // ── Fetch ───────────────────────────────────────────────────────────────
   const fetchEmployees = async () => {
@@ -115,6 +119,51 @@ const EmployeeManagement = () => {
   const totalPages   = Math.max(1, Math.ceil(employees.length / itemsPerPage));
   const startIndex   = (currentPage - 1) * itemsPerPage;
   const pageEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    if (!employees.length || addEmployee || editEmployee || showPayroll) return;
+
+    const focus = readFocusParams(searchParams, 'employee');
+    if (!focus) return;
+
+    const matchedEmployee = employees.find((emp) => {
+      const employeeId = String(emp.EmpId ?? emp.EmployeeId ?? emp.employeeId ?? emp.id ?? '');
+      const employeeName = String(emp.Name ?? emp.name ?? '').trim().toLowerCase();
+      return (
+        (focus.focusId && employeeId === String(focus.focusId)) ||
+        (focus.focusLabel && employeeName === focus.focusLabel)
+      );
+    });
+
+    if (!matchedEmployee) return;
+
+    const matchedEmployeeId = String(
+      matchedEmployee.EmpId ??
+      matchedEmployee.EmployeeId ??
+      matchedEmployee.employeeId ??
+      matchedEmployee.id ??
+      ''
+    );
+    const matchedIndex = employees.findIndex((emp) => String(
+      emp.EmpId ??
+      emp.EmployeeId ??
+      emp.employeeId ??
+      emp.id ??
+      ''
+    ) === matchedEmployeeId);
+
+    if (matchedIndex === -1) return;
+
+    const targetPage = Math.floor(matchedIndex / itemsPerPage) + 1;
+    if (currentPage !== targetPage) {
+      setCurrentPage(targetPage);
+    }
+
+    setHighlightedEmployeeId(matchedEmployeeId);
+
+    const timer = setTimeout(() => setHighlightedEmployeeId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [addEmployee, currentPage, editEmployee, employees, itemsPerPage, searchParams, showPayroll]);
 
   const handleTabClick = (tab) => {
     setSelectedTab(tab);
@@ -201,8 +250,11 @@ const EmployeeManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {pageEmployees.map((emp, i) => (
-                      <tr key={emp.EmpId || i} className="hover:bg-gray-50 transition-colors">
+                    {pageEmployees.map((emp, i) => {
+                      const rowEmployeeId = String(emp.EmpId ?? emp.EmployeeId ?? emp.employeeId ?? emp.id ?? i);
+                      const isHighlighted = highlightedEmployeeId === rowEmployeeId;
+                      return (
+                      <tr key={emp.EmpId || i} className={`${isHighlighted ? 'bg-[#fff3f4]' : 'hover:bg-gray-50'} transition-colors`}>
                         {/* Avatar + Name */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -230,7 +282,7 @@ const EmployeeManagement = () => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>

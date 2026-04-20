@@ -183,7 +183,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
         if (!formData.email.trim())                 return "Email is required";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) return "Please enter a valid email address";
         if (formData.modules.length === 0)          return "Please select at least one Department";
-        if (formData.terminalIds.length === 0)      return "Please select a Terminal";
+        if (formData.terminalIds.length === 0)      return "Please select at least one Terminal";
         if (!formData.permission.trim())            return "Please select Control (Read Only or Read & Write)";
         return null;
     };
@@ -354,7 +354,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                     {/* Terminal */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-black mb-3">
-                            Select Terminal <span className="text-red-500">*</span>
+                            Select Terminals <span className="text-red-500">*</span>
                         </label>
                         <div className="grid grid-cols-4 gap-4">
                             {loadingDropdowns && terminal.length === 0 ? (
@@ -364,12 +364,19 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                             ) : terminal.map((t) => (
                                 <div key={t.id} className="flex items-center">
                                     <input
-                                        type="radio"
+                                        type="checkbox"
                                         id={`terminal-${t.id}`}
-                                        name="terminal"
                                         value={t.id}
                                         checked={formData.terminalIds.includes(t.id)}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, terminalIds: [Number(e.target.value)] }))}
+                                        onChange={(e) => {
+                                            const terminalId = Number(e.target.value);
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                terminalIds: e.target.checked
+                                                    ? [...prev.terminalIds, terminalId]
+                                                    : prev.terminalIds.filter((id) => id !== terminalId),
+                                            }));
+                                        }}
                                         className="w-4 h-4 accent-red-600 border-gray-300"
                                     />
                                     <label htmlFor={`terminal-${t.id}`} className="ml-2 text-sm text-black">{t.name}</label>

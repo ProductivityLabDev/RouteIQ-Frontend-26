@@ -68,6 +68,16 @@ export interface SuperAdminSubAdmin {
   status: string;
 }
 
+export interface SuperAdminInvite {
+  id: number | string;
+  email: string;
+  role: string;
+  fullName: string;
+  status: string;
+  createdAt?: string;
+  expiresAt?: string;
+}
+
 const normalizeDashboard = (raw: any): SuperAdminDashboardStats => {
   const stats = raw?.stats ?? raw?.summary ?? raw ?? {};
   const vendorCounts = raw?.vendorCounts ?? raw?.vendors ?? stats?.vendorCounts ?? {};
@@ -303,6 +313,22 @@ export const superAdminService = {
       allowedModules: body?.allowedModules ?? null,
       impersonatorRole: body?.impersonatorRole ?? "SUB_ADMIN",
     };
+  },
+
+  async createInvite(payload: { email: string; role: string; fullName: string }) {
+    const response = await apiClient.post("/super-admin/invites", payload);
+    return response.data?.data ?? response.data;
+  },
+
+  async getInvites(): Promise<SuperAdminInvite[]> {
+    const response = await apiClient.get("/super-admin/invites");
+    const rows = response.data?.data ?? response.data ?? [];
+    return Array.isArray(rows) ? rows : [];
+  },
+
+  async deleteInvite(id: number | string) {
+    const response = await apiClient.delete(`/super-admin/invites/${id}`);
+    return response.data?.data ?? response.data;
   },
 };
 

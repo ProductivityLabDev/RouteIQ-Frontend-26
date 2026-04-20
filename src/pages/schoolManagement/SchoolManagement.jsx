@@ -7,20 +7,23 @@ import { SchoolManagementModal } from './SchoolManagementModal'
 import { DropdownItem } from '@/components/DropDown'
 import SchoolManagementUserTable from '@/components/SchoolManagementUserTable';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { fetchSchoolManagementSummary } from '@/redux/slices/schoolSlice'
+import { readFocusParams } from '@/utils/globalSearch'
 
 /**
  * @type {import('./SchoolManagement').default}
  */
 const SchoolManagement = () => {
+  const [searchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const [openSchoolManagementModal, setOpenSchoolManagementModal] = useState(false);
   const [editInstitute, setEditInstitute] = useState(false);
   const [editingSchoolKey, setEditingSchoolKey] = useState(null);
   const [openDistricts, setOpenDistricts] = useState({});
   const [openTerminals, setOpenTerminals] = useState({});
+  const [highlightedSchoolKey, setHighlightedSchoolKey] = useState(null);
   const navigate = useNavigate();
   const { schoolManagementSummary, loading } = useAppSelector((state) => state.schools);
 
@@ -96,6 +99,48 @@ const SchoolManagement = () => {
 
     return result;
   }, [schoolManagementSummary]);
+
+  useEffect(() => {
+    if (!hierarchicalData.length) return;
+
+    const focus = readFocusParams(searchParams, 'school');
+    if (!focus) return;
+
+    let matchedPayload = null;
+
+    hierarchicalData.some((district) =>
+      district.terminals.some((terminal) =>
+        terminal.schools.some((school, schoolIndex) => {
+          const schoolId = String(school.instituteId ?? school.raw?.InstituteId ?? schoolIndex);
+          const schoolName = String(school.name || '').trim().toLowerCase();
+          const matched =
+            (focus.focusId && schoolId === String(focus.focusId)) ||
+            (focus.focusLabel && schoolName === focus.focusLabel);
+
+          if (matched) {
+            const schoolKey = `${district.districtName}-${terminal.terminalId}-${school.instituteId || schoolIndex}`;
+            matchedPayload = {
+              districtName: district.districtName,
+              terminalKey: `${district.districtName}-${terminal.terminalId}`,
+              schoolKey,
+            };
+            return true;
+          }
+
+          return false;
+        })
+      )
+    );
+
+    if (!matchedPayload) return;
+
+    setOpenDistricts((prev) => ({ ...prev, [matchedPayload.districtName]: true }));
+    setOpenTerminals((prev) => ({ ...prev, [matchedPayload.terminalKey]: true }));
+    setHighlightedSchoolKey(matchedPayload.schoolKey);
+
+    const timer = setTimeout(() => setHighlightedSchoolKey(null), 2500);
+    return () => clearTimeout(timer);
+  }, [hierarchicalData, searchParams]);
 
 // Fallback static schools (only used if there's no API data; not grouped)
 const fallbackSchools = [
@@ -192,9 +237,10 @@ const useApiHierarchy = hierarchicalData.length > 0;
                     {terminal.schools.map((school, schoolIndex) => {
                       const schoolKey = `${district.districtName}-${terminal.terminalId}-${school.instituteId || schoolIndex}`;
                       const isOpen = editingSchoolKey === schoolKey;
+                      const isHighlighted = highlightedSchoolKey === schoolKey;
                       return (
                         <div key={schoolKey} className="flex flex-col">
-                          <div className="flex items-center justify-between bg-white border rounded-lg shadow-sm py-3 px-4 my-2">
+                          <div className={`flex items-center justify-between border rounded-lg shadow-sm py-3 px-4 my-2 ${isHighlighted ? 'bg-[#fff3f4] border-[#C01824]' : 'bg-white'}`}>
                             {/* Left: Drag, Logo, Name, Edit */}
                             <div className="flex items-center gap-3 flex-1">
                               <FaBars className="text-gray-600 cursor-move" />

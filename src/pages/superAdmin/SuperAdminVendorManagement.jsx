@@ -11,6 +11,7 @@ import {
 } from "@/configs";
 import { superAdminService } from "@/services/superAdminService";
 import { setUser } from "@/redux/slices/userSlice";
+import InviteManagementPanel from "@/components/invites/InviteManagementPanel";
 
 const emptyContractForm = {
   vendorId: null,
@@ -467,6 +468,24 @@ export default function SuperAdminVendorManagement() {
             </button>
           </div>
         </form>
+      ) : null}
+
+      {currentRole !== "SUB_ADMIN" ? (
+        <div className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm">
+          <InviteManagementPanel
+            title="Account Invites"
+            description="Send vendor and sub-admin invite links, and monitor whether they are still pending, accepted, or expired."
+            roleOptions={[
+              { value: "VENDOR", label: "Vendor" },
+              { value: "SUB_ADMIN", label: "Sub Admin" },
+            ]}
+            loadInvites={superAdminService.getInvites}
+            createInvite={superAdminService.createInvite}
+            deleteInvite={superAdminService.deleteInvite}
+            submitLabel="Send Invite"
+            emptyMessage="No super-admin invites have been sent yet."
+          />
+        </div>
       ) : null}
 
       <div className="overflow-hidden rounded-[28px] border border-[#ebe6da] bg-white shadow-sm">

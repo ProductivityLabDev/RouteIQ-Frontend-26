@@ -10,15 +10,15 @@ import DriversCard from "@/components/DriversCard";
 import Invoices from "@/components/Invoices";
 import EditDashboard from "./EditDashboard";
 import { editIcon, linkIcon } from "@/assets";
-import GlobalModal from "@/components/Modals/GlobalModal";
-import { useNavigate } from "react-router-dom";
+import VendorGlobalModal from "@/components/Modals/VendorGlobalModal";
+import InviteManagementPanel from "@/components/invites/InviteManagementPanel";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchVendorStats } from "@/redux/slices/vendorDashboardSlice";
+import { vendorService } from "@/services/vendorService";
 
 const SchoolDashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { stats, loading } = useSelector((s) => s.vendorDashboard);
   const rawName = useSelector((s) => s.user?.user?.name || s.user?.user?.email || '');
@@ -40,11 +40,6 @@ const SchoolDashboard = () => {
 
   const handleBackClick = () => {
     setIsEditing(false);
-  };
-
-  const handleModalBtn = () => {
-    setIsModalOpen(false);
-    navigate('/accessManagement');
   };
 
   return (
@@ -153,12 +148,31 @@ const SchoolDashboard = () => {
           </Grid>
         </div>
       )}
-      <GlobalModal
+      <VendorGlobalModal
         isOpen={isModalOpen}
-        btnClose={handleModalBtn}
         onClose={() => setIsModalOpen(false)}
         title={'Invite Link'}
-      />
+        contentClassName="!w-full max-w-[1100px]"
+      >
+        <InviteManagementPanel
+          compact
+          title="Send Team Invite"
+          description="Invite drivers, dispatchers, and employees directly from the vendor dashboard."
+          roleOptions={[
+            { value: "DRIVER", label: "Driver" },
+            { value: "DISPATCHER", label: "Dispatcher" },
+            { value: "EMPLOYEE", label: "Employee" },
+          ]}
+          loadInvites={async () => {
+            const response = await vendorService.getInvites();
+            return response.data;
+          }}
+          createInvite={vendorService.createInvite}
+          deleteInvite={vendorService.deleteInvite}
+          submitLabel="Send Invite"
+          emptyMessage="No vendor invites have been sent yet."
+        />
+      </VendorGlobalModal>
     </MainLayout>
   );
 };

@@ -7,8 +7,9 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type InternalAxiosR
 
 export type ApiHeaders = Record<string, string>;
 
-export const BASE_URL: string =
-  import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+const RAW_BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+
+export const BASE_URL: string = String(RAW_BASE_URL).replace(/\/+$/, "");
 
 export const API_PREFIX: string = import.meta.env.VITE_API_PREFIX || "";
 

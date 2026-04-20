@@ -6,6 +6,7 @@ import colors from "@/utlis/Colors";
 import { dollar, dollarless } from "@/assets";
 import ButtonComponent from "@/components/buttons/CustomButton";
 import axios from "axios";
+import { BASE_URL } from "@/configs";
 
 const DashboardSubcription = () => {
   const [selectedCard, setSelectedCard] = useState(null);
@@ -17,9 +18,6 @@ const DashboardSubcription = () => {
   const fromPath = queryParams.get("from");
 
   const vendorSignupId = location?.state?.vendorSignupId || null;
-  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
-
-
   // const handleSubmit = () => {
   //   if (selectedCard) {
   //     navigation("/subscription_page", {

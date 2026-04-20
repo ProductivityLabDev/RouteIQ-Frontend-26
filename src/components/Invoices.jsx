@@ -2,9 +2,11 @@ import React, { useEffect } from 'react'
 import { Button, ButtonGroup } from '@material-tailwind/react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchSchoolInvoices } from '@/redux/slices/schoolInvoicesSlice'
+import { useNavigate } from 'react-router-dom'
 
 const Invoices = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { invoices: invoicesState, loading } = useSelector((s) => s.schoolInvoices);
     const invoices = Array.isArray(invoicesState?.data) ? invoicesState.data : Array.isArray(invoicesState) ? invoicesState : [];
 
@@ -22,13 +24,20 @@ const Invoices = () => {
         return `$${Number(amount).toFixed(2)}`;
     };
 
+    const openSchoolInvoices = () => {
+        navigate('/accounting?tab=School%20Invoices');
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-[50%] lg:w-[50%] xl:w-[50%] h-[100%]">
             {/* Header */}
             <div className="flex justify-between items-center pb-2">
                 <h2 className="text-[22px] lg:text-[26px] xl:text-[14px] font-bold text-black">Invoices</h2>
                 <ButtonGroup className="border-2 border-[#DDDDE1]/50 rounded-[10px] outline-none p-0" variant="text">
-                    <Button className="bg-[#C01824] hover:bg-[#C01824]/80 text-white px-4 lg:px-6 py-2 lg:py-3 lg:text-[14px] capitalize font-bold">
+                    <Button
+                        className="bg-[#C01824] hover:bg-[#C01824]/80 text-white px-4 lg:px-6 py-2 lg:py-3 lg:text-[14px] capitalize font-bold"
+                        onClick={openSchoolInvoices}
+                    >
                         School Invoices
                     </Button>
                 </ButtonGroup>
@@ -69,7 +78,10 @@ const Invoices = () => {
                                     <td className="px-3 md:px-4 lg:px-5 py-1 lg:py-2 border-b text-[14px] font-bold">
                                         <div className="flex flex-col items-start">
                                             <span className="text-black font-bold">{invoice.status ?? '--'}</span>
-                                            <button className="text-[#C01824] text-[10px] md:text-[12px] mt-1 hover:text-red-800 focus:outline-none">
+                                            <button
+                                                className="text-[#C01824] text-[10px] md:text-[12px] mt-1 hover:text-red-800 focus:outline-none"
+                                                onClick={openSchoolInvoices}
+                                            >
                                                 View invoice
                                             </button>
                                         </div>

@@ -5,6 +5,7 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { logo, redtick } from "@/assets";
 import axios from "axios";
 import { Toaster, toast } from "react-hot-toast";
+import { BASE_URL } from "@/configs";
 
 export function ForgotPassword() {
   const [step, setStep] = useState(1);
@@ -20,8 +21,6 @@ export function ForgotPassword() {
   const navigate = useNavigate();
   const otpRefs = useRef([]);
   otpRefs.current = otpRefs.current.slice(0, otp.length);
-
-  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
 
   const requestPasswordReset = async (targetEmail) => {
     const url = `${BASE_URL}/auth/request-password-reset`;

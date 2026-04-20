@@ -36,7 +36,7 @@ import {
 } from "@material-tailwind/react";
 import { FaRegTrashAlt } from "react-icons/fa";
 import { MdOutlineKeyboardArrowLeft } from "react-icons/md";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { format, set } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import {
@@ -63,9 +63,14 @@ import GLCodesModal from "@/components/Modals/GLCodesModal";
 import HistoryLogTable from "@/components/HistoryLogTable";
 import FinancialDashboard from "@/components/FinancialDashboard";
 import KPIScreen from "@/components/KPIScreen";
+import { readFocusParams } from "@/utils/globalSearch";
 
 const Accounting = () => {
-  const [selectedTab, setSelectedTab] = useState("School Invoices");
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const focus = readFocusParams(searchParams);
+  const initialTab = accountingTab.includes(requestedTab) ? requestedTab : "School Invoices";
+  const [selectedTab, setSelectedTab] = useState(initialTab);
   const [selectedGlCodesTab, setSelectedGlCodesTab] =
     useState("GL Code List");
   const [glCodeSearch, setGlCodeSearch] = useState("");
@@ -91,6 +96,7 @@ const Accounting = () => {
   const [batchInvoice, setBatchInvoice] = useState(false);
   const [createBatchInvoice, setCreateBatchInvoice] = useState(false);
   const [createInvoice, setCreateInvoice] = useState(false);
+  const [highlightedTerminalId, setHighlightedTerminalId] = useState("");
   const [selectedTripInvoiceIds, setSelectedTripInvoiceIds] = useState([]);
   const [activeTripTerminalId, setActiveTripTerminalId] = useState("");
   const [tripExportFormat, setTripExportFormat] = useState("pdf");
@@ -380,6 +386,48 @@ const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
+
+  useEffect(() => {
+    if (requestedTab && accountingTab.includes(requestedTab) && requestedTab !== selectedTab) {
+      setSelectedTab(requestedTab);
+    }
+  }, [requestedTab, selectedTab]);
+
+  useEffect(() => {
+    if (!focus?.focusType) return;
+
+    if (focus.focusType === "terminal") {
+      setSelectedTab("Terminal");
+      setSelectedTerminalTab("Terminals Details");
+      setHighlightedTerminalId(String(focus.focusId || ""));
+      return;
+    }
+
+    if (focus.focusType === "school-invoice") {
+      setSelectedTab("School Invoices");
+      return;
+    }
+
+    if (focus.focusType === "trip-invoice") {
+      setSelectedTab("Trip invoices");
+    }
+  }, [focus]);
+
+  useEffect(() => {
+    if (!highlightedTerminalId) return;
+    const timer = setTimeout(() => setHighlightedTerminalId(""), 2500);
+    return () => clearTimeout(timer);
+  }, [highlightedTerminalId]);
+
+  useEffect(() => {
+    if (!highlightedTerminalId || termList.length === 0) return;
+    const focusedIndex = termList.findIndex((terminal) => String(terminal.id || terminal.terminalId || "") === highlightedTerminalId);
+    if (focusedIndex !== -1) {
+      setIsTerminal(focusedIndex);
+      setSelectedTrackTerminalId(highlightedTerminalId);
+      setTerminalInvoiceFilters((prev) => ({ ...prev, terminalId: highlightedTerminalId }));
+    }
+  }, [highlightedTerminalId, termList]);
   const headings = {
     // 'Subscription': 'Invoices',
     "School Invoices": "School Invoices",
@@ -2155,11 +2203,12 @@ const dispatch = useDispatch();
                         <div className="py-6 text-center text-gray-500 text-sm">Loading terminals...</div>
                       ) : termList.length === 0 ? (
                         <div className="py-6 text-center text-gray-400 text-sm">No terminals found.</div>
-                      ) : termList.map((terminal, index) => {
-                        const tId = terminal.id || terminal.terminalId;
-                        const isExpanded = isTerminal === index;
-                        return (
-                          <div key={tId || index} className="w-full bg-white border-b border-[#D9D9D9] shadow-sm">
+                        ) : termList.map((terminal, index) => {
+                          const tId = terminal.id || terminal.terminalId;
+                          const isExpanded = isTerminal === index;
+                          const isHighlightedTerminal = highlightedTerminalId && String(tId || "") === highlightedTerminalId;
+                          return (
+                            <div key={tId || index} className={`w-full border-b border-[#D9D9D9] shadow-sm ${isHighlightedTerminal ? 'bg-[#fff3f4] ring-1 ring-[#C01824]' : 'bg-white'}`}>
                             <div className="flex items-center justify-between px-4 py-2">
                               <div className="flex items-center space-x-3">
                                 <button className="text-black hover:text-gray-800">

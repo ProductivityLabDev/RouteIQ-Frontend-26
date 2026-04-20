@@ -19,7 +19,10 @@ import { IoIosList } from "react-icons/io";
 import AddBusInfoForm from '@/components/AddBusInfoForm'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchBuses, fetchTerminals } from '@/redux/slices/busesSlice'
+import { useSearchParams } from 'react-router-dom'
+import { readFocusParams } from '@/utils/globalSearch'
 const VehicleManagement = () => {
+    const [searchParams] = useSearchParams();
     const dispatch = useDispatch();
     const { terminals, buses, loading } = useSelector((state) => state.buses);
     const isLoadingBuses = loading?.buses || false;
@@ -36,6 +39,7 @@ const VehicleManagement = () => {
     const [showScheduleManagement, setShowScheduleManagement] = useState(false);
     const [selectedScheduleDate, setSelectedScheduleDate] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [highlightedVehicleId, setHighlightedVehicleId] = useState(null);
     const [anchorEl, setAnchorEl] = useState(null);
     const openSortBy = Boolean(anchorEl);
     const [selectedTerminal, setSelectedTerminal] = useState('All Terminals');
@@ -199,6 +203,52 @@ const VehicleManagement = () => {
     const endIndex = startIndex + itemsPerPage;
     const currentVehicles = filteredBuses.slice(startIndex, endIndex);
 
+    useEffect(() => {
+        if (!filteredBuses.length || addbusinfo || isNavigate || isSeeMoreInfo || editMode || reportedDefects || notes || showScheduleManagement) return;
+
+        const focus = readFocusParams(searchParams, 'vehicle');
+        if (!focus) return;
+
+        const matchedVehicle = filteredBuses.find((vehicle) => {
+            const vehicleId = String(vehicle.vehicleId ?? vehicle.VehicleId ?? vehicle.BusId ?? vehicle.id ?? '');
+            const vehicleName = String(vehicle.VehicleName ?? vehicle.vehicleName ?? vehicle.NumberPlate ?? vehicle.numberPlate ?? '').trim().toLowerCase();
+            return (
+                (focus.focusId && vehicleId === String(focus.focusId)) ||
+                (focus.focusLabel && vehicleName === focus.focusLabel)
+            );
+        });
+
+        if (!matchedVehicle) return;
+
+        const matchedVehicleId = String(matchedVehicle.vehicleId ?? matchedVehicle.VehicleId ?? matchedVehicle.BusId ?? matchedVehicle.id ?? '');
+        const matchedIndex = filteredBuses.findIndex((vehicle) => String(
+            vehicle.vehicleId ?? vehicle.VehicleId ?? vehicle.BusId ?? vehicle.id ?? ''
+        ) === matchedVehicleId);
+
+        if (matchedIndex === -1) return;
+
+        const targetPage = Math.floor(matchedIndex / itemsPerPage) + 1;
+        if (currentPage !== targetPage) {
+            setCurrentPage(targetPage);
+        }
+
+        setHighlightedVehicleId(matchedVehicleId);
+        const timer = setTimeout(() => setHighlightedVehicleId(null), 2500);
+        return () => clearTimeout(timer);
+    }, [
+        addbusinfo,
+        currentPage,
+        editMode,
+        filteredBuses,
+        isNavigate,
+        isSeeMoreInfo,
+        itemsPerPage,
+        notes,
+        reportedDefects,
+        searchParams,
+        showScheduleManagement,
+    ]);
+
     const busesGrouped = React.useMemo(() => {
         return currentVehicles.reduce((acc, bus) => {
             const key = bus.TerminalName || bus.terminalName || 'Unknown';
@@ -349,8 +399,11 @@ const VehicleManagement = () => {
                                     <div key={terminal} className="mb-6">
                                         <Typography className="text-[16px] font-extrabold text-black mb-2">{terminal}</Typography>
                                         <div className="flex flex-wrap justify-center gap-6">
-                                            {busesGrouped[terminal].map((vehicle) => (
-                                                <Card key={vehicle.BusId || vehicle.id} className="w-[330px] h-[330px] shadow-2xl rounded-[16px] mt-4 overflow-hidden p-2 flex flex-col">
+                                            {busesGrouped[terminal].map((vehicle) => {
+                                                const vehicleId = String(vehicle.vehicleId ?? vehicle.VehicleId ?? vehicle.BusId ?? vehicle.id ?? '');
+                                                const isHighlighted = highlightedVehicleId === vehicleId;
+                                                return (
+                                                <Card key={vehicle.BusId || vehicle.id} className={`w-[330px] h-[330px] shadow-2xl rounded-[16px] mt-4 overflow-hidden p-2 flex flex-col ${isHighlighted ? 'ring-2 ring-[#C01824] bg-[#fff8f8]' : ''}`}>
                                                     <div className="flex justify-end items-end px-3 py-2">
                                                         <div className="relative">
                                                             <BsThreeDots className="text-black cursor-pointer text-lg" onClick={(e) => handleMenuOpen(e, vehicle)} />
@@ -384,7 +437,7 @@ const VehicleManagement = () => {
                                                         </Button>
                                                     </CardFooter>
                                                 </Card>
-                                            ))}
+                                            )})}
                                         </div>
                                     </div>
                                 ))}
@@ -404,8 +457,11 @@ const VehicleManagement = () => {
                                     </thead>
                                     <tbody>
                                         {currentVehicles.length > 0 ? (
-                                            currentVehicles.map((vehicle) => (
-                                                <tr key={vehicle.BusId} className="border-b">
+                                            currentVehicles.map((vehicle) => {
+                                                const vehicleId = String(vehicle.vehicleId ?? vehicle.VehicleId ?? vehicle.BusId ?? vehicle.id ?? '');
+                                                const isHighlighted = highlightedVehicleId === vehicleId;
+                                                return (
+                                                <tr key={vehicle.BusId} className={`border-b ${isHighlighted ? 'bg-[#fff3f4]' : ''}`}>
                                                     <td className="p-4">
                                                         <img
                                                             src={vehicle.vehiclImg || '/src/assets/vechicelSvg.svg'}
@@ -457,7 +513,7 @@ const VehicleManagement = () => {
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            ))
+                                            )})
                                         ) : (
                                             <tr>
                                                 <td colSpan="6" className="text-center p-4 text-gray-500">

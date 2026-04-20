@@ -81,6 +81,11 @@ const UserCard = ({ handleOpenDeleteModal, handleEditUser, refreshTrigger }) => 
         });
     }, [userDetail]);
 
+    useEffect(() => {
+        console.log("AccessManagement raw users response:", userDetail);
+        console.log("AccessManagement valid users rendered:", validUsers);
+    }, [userDetail, validUsers]);
+
     // Fetch users when component mounts or refreshTrigger changes
     // MUST be called before any early returns (Rules of Hooks)
     useEffect(() => {
