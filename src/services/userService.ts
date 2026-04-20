@@ -53,9 +53,6 @@ export const userService = {
     // Normalize response based on what backend returns
     const rawData = response.data;
     const list = Array.isArray(rawData) ? rawData : (rawData as any).data || [];
-    console.log("[AccessDebug][getUsersByVendor] vendorId:", vendorId);
-    console.log("[AccessDebug][getUsersByVendor] raw response:", rawData);
-    console.log("[AccessDebug][getUsersByVendor] normalized list length:", list.length);
 
     return {
       ok: true,
@@ -81,9 +78,6 @@ export const userService = {
     const response = await apiClient.get<User | { data: User }>(`/vendor/users/${userId}`);
     const rawData = response.data as any;
     const data = rawData?.data ?? rawData;
-    console.log("[AccessDebug][getUserById] targetUserId:", Number(userId));
-    console.log("[AccessDebug][getUserById] raw response:", rawData);
-    console.log("[AccessDebug][getUserById] normalized user:", data);
 
     if (!data || typeof data !== "object") {
       throw new Error("User not found");

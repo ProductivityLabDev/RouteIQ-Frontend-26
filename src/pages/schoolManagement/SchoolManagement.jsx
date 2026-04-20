@@ -32,10 +32,6 @@ const SchoolManagement = () => {
     dispatch(fetchSchoolManagementSummary());
   }, [dispatch]);
 
-  useEffect(() => {
-    console.log("[SchoolManagement] schoolManagementSummary raw:", schoolManagementSummary);
-  }, [schoolManagementSummary]);
-
   const handleRefreshSchools = () => {
     dispatch(fetchSchoolManagementSummary());
   };
@@ -103,10 +99,6 @@ const SchoolManagement = () => {
 
     return result;
   }, [schoolManagementSummary]);
-
-  useEffect(() => {
-    console.log("[SchoolManagement] hierarchicalData grouped:", hierarchicalData);
-  }, [hierarchicalData]);
 
   useEffect(() => {
     if (!hierarchicalData.length) return;

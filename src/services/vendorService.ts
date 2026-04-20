@@ -106,7 +106,6 @@ export const vendorService = {
       () => apiClient.get("/vendor/profile"),
       () => apiClient.get("/institute/vendor/profile")
     );
-    console.log("[VendorProfile][getProfile] raw response:", response.data);
     return { ok: true, data: response.data?.data ?? response.data };
   },
 

@@ -337,18 +337,6 @@ export function Schedule() {
   useEffect(() => {
     if (!selectedRoute) return;
 
-    // Debug selected route student resolution for route schedules screen.
-    console.log('[SchoolSchedule] selected route:', {
-      routeId: selectedRouteId,
-      route: selectedRoute,
-      activeTab,
-      searchQuery,
-    });
-
-    console.log('[SchoolSchedule] route students (raw):', routeStudents);
-    console.log('[SchoolSchedule] students displayed in list:', displayed);
-    console.log('[SchoolSchedule] map markers:', effectiveMapMarkers);
-    console.log('[SchoolSchedule] live route data:', liveRouteData);
   }, [selectedRoute, selectedRouteId, activeTab, searchQuery, routeStudents, displayed, effectiveMapMarkers, liveRouteData]);
 
   return (

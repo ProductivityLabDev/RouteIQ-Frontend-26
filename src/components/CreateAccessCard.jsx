@@ -192,7 +192,6 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
             if (isMounted) {
                 setResolvedEditUser(null);
             }
-            console.log("[AccessDebug][CreateAccessCard] incoming editUser:", editUser);
 
             const userId = getUserId(editUser);
             if (!userId) {
@@ -201,16 +200,13 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
 
             try {
                 if (isMounted) setLoadingEditDetails(true);
-                console.log("[AccessDebug][CreateAccessCard] fetching full user details for id:", userId);
                 const response = await userService.getUserById(userId);
                 const detailedUser = response?.data;
 
                 if (isMounted && detailedUser) {
-                    console.log("[AccessDebug][CreateAccessCard] fetched detailed user:", detailedUser);
                     setResolvedEditUser({ ...editUser, ...detailedUser });
                 }
             } catch (error) {
-                console.log("[AccessDebug][CreateAccessCard] detail fetch failed, using list item only:", error);
                 if (isMounted) {
                     // Keep fallback behavior instead of blocking edit if details API fails
                     setResolvedEditUser(editUser);
@@ -262,21 +258,6 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                 terminalIds: normalizeTerminalIds(rawTerminalIds),
                 department:  "",
                 permission:  getPermissionLabelFromControl(controlValue),
-            });
-            console.log("[AccessDebug][CreateAccessCard] form prefill payload:", {
-                roleCode: resolveRoleCode(resolvedEditUser),
-                modules: normalizeModules(rawModules),
-                terminalIds: normalizeTerminalIds(rawTerminalIds),
-                control: controlValue,
-                username: resolvedEditUser.Username || resolvedEditUser.username || "",
-                email: resolvedEditUser.Email || resolvedEditUser.email || "",
-                phoneNumber:
-                    resolvedEditUser.PhoneNumber ||
-                    resolvedEditUser.phoneNumber ||
-                    resolvedEditUser.Phone ||
-                    resolvedEditUser.phone ||
-                    resolvedEditUser.ContactNumber ||
-                    "",
             });
         } else {
             setFormData(INITIAL_FORM);

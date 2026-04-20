@@ -526,7 +526,6 @@ const RealTimeTracking = () => {
       `[RealTimeTracking] Student bus numbers (${activeTab}) - ${filteredStudentsList.length} students`
     );
     filteredStudentsList.forEach((student, index) => {
-      console.log(`${index + 1}. ${student.name || 'Student'} -> Bus NO: ${student.busNo || 'N/A'}`);
     });
     console.groupEnd();
   }, [selectedInfo, activeTab, filteredStudentsList]);
