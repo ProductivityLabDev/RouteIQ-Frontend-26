@@ -75,6 +75,32 @@ export interface CreateBusPayload {
   userId: string | number | null;
 }
 
+export interface VehicleQrData {
+  vehicleQrId?: number | null;
+  vehicleId?: number | null;
+  qrToken?: string | null;
+  qrValue?: string | null;
+  qrImageUrl?: string | null;
+  isActive?: boolean | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+const normalizeVehicleQr = (source: any): VehicleQrData | null => {
+  if (!source || typeof source !== "object") return null;
+
+  return {
+    vehicleQrId: source.vehicleQrId ?? source.VehicleQrId ?? null,
+    vehicleId: source.vehicleId ?? source.VehicleId ?? null,
+    qrToken: source.qrToken ?? source.QrToken ?? null,
+    qrValue: source.qrValue ?? source.QrValue ?? source.QrToken ?? null,
+    qrImageUrl: source.qrImageUrl ?? source.QrImageUrl ?? null,
+    isActive: source.isActive ?? source.IsActive ?? null,
+    createdAt: source.createdAt ?? source.CreatedAt ?? null,
+    updatedAt: source.updatedAt ?? source.UpdatedAt ?? null,
+  };
+};
+
 export const busService = {
   getDrivers: async (): Promise<ApiResponse<Driver[]>> => {
     const response = await apiClient.get("/institute/drivers");
@@ -141,6 +167,22 @@ export const busService = {
     return {
       ok: true,
       data: response.data?.data || response.data || {},
+    };
+  },
+
+  getBusQr: async (vehicleId: number): Promise<ApiResponse<VehicleQrData | null>> => {
+    const response = await apiClient.get(`/institute/bus/${vehicleId}/qr`);
+    return {
+      ok: true,
+      data: normalizeVehicleQr(response.data?.data || response.data || null),
+    };
+  },
+
+  generateBusQr: async (vehicleId: number): Promise<ApiResponse<VehicleQrData | null>> => {
+    const response = await apiClient.post(`/institute/bus/${vehicleId}/generate-qr`);
+    return {
+      ok: true,
+      data: normalizeVehicleQr(response.data?.data || response.data || null),
     };
   },
 

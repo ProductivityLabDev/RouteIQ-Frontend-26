@@ -21,6 +21,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchBuses, fetchTerminals } from '@/redux/slices/busesSlice'
 import { useSearchParams } from 'react-router-dom'
 import { readFocusParams } from '@/utils/globalSearch'
+import { busService } from '@/services/busService'
+import { toast } from 'react-hot-toast'
 const VehicleManagement = () => {
     const [searchParams] = useSearchParams();
     const dispatch = useDispatch();
@@ -50,6 +52,14 @@ const VehicleManagement = () => {
     
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
     const [selectedVehicleForMenu, setSelectedVehicleForMenu] = useState(null);
+    const [qrByVehicleId, setQrByVehicleId] = useState({});
+    const [qrLoadingByVehicleId, setQrLoadingByVehicleId] = useState({});
+    const [qrActionLoadingByVehicleId, setQrActionLoadingByVehicleId] = useState({});
+    const [qrPreview, setQrPreview] = useState(null);
+    const requestedQrIdsRef = React.useRef(new Set());
+
+    const getVehicleId = (vehicle) =>
+        vehicle?.vehicleId ?? vehicle?.VehicleId ?? vehicle?.BusId ?? vehicle?.busId ?? vehicle?.id ?? vehicle?.Id ?? vehicle?.ID ?? null;
 
     const handleAddBusClick = () => {
         setEditBus(null);
@@ -142,6 +152,67 @@ const VehicleManagement = () => {
         handleMenuClose();
     };
 
+    const handleQrPreview = async (vehicle) => {
+        const vehicleId = getVehicleId(vehicle);
+        if (!vehicleId) {
+            toast.error("Vehicle ID not found");
+            return;
+        }
+
+        try {
+            setQrActionLoadingByVehicleId((prev) => ({ ...prev, [vehicleId]: true }));
+            const response = await busService.getBusQr(vehicleId);
+            const qrData = response?.ok ? response.data || null : null;
+
+            setQrByVehicleId((prev) => ({ ...prev, [vehicleId]: qrData }));
+
+            if (qrData?.qrImageUrl) {
+                setQrPreview({
+                    vehicleName: vehicle?.VehicleName || vehicle?.vehicleName || "Bus",
+                    numberPlate: vehicle?.NumberPlate || vehicle?.numberPlate || "N/A",
+                    ...qrData,
+                });
+                return;
+            }
+
+            toast.error("QR not found");
+        } catch (error) {
+            setQrByVehicleId((prev) => ({ ...prev, [vehicleId]: null }));
+            toast.error("QR not found");
+        } finally {
+            setQrActionLoadingByVehicleId((prev) => ({ ...prev, [vehicleId]: false }));
+        }
+    };
+
+    const handleGenerateOrRegenerateQr = async (vehicle) => {
+        const vehicleId = getVehicleId(vehicle);
+        if (!vehicleId) {
+            toast.error("Vehicle ID not found");
+            return;
+        }
+
+        try {
+            setQrActionLoadingByVehicleId((prev) => ({ ...prev, [vehicleId]: true }));
+            const response = await busService.generateBusQr(vehicleId);
+            if (response.ok && response.data) {
+                setQrByVehicleId((prev) => ({ ...prev, [vehicleId]: response.data }));
+                setQrPreview({
+                    vehicleName: vehicle?.VehicleName || vehicle?.vehicleName || "Bus",
+                    numberPlate: vehicle?.NumberPlate || vehicle?.numberPlate || "N/A",
+                    ...response.data,
+                });
+                toast.success(qrByVehicleId[vehicleId]?.qrImageUrl ? "QR regenerated successfully!" : "QR generated successfully!");
+                return;
+            }
+            throw new Error("Failed to generate QR");
+        } catch (error) {
+            toast.error(error.message || "Failed to generate QR");
+        } finally {
+            setQrActionLoadingByVehicleId((prev) => ({ ...prev, [vehicleId]: false }));
+            handleMenuClose();
+        }
+    };
+
     const terminalOptions = React.useMemo(() => {
         const normalized = (Array.isArray(terminals) ? terminals : []).map((terminal) => ({
             id: terminal.TerminalId || terminal.id,
@@ -202,6 +273,40 @@ const VehicleManagement = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const currentVehicles = filteredBuses.slice(startIndex, endIndex);
+
+    useEffect(() => {
+        if (!currentVehicles.length) return;
+
+        let cancelled = false;
+
+        currentVehicles.forEach((vehicle) => {
+            const vehicleId = getVehicleId(vehicle);
+            if (!vehicleId || requestedQrIdsRef.current.has(vehicleId)) return;
+
+            requestedQrIdsRef.current.add(vehicleId);
+            setQrLoadingByVehicleId((prev) => ({ ...prev, [vehicleId]: true }));
+
+            busService
+                .getBusQr(vehicleId)
+                .then((response) => {
+                    if (cancelled) return;
+                    const qrData = response?.ok ? response.data || null : null;
+                    setQrByVehicleId((prev) => ({ ...prev, [vehicleId]: qrData }));
+                })
+                .catch(() => {
+                    if (cancelled) return;
+                    setQrByVehicleId((prev) => ({ ...prev, [vehicleId]: null }));
+                })
+                .finally(() => {
+                    if (cancelled) return;
+                    setQrLoadingByVehicleId((prev) => ({ ...prev, [vehicleId]: false }));
+                });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [currentVehicles]);
 
     useEffect(() => {
         if (!filteredBuses.length || addbusinfo || isNavigate || isSeeMoreInfo || editMode || reportedDefects || notes || showScheduleManagement) return;
@@ -409,6 +514,9 @@ const VehicleManagement = () => {
                                                             <BsThreeDots className="text-black cursor-pointer text-lg" onClick={(e) => handleMenuOpen(e, vehicle)} />
                                                             <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
                                                                 <MenuItem onClick={handleEditClickFromMenu}>Edit</MenuItem>
+                                                                <MenuItem onClick={() => handleGenerateOrRegenerateQr(selectedVehicleForMenu)}>
+                                                                    {selectedVehicleForMenu && qrByVehicleId[getVehicleId(selectedVehicleForMenu)]?.qrImageUrl ? 'Regenerate QR' : 'Generate QR'}
+                                                                </MenuItem>
                                                             </Menu>
                                                         </div>
                                                     </div>
@@ -450,6 +558,7 @@ const VehicleManagement = () => {
                                             <th className="p-4 text-left">Bus Picture</th>
                                             <th className="p-4 text-left">Bus Name</th>
                                             <th className="p-4 text-left">Terminal</th>
+                                            <th className="p-4 text-left">QR Code</th>
                                             <th className="p-4 text-left">Bus Information</th>
                                             <th className="p-4 text-left">Repair Schedule</th>
                                             <th className="p-4 text-left">Action</th>
@@ -473,6 +582,44 @@ const VehicleManagement = () => {
                                                     <td className="p-4 font-medium">{vehicle.VehicleName || vehicle.vehicleName || "N/A"}</td>
 
                                                     <td className="p-4">{vehicle.TerminalName || vehicle.terminalName || "N/A"}</td>
+
+                                                    <td className="p-4">
+                                                        {(() => {
+                                                            const vehicleId = getVehicleId(vehicle);
+                                                            const qrData = qrByVehicleId[vehicleId];
+                                                            const isQrLoading = qrActionLoadingByVehicleId[vehicleId];
+
+                                                            return (
+                                                                <div className="flex items-center gap-2">
+                                                                    {isQrLoading ? (
+                                                                        <span className="text-sm text-gray-500">Processing...</span>
+                                                                    ) : qrData?.qrImageUrl ? (
+                                                                        <button
+                                                                            className="rounded bg-[#C01824] px-4 py-2 text-white hover:bg-[#A01520]"
+                                                                            onClick={() => handleQrPreview(vehicle)}
+                                                                        >
+                                                                            View QR
+                                                                        </button>
+                                                                    ) : (
+                                                                        <>
+                                                                            <button
+                                                                                className="rounded border border-[#C01824] px-4 py-2 text-[#C01824] hover:bg-[#fff5f5]"
+                                                                                onClick={() => handleQrPreview(vehicle)}
+                                                                            >
+                                                                                Check QR
+                                                                            </button>
+                                                                            <button
+                                                                                className="rounded bg-[#C01824] px-4 py-2 text-white hover:bg-[#A01520]"
+                                                                                onClick={() => handleGenerateOrRegenerateQr(vehicle)}
+                                                                            >
+                                                                                Generate QR
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </td>
 
                                                     <td className="p-4">
                                                         <button
@@ -512,11 +659,11 @@ const VehicleManagement = () => {
                                                             </Menu>
                                                         </div>
                                                     </td>
-                                                </tr>
-                                            )})
+                                            </tr>
+                                        )})
                                         ) : (
                                             <tr>
-                                                <td colSpan="6" className="text-center p-4 text-gray-500">
+                                                <td colSpan="7" className="text-center p-4 text-gray-500">
                                                     No vehicles found
                                                 </td>
                                             </tr>
@@ -541,6 +688,54 @@ const VehicleManagement = () => {
                         <FilterModal open={open} onClose={() => setOpen(false)} />
                     </div>
                 </section>
+            )}
+
+            {qrPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="text-xl font-bold text-black">{qrPreview.vehicleName || 'Bus QR'}</h3>
+                                <p className="mt-1 text-sm text-gray-600">{qrPreview.numberPlate || 'N/A'}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setQrPreview(null)}
+                                className="text-xl font-bold text-gray-500"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="mt-5 flex justify-center rounded-lg border border-gray-200 bg-[#fafafa] p-4">
+                            {qrPreview.qrImageUrl ? (
+                                <img src={qrPreview.qrImageUrl} alt="Bus QR" className="h-64 w-64 object-contain" />
+                            ) : (
+                                <p className="text-sm text-gray-500">QR image not available.</p>
+                            )}
+                        </div>
+                        {qrPreview.qrToken && (
+                            <p className="mt-4 break-all rounded-md bg-[#f5f6fa] px-3 py-2 text-xs font-semibold text-gray-700">
+                                Token: {qrPreview.qrToken}
+                            </p>
+                        )}
+                        <div className="mt-6 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => window.open(qrPreview.qrImageUrl, "_blank", "noopener,noreferrer")}
+                                className="rounded-md border border-[#C01824] px-4 py-2 text-sm font-medium text-[#C01824]"
+                            >
+                                Open QR
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setQrPreview(null)}
+                                className="rounded-md bg-[#C01824] px-4 py-2 text-sm font-medium text-white"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </MainLayout>
     );

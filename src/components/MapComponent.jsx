@@ -28,7 +28,7 @@ const getBusIconByStatus = (status) => {
  *    - origin = first stop
  *    - destination = last stop
  *    - waypoints = all middle stops (pickup points)
- *    - optimizeWaypoints: true for best order
+ *    - optimizeWaypoints: false so backend stop order stays intact
  *
  * 2. Single polyline from Google response:
  *    - Use overview_path (or combined legs) → one path only
@@ -126,7 +126,7 @@ const MapComponent = ({
         origin,
         destination,
         waypoints,
-        optimizeWaypoints: true,   // best order ke liye
+        optimizeWaypoints: false,  // backend stopOrder preserve karna hai
         travelMode: window.google.maps.TravelMode.DRIVING,
       },
       (result, status) => {
@@ -201,25 +201,24 @@ const MapComponent = ({
       const isStudent = t === "student";
       const isStop = t === "stop" || t === "pickup" || t === "drop" || t === "dropoff";
       const role = marker.stopRole || "mid";
+      const stopColor =
+        t === "pickup"
+          ? "#16a34a"
+          : t === "dropoff" || t === "drop"
+          ? "#f97316"
+          : role === "start" || role === "end"
+          ? "#C01824"
+          : "#111111";
 
       const stopIcon = isStop
-        ? role === "start" || role === "end"
-          ? {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 10,
-              fillColor: "#C01824",
-              fillOpacity: 1,
-              strokeColor: "#ffffff",
-              strokeWeight: 3,
-            }
-          : {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: "#111111",
-              fillOpacity: 1,
-              strokeColor: "#ffffff",
-              strokeWeight: 2,
-            }
+        ? {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: role === "start" || role === "end" ? 10 : 8,
+            fillColor: stopColor,
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: role === "start" || role === "end" ? 3 : 2,
+          }
         : undefined;
 
       const studentIcon = isStudent
@@ -345,7 +344,7 @@ const MapComponent = ({
                     style={{
                       backgroundColor:
                         (selectedMarker.type || "").toLowerCase() === "pickup" ? "#16a34a" :
-                        (selectedMarker.type || "").toLowerCase() === "dropoff" ? "#dc2626" : "#2563eb"
+                        (selectedMarker.type || "").toLowerCase() === "dropoff" ? "#f97316" : "#2563eb"
                     }}
                   />
                   <span className="font-bold text-gray-900 text-[13px] leading-tight">{selectedMarker.title}</span>

@@ -114,6 +114,7 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 	const [storageOption, setStorage]   = useState('');
 	const [errors, setErrors]           = useState({});
 	const [touched, setTouched]         = useState({});
+	const [createdQr, setCreatedQr]     = useState(null);
 
 	// ── Load dropdowns ────────────────────────────────────────────────────
 	useEffect(() => {
@@ -228,7 +229,12 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 				if (createBus.fulfilled.match(result)) {
 					toast.success('Bus added successfully!');
 					refreshBuses?.();
-					handleCancel();
+					const createdQrData = result.payload?.data?.qr || null;
+					if (createdQrData?.qrImageUrl) {
+						setCreatedQr(createdQrData);
+					} else {
+						handleCancel();
+					}
 				} else {
 					toast.error(result.payload || 'Failed to add bus');
 				}
@@ -470,6 +476,46 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 					</button>
 				</div>
 			</form>
+
+			{createdQr && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+					<div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+						<h3 className="text-xl font-bold text-black">Bus QR Code</h3>
+						<p className="mt-2 text-sm text-gray-600">Bus create ho gayi hai. Is QR code ko detail screen ya scanner flow mein use kiya ja sakta hai.</p>
+						<div className="mt-5 flex justify-center rounded-lg border border-gray-200 bg-[#fafafa] p-4">
+							{createdQr.qrImageUrl ? (
+								<img src={createdQr.qrImageUrl} alt="Bus QR" className="h-56 w-56 object-contain" />
+							) : (
+								<p className="text-sm text-gray-500">QR image not available.</p>
+							)}
+						</div>
+						{createdQr.qrToken && (
+							<p className="mt-4 break-all rounded-md bg-[#f5f6fa] px-3 py-2 text-xs font-semibold text-gray-700">
+								Token: {createdQr.qrToken}
+							</p>
+						)}
+						<div className="mt-6 flex items-center justify-end gap-3">
+							<button
+								type="button"
+								onClick={() => window.open(createdQr.qrImageUrl, "_blank", "noopener,noreferrer")}
+								className="rounded-md border border-[#C01824] px-4 py-2 text-sm font-medium text-[#C01824]"
+							>
+								Open QR
+							</button>
+							<button
+								type="button"
+								onClick={() => {
+									setCreatedQr(null);
+									handleCancel();
+								}}
+								className="rounded-md bg-[#C01824] px-4 py-2 text-sm font-medium text-white"
+							>
+								Done
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

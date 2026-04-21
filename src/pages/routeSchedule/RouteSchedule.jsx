@@ -250,6 +250,9 @@ const RouteSchedule = () => {
     if (isStudentPayload) {
       setShowCard(true);
       const studentName = payload.studentName || payload.StudentName || "Student";
+      const assignmentType = String(
+        payload.assignmentType ?? payload.AssignmentType ?? "AM"
+      ).toUpperCase() === "PM" ? "PM" : "AM";
       const pickupLat = payload.pickupLat ?? payload.PickupLatitude ?? payload.PickupLat;
       const pickupLng = payload.pickupLng ?? payload.PickupLongitude ?? payload.PickupLng;
       const dropLat = payload.dropLat ?? payload.DropLatitude ?? payload.DropLat ?? payload.dropoffLat;
@@ -259,24 +262,28 @@ const RouteSchedule = () => {
       const dropOk = Number.isFinite(Number(dropLat)) && Number.isFinite(Number(dropLng));
 
       const markers = [];
-      if (pickupOk) {
+      if (assignmentType === "PM" ? dropOk : pickupOk) {
         markers.push({
           id: `student-pickup-${studentName}`,
-          type: "pickup",
+          type: assignmentType === "PM" ? "dropoff" : "pickup",
           stopRole: "start",
           order: 1,
-          title: `${studentName} (Pickup)`,
-          position: { lat: Number(pickupLat), lng: Number(pickupLng) },
+          title: `${studentName} (${assignmentType === "PM" ? "Dropoff" : "Pickup"})`,
+          position: assignmentType === "PM"
+            ? { lat: Number(dropLat), lng: Number(dropLng) }
+            : { lat: Number(pickupLat), lng: Number(pickupLng) },
         });
       }
-      if (dropOk) {
+      if (assignmentType === "PM" ? pickupOk : dropOk) {
         markers.push({
           id: `student-dropoff-${studentName}`,
-          type: "dropoff",
+          type: assignmentType === "PM" ? "pickup" : "dropoff",
           stopRole: "end",
           order: 2,
-          title: `${studentName} (Dropoff)`,
-          position: { lat: Number(dropLat), lng: Number(dropLng) },
+          title: `${studentName} (${assignmentType === "PM" ? "Pickup" : "Dropoff"})`,
+          position: assignmentType === "PM"
+            ? { lat: Number(pickupLat), lng: Number(pickupLng) }
+            : { lat: Number(dropLat), lng: Number(dropLng) },
         });
       }
 
@@ -290,14 +297,20 @@ const RouteSchedule = () => {
       const dateVal     = payload.date    || payload.Date    || "";
       const timeVal     = payload.pickupTime || payload.PickupTime || "";
       const scheduleStr = [dateVal, timeVal].filter(Boolean).join(" • ") || "";
+      const primaryLocation = assignmentType === "PM" ? dropoffAddr : pickupAddr;
+      const secondaryLocation = assignmentType === "PM" ? pickupAddr : dropoffAddr;
 
       setMapCardInfo({
-        cardTitle:          studentName,
-        scheduleText:       scheduleStr || (pickupAddr ? `Pickup: ${pickupAddr}` : ""),
+        cardTitle:          `${studentName} (${assignmentType})`,
+        scheduleText:       scheduleStr
+          ? `${scheduleStr} • Start: ${assignmentType === "PM" ? "Drop-off" : "Pickup"}`
+          : (primaryLocation ? `${assignmentType === "PM" ? "Drop-off" : "Pickup"}: ${primaryLocation}` : ""),
         contactText:        driverName || "Driver",
-        destinationName:    dropoffAddr ? "Drop-off" : "",
-        destinationAddress: dropoffAddr,
-        destinationLatLng:  dropOk ? { lat: Number(dropLat), lng: Number(dropLng) } : null,
+        destinationName:    secondaryLocation ? (assignmentType === "PM" ? "Pickup" : "Drop-off") : "",
+        destinationAddress: secondaryLocation,
+        destinationLatLng:  assignmentType === "PM"
+          ? (pickupOk ? { lat: Number(pickupLat), lng: Number(pickupLng) } : null)
+          : (dropOk ? { lat: Number(dropLat), lng: Number(dropLng) } : null),
       });
 
       if (markers.length > 0) {
@@ -336,61 +349,103 @@ const RouteSchedule = () => {
         const pickupLng = s?.PickupLongitude ?? s?.pickupLongitude;
         return Number.isFinite(Number(pickupLat)) && Number.isFinite(Number(pickupLng));
       });
+      const rowsWithDropoff = rows.filter((s) => {
+        const dropLat = s?.DropLatitude ?? s?.dropLatitude ?? s?.DropoffLatitude ?? s?.dropoffLatitude;
+        const dropLng = s?.DropLongitude ?? s?.dropLongitude ?? s?.DropoffLongitude ?? s?.dropoffLongitude;
+        return Number.isFinite(Number(dropLat)) && Number.isFinite(Number(dropLng));
+      });
 
-      // Prefer AM assignments for "towards school drop-off" optimization.
+      const routeType = String(
+        routeContextPayload
+          ? (payload.assignmentType ?? payload.AssignmentType ?? payload.type ?? payload.Type ?? "")
+          : rows[0]?.AssignmentType ?? rows[0]?.assignmentType ?? "AM"
+      ).toUpperCase() === "PM" ? "PM" : "AM";
+
       const amRows = rowsWithPickup.filter((s) =>
         String(s?.AssignmentType ?? s?.assignmentType ?? "").toUpperCase() === "AM"
       );
-      const drivingRows = amRows.length > 0 ? amRows : rowsWithPickup;
+      const pmRows = rowsWithDropoff.filter((s) =>
+        String(s?.AssignmentType ?? s?.assignmentType ?? "").toUpperCase() === "PM"
+      );
+      const drivingRows = routeType === "PM"
+        ? (pmRows.length > 0 ? pmRows : rowsWithDropoff)
+        : (amRows.length > 0 ? amRows : rowsWithPickup);
 
-      const pickupMarkers = drivingRows.map((s, idx) => {
+      const schoolOriginCandidate = drivingRows.find((s) => {
+        const schoolLat = s?.PickupLatitude ?? s?.pickupLatitude;
+        const schoolLng = s?.PickupLongitude ?? s?.pickupLongitude;
+        return Number.isFinite(Number(schoolLat)) && Number.isFinite(Number(schoolLng));
+      }) || null;
+
+      const schoolDestinationCandidate = drivingRows.find((s) => {
+        const schoolLat = s?.DropLatitude ?? s?.dropLatitude ?? s?.DropoffLatitude ?? s?.dropoffLatitude;
+        const schoolLng = s?.DropLongitude ?? s?.dropLongitude ?? s?.DropoffLongitude ?? s?.dropoffLongitude;
+        return Number.isFinite(Number(schoolLat)) && Number.isFinite(Number(schoolLng));
+      }) || null;
+
+      const stopMarkers = drivingRows.map((s, idx) => {
         const studentId = s?.StudentId ?? s?.studentId ?? idx;
         const studentName = s?.StudentName ?? s?.studentName ?? `Student ${studentId}`;
-        const pickupLat = s?.PickupLatitude ?? s?.pickupLatitude;
-        const pickupLng = s?.PickupLongitude ?? s?.pickupLongitude;
+        const stopLat = routeType === "PM"
+          ? (s?.DropLatitude ?? s?.dropLatitude ?? s?.DropoffLatitude ?? s?.dropoffLatitude)
+          : (s?.PickupLatitude ?? s?.pickupLatitude);
+        const stopLng = routeType === "PM"
+          ? (s?.DropLongitude ?? s?.dropLongitude ?? s?.DropoffLongitude ?? s?.dropoffLongitude)
+          : (s?.PickupLongitude ?? s?.pickupLongitude);
 
         return {
-          id: `route-${routeIdNum}-pickup-${studentId}-${idx}`,
-          type: "pickup",
-          stopRole: idx === 0 ? "start" : "mid",
+          id: `route-${routeIdNum}-stop-${studentId}-${idx}`,
+          type: routeType === "PM" ? "dropoff" : "pickup",
+          stopRole: "mid",
           order: idx + 1,
-          title: `${studentName} (Pickup)`,
-          position: { lat: Number(pickupLat), lng: Number(pickupLng) },
+          title: `${studentName} (${routeType === "PM" ? "Dropoff" : "Pickup"})`,
+          position: { lat: Number(stopLat), lng: Number(stopLng) },
         };
       });
 
-      const dropCandidate =
-        drivingRows.find((s) => {
-          const dropLat = s?.DropLatitude ?? s?.dropLatitude ?? s?.DropoffLatitude ?? s?.dropoffLatitude;
-          const dropLng = s?.DropLongitude ?? s?.dropLongitude ?? s?.DropoffLongitude ?? s?.dropoffLongitude;
-          return Number.isFinite(Number(dropLat)) && Number.isFinite(Number(dropLng));
-        }) || null;
-
-      const destinationMarker = dropCandidate
+      const schoolStartMarker = routeType === "PM" && schoolOriginCandidate
         ? {
-            id: `route-${routeIdNum}-destination-dropoff`,
+            id: `route-${routeIdNum}-school-start`,
+            type: "pickup",
+            stopRole: "start",
+            order: 0,
+            title: "School",
+            position: {
+              lat: Number(schoolOriginCandidate?.PickupLatitude ?? schoolOriginCandidate?.pickupLatitude),
+              lng: Number(schoolOriginCandidate?.PickupLongitude ?? schoolOriginCandidate?.pickupLongitude),
+            },
+          }
+        : null;
+
+      const schoolEndMarker = routeType === "AM" && schoolDestinationCandidate
+        ? {
+            id: `route-${routeIdNum}-school-end`,
             type: "dropoff",
             stopRole: "end",
-            order: pickupMarkers.length + 1,
-            title: "School (Drop-off)",
+            order: stopMarkers.length + 1,
+            title: "School",
             position: {
               lat: Number(
-                dropCandidate?.DropLatitude ??
-                  dropCandidate?.dropLatitude ??
-                  dropCandidate?.DropoffLatitude ??
-                  dropCandidate?.dropoffLatitude
+                schoolDestinationCandidate?.DropLatitude ??
+                  schoolDestinationCandidate?.dropLatitude ??
+                  schoolDestinationCandidate?.DropoffLatitude ??
+                  schoolDestinationCandidate?.dropoffLatitude
               ),
               lng: Number(
-                dropCandidate?.DropLongitude ??
-                  dropCandidate?.dropLongitude ??
-                  dropCandidate?.DropoffLongitude ??
-                  dropCandidate?.dropoffLongitude
+                schoolDestinationCandidate?.DropLongitude ??
+                  schoolDestinationCandidate?.dropLongitude ??
+                  schoolDestinationCandidate?.DropoffLongitude ??
+                  schoolDestinationCandidate?.dropoffLongitude
               ),
             },
           }
         : null;
 
-      const markers = destinationMarker ? [...pickupMarkers, destinationMarker] : pickupMarkers;
+      const markers = [
+        ...(schoolStartMarker ? [schoolStartMarker] : []),
+        ...stopMarkers,
+        ...(schoolEndMarker ? [schoolEndMarker] : []),
+      ];
 
       setMapMarkers(markers);
       setIsRouteMap(true);
@@ -402,19 +457,28 @@ const RouteSchedule = () => {
         : "";
       const contextParts = [terminalName, instituteName].filter(Boolean);
       const destinationAddress =
-        dropCandidate?.DropoffAddress ??
-        dropCandidate?.dropoffAddress ??
-        dropCandidate?.DropoffLocation ??
-        dropCandidate?.dropoffLocation ??
+        (routeType === "PM"
+          ? (
+              schoolOriginCandidate?.PickupAddress ??
+              schoolOriginCandidate?.pickupAddress ??
+              schoolOriginCandidate?.PickupLocation ??
+              schoolOriginCandidate?.pickupLocation
+            )
+          : (
+              schoolDestinationCandidate?.DropoffAddress ??
+              schoolDestinationCandidate?.dropoffAddress ??
+              schoolDestinationCandidate?.DropoffLocation ??
+              schoolDestinationCandidate?.dropoffLocation
+            )) ??
         "";
 
       setMapCardInfo({
         cardTitle: `Route #${routeIdNum}`,
         scheduleText: `${drivingRows.length} stop${drivingRows.length === 1 ? "" : "s"}${contextParts.length ? ` • ${contextParts.join(" • ")}` : ""}`,
         contactText: "",
-        destinationName: destinationAddress ? "Drop-off" : "",
+        destinationName: destinationAddress ? (routeType === "PM" ? "School" : "Drop-off") : "",
         destinationAddress,
-        destinationLatLng: destinationMarker ? destinationMarker.position : null,
+        destinationLatLng: schoolEndMarker?.position || schoolStartMarker?.position || null,
       });
 
       if (markers.length > 0) {

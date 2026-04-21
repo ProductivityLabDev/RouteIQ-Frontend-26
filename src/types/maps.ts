@@ -13,7 +13,7 @@ export interface MapMarker {
   id: string | number;
   position: LatLng;
   title: string;
-  type: 'student' | 'school' | 'bus' | 'stop';
+  type: 'student' | 'school' | 'bus' | 'stop' | 'pickup' | 'dropoff';
   details?: {
     name?: string;
     address?: string;
@@ -45,4 +45,3 @@ export interface BusTrackingState {
   etaMinutes: number;
   speed: number; // For Roads API phase
 }
-

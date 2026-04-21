@@ -82,6 +82,22 @@ const normalizeTripRecord = (trip) => ({
   flagColor: trip?.flagColor ?? trip?.FlagColor ?? "",
 });
 
+const resolveRouteMapType = (routeOrTrip) => {
+  const rawType = String(
+    routeOrTrip?.routeMapType ??
+      routeOrTrip?.mapType ??
+      routeOrTrip?.routeType ??
+      routeOrTrip?.RouteType ??
+      routeOrTrip?.type ??
+      routeOrTrip?.Type ??
+      routeOrTrip?.assignmentType ??
+      routeOrTrip?.AssignmentType ??
+      "AM"
+  ).toUpperCase();
+
+  return rawType === "PM" ? "PM" : "AM";
+};
+
 const RouteManagement = () => {
   const dispatch = useAppDispatch();
 
@@ -370,6 +386,7 @@ const RouteManagement = () => {
   // ---------------------------
   const handleMapScreenClick = (routeOrTrip) => {
     const resolvedId = resolveRouteId(routeOrTrip);
+    const routeMapType = resolveRouteMapType(routeOrTrip);
 
     if (!resolvedId) {
       toast.error("Route ID not found");
@@ -381,14 +398,14 @@ const RouteManagement = () => {
     setOpenMapScreen(true);
 
     // Load route stops (for directions waypoints)
-    dispatch(fetchRouteMap({ routeId: resolvedId, type: "AM" }));
+    dispatch(fetchRouteMap({ routeId: resolvedId, type: routeMapType }));
 
     // Load students (markers)
     const alreadyStudents =
       Array.isArray(studentsByRoute?.[resolvedId]) && studentsByRoute[resolvedId].length > 0;
     const loadingStudents = routesLoading?.routeStudents?.[resolvedId];
     if (!alreadyStudents && !loadingStudents) {
-      dispatch(fetchRouteStudents({ routeId: resolvedId, type: "AM" }));
+      dispatch(fetchRouteStudents({ routeId: resolvedId, type: routeMapType }));
     }
 
     // Metrics cache
@@ -442,6 +459,7 @@ const RouteManagement = () => {
     const payload = mapView?.data || {};
     const stopsRaw = payload.stops || payload.data?.stops || [];
     const selectedRouteId = mapView?.routeId;
+    const routeType = String(payload.routeType || mapView?.type || "AM").toUpperCase() === "PM" ? "PM" : "AM";
 
     const studentsRaw =
       (selectedRouteId ? studentsByRoute?.[selectedRouteId] : null) ||
@@ -471,6 +489,33 @@ const RouteManagement = () => {
       return acc;
     }, {});
 
+    const toPoint = (source) => {
+      const latitude = Number(
+        source?.latitude ??
+        source?.Latitude ??
+        source?.stopLatitude ??
+        source?.StopLatitude ??
+        source?.lat
+      );
+      const longitude = Number(
+        source?.longitude ??
+        source?.Longitude ??
+        source?.stopLongitude ??
+        source?.StopLongitude ??
+        source?.lng
+      );
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+      return {
+        lat: latitude,
+        lng: longitude,
+      };
+    };
+
+    const startPoint = toPoint(payload.startLocation || {});
+    const endPoint = toPoint(payload.endLocation || {});
+
     const stops = (Array.isArray(stopsRaw) ? stopsRaw : [])
       .map((stop, idx) => {
         const lat =
@@ -492,10 +537,14 @@ const RouteManagement = () => {
         if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return null;
 
         const order = Number(stop.stopOrder ?? stop.StopOrder ?? stop.order ?? idx + 1);
+        const stopType = String(
+          stop.stopType ?? stop.StopType ?? stop.type ?? (routeType === "PM" ? "dropoff" : "pickup")
+        ).toLowerCase();
 
         return {
           id: stop.stopId || stop.StopId || `stop-${idx}`,
           order,
+          type: stopType === "dropoff" ? "dropoff" : "pickup",
           title: stop.stopName || stop.StopName || `Stop ${Number.isFinite(order) ? order : idx + 1}`,
           position: { lat: latNum, lng: lngNum },
           address: stop.stopAddress || stop.StopAddress || "",
@@ -505,15 +554,55 @@ const RouteManagement = () => {
       .filter(Boolean)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    const stopMarkers = stops.map((s, i) => ({
-      id: String(s.id),
-      type: "stop",
-      order: s.order,
-      stopRole: i === 0 ? "start" : i === stops.length - 1 ? "end" : "mid",
-      title: s.title,
-      position: s.position,
-      details: { address: s.address, students: s.students || [] },
-    }));
+    const stopMarkers = [];
+
+    if (startPoint) {
+      stopMarkers.push({
+        id: `route-start-${selectedRouteId || "active"}`,
+        type: routeType === "PM" ? "pickup" : "stop",
+        order: 0,
+        stopRole: "start",
+        title:
+          payload?.startLocation?.name ||
+          payload?.startLocation?.address ||
+          (routeType === "PM" ? "School" : "Route Start"),
+        position: startPoint,
+        details: {
+          address: payload?.startLocation?.address || payload?.startLocation?.name || "",
+          students: [],
+        },
+      });
+    }
+
+    stops.forEach((s) => {
+      stopMarkers.push({
+        id: String(s.id),
+        type: s.type,
+        order: s.order,
+        stopRole: "mid",
+        title: s.title,
+        position: s.position,
+        details: { address: s.address, students: s.students || [] },
+      });
+    });
+
+    if (endPoint) {
+      stopMarkers.push({
+        id: `route-end-${selectedRouteId || "active"}`,
+        type: routeType === "AM" ? "dropoff" : "stop",
+        order: stops.length + 1,
+        stopRole: "end",
+        title:
+          payload?.endLocation?.name ||
+          payload?.endLocation?.address ||
+          (routeType === "AM" ? "School" : "Route End"),
+        position: endPoint,
+        details: {
+          address: payload?.endLocation?.address || payload?.endLocation?.name || "",
+          students: [],
+        },
+      });
+    }
 
     const studentMarkers = (Array.isArray(studentsRaw) ? studentsRaw : [])
       .map((stu, idx) => {
@@ -566,7 +655,9 @@ const RouteManagement = () => {
       return !stopPositions.some((stopPos) => samePosition(sm.position, stopPos));
     });
 
-    const markers = [...stopMarkers, ...studentMarkersFiltered];
+    const markers = [...stopMarkers, ...studentMarkersFiltered].sort(
+      (left, right) => (Number(left.order) || 0) - (Number(right.order) || 0)
+    );
 
     let center = undefined;
     if (markers.length > 0) {
@@ -616,14 +707,13 @@ const RouteManagement = () => {
   const driverName = pickFirst(details.driverName, details.DriverName, details.driverFullName, details.DriverFullName);
   const driverPhone = pickFirst(details.driverPhone, details.DriverPhone, details.phone, details.Phone, details.mobile, details.Mobile);
 
-  const payloadStops = mapView?.data?.stops || [];
-  const lastStop = payloadStops[payloadStops.length - 1];
-  const destinationName = lastStop?.stopName || lastStop?.StopName;
-  const destinationAddress = lastStop?.stopAddress || lastStop?.StopAddress;
+  const endLocation = mapView?.data?.endLocation || {};
+  const destinationName = endLocation?.name || endLocation?.Name || null;
+  const destinationAddress = endLocation?.address || endLocation?.Address || null;
   const destinationLat =
-    lastStop?.latitude ?? lastStop?.Latitude ?? lastStop?.stopLatitude ?? lastStop?.StopLatitude;
+    endLocation?.latitude ?? endLocation?.Latitude ?? endLocation?.lat;
   const destinationLng =
-    lastStop?.longitude ?? lastStop?.Longitude ?? lastStop?.stopLongitude ?? lastStop?.StopLongitude;
+    endLocation?.longitude ?? endLocation?.Longitude ?? endLocation?.lng;
 
   const destinationLatLng =
     destinationLat !== undefined && destinationLng !== undefined

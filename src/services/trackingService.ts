@@ -292,6 +292,7 @@ export interface RouteMapStop extends RouteMapPoint {
   stopName?: string;
   stopAddress?: string;
   stopOrder?: number;
+  stopType?: string;
   estimatedArrivalTime?: string | null;
   isDropoff?: boolean;
   // From /live endpoint — stop completion status
@@ -303,10 +304,28 @@ export interface RouteMapData {
   routeId?: number;
   routeName?: string;
   routeNumber?: string;
+  routeType?: string;
+  school?: RouteMapPoint | null;
   startLocation?: RouteMapPoint | null;
   endLocation?: RouteMapPoint | null;
   stops: RouteMapStop[];
 }
+
+const resolveTrackingRouteType = (source: any, fallbackType: string = "AM") => {
+  const rawType = String(
+    pickFirst(
+      source?.routeType,
+      source?.RouteType,
+      source?.type,
+      source?.Type,
+      source?.assignmentType,
+      source?.AssignmentType,
+      fallbackType
+    ) || fallbackType
+  ).toUpperCase();
+
+  return rawType === "PM" ? "PM" : "AM";
+};
 
 // ============================================
 // Tracking Service Functions
@@ -451,97 +470,67 @@ export const trackingService = {
    * Get Route Map (start/end + ordered stops)
    * GET /tracking/routes/:routeId/map
    */
-  getRouteMap: async (routeId: number): Promise<ApiResponse<RouteMapData>> => {
-    const response = await apiClient.get(`/tracking/routes/${routeId}/map`);
+  getRouteMap: async (
+    routeId: number,
+    type?: "AM" | "PM"
+  ): Promise<ApiResponse<RouteMapData>> => {
+    const queryString = type ? `?type=${type}` : "";
+    const response = await apiClient.get(`/tracking/routes/${routeId}/map${queryString}`);
     const raw = response.data?.data || response.data || {};
     const source = raw?.stops || raw?.startLocation || raw?.endLocation ? raw : raw?.data || {};
+    const routeType = resolveTrackingRouteType(source, type || "AM");
     const normalizedStops = Array.isArray(source.stops)
-      ? source.stops.map((stop: any) => ({
-          stopId: toNumber(pickFirst(stop.stopId, stop.StopId)),
-          stopName: pickFirst(stop.stopName, stop.StopName, stop.name, stop.Name),
-          stopAddress: pickFirst(stop.stopAddress, stop.StopAddress, stop.address, stop.Address),
-          latitude:
-            toNumber(pickFirst(stop.latitude, stop.Latitude, stop.lat, stop.Lat)) || 0,
-          longitude:
-            toNumber(pickFirst(stop.longitude, stop.Longitude, stop.lng, stop.Lng)) || 0,
-          stopOrder: toNumber(pickFirst(stop.stopOrder, stop.StopOrder)),
-          estimatedArrivalTime: pickFirst(
-            stop.estimatedArrivalTime,
-            stop.EstimatedArrivalTime,
-            stop.eta,
-            stop.ETA,
-            null
-          ),
-          isDropoff: Boolean(pickFirst(stop.isDropoff, stop.IsDropoff, false)),
-        }))
+      ? source.stops
+          .map((stop: any, index: number) => {
+            const latitude = toNumber(
+              pickFirst(stop.stopLatitude, stop.StopLatitude, stop.latitude, stop.Latitude, stop.lat, stop.Lat)
+            );
+            const longitude = toNumber(
+              pickFirst(stop.stopLongitude, stop.StopLongitude, stop.longitude, stop.Longitude, stop.lng, stop.Lng)
+            );
+
+            if (latitude === undefined || longitude === undefined) {
+              return null;
+            }
+
+            const stopType = String(
+              pickFirst(
+                stop.stopType,
+                stop.StopType,
+                stop.type,
+                routeType === "PM" ? "dropoff" : "pickup"
+              ) || (routeType === "PM" ? "dropoff" : "pickup")
+            ).toLowerCase();
+
+            return {
+              stopId: toNumber(pickFirst(stop.stopId, stop.StopId)),
+              stopName: pickFirst(stop.stopName, stop.StopName, stop.name, stop.Name),
+              stopAddress: pickFirst(stop.stopAddress, stop.StopAddress, stop.address, stop.Address),
+              latitude,
+              longitude,
+              stopOrder: toNumber(pickFirst(stop.stopOrder, stop.StopOrder, stop.order)) || index + 1,
+              stopType,
+              estimatedArrivalTime: pickFirst(
+                stop.estimatedArrivalTime,
+                stop.EstimatedArrivalTime,
+                stop.eta,
+                stop.ETA,
+                null
+              ),
+              isDropoff: stopType === "dropoff" || Boolean(pickFirst(stop.isDropoff, stop.IsDropoff, false)),
+            };
+          })
+          .filter(Boolean)
+          .sort((left: any, right: any) => Number(left?.stopOrder || 0) - Number(right?.stopOrder || 0))
       : [];
 
-    const firstStop = normalizedStops[0];
-    const lastStop = normalizedStops[normalizedStops.length - 1];
+    const schoolPoint = normalizeRouteMapPoint(
+      source.school || source.School || source.schoolObject || source.SchoolObject || source.institute
+    );
     const rawStart = normalizeRouteMapPoint(source.startLocation || source.StartLocation);
     const rawEnd = normalizeRouteMapPoint(source.endLocation || source.EndLocation);
-    const startLocation = {
-      ...(rawStart || {}),
-      latitude:
-        toNumber(
-          pickFirst(
-            rawStart?.latitude,
-            source.startLatitude,
-            source.StartLatitude,
-            firstStop?.latitude
-          )
-        ) || 0,
-      longitude:
-        toNumber(
-          pickFirst(
-            rawStart?.longitude,
-            source.startLongitude,
-            source.StartLongitude,
-            firstStop?.longitude
-          )
-        ) || 0,
-      address:
-        rawStart?.address ||
-        rawStart?.name ||
-        firstStop?.stopAddress ||
-        firstStop?.stopName,
-      name:
-        rawStart?.name ||
-        rawStart?.address ||
-        firstStop?.stopName ||
-        firstStop?.stopAddress,
-    };
-    const endLocation = {
-      ...(rawEnd || {}),
-      latitude:
-        toNumber(
-          pickFirst(
-            rawEnd?.latitude,
-            source.endLatitude,
-            source.EndLatitude,
-            lastStop?.latitude
-          )
-        ) || 0,
-      longitude:
-        toNumber(
-          pickFirst(
-            rawEnd?.longitude,
-            source.endLongitude,
-            source.EndLongitude,
-            lastStop?.longitude
-          )
-        ) || 0,
-      address:
-        rawEnd?.address ||
-        rawEnd?.name ||
-        lastStop?.stopAddress ||
-        lastStop?.stopName,
-      name:
-        rawEnd?.name ||
-        rawEnd?.address ||
-        lastStop?.stopName ||
-        lastStop?.stopAddress,
-    };
+    const startLocation = routeType === "PM" ? schoolPoint || rawStart : rawStart;
+    const endLocation = routeType === "PM" ? rawEnd : schoolPoint || rawEnd;
 
     return {
       ok: true,
@@ -549,6 +538,8 @@ export const trackingService = {
         routeId: toNumber(pickFirst(source.routeId, source.RouteId)),
         routeName: pickFirst(source.routeName, source.RouteName),
         routeNumber: pickFirst(source.routeNumber, source.RouteNumber),
+        routeType,
+        school: schoolPoint,
         startLocation,
         endLocation,
         stops: normalizedStops,

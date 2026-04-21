@@ -100,6 +100,11 @@ export default function SchoolRouteTable({
           : Array.isArray(response?.data)
           ? response.data
           : [];
+        console.log("[RouteSchedule][SchoolRouteTable] raw students response:", {
+          routeId,
+          response: response?.data,
+          rows: list,
+        });
         setStudentsByRoute(prev => ({ ...prev, [routeId]: list }));
       } catch (e) {
         setStudentsByRoute(prev => ({ ...prev, [routeId]: [] }));
@@ -111,7 +116,7 @@ export default function SchoolRouteTable({
 
   // ─── Map API students to table rows ────────────────────────────────────────
   const mapStudentsToRows = (students, driverName) => {
-    return (students || []).map((s) => {
+    const mappedRows = (students || []).map((s) => {
       const studentName =
         s?.StudentName || s?.studentName || s?.Name || s?.name ||
         `${s?.FirstName || s?.firstName || ""} ${s?.LastName || s?.lastName || ""}`.trim() || "Student";
@@ -130,38 +135,44 @@ export default function SchoolRouteTable({
       const timeVal = parseTimeField(
         s?.PickupTime || s?.pickupTime || s?.Time || s?.time || s?.StartTime || s?.startTime
       );
+      const dropoffTimeVal = parseTimeField(
+        s?.DropoffTime || s?.dropoffTime || s?.EndTime || s?.endTime
+      );
 
       return {
         date: dateVal || "-",
         pickupTime: timeVal || "-",
+        dropoffTime: dropoffTimeVal || "-",
         studentName,
         driverName: driverName || "-",
         pickup: pickup || "-",
         dropoff: dropoff || "-",
+        assignmentType: String(s?.AssignmentType ?? s?.assignmentType ?? "AM").toUpperCase() === "PM" ? "PM" : "AM",
         pickupLat: s?.PickupLatitude ?? s?.pickupLatitude ?? null,
         pickupLng: s?.PickupLongitude ?? s?.pickupLongitude ?? null,
         dropLat: s?.DropLatitude ?? s?.dropLatitude ?? s?.DropoffLatitude ?? s?.dropoffLatitude ?? null,
         dropLng: s?.DropLongitude ?? s?.dropLongitude ?? s?.DropoffLongitude ?? s?.dropoffLongitude ?? null,
       };
     });
+
+    console.log("[RouteSchedule][SchoolRouteTable] mapped table rows:", {
+      driverName,
+      totalRows: mappedRows.length,
+      rows: mappedRows,
+    });
+
+    return mappedRows;
   };
 
   // ─── Filter by search + AM/PM ───────────────────────────────────────────────
   const getFilteredRows = (rows, routeId) => {
     const search = (searchByRoute[routeId] || "").toLowerCase().trim();
-    const tab = activeTabByRoute[routeId] || "All";
 
     return rows.filter(row => {
       if (search) {
         const haystack = [row.studentName, row.driverName, row.pickup, row.dropoff]
           .join(" ").toLowerCase();
         if (!haystack.includes(search)) return false;
-      }
-      if (tab !== "All") {
-        const mins = parseTimeToMinutes(row.pickupTime);
-        if (mins === null) return false;
-        if (tab === "AM" && mins >= 720) return false;
-        if (tab === "PM" && mins < 720) return false;
       }
       return true;
     });
@@ -226,10 +237,12 @@ export default function SchoolRouteTable({
                   onClick={() => {
                     const firstRouteId = routes.length > 0 ? getRouteId(routes[0]) : null;
                     if (firstRouteId) {
+                      const selectedType = activeTabByRoute[firstRouteId] || "AM";
                       handleMapScreenClick({
                         routeId: firstRouteId,
                         instituteName,
                         terminalName,
+                        assignmentType: selectedType === "All" ? "AM" : selectedType,
                       });
                     }
                   }}
@@ -260,9 +273,12 @@ export default function SchoolRouteTable({
                     const students = studentsByRoute[routeId];
                     const studentsLoading = studentsLoadingByRoute[routeId];
                     const driverName = route?.DriverName || route?.driverName || "-";
+                    const selectedRouteType = activeTabByRoute[routeId] || "AM";
 
                     const allRows = mapStudentsToRows(students, driverName);
                     const filteredRows = getFilteredRows(allRows, routeId);
+                    const activeTripType = activeTabByRoute[routeId] || "All";
+                    const isPmView = activeTripType === "PM";
                     const page = currentPageByRoute[routeId] || 1;
                     const totalPages = Math.max(1, Math.ceil(filteredRows.length / STUDENTS_PER_PAGE));
                     const pageRows = filteredRows.slice((page - 1) * STUDENTS_PER_PAGE, page * STUDENTS_PER_PAGE);
@@ -306,6 +322,22 @@ export default function SchoolRouteTable({
                             </span>
                             <span className="text-sm font-bold">Route ID: {routeId}</span>
                             <span className="text-sm font-bold">Bus no: {busNumber}</span>
+                            <button
+                              className="bg-[#C01824] text-white px-3 py-1 rounded flex items-center gap-1 text-sm"
+                              onClick={() =>
+                                handleMapScreenClick({
+                                  routeId,
+                                  instituteName,
+                                  terminalName,
+                                  assignmentType: selectedRouteType === "All" ? "AM" : selectedRouteType,
+                                })
+                              }
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                              </svg>
+                              Map
+                            </button>
                             <button onClick={() => toggleRoute(routeId)}>
                               <ChevronDown open={isRouteOpen} />
                             </button>
@@ -351,11 +383,17 @@ export default function SchoolRouteTable({
                                   <thead className="bg-[#EEEEEE]">
                                     <tr>
                                       <th className="w-[110px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">Date</th>
-                                      <th className="w-[120px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">Pick-up Time</th>
+                                      <th className="w-[120px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">
+                                        {isPmView ? "Drop-off Time" : "Pick-up Time"}
+                                      </th>
                                       <th className="w-[170px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Student Name</th>
                                       <th className="w-[160px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Driver Name</th>
-                                      <th className="w-[210px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Pickup</th>
-                                      <th className="w-[210px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">Dropoff</th>
+                                      <th className="w-[210px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">
+                                        {isPmView ? "Dropoff" : "Pickup"}
+                                      </th>
+                                      <th className="w-[210px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-left">
+                                        {isPmView ? "Pickup" : "Dropoff"}
+                                      </th>
                                       <th className="w-[100px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">View Map</th>
                                       <th className="w-[90px] px-4 py-3 text-[14px] font-bold text-[#141516] border-b border-[#D9D9D9] whitespace-nowrap text-center">Action</th>
                                     </tr>
@@ -371,15 +409,31 @@ export default function SchoolRouteTable({
                                       const globalIdx = `${routeId}-${(page - 1) * STUDENTS_PER_PAGE + idx}`;
                                       return (
                                         <tr key={globalIdx} className="border-b border-[#D9D9D9] hover:bg-gray-50">
+                                          {(() => {
+                                            const primaryLocation = isPmView ? row.dropoff : row.pickup;
+                                            const secondaryLocation = isPmView ? row.pickup : row.dropoff;
+                                            const mapPayload = {
+                                              ...row,
+                                              assignmentType: activeTripType === "All" ? row.assignmentType : activeTripType,
+                                              pickup: row.pickup,
+                                              dropoff: row.dropoff,
+                                              pickupLocation: row.pickup,
+                                              dropoffLocation: row.dropoff,
+                                            };
+
+                                          return (
+                                              <>
                                           <td className="px-4 py-3 text-sm text-center align-middle whitespace-nowrap">{row.date}</td>
-                                          <td className="px-4 py-3 text-sm text-center align-middle whitespace-nowrap">{row.pickupTime}</td>
+                                          <td className="px-4 py-3 text-sm text-center align-middle whitespace-nowrap">
+                                            {isPmView ? row.dropoffTime : row.pickupTime}
+                                          </td>
                                           <td className="px-4 py-3 text-sm text-left align-middle whitespace-nowrap">{row.studentName}</td>
                                           <td className="px-4 py-3 text-sm text-left align-middle whitespace-nowrap">{row.driverName}</td>
                                           <td className="px-4 py-3 text-sm text-left align-middle max-w-[180px]">
-                                            <span className="block truncate" title={row.pickup}>{row.pickup}</span>
+                                            <span className="block truncate" title={primaryLocation}>{primaryLocation}</span>
                                           </td>
                                           <td className="px-4 py-3 text-sm text-left align-middle max-w-[180px]">
-                                            <span className="block truncate" title={row.dropoff}>{row.dropoff}</span>
+                                            <span className="block truncate" title={secondaryLocation}>{secondaryLocation}</span>
                                           </td>
                                           <td className="px-4 py-3 text-center align-middle">
                                             <div className="flex justify-center">
@@ -387,7 +441,7 @@ export default function SchoolRouteTable({
                                                 src={ViewMap}
                                                 alt="View Map"
                                                 className="w-6 h-6 cursor-pointer"
-                                                onClick={() => handleMapScreenClick(row)}
+                                                onClick={() => handleMapScreenClick(mapPayload)}
                                               />
                                             </div>
                                           </td>
@@ -410,6 +464,9 @@ export default function SchoolRouteTable({
                                               </div>
                                             )}
                                           </td>
+                                              </>
+                                            );
+                                          })()}
                                         </tr>
                                       );
                                     })}

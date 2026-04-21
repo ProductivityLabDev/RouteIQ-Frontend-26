@@ -110,7 +110,7 @@ const GOOGLE_LIBRARIES = ['places'];
 // Pre-computed module-level SVG constants (never change, safe outside JSX)
 const SCHOOL_PIN_SVG = createSchoolPinSvg();
 const ROUTE_START_PIN_SVG = createStudentPinSvg({ label: 'S', fill: '#16a34a', stroke: '#166534', textFill: '#14532d' });
-const ROUTE_END_PIN_SVG = createStudentPinSvg({ label: 'E', fill: '#7c3aed', stroke: '#5b21b6', textFill: '#ffffff' });
+const ROUTE_END_PIN_SVG = createStudentPinSvg({ label: 'E', fill: '#f97316', stroke: '#c2410c', textFill: '#ffffff' });
 const GOOGLE_ROADS_CHUNK_SIZE = 100;
 const MAX_TRACKING_POINT_JUMP_KM = 10;
 const MAX_DISPLAY_HISTORY_POINTS = 80;
@@ -519,6 +519,40 @@ const RealTimeTracking = () => {
   ]);
   const showBusMarkersInSchoolMode = false;
 
+  const isPmTrip = tripType === 'PM';
+
+  const getStudentPrimaryLocation = useCallback(
+    (student) =>
+      isPmTrip
+        ? student?.dropoffLocation || student?.pickupLocation || ''
+        : student?.pickupLocation || student?.dropoffLocation || '',
+    [isPmTrip]
+  );
+
+  const getStudentSecondaryLocation = useCallback(
+    (student) =>
+      isPmTrip
+        ? student?.pickupLocation || student?.dropoffLocation || ''
+        : student?.dropoffLocation || student?.pickupLocation || '',
+    [isPmTrip]
+  );
+
+  const getStudentPrimaryPoint = useCallback(
+    (student) => ({
+      lat: Number(isPmTrip ? student?.dropLatitude : student?.pickupLatitude),
+      lng: Number(isPmTrip ? student?.dropLongitude : student?.pickupLongitude),
+    }),
+    [isPmTrip]
+  );
+
+  const getStudentSecondaryPoint = useCallback(
+    (student) => ({
+      lat: Number(isPmTrip ? student?.pickupLatitude : student?.dropLatitude),
+      lng: Number(isPmTrip ? student?.pickupLongitude : student?.dropLongitude),
+    }),
+    [isPmTrip]
+  );
+
   useEffect(() => {
     if (selectedInfo !== 'Track School' || filteredStudentsList.length === 0) return;
 
@@ -576,6 +610,7 @@ const RealTimeTracking = () => {
       });
 
       if (focusedDriverRouteId && selectedRouteMap) {
+        const routeType = String(selectedRouteMap.routeType || 'AM').toUpperCase() === 'PM' ? 'PM' : 'AM';
         const orderedStops = Array.isArray(selectedRouteMap.stops)
           ? [...selectedRouteMap.stops].sort(
               (left, right) => Number(left?.stopOrder || 0) - Number(right?.stopOrder || 0)
@@ -592,9 +627,9 @@ const RealTimeTracking = () => {
             title:
               selectedRouteMap.startLocation?.name ||
               selectedRouteMap.startLocation?.address ||
-              'Route Start',
-            type: 'route-start',
-            status: 'route-start',
+              (routeType === 'PM' ? 'School' : 'Route Start'),
+            type: routeType === 'PM' ? 'school' : 'route-start',
+            status: routeType === 'PM' ? 'school' : 'route-start',
           });
         }
 
@@ -614,7 +649,10 @@ const RealTimeTracking = () => {
             }${liveStatus ? ` • ${liveStatus}` : ''}`,
             type: 'route-stop',
             status: liveStatus || 'route-stop',
-            stopData: stop,
+            stopData: {
+              ...stop,
+              stopType: String(stop?.stopType || stop?.StopType || (routeType === 'PM' ? 'dropoff' : 'pickup')).toLowerCase(),
+            },
           });
         });
 
@@ -625,9 +663,9 @@ const RealTimeTracking = () => {
             title:
               selectedRouteMap.endLocation?.name ||
               selectedRouteMap.endLocation?.address ||
-              'Route End',
-            type: 'route-end',
-            status: 'route-end',
+              (routeType === 'AM' ? 'School' : 'Route End'),
+            type: routeType === 'AM' ? 'school' : 'route-end',
+            status: routeType === 'AM' ? 'school' : 'route-end',
           });
         }
       }
@@ -663,11 +701,12 @@ const RealTimeTracking = () => {
         }
 
         filteredStudentsList.forEach((student) => {
-          if (!isReasonableLocation(student.pickupLatitude, student.pickupLongitude)) return;
+          const primaryPoint = getStudentPrimaryPoint(student);
+          if (!isReasonableLocation(primaryPoint.lat, primaryPoint.lng)) return;
           if (selectedStudent?.studentId && student.studentId === selectedStudent.studentId) return;
           addMarker({
             id: `student-${student.studentId}`,
-            position: { lat: Number(student.pickupLatitude), lng: Number(student.pickupLongitude) },
+            position: primaryPoint,
             title: student.name || 'Student',
             type: 'student',
             status: student.status || 'Active',
@@ -676,28 +715,25 @@ const RealTimeTracking = () => {
         });
 
         if (selectedStudent && !selectedStudent?.role) {
-          if (isReasonableLocation(selectedStudent.pickupLatitude, selectedStudent.pickupLongitude)) {
+          const primaryPoint = getStudentPrimaryPoint(selectedStudent);
+          const secondaryPoint = getStudentSecondaryPoint(selectedStudent);
+
+          if (isReasonableLocation(primaryPoint.lat, primaryPoint.lng)) {
             addMarker({
               id: `selected-student-pickup-${selectedStudent.studentId || 'active'}`,
-              position: {
-                lat: Number(selectedStudent.pickupLatitude),
-                lng: Number(selectedStudent.pickupLongitude),
-              },
-              title: `${selectedStudent.name || 'Student'} Pickup`,
+              position: primaryPoint,
+              title: `${selectedStudent.name || 'Student'} ${isPmTrip ? 'Dropoff' : 'Pickup'}`,
               type: 'selected-student-pickup',
               status: selectedStudent.status || 'Active',
               studentData: selectedStudent,
             });
           }
 
-          if (isReasonableLocation(selectedStudent.dropLatitude, selectedStudent.dropLongitude)) {
+          if (isReasonableLocation(secondaryPoint.lat, secondaryPoint.lng)) {
             addMarker({
               id: `selected-student-dropoff-${selectedStudent.studentId || 'active'}`,
-              position: {
-                lat: Number(selectedStudent.dropLatitude),
-                lng: Number(selectedStudent.dropLongitude),
-              },
-              title: `${selectedStudent.name || 'Student'} Dropoff`,
+              position: secondaryPoint,
+              title: `${selectedStudent.name || 'Student'} ${isPmTrip ? 'Pickup' : 'Dropoff'}`,
               type: 'selected-student-dropoff',
               status: selectedStudent.status || 'Active',
               studentData: selectedStudent,
@@ -730,6 +766,7 @@ const RealTimeTracking = () => {
     focusedDriverRouteId,
     liveRouteEtaByStopId,
     liveStopStatusById,
+    tripType,
   ]);
 
   // FIXED: Only used as INITIAL center — never changes after mount.
@@ -1018,9 +1055,9 @@ const RealTimeTracking = () => {
   };
 
   // âœ… Fetch vehicle path/history (for polyline)
-  const fetchRouteMap = async (routeId) => {
+  const fetchRouteMap = async (routeId, type = tripType) => {
     try {
-      const response = await trackingService.getRouteMap(routeId);
+      const response = await trackingService.getRouteMap(routeId, type);
       if (response.ok && response.data) {
         setSelectedRouteMap(response.data);
         return;
@@ -1205,7 +1242,7 @@ const RealTimeTracking = () => {
     ];
 
     if (routeId) {
-      requests.push(fetchRouteMap(routeId).catch(() => {}));
+      requests.push(fetchRouteMap(routeId, tripType).catch(() => {}));
       // Load live route → stops list for panel + seed stop status
       requests.push(
         trackingService.getLiveRoute(routeId, tripType).then((res) => {
@@ -1242,6 +1279,59 @@ const RealTimeTracking = () => {
     setVehiclePathSource('idle');
     selectedVehicleIdRef.current = null;
   };
+
+  useEffect(() => {
+    if (selectedInfo !== 'Track Drivers' || !focusedDriverRouteId) return;
+
+    let cancelled = false;
+
+    const refreshRouteByTripType = async () => {
+      try {
+        const [routeMapResponse, liveRouteResponse] = await Promise.all([
+          trackingService.getRouteMap(focusedDriverRouteId, tripType),
+          trackingService.getLiveRoute(focusedDriverRouteId, tripType),
+        ]);
+
+        if (cancelled) return;
+
+        if (routeMapResponse?.ok && routeMapResponse.data) {
+          setSelectedRouteMap(routeMapResponse.data);
+        } else {
+          setSelectedRouteMap(null);
+        }
+
+        if (liveRouteResponse?.ok && liveRouteResponse.data) {
+          const data = liveRouteResponse.data.data || liveRouteResponse.data;
+          const stops = Array.isArray(data?.stops) ? data.stops : [];
+          setLiveRouteStops(stops);
+          setLiveStopStatusById((current) => {
+            const next = { ...current };
+            stops.forEach((stop) => {
+              const stopId = Number(stop.stopId ?? stop.StopId);
+              if (!stopId) return;
+              if (stop.departedAt) next[stopId] = 'departed';
+              else if (stop.arrivedAt) next[stopId] = 'arrived';
+              else delete next[stopId];
+            });
+            return next;
+          });
+        } else {
+          setLiveRouteStops([]);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedRouteMap(null);
+          setLiveRouteStops([]);
+        }
+      }
+    };
+
+    refreshRouteByTripType();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInfo, focusedDriverRouteId, tripType]);
 
   // âœ… NEW: Toggle polling
   const activeTrackingRouteId = useMemo(
@@ -1685,10 +1775,12 @@ const RealTimeTracking = () => {
   const selectedStudentPath = useMemo(() => {
     if (selectedInfo !== 'Track School' || !selectedStudent || selectedStudent?.role === 'driver') return [];
 
-    const startLat = Number(selectedStudent.pickupLatitude);
-    const startLng = Number(selectedStudent.pickupLongitude);
-    const destinationLat = Number(selectedStudent.dropLatitude);
-    const destinationLng = Number(selectedStudent.dropLongitude);
+    const startPoint = getStudentPrimaryPoint(selectedStudent);
+    const destinationPoint = getStudentSecondaryPoint(selectedStudent);
+    const startLat = Number(startPoint.lat);
+    const startLng = Number(startPoint.lng);
+    const destinationLat = Number(destinationPoint.lat);
+    const destinationLng = Number(destinationPoint.lng);
 
     if (!isReasonableLocation(startLat, startLng) || !isReasonableLocation(destinationLat, destinationLng)) {
       return [];
@@ -1698,7 +1790,7 @@ const RealTimeTracking = () => {
       { lat: startLat, lng: startLng },
       { lat: destinationLat, lng: destinationLng },
     ].filter((point, index, array) => index === 0 || point.lat !== array[index - 1].lat || point.lng !== array[index - 1].lng);
-  }, [selectedInfo, selectedStudent, selectedSchool]);
+  }, [selectedInfo, selectedStudent, selectedSchool, getStudentPrimaryPoint, getStudentSecondaryPoint]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1898,7 +1990,7 @@ const RealTimeTracking = () => {
     if (selectedStudent) {
       return {
         title: 'Student Journey',
-        subtitle: `${selectedStudent.name || 'Student'} pickup to dropoff path`,
+        subtitle: `${selectedStudent.name || 'Student'} ${isPmTrip ? 'dropoff to pickup' : 'pickup to dropoff'} path`,
       };
     }
 
@@ -1913,7 +2005,7 @@ const RealTimeTracking = () => {
       title: 'School Tracking',
       subtitle: 'Select a school to view pickup points and student journey',
     };
-  }, [selectedInfo, selectedVehicle, activeDrivers.length, selectedStudent, selectedSchool, filteredStudentsList.length]);
+  }, [selectedInfo, selectedVehicle, activeDrivers.length, selectedStudent, selectedSchool, filteredStudentsList.length, isPmTrip]);
 
   const vehicleStatusCounts = useMemo(() => {
     const inTransit = allActiveVehicles.filter((vehicle) =>
@@ -2429,16 +2521,20 @@ const RealTimeTracking = () => {
                   )
                 ) : (
                   <div className="mt-4 space-y-3">
-                    {selectedStudent?.pickupLocation && (
+                    {getStudentPrimaryLocation(selectedStudent) && (
                       <div className="rounded-2xl border border-[#edf1f5] bg-[#f8fafc] px-4 py-3 text-black">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b8794]">Pickup Location</p>
-                        <p className="pt-1 text-[15px] font-bold leading-snug">{selectedStudent.pickupLocation}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b8794]">
+                          {isPmTrip ? 'Dropoff Location' : 'Pickup Location'}
+                        </p>
+                        <p className="pt-1 text-[15px] font-bold leading-snug">{getStudentPrimaryLocation(selectedStudent)}</p>
                       </div>
                     )}
-                    {selectedStudent?.dropoffLocation && (
+                    {getStudentSecondaryLocation(selectedStudent) && (
                       <div className="rounded-2xl border border-[#edf1f5] bg-[#f8fafc] px-4 py-3 text-black">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b8794]">Dropoff Location</p>
-                        <p className="pt-1 text-[15px] font-bold leading-snug">{selectedStudent.dropoffLocation}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b8794]">
+                          {isPmTrip ? 'Pickup Location' : 'Dropoff Location'}
+                        </p>
+                        <p className="pt-1 text-[15px] font-bold leading-snug">{getStudentSecondaryLocation(selectedStudent)}</p>
                       </div>
                     )}
                     {selectedStudent?.status && (
@@ -2459,9 +2555,9 @@ const RealTimeTracking = () => {
                             <p>{trip.time}</p>
                             <p>{trip.date}</p>
                           </div>
-                          {[
-                            selectedStudent?.pickupLocation || trip.places?.[0],
-                            selectedStudent?.dropoffLocation || trip.places?.[1],
+                          {[ 
+                            getStudentPrimaryLocation(selectedStudent) || trip.places?.[0],
+                            getStudentSecondaryLocation(selectedStudent) || trip.places?.[1],
                           ].filter(Boolean).map((place, idx) => (
                             <div key={`${place}-${idx}`} className="flex items-center space-x-2">
                               <img src={trip.iconSrc} className="w-4 h-4" alt="not found" />
@@ -2483,19 +2579,21 @@ const RealTimeTracking = () => {
                     <div key={index} className="my-3 flex items-center space-x-3 rounded-2xl border border-[#e7edf4] bg-white px-3 py-3 shadow-sm">
                       <div className="flex w-[82px] flex-col items-center justify-center rounded-2xl bg-[#eef2f6] py-3">
                         <img src={stage.iconSrc} className="w-[43px] h-[23px]" alt="not found" />
-                        <p className="pt-2 text-[12px] font-bold uppercase tracking-[0.08em]">{stage.label}</p>
+                        <p className="pt-2 text-[12px] font-bold uppercase tracking-[0.08em]">
+                          {stage.label === 'Pickup' ? (isPmTrip ? 'Drop-off' : 'Pickup') : (isPmTrip ? 'Pickup' : 'Drop-off')}
+                        </p>
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col items-start justify-start text-black">
                         <p className="text-[11.5px] font-semibold text-[#7b8794]">{stage.time}</p>
                         <p className="text-[16px] font-bold leading-snug">
                           {stage.label === 'Pickup'
-                            ? (selectedStudent?.pickupLocation || stage.location)
-                            : (selectedStudent?.dropoffLocation || stage.location)}
+                            ? (getStudentPrimaryLocation(selectedStudent) || stage.location)
+                            : (getStudentSecondaryLocation(selectedStudent) || stage.location)}
                         </p>
                         <p className="text-[13px] font-medium text-[#4b5563] leading-snug">
                           {stage.label === 'Pickup'
-                            ? (selectedStudent?.pickupLocation || stage.address)
-                            : (selectedStudent?.dropoffLocation || stage.address)}
+                            ? (getStudentPrimaryLocation(selectedStudent) || stage.address)
+                            : (getStudentSecondaryLocation(selectedStudent) || stage.address)}
                         </p>
                       </div>
                     </div>
@@ -2759,14 +2857,19 @@ const RealTimeTracking = () => {
                     const stopMarkerId = Number(marker.stopData?.stopId ?? marker.stopData?.StopId ?? 0);
                     const stopEtaMin = stopMarkerId ? liveRouteEtaByStopId[stopMarkerId] : undefined;
                     const stopLiveStatus = stopMarkerId ? liveStopStatusById[stopMarkerId] : undefined;
+                    const stopType = String(marker.stopData?.stopType || marker.stopData?.StopType || '').toLowerCase();
                     // Stop color: departed=green, arrived(active)=orange pulse, ETA=blue, upcoming=dark
                     const stopFill =
-                      stopLiveStatus === 'departed' ? '#16a34a'
+                      stopType === 'pickup' ? '#16a34a'
+                      : stopType === 'dropoff' ? '#f97316'
+                      : stopLiveStatus === 'departed' ? '#16a34a'
                       : stopLiveStatus === 'arrived' ? '#f97316'
                       : stopEtaMin != null ? '#1d4ed8'
                       : '#0f172a';
                     const stopStroke =
-                      stopLiveStatus === 'departed' ? '#166534'
+                      stopType === 'pickup' ? '#166534'
+                      : stopType === 'dropoff' ? '#c2410c'
+                      : stopLiveStatus === 'departed' ? '#166534'
                       : stopLiveStatus === 'arrived' ? '#c2410c'
                       : stopEtaMin != null ? '#1e40af'
                       : '#334155';
@@ -2784,7 +2887,7 @@ const RealTimeTracking = () => {
                       marker.type === 'route-start'
                         ? 'Start'
                         : marker.type === 'route-end'
-                        ? 'Dropoff'
+                        ? 'End'
                         : marker.type === 'route-stop'
                         ? marker.stopData?.stopName || `Stop ${marker.stopData?.stopOrder || ''}`.trim()
                         : '';
@@ -2840,7 +2943,7 @@ const RealTimeTracking = () => {
                             : undefined
                         }
                         onClick={() => {
-                          if (marker.type === 'route-stop' || marker.type === 'route-start' || marker.type === 'route-end') {
+                          if (marker.type === 'route-stop' || marker.type === 'route-start' || marker.type === 'route-end' || marker.type === 'school') {
                             setSelectedMapStopInfo({
                               id: marker.id,
                               position: marker.position,

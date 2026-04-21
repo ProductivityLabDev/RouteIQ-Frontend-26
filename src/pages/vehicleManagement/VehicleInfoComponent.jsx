@@ -7,6 +7,8 @@ import { toast } from 'react-hot-toast'
 
 const VehicleInfoComponent = ({ vehicle, onBack }) => {
     const [busData, setBusData] = useState(null);
+    const [qrData, setQrData] = useState(null);
+    const [qrLoading, setQrLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -35,10 +37,16 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
 
             try {
                 setLoading(true);
-                const response = await busService.getBusByVehicleId(vehicleId);
+                const [response, qrResponse] = await Promise.all([
+                    busService.getBusByVehicleId(vehicleId),
+                    busService.getBusQr(vehicleId).catch(() => ({ ok: false, data: null })),
+                ]);
                 
                 if (response.ok && response.data) {
                     setBusData(response.data);
+                    if (qrResponse?.ok) {
+                        setQrData(qrResponse.data);
+                    }
                 } else {
                     throw new Error("Failed to fetch bus details");
                 }
@@ -103,6 +111,35 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
 
     // Use busData from API instead of vehicle prop
     const vehicleData = busData;
+    const vehicleId = vehicleData?.vehicleId 
+        || vehicleData?.VehicleId 
+        || vehicleData?.BusId 
+        || vehicleData?.busId 
+        || vehicleData?.id 
+        || vehicleData?.Id
+        || vehicleData?.ID;
+
+    const handleGenerateOrRegenerateQr = async () => {
+        if (!vehicleId) {
+            toast.error("Vehicle ID not found");
+            return;
+        }
+
+        try {
+            setQrLoading(true);
+            const response = await busService.generateBusQr(vehicleId);
+            if (response.ok && response.data) {
+                setQrData(response.data);
+                toast.success(qrData?.qrImageUrl ? "QR regenerated successfully!" : "QR generated successfully!");
+                return;
+            }
+            throw new Error("Failed to generate QR");
+        } catch (err) {
+            toast.error(err.message || "Failed to generate QR");
+        } finally {
+            setQrLoading(false);
+        }
+    };
 
     return (
         <section className='w-full h-full'>
@@ -142,6 +179,37 @@ const VehicleInfoComponent = ({ vehicle, onBack }) => {
                                 <Typography className="mb-2 text-center font-bold text-[16px] text-black">
                                     {vehicleData?.NumberPlate || vehicleData?.numberPlate || vehicleData?.LicensePlate || "N/A"}
                                 </Typography>
+                            </div>
+                            <div className='mt-2 flex items-center gap-3'>
+                                <button
+                                    type="button"
+                                    onClick={handleGenerateOrRegenerateQr}
+                                    disabled={qrLoading}
+                                    className="rounded-md bg-[#C01824] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                >
+                                    {qrLoading ? "Processing..." : (qrData?.qrImageUrl ? "Regenerate QR" : "Generate QR")}
+                                </button>
+                                {qrData?.qrImageUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open(qrData.qrImageUrl, "_blank", "noopener,noreferrer")}
+                                        className="rounded-md border border-[#C01824] px-4 py-2 text-sm font-semibold text-[#C01824]"
+                                    >
+                                        View QR
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        <div className='flex w-[32%] items-center justify-center'>
+                            <div className='flex flex-col items-center rounded-xl border border-gray-200 bg-[#fafafa] p-4'>
+                                <Typography className="mb-3 text-center font-bold text-[16px] text-black">Bus QR Code</Typography>
+                                {qrData?.qrImageUrl ? (
+                                    <img src={qrData.qrImageUrl} alt="Bus QR" className="h-40 w-40 object-contain" />
+                                ) : (
+                                    <div className='flex h-40 w-40 items-center justify-center rounded-md border border-dashed border-gray-300 bg-white text-center text-sm text-gray-500'>
+                                        QR not generated yet
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -22,6 +22,40 @@ import { toast } from "react-hot-toast";
 
 const GOOGLE_LIBRARIES = ["places"];
 
+const normalizeInstituteId = (value) => {
+    if (Array.isArray(value)) return Number(value[0]);
+    if (typeof value === "string") {
+        const parsed = Number(value.split(",")[0]);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const inferRoutePhase = (source = {}) => {
+    const rawValue = String(
+        source.assignmentType ??
+        source.AssignmentType ??
+        source.routeType ??
+        source.RouteType ??
+        source.type ??
+        source.Type ??
+        source.routeName ??
+        source.RouteName ??
+        ""
+    ).toUpperCase();
+
+    if (
+        rawValue.includes("PM") ||
+        rawValue.includes("AFTERNOON") ||
+        rawValue.includes("DISMISS")
+    ) {
+        return "PM";
+    }
+
+    return "AM";
+};
+
 /**
  * @type {import('./CreateRoute').default}
  */
@@ -133,6 +167,91 @@ const StudentSeatSelection = ({
     });
     const [pickupCoords, setPickupCoords] = useState({ lat: null, lng: null });
     const [dropoffCoords, setDropoffCoords] = useState({ lat: null, lng: null });
+
+    const selectedSchool = (Array.isArray(schoolManagementSummary) ? schoolManagementSummary : []).find((item) => {
+        const rawId = normalizeInstituteId(item?.InstituteId ?? item?.instituteId ?? item?.id);
+        return String(rawId ?? "") === String(selectedSchoolId ?? "");
+    });
+
+    const derivedRoutePhase = inferRoutePhase({
+        ...initialRoute,
+        ...initialRouteDetails,
+        routeName: routeForm.routeName,
+    });
+
+    const hiddenRouteFields = (() => {
+        const source = { ...initialRoute, ...initialRouteDetails };
+        const schoolName = selectedSchool?.InstituteName || selectedSchool?.name || "School";
+        const schoolAddress =
+            selectedSchool?.Address ||
+            selectedSchool?.address ||
+            selectedSchool?.ContactAddress ||
+            schoolName;
+        const today = new Date().toISOString().slice(0, 10);
+        const fallbackTime = derivedRoutePhase === "PM" ? "14:00" : "08:00";
+
+        return {
+            pickup:
+                routeForm.pickup ||
+                source.pickup ||
+                source.pickupLocation ||
+                source.PickupLocation ||
+                source.pickupAddress ||
+                source.PickupAddress ||
+                source.startLocation ||
+                source.StartLocation ||
+                (derivedRoutePhase === "PM" ? schoolAddress : "Route Start"),
+            dropoff:
+                routeForm.dropoff ||
+                source.dropoff ||
+                source.dropoffLocation ||
+                source.DropoffLocation ||
+                source.dropoffAddress ||
+                source.DropoffAddress ||
+                source.endLocation ||
+                source.EndLocation ||
+                (derivedRoutePhase === "PM" ? "Route End" : schoolAddress),
+            routeDate:
+                routeForm.routeDate ||
+                (source.routeDate ?? source.RouteDate ?? source.date ?? source.Date ?? "").slice(0, 10) ||
+                today,
+            routeTime:
+                routeForm.routeTime ||
+                (source.routeTime ??
+                    source.RouteTime ??
+                    source.pickupTime ??
+                    source.PickupTime ??
+                    source.time ??
+                    source.Time ??
+                    ""
+                ).slice(0, 5) ||
+                fallbackTime,
+        };
+    })();
+
+    const smartMatchEndpoints = (() => {
+        const schoolAddress =
+            selectedSchool?.Address ||
+            selectedSchool?.address ||
+            selectedSchool?.InstituteName ||
+            selectedSchool?.name ||
+            "School";
+
+        const normalizedPickup =
+            hiddenRouteFields.pickup === "Route Start" || hiddenRouteFields.pickup === "Route End"
+                ? schoolAddress
+                : hiddenRouteFields.pickup;
+
+        const normalizedDropoff =
+            hiddenRouteFields.dropoff === "Route Start" || hiddenRouteFields.dropoff === "Route End"
+                ? schoolAddress
+                : hiddenRouteFields.dropoff;
+
+        return {
+            pickup: normalizedPickup,
+            dropoff: normalizedDropoff,
+        };
+    })();
 
     useEffect(() => {
         if (!editRoute || !initialRoute) return;
@@ -331,8 +450,8 @@ const StudentSeatSelection = ({
             return;
         }
 
-        if (!routeForm.pickup || !routeForm.dropoff) {
-            toast.error("Please enter both pickup and dropoff locations");
+        if (!smartMatchEndpoints.pickup || !smartMatchEndpoints.dropoff) {
+            toast.error("Unable to derive route endpoints for smart match");
             return;
         }
 
@@ -340,8 +459,8 @@ const StudentSeatSelection = ({
 
         try {
             // Normalize addresses (trim, lowercase for better matching)
-            const normalizedPickup = routeForm.pickup.trim();
-            const normalizedDropoff = routeForm.dropoff.trim();
+            const normalizedPickup = smartMatchEndpoints.pickup.trim();
+            const normalizedDropoff = smartMatchEndpoints.dropoff.trim();
             
 
             // Try address matching FIRST (better for exact address matches like "N Knox Avenue street 42")
@@ -472,10 +591,6 @@ const StudentSeatSelection = ({
             const isFormValid = Boolean(
                 routeForm.routeName && 
                 routeForm.routeNumber && 
-                routeForm.pickup && 
-                routeForm.dropoff && 
-                routeForm.routeDate && 
-                routeForm.routeTime && 
                 routeForm.driverId && 
                 routeForm.busId && 
                 (editRoute || (selectedSchoolId && selectedStudents.length > 0))
@@ -502,12 +617,12 @@ const StudentSeatSelection = ({
                 const payload = {
                     routeName: routeForm.routeName,
                     routeNumber: routeForm.routeNumber,
-                    startLocation: routeForm.pickup,
-                    endLocation: routeForm.dropoff,
+                    startLocation: hiddenRouteFields.pickup,
+                    endLocation: hiddenRouteFields.dropoff,
                     driverId: Number(routeForm.driverId),
                     vehicleId: Number(routeForm.busId),
-                    date: routeForm.routeDate,
-                    time: routeForm.routeTime,
+                    date: hiddenRouteFields.routeDate,
+                    time: hiddenRouteFields.routeTime,
                 };
 
                 const response = await routeService.updateRoute(Number(editingRouteId), payload);
@@ -522,10 +637,10 @@ const StudentSeatSelection = ({
                     instituteId: Number(selectedSchoolId),
                     routeNumber: routeForm.routeNumber,
                     routeName: routeForm.routeName,
-                    pickup: routeForm.pickup,
-                    dropoff: routeForm.dropoff,
-                    routeDate: routeForm.routeDate,
-                    routeTime: routeForm.routeTime,
+                    pickup: hiddenRouteFields.pickup,
+                    dropoff: hiddenRouteFields.dropoff,
+                    routeDate: hiddenRouteFields.routeDate,
+                    routeTime: hiddenRouteFields.routeTime,
                     driverId: Number(routeForm.driverId),
                     busId: Number(routeForm.busId),
                     studentIds: selectedStudents.join(','),
@@ -1131,118 +1246,11 @@ const StudentSeatSelection = ({
                                     />
                                 </div>
                             </div>
-                                    <div className="flex flex-col">
-                                        <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                            Pickup
+                                    <div className="md:col-span-2 rounded-[6px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+                                        <Typography variant="paragraph" className="text-[13px] font-medium text-[#667085]">
+                                            Route stops and timing are now derived automatically from the selected school, assigned students, and route direction.
                                         </Typography>
-                                        <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
-                                            {isLoaded ? (
-                                                <Autocomplete
-                                                    onLoad={onPickupLoad}
-                                                    onPlaceChanged={onPickupPlaceChanged}
-                                                    className="w-full"
-                                                >
-                                                    <input
-                                                        type="text"
-                                                        name="pickup"
-                                                        value={routeForm.pickup}
-                                                        placeholder="Enter pickup location"
-                                                        className="bg-[#F5F6FA] outline-none w-full"
-                                                        onChange={handleRouteFieldChange}
-                                                    />
-                                                </Autocomplete>
-                                            ) : (
-                                                <input
-                                                    type="text"
-                                                    name="pickup"
-                                                    value={routeForm.pickup}
-                                                    placeholder="Loading address search..."
-                                                    className="bg-[#F5F6FA] outline-none w-full"
-                                                    disabled
-                                                />
-                                            )}
-                                            <img src={locationicon} alt="not found" className="h-5 w-5" />
-                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                            Drop Off
-                                        </Typography>
-                                        <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between relative">
-                                            {isLoaded ? (
-                                                <Autocomplete
-                                                    onLoad={onDropoffLoad}
-                                                    onPlaceChanged={onDropoffPlaceChanged}
-                                                    className="w-full"
-                                                >
-                                                    <input
-                                                        type="text"
-                                                        name="dropoff"
-                                                        value={routeForm.dropoff}
-                                                        placeholder="Enter drop location"
-                                                        className="bg-[#F5F6FA] outline-none w-full"
-                                                        onChange={handleRouteFieldChange}
-                                                    />
-                                                </Autocomplete>
-                                            ) : (
-                                                <input
-                                                    type="text"
-                                                    name="dropoff"
-                                                    value={routeForm.dropoff}
-                                                    placeholder="Loading address search..."
-                                                    className="bg-[#F5F6FA] outline-none w-full"
-                                                    disabled
-                                                />
-                                            )}
-                                            <img src={locationicon} alt="not found" className="h-5 w-5" />
-                                        </div>
-                                    </div>
-                            <div className="flex flex-col">
-                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Date
-                                </Typography>
-                                <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
-                                    <input
-                                        ref={routeDateRef}
-                                        type="date"
-                                        name="routeDate"
-                                        value={routeForm.routeDate}
-                                        placeholder="Select date"
-                                        className="bg-[#F5F6FA] rounded-[6px] outline-none w-full custom-date-input"
-                                        onChange={handleRouteFieldChange}
-                                    />
-                                    <img
-                                        src={calendericonred}
-                                        alt="not found"
-                                        className="h-5 w-5 cursor-pointer"
-                                        onClick={() => {
-                                            if (routeDateRef.current?.showPicker) {
-                                                routeDateRef.current.showPicker();
-                                            } else {
-                                                routeDateRef.current?.focus();
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            {/* {editRoute && ( */}
-                            <div className="flex flex-col">
-                                <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
-                                    Time
-                                </Typography>
-                                <div className="flex flex-row bg-[#F5F6FA] rounded-[6px] p-3 w-full justify-between">
-                                    <input
-                                        type="time"
-                                        name="routeTime"
-                                        value={routeForm.routeTime}
-                                        placeholder="Select time"
-                                        className="bg-[#F5F6FA] rounded-[6px] outline-none w-full"
-                                        onChange={handleRouteFieldChange}
-                                    />
-                                    {/* <img src={calendericonred} alt="not found" className="h-5 w-5" /> */}
-                                </div>
-                            </div>
-                            {/* )} */}
                             <div className="flex flex-col">
                                 <Typography variant="paragraph" className="mb-2 text-[14px] text-[#2C2F32] font-semibold">
                                     Driver
@@ -1340,24 +1348,21 @@ const StudentSeatSelection = ({
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="text-xl font-bold">Select Students</div>
                                     <div className="flex items-center gap-2">
-                                        {/* Smart Match Button */}
-                                        {routeForm.pickup && routeForm.dropoff && selectedSchoolId && (
-                                            <Button
-                                                className="bg-[#28a745] hover:bg-[#218838] text-white px-4 py-2 text-sm capitalize rounded-[6px]"
-                                                onClick={handleSmartMatch}
-                                                disabled={smartMatching.loading}
-                                            >
-                                                {smartMatching.loading ? (
-                                                    <>
-                                                        <Spinner className="h-4 w-4 inline mr-2" />
-                                                        Finding...
-                                                    </>
-                                                ) : (
-                                                    "🔍 Smart Match"
-                                                )}
-                                            </Button>
-                                        )}
-                                        <span className="text-sm font-semibold text-[#2C2F32]">Drop-off School:</span>
+                                        <Button
+                                            className="bg-[#28a745] hover:bg-[#218838] text-white px-4 py-2 text-sm capitalize rounded-[6px]"
+                                            onClick={handleSmartMatch}
+                                            disabled={smartMatching.loading || !selectedSchoolId}
+                                        >
+                                            {smartMatching.loading ? (
+                                                <>
+                                                    <Spinner className="h-4 w-4 inline mr-2" />
+                                                    Finding...
+                                                </>
+                                            ) : (
+                                                "Smart Match"
+                                            )}
+                                        </Button>
+                                        <span className="text-sm font-semibold text-[#2C2F32]">School:</span>
                                         <select
                                             className="border border-gray-300 rounded px-2 py-1 text-sm"
                                             value={selectedSchoolId}
@@ -1492,7 +1497,7 @@ const StudentSeatSelection = ({
                                     </div>
                                 ) : !selectedSchoolId ? (
                                     <div className="text-sm text-gray-600">
-                                        Please select a drop-off school to load students.
+                                        Please select a school to load students.
                                     </div>
                                 ) : students && students.length > 0 ? (
                                     <div>

@@ -88,6 +88,7 @@ export interface RouteManagementTerminalSummary {
 export interface RouteMapStop {
   stopId?: number;
   stopOrder?: number;
+  stopType?: string;
   stopLatitude?: number;
   stopLongitude?: number;
   latitude?: number;
@@ -95,6 +96,7 @@ export interface RouteMapStop {
   lat?: number;
   lng?: number;
   stopName?: string;
+  stopAddress?: string;
 }
 
 export interface RouteMapStudent {
@@ -109,9 +111,73 @@ export interface RouteMapStudent {
 }
 
 export interface RouteMapResponse {
+  routeType?: string;
+  school?: {
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    name?: string;
+  } | null;
+  startLocation?: {
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    name?: string;
+  } | null;
+  endLocation?: {
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    name?: string;
+  } | null;
   stops?: RouteMapStop[];
   students?: RouteMapStudent[];
 }
+
+const pickRouteMapValue = (...values: any[]) =>
+  values.find((value) => value !== undefined && value !== null && value !== "");
+
+const toRouteMapNumber = (value: any) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const normalizeRouteMapPoint = (source: any) => {
+  if (!source) return null;
+
+  const latitude = toRouteMapNumber(
+    pickRouteMapValue(source.latitude, source.Latitude, source.lat, source.Lat)
+  );
+  const longitude = toRouteMapNumber(
+    pickRouteMapValue(source.longitude, source.Longitude, source.lng, source.Lng)
+  );
+
+  if (latitude === undefined || longitude === undefined) return null;
+
+  return {
+    latitude,
+    longitude,
+    address: pickRouteMapValue(source.address, source.Address, source.location, source.Location),
+    name: pickRouteMapValue(source.name, source.Name, source.label, source.Label),
+  };
+};
+
+const resolveRouteMapType = (source: any, fallbackType: string = "AM") => {
+  const rawType = String(
+    pickRouteMapValue(
+      source?.routeType,
+      source?.RouteType,
+      source?.type,
+      source?.Type,
+      source?.assignmentType,
+      source?.AssignmentType,
+      fallbackType
+    ) || fallbackType
+  ).toUpperCase();
+
+  return rawType === "PM" ? "PM" : "AM";
+};
 
 export interface RouteStudent {
   assignmentId?: number;
@@ -363,8 +429,87 @@ export const routeService = {
         : raw?.data && (raw.data.stops || raw.data.students)
         ? raw.data
         : {};
+    const routeType = resolveRouteMapType(payload, type);
+    const schoolPoint = normalizeRouteMapPoint(
+      payload?.school ||
+      payload?.School ||
+      payload?.schoolObject ||
+      payload?.SchoolObject ||
+      payload?.institute ||
+      payload?.Institute
+    );
+    const fallbackStart = normalizeRouteMapPoint(payload?.startLocation || payload?.StartLocation);
+    const fallbackEnd = normalizeRouteMapPoint(payload?.endLocation || payload?.EndLocation);
+    const normalizedStops = Array.isArray(payload?.stops)
+      ? payload.stops
+          .map((stop: any, index: number) => {
+            const latitude = toRouteMapNumber(
+              pickRouteMapValue(
+                stop?.stopLatitude,
+                stop?.StopLatitude,
+                stop?.latitude,
+                stop?.Latitude,
+                stop?.lat,
+                stop?.Lat
+              )
+            );
+            const longitude = toRouteMapNumber(
+              pickRouteMapValue(
+                stop?.stopLongitude,
+                stop?.StopLongitude,
+                stop?.longitude,
+                stop?.Longitude,
+                stop?.lng,
+                stop?.Lng
+              )
+            );
 
-    return payload || {};
+            if (latitude === undefined || longitude === undefined) {
+              return null;
+            }
+
+            return {
+              ...stop,
+              stopId: pickRouteMapValue(stop?.stopId, stop?.StopId),
+              stopOrder:
+                toRouteMapNumber(pickRouteMapValue(stop?.stopOrder, stop?.StopOrder, stop?.order)) ??
+                index + 1,
+              stopType: String(
+                pickRouteMapValue(
+                  stop?.stopType,
+                  stop?.StopType,
+                  stop?.type,
+                  routeType === "PM" ? "dropoff" : "pickup"
+                ) || (routeType === "PM" ? "dropoff" : "pickup")
+              ).toLowerCase(),
+              stopName: pickRouteMapValue(stop?.stopName, stop?.StopName, stop?.name, stop?.Name),
+              stopAddress: pickRouteMapValue(
+                stop?.stopAddress,
+                stop?.StopAddress,
+                stop?.address,
+                stop?.Address,
+                stop?.stopName,
+                stop?.StopName
+              ),
+              latitude,
+              longitude,
+            };
+          })
+          .filter(Boolean)
+          .sort(
+            (left: any, right: any) =>
+              Number(left?.stopOrder || 0) - Number(right?.stopOrder || 0)
+          )
+      : [];
+
+    return {
+      ...payload,
+      routeType,
+      school: schoolPoint,
+      startLocation: routeType === "PM" ? schoolPoint || fallbackStart : fallbackStart,
+      endLocation: routeType === "PM" ? fallbackEnd : schoolPoint || fallbackEnd,
+      stops: normalizedStops,
+    };
   },
 
   /**
