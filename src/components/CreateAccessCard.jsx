@@ -269,7 +269,18 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                 username:    resolvedEditUser.Username    || resolvedEditUser.username    || "",
                 password:    "",
                 email:       resolvedEditUser.Email       || resolvedEditUser.email       || "",
-                phoneNumber: resolvedEditUser.PhoneNumber || resolvedEditUser.phoneNumber || resolvedEditUser.Phone || resolvedEditUser.phone || resolvedEditUser.ContactNumber || "",
+                phoneNumber:
+                    resolvedEditUser.PhoneNumber ||
+                    resolvedEditUser.phoneNumber ||
+                    resolvedEditUser.Phone ||
+                    resolvedEditUser.phone ||
+                    resolvedEditUser.ContactNumber ||
+                    resolvedEditUser.contactNumber ||
+                    resolvedEditUser.ContactPhone ||
+                    resolvedEditUser.contactPhone ||
+                    resolvedEditUser.MobileNo ||
+                    resolvedEditUser.mobileNo ||
+                    "",
                 roleCode:    resolveRoleCode(resolvedEditUser),
                 control:     controlValue,
                 modules: normalizeModules(rawModules),
@@ -379,6 +390,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                     </div>
                 ) : (
                 <>
+                <form autoComplete="off" onSubmit={(event) => event.preventDefault()}>
 
                 {/* Basic Info */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
@@ -417,6 +429,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
+                            autoComplete="off"
                             className="outline-none w-full border border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                         />
                     </div>
@@ -432,6 +445,9 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                             value={formData.password}
                             onChange={handleChange}
                             placeholder={isEditMode ? "Leave blank to keep current" : ""}
+                            autoComplete={isEditMode ? "new-password" : "off"}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             className="outline-none border w-full border-[#D5D5D5] rounded-[6px] py-3 px-3 bg-[#F5F6FA]"
                         />
                     </div>
@@ -567,6 +583,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                             : (creating ? "Creating..." : "Save")}
                     </Button>
                 </div>
+                </form>
                 </>
                 )}
             </div>

@@ -109,12 +109,72 @@ export const createInstitute = createAsyncThunk(
   }
 );
 
+export const fetchSchoolById = createAsyncThunk(
+  "schools/fetchSchoolById",
+  async (schoolId, { rejectWithValue }) => {
+    try {
+      const response = await schoolService.getSchoolById(schoolId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch school details");
+    }
+  }
+);
+
+export const updateSchool = createAsyncThunk(
+  "schools/updateSchool",
+  async ({ schoolId, instituteData, currentSchool }, { rejectWithValue }) => {
+    try {
+      const toNumberOrNull = (value) => {
+        if (value === "" || value === null || value === undefined) return null;
+        const next = Number(value);
+        return Number.isFinite(next) ? next : null;
+      };
+
+      const payload = {
+        instituteName: instituteData.school?.trim() || "",
+        instituteType: toNumberOrNull(instituteData.instituteType ?? currentSchool?.instituteType),
+        address: instituteData.Address?.trim() || "",
+        city: toNumberOrNull(instituteData.city ?? currentSchool?.city),
+        stateId: toNumberOrNull(
+          instituteData.stateId ?? currentSchool?.stateId ?? currentSchool?.state
+        ),
+        zipCode: instituteData.ZipCode?.trim() || null,
+        contactPhone: instituteData.PhoneNo?.trim() || null,
+        contactEmail: instituteData.Email?.trim() || null,
+        contactPerson: instituteData.contactPerson?.trim() || currentSchool?.contactPerson || currentSchool?.ContactPerson || null,
+        district: instituteData.district?.trim() || null,
+        principle: instituteData.principal?.trim() || null,
+        president: instituteData.president?.trim() || currentSchool?.president || currentSchool?.President || null,
+        terminalId: toNumberOrNull(instituteData.terminal ?? currentSchool?.terminalId),
+        totalBus: toNumberOrNull(instituteData.totalBuses ?? currentSchool?.totalBus),
+        totalStudent: toNumberOrNull(instituteData.totalStudent ?? currentSchool?.totalStudent),
+        mobileNo:
+          instituteData.mobileNo?.trim() ||
+          currentSchool?.mobileNo ||
+          currentSchool?.MobileNo ||
+          null,
+        logoUrl: currentSchool?.logoUrl ?? currentSchool?.LogoUrl ?? null,
+        lat: currentSchool?.lat ?? currentSchool?.Lat ?? null,
+        lng: currentSchool?.lng ?? currentSchool?.Lng ?? null,
+        isActive: currentSchool?.isActive ?? currentSchool?.IsActive ?? 1,
+      };
+
+      const response = await schoolService.updateSchool(schoolId, payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to update school");
+    }
+  }
+);
+
 const initialState = {
   terminals: [],
   states: [],
   cities: [],
   instituteTypes: [],
   schoolManagementSummary: [],
+  selectedSchool: null,
   loading: {
     terminals: false,
     states: false,
@@ -122,6 +182,8 @@ const initialState = {
     instituteTypes: false,
     creating: false,
     summary: false,
+    detail: false,
+    updating: false,
   },
   error: {
     terminals: null,
@@ -130,6 +192,8 @@ const initialState = {
     instituteTypes: null,
     creating: null,
     summary: null,
+    detail: null,
+    updating: null,
   },
 };
 
@@ -142,12 +206,15 @@ const schoolSlice = createSlice({
       state.states = [];
       state.cities = [];
       state.instituteTypes = [];
+      state.selectedSchool = null;
       state.error = {
         terminals: null,
         states: null,
         cities: null,
         instituteTypes: null,
         creating: null,
+        detail: null,
+        updating: null,
       };
     },
   },
@@ -225,6 +292,34 @@ const schoolSlice = createSlice({
       .addCase(createInstitute.rejected, (state, action) => {
         state.loading.creating = false;
         state.error.creating = action.payload || "Failed to create institute";
+      })
+      // Fetch school detail
+      .addCase(fetchSchoolById.pending, (state) => {
+        state.loading.detail = true;
+        state.error.detail = null;
+      })
+      .addCase(fetchSchoolById.fulfilled, (state, action) => {
+        state.loading.detail = false;
+        state.selectedSchool = action.payload;
+        state.error.detail = null;
+      })
+      .addCase(fetchSchoolById.rejected, (state, action) => {
+        state.loading.detail = false;
+        state.selectedSchool = null;
+        state.error.detail = action.payload || "Failed to fetch school details";
+      })
+      // Update school
+      .addCase(updateSchool.pending, (state) => {
+        state.loading.updating = true;
+        state.error.updating = null;
+      })
+      .addCase(updateSchool.fulfilled, (state) => {
+        state.loading.updating = false;
+        state.error.updating = null;
+      })
+      .addCase(updateSchool.rejected, (state, action) => {
+        state.loading.updating = false;
+        state.error.updating = action.payload || "Failed to update school";
       })
       // Fetch school management summary
       .addCase(fetchSchoolManagementSummary.pending, (state) => {

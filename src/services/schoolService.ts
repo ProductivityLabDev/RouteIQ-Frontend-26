@@ -61,6 +61,75 @@ export interface CreateInstitutePayload {
   UserId: number | null;
 }
 
+export interface SchoolDetail {
+  id: number;
+  InstituteId?: number;
+  instituteName?: string | null;
+  InstituteName?: string | null;
+  instituteType?: number | null;
+  InstituteType?: number | null;
+  address?: string | null;
+  Address?: string | null;
+  city?: number | null;
+  City?: number | null;
+  stateId?: number | null;
+  state?: number | null;
+  StateId?: number | null;
+  zipCode?: string | null;
+  ZipCode?: string | null;
+  contactPhone?: string | null;
+  ContactPhone?: string | null;
+  contactEmail?: string | null;
+  ContactEmail?: string | null;
+  contactPerson?: string | null;
+  ContactPerson?: string | null;
+  district?: string | null;
+  District?: string | null;
+  principle?: string | null;
+  Principle?: string | null;
+  president?: string | null;
+  President?: string | null;
+  terminalId?: number | null;
+  TerminalId?: number | null;
+  totalBus?: number | null;
+  TotalBus?: number | null;
+  totalStudent?: number | null;
+  TotalStudent?: number | null;
+  mobileNo?: string | null;
+  MobileNo?: string | null;
+  logoUrl?: string | null;
+  LogoUrl?: string | null;
+  lat?: number | null;
+  Lat?: number | null;
+  lng?: number | null;
+  Lng?: number | null;
+  isActive?: number | boolean | null;
+  IsActive?: number | boolean | null;
+}
+
+export interface UpdateSchoolPayload {
+  instituteName: string;
+  instituteType: number | null;
+  address: string;
+  city: number | null;
+  stateId: number | null;
+  zipCode: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  contactPerson: string | null;
+  district: string | null;
+  principle: string | null;
+  president: string | null;
+  terminalId: number | null;
+  totalBus: number | null;
+  totalStudent: number | null;
+  mobileNo: string | null;
+  logoUrl: string | null;
+  lat: number | null;
+  lng: number | null;
+  isActive: number | boolean | null;
+}
+
 export const schoolService = {
   getStates: async (): Promise<ApiResponse<State[]>> => {
     const response = await apiClient.get("/institute/GetStates");
@@ -143,6 +212,20 @@ export const schoolService = {
 
   createInstitute: async (payload: CreateInstitutePayload): Promise<ApiResponse<any>> => {
     const response = await apiClient.post("/institute/createinstituteInfo", payload);
+    return { ok: true, data: response.data };
+  },
+
+  getSchoolById: async (schoolId: number | string): Promise<ApiResponse<SchoolDetail>> => {
+    const response = await apiClient.get(`/institute/schools/${schoolId}`);
+    const data = response.data;
+    return { ok: true, data: data?.data ?? data };
+  },
+
+  updateSchool: async (
+    schoolId: number | string,
+    payload: UpdateSchoolPayload
+  ): Promise<ApiResponse<any>> => {
+    const response = await apiClient.patch(`/institute/schools/${schoolId}`, payload);
     return { ok: true, data: response.data };
   },
 };

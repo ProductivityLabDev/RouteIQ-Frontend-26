@@ -136,7 +136,6 @@ export const updateUser = createAsyncThunk(
       
       const payload = {
         username: userData.username,
-        password: userData.password,
         roleCode: userData.roleCode,
         terminalIds: terminalIds,
         moduleIds: moduleIds,

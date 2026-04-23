@@ -457,12 +457,31 @@ export function DashboardNavbar({ user }) {
 
 
   useEffect(() => {
-    // Vendor bell badge should stay live; light polling keeps UI in sync.
     if (!user) return;
-    dispatchUser(fetchUnreadCount());
-    const timer = setInterval(() => dispatchUser(fetchUnreadCount()), 30000);
-    return () => clearInterval(timer);
-  }, [dispatchUser, user]);
+    if (pathname === "/notification") return;
+
+    let intervalId = null;
+
+    const runUnreadCount = () => {
+      if (document.visibilityState !== "visible") return;
+      dispatchUser(fetchUnreadCount());
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        runUnreadCount();
+      }
+    };
+
+    runUnreadCount();
+    intervalId = window.setInterval(runUnreadCount, 60000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [dispatchUser, pathname, user]);
 
   useEffect(() => {
     if (!searchOpen) return;

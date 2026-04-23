@@ -20,6 +20,8 @@ const SchoolManagement = () => {
   const dispatch = useAppDispatch();
   const [openSchoolManagementModal, setOpenSchoolManagementModal] = useState(false);
   const [editInstitute, setEditInstitute] = useState(false);
+  const [selectedSchoolId, setSelectedSchoolId] = useState(null);
+  const [selectedSchoolData, setSelectedSchoolData] = useState(null);
   const [editingSchoolKey, setEditingSchoolKey] = useState(null);
   const [openDistricts, setOpenDistricts] = useState({});
   const [openTerminals, setOpenTerminals] = useState({});
@@ -39,10 +41,14 @@ const SchoolManagement = () => {
   const handleOpenPopUp = () => {
     setOpenSchoolManagementModal(!openSchoolManagementModal);
     setEditInstitute(false);
+    setSelectedSchoolId(null);
+    setSelectedSchoolData(null);
   };
 
-  const handleEditInstitutePopUp = () => {
-    setOpenSchoolManagementModal(!openSchoolManagementModal);
+  const handleEditInstitutePopUp = (school) => {
+    setSelectedSchoolId(school?.instituteId ?? null);
+    setSelectedSchoolData(school?.raw ?? school ?? null);
+    setOpenSchoolManagementModal(true);
     setEditInstitute(true);
   };
 
@@ -73,7 +79,7 @@ const SchoolManagement = () => {
       }
 
       // Normalise InstituteId (can sometimes come as array or comma-separated string)
-      let normalizedInstituteId = item.InstituteId;
+      let normalizedInstituteId = item.InstituteId ?? item.instituteId ?? item.id ?? item.Id;
       if (Array.isArray(normalizedInstituteId)) {
         normalizedInstituteId = normalizedInstituteId[0];
       } else if (typeof normalizedInstituteId === "string") {
@@ -250,9 +256,7 @@ const useApiHierarchy = hierarchicalData.length > 0;
                               </div>
                               <FaPen
                                 className="text-gray-600 cursor-pointer ml-2"
-                                onClick={() =>
-                                  setEditingSchoolKey(isOpen ? null : schoolKey)
-                                }
+                                onClick={() => handleEditInstitutePopUp(school)}
                               />
                             </div>
 
@@ -325,6 +329,8 @@ const useApiHierarchy = hierarchicalData.length > 0;
         open={openSchoolManagementModal}
         handleOpen={handleOpenPopUp}
         editInstitute={editInstitute}
+        editSchoolId={selectedSchoolId}
+        editSchoolData={selectedSchoolData}
         refreshSchools={handleRefreshSchools}
       />
     </MainLayout>

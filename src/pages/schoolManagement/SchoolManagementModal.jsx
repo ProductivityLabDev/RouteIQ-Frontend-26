@@ -3,10 +3,12 @@ import { Dialog } from "@material-tailwind/react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
   createInstitute,
+  fetchSchoolById,
   fetchCities,
   fetchInstituteTypes,
   fetchStates,
   fetchTerminals,
+  updateSchool,
 } from "@/redux/slices/schoolSlice";
 import { toast } from "react-hot-toast";
 
@@ -53,7 +55,8 @@ const INITIAL = {
   school: "",
   totalStudent: "",
   totalBuses: "",
-  contact: "",
+  contactPerson: "",
+  mobileNo: "",
   Address: "",
   Email: "",
   PhoneNo: "",
@@ -62,6 +65,124 @@ const INITIAL = {
   city: "",
   ZipCode: "",
 };
+
+const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null && value !== "");
+
+const normalizePhoneValue = (value) => {
+  if (value === undefined || value === null) return "";
+  const trimmed = String(value).trim();
+  if (!trimmed) return "";
+
+  const digits = trimmed.replace(/\D/g, "");
+  return digits.length >= 7 ? trimmed : "";
+};
+
+const mapSchoolToForm = (primary = {}, fallback = {}) => ({
+  district: pickFirst(primary.district, primary.District, fallback.district, fallback.District, ""),
+  president: pickFirst(primary.president, primary.President, fallback.president, fallback.President, ""),
+  terminal: pickFirst(
+    primary.terminalId,
+    primary.TerminalId,
+    primary.terminal,
+    fallback.terminalId,
+    fallback.TerminalId,
+    fallback.terminal,
+    ""
+  ),
+  principal: pickFirst(
+    primary.principal,
+    primary.principle,
+    primary.Principle,
+    fallback.principal,
+    fallback.principle,
+    fallback.Principle,
+    ""
+  ),
+  school: pickFirst(
+    primary.instituteName,
+    primary.InstituteName,
+    primary.school,
+    primary.name,
+    fallback.instituteName,
+    fallback.InstituteName,
+    fallback.school,
+    fallback.name,
+    ""
+  ),
+  totalStudent: pickFirst(
+    primary.totalStudent,
+    primary.TotalStudent,
+    primary.totalStudents,
+    primary.TotalStudents,
+    fallback.totalStudent,
+    fallback.TotalStudent,
+    fallback.totalStudents,
+    fallback.TotalStudents,
+    ""
+  ),
+  totalBuses: pickFirst(
+    primary.totalBus,
+    primary.TotalBus,
+    primary.totalBuses,
+    primary.TotalBuses,
+    fallback.totalBus,
+    fallback.TotalBus,
+    fallback.totalBuses,
+    fallback.TotalBuses,
+    ""
+  ),
+  contactPerson: pickFirst(
+    primary.contactPerson,
+    primary.ContactPerson,
+    fallback.contactPerson,
+    fallback.ContactPerson,
+    ""
+  ),
+  mobileNo: pickFirst(primary.mobileNo, primary.MobileNo, fallback.mobileNo, fallback.MobileNo, ""),
+  Address: pickFirst(primary.address, primary.Address, fallback.address, fallback.Address, ""),
+  Email: pickFirst(
+    primary.contactEmail,
+    primary.ContactEmail,
+    primary.email,
+    primary.Email,
+    fallback.contactEmail,
+    fallback.ContactEmail,
+    fallback.email,
+    fallback.Email,
+    ""
+  ),
+  PhoneNo: pickFirst(
+    normalizePhoneValue(primary.contactPhone),
+    normalizePhoneValue(primary.ContactPhone),
+    normalizePhoneValue(primary.phoneNo),
+    normalizePhoneValue(primary.PhoneNo),
+    normalizePhoneValue(fallback.contactPhone),
+    normalizePhoneValue(fallback.ContactPhone),
+    normalizePhoneValue(fallback.phoneNo),
+    normalizePhoneValue(fallback.PhoneNo),
+    ""
+  ),
+  instituteType: pickFirst(
+    primary.instituteType,
+    primary.InstituteType,
+    fallback.instituteType,
+    fallback.InstituteType,
+    ""
+  ),
+  stateId: pickFirst(
+    primary.stateId,
+    primary.StateId,
+    primary.state,
+    primary.State,
+    fallback.stateId,
+    fallback.StateId,
+    fallback.state,
+    fallback.State,
+    ""
+  ),
+  city: pickFirst(primary.city, primary.City, fallback.city, fallback.City, ""),
+  ZipCode: pickFirst(primary.zipCode, primary.ZipCode, fallback.zipCode, fallback.ZipCode, ""),
+});
 
 const validateForm = (formData) => {
   const errors = {};
@@ -75,12 +196,12 @@ const validateForm = (formData) => {
   }
 
   if (formData.PhoneNo.trim()) {
-    const digits = formData.PhoneNo.replace(/[\s\-()]/g, "");
+    const digits = formData.PhoneNo.replace(/\D/g, "");
     if (digits.length < 7) errors.PhoneNo = "Invalid phone number";
   }
 
-  if (formData.ZipCode.trim() && !/^\d{5}(-\d{4})?$/.test(formData.ZipCode.trim())) {
-    errors.ZipCode = "Invalid zip code (e.g. 12345)";
+  if (formData.ZipCode.trim() && !/^[a-zA-Z0-9 -]{3,10}$/.test(formData.ZipCode.trim())) {
+    errors.ZipCode = "Invalid zip code";
   }
 
   return errors;
@@ -90,11 +211,12 @@ export function SchoolManagementModal({
   open,
   handleOpen,
   editInstitute,
+  editSchoolId,
   editSchoolData,
   refreshSchools,
 }) {
   const dispatch = useAppDispatch();
-  const { terminals, instituteTypes, states, cities, loading } = useAppSelector((s) => s.schools);
+  const { terminals, instituteTypes, states, cities, loading, selectedSchool } = useAppSelector((s) => s.schools);
 
   const [formData, setFormData] = useState(INITIAL);
   const [errors, setErrors] = useState({});
@@ -113,32 +235,30 @@ export function SchoolManagementModal({
   }, [open, dispatch]);
 
   useEffect(() => {
+    if (open && editInstitute && editSchoolId) {
+      dispatch(fetchSchoolById(editSchoolId));
+    }
+  }, [open, editInstitute, editSchoolId, dispatch]);
+
+  useEffect(() => {
     if (editInstitute && editSchoolData) {
-      setFormData({
-        district: editSchoolData.district || "",
-        president: editSchoolData.president || "",
-        terminal: editSchoolData.terminal || "",
-        principal: editSchoolData.principal || editSchoolData.principle || "",
-        school: editSchoolData.school || editSchoolData.name || "",
-        totalStudent: editSchoolData.totalStudent || editSchoolData.totalStudents || "",
-        totalBuses: editSchoolData.totalBuses || "",
-        contact: editSchoolData.contact || "",
-        Address: editSchoolData.Address || editSchoolData.address || "",
-        Email: editSchoolData.Email || editSchoolData.email || "",
-        PhoneNo: editSchoolData.PhoneNo || editSchoolData.phoneNo || "",
-        instituteType: editSchoolData.instituteType || editSchoolData.InstituteType || "",
-        stateId: editSchoolData.stateId || editSchoolData.StateId || "",
-        city: editSchoolData.city || editSchoolData.City || "",
-        ZipCode: editSchoolData.ZipCode || editSchoolData.zipCode || "",
-      });
-    } else {
+      const canUseSelected =
+        selectedSchool &&
+        Number(selectedSchool.id ?? selectedSchool.InstituteId) === Number(editSchoolId);
+
+      setFormData(mapSchoolToForm(canUseSelected ? selectedSchool : {}, editSchoolData));
+      setErrors({});
+      setTouched({});
+      setCitySearch("");
+      setShowCityDropdown(false);
+    } else if (!editInstitute) {
       setFormData(INITIAL);
       setErrors({});
       setTouched({});
       setCitySearch("");
       setShowCityDropdown(false);
     }
-  }, [editInstitute, editSchoolData, open]);
+  }, [editInstitute, editSchoolData, editSchoolId, selectedSchool, open]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -196,16 +316,33 @@ export function SchoolManagementModal({
     }
 
     try {
-      const result = await dispatch(createInstitute(formData));
-      if (createInstitute.fulfilled.match(result)) {
-        toast.success(result.payload?.message || "School created successfully!");
+      const action = editInstitute
+        ? updateSchool({ schoolId: editSchoolId, instituteData: formData, currentSchool: selectedSchool })
+        : createInstitute(formData);
+
+      const result = await dispatch(action);
+      const success = editInstitute
+        ? updateSchool.fulfilled.match(result)
+        : createInstitute.fulfilled.match(result);
+
+      if (success) {
+        toast.success(
+          result.payload?.message ||
+            (editInstitute ? "School updated successfully!" : "School created successfully!")
+        );
         refreshSchools?.();
         handleOpen();
       } else {
-        toast.error(result.payload || "Failed to create school. Please try again.");
+        toast.error(
+          result.payload ||
+            (editInstitute ? "Failed to update school. Please try again." : "Failed to create school. Please try again.")
+        );
       }
     } catch (err) {
-      toast.error(err.message || "Failed to create school. Please try again.");
+      toast.error(
+        err.message ||
+          (editInstitute ? "Failed to update school. Please try again." : "Failed to create school. Please try again.")
+      );
     }
   };
 
@@ -328,7 +465,7 @@ export function SchoolManagementModal({
               </Field>
 
               <Field label="Contact Person">
-                <input type="text" name="contact" value={formData.contact}
+                <input type="text" name="contactPerson" value={formData.contactPerson}
                   onChange={handleChange} placeholder="Contact person name" className={inputCls()} />
               </Field>
             </div>
@@ -357,7 +494,11 @@ export function SchoolManagementModal({
                   onChange={handleChange} className={inputCls()}>
                   <option value="">Select state</option>
                   {loading.states ? <option disabled>Loading...</option>
-                    : states.map((s) => <option key={s.StateId} value={s.StateId}>{s.StateName}</option>)}
+                    : states.map((s) => {
+                        const id = s.StateId ?? s.id;
+                        const name = s.StateName ?? s.name;
+                        return <option key={id} value={id}>{name}</option>;
+                      })}
                 </select>
               </Field>
 
@@ -401,23 +542,23 @@ export function SchoolManagementModal({
           <button
             type="button"
             onClick={handleOpen}
-            disabled={loading.creating}
+            disabled={loading.creating || loading.updating}
             className="px-5 py-2 rounded-xl border border-[#ddd5c7] text-sm font-semibold text-[#171a2a] hover:bg-[#f3f1eb] transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={loading.creating}
+            disabled={loading.creating || loading.updating || (editInstitute && loading.detail)}
             className="px-5 py-2 rounded-xl bg-[#c01824] text-sm font-semibold text-white hover:bg-[#a61520] transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {loading.creating ? (
+            {loading.creating || loading.updating ? (
               <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
               </svg>
             ) : null}
-            {loading.creating ? "Submitting..." : editInstitute ? "Update School" : "Add School"}
+            {loading.creating || loading.updating ? "Submitting..." : editInstitute ? "Update School" : "Add School"}
           </button>
         </div>
       </form>
