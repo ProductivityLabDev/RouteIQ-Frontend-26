@@ -56,6 +56,13 @@ const INITIAL_FORM = {
     permission: "",
 };
 
+const HIDDEN_ROLE_KEYS = new Set([
+    "ADMINISTRATOR",
+    "SUPER_ADMIN",
+    "SUB_ADMIN",
+    "SCHOOL",
+]);
+
 const getPermissionLabelFromControl = (controlValue) =>
     controlValue === "READ_WRITE" ? "Read & Write" : "Read Only";
 
@@ -78,6 +85,17 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
     const [formData, setFormData] = useState(INITIAL_FORM);
 
     const token = localStorage.getItem("token");
+
+    const visibleRoles = roles.filter((role) => {
+        const code = String(role.code || "").trim().toUpperCase();
+        const name = String(role.name || "").trim().toUpperCase().replace(/\s+/g, "_");
+
+        return (
+            code !== "VENDOR" &&
+            !HIDDEN_ROLE_KEYS.has(code) &&
+            !HIDDEN_ROLE_KEYS.has(name)
+        );
+    });
 
     // ── Fetch dropdowns ──────────────────────────────────────────────────────
     const getTerminals = async () => {
@@ -378,7 +396,7 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
                                 <option value="">Select Role</option>
                                 {loadingDropdowns ? (
                                     <option disabled>Loading...</option>
-                                ) : roles.filter((r) => r.code !== "VENDOR").map((role) => (
+                                ) : visibleRoles.map((role) => (
                                     <option key={role.id} value={role.code}>{role.name}</option>
                                 ))}
                             </select>

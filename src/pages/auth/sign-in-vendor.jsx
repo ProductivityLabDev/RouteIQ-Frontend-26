@@ -12,6 +12,27 @@ import { Toaster, toast } from 'react-hot-toast';
 import authBg from '@/assets/authbg.png';
 import { BASE_URL, setAuthTokens } from '@/configs';
 
+const COUNTRY_OPTIONS = [
+  { code: "US", label: "United States", dialCode: "+1", maxDigits: 10 },
+  { code: "CA", label: "Canada", dialCode: "+1", maxDigits: 10 },
+  { code: "GB", label: "United Kingdom", dialCode: "+44", maxDigits: 10 },
+  { code: "AU", label: "Australia", dialCode: "+61", maxDigits: 9 },
+  { code: "AE", label: "United Arab Emirates", dialCode: "+971", maxDigits: 9 },
+  { code: "SA", label: "Saudi Arabia", dialCode: "+966", maxDigits: 9 },
+  { code: "PK", label: "Pakistan", dialCode: "+92", maxDigits: 10 },
+  { code: "IN", label: "India", dialCode: "+91", maxDigits: 10 },
+];
+
+const getCountryMetaByDialCode = (dialCode) =>
+  COUNTRY_OPTIONS.find((country) => country.dialCode === dialCode) ?? COUNTRY_OPTIONS[0];
+
+const getVendorSignupIdFromResponse = (responseData) =>
+  responseData?.vendorSignupId ||
+  responseData?.data?.vendorSignupId ||
+  responseData?.data?.VendorSignupId ||
+  responseData?.VendorSignupId ||
+  null;
+
 const getLatestVendorProfile = async (token) => {
   const requestConfig = {
     headers: {
@@ -49,6 +70,7 @@ export function SignInVendor() {
     nameAndTitle: '',
     company: '',
     email: '',
+    countryDialCode: COUNTRY_OPTIONS[0].dialCode,
     contactNumber: '',
   });
 
@@ -224,7 +246,7 @@ export function SignInVendor() {
         nameAndTitle: signUpData.nameAndTitle,
         companyName: signUpData.company,
         email: signUpData.email,
-        contactNumber: signUpData.contactNumber,
+        contactNumber: `${signUpData.countryDialCode} ${signUpData.contactNumber.trim()}`.trim(),
       };
 
       const res = await axios.post(url, payload, {
@@ -235,13 +257,15 @@ export function SignInVendor() {
 
       // Optionally navigate to step 2
       // navigate("/vendor/signup-step2");
-      const vendorSignupId = res.data?.vendorSignupId;
+      const vendorSignupId = getVendorSignupIdFromResponse(res.data);
 
       // safety check
       if (!vendorSignupId) {
         toast.error("Signup failed: No vendor ID returned.");
         return;
       }
+
+      sessionStorage.setItem("vendorSignupId", String(vendorSignupId));
 
       navigate("/dashboard_subscription", {
         state: { vendorSignupId }
@@ -262,9 +286,21 @@ export function SignInVendor() {
 
   const handleSignUpChange = (e) => {
     const { name, value } = e.target;
+    const selectedCountry = getCountryMetaByDialCode(
+      name === "countryDialCode" ? value : signUpData.countryDialCode
+    );
+
     setSignUpData(prev => ({
       ...prev,
-      [name]: value
+      [name]:
+        name === "contactNumber"
+          ? value.replace(/\D/g, '').slice(0, selectedCountry.maxDigits)
+          : value,
+      ...(name === "countryDialCode"
+        ? {
+            contactNumber: prev.contactNumber.slice(0, selectedCountry.maxDigits),
+          }
+        : {}),
     }));
   };
 
@@ -279,6 +315,8 @@ export function SignInVendor() {
       clearInterval(interval);
     };
   }, []);
+
+  const selectedCountry = getCountryMetaByDialCode(signUpData.countryDialCode);
   return (
     <>
       <Toaster
@@ -338,11 +376,12 @@ export function SignInVendor() {
                 Login
               </button>
               <button
-                onClick={() => setActiveTab('signup')}
+                onClick={() => navigate('/sign-up-vendor')}
                 className={`px-8 py-3 text-sm font-medium transition-colors w-[50%] ${activeTab === 'signup'
                   ? 'bg-[#2C2F32] text-white'
                   : 'bg-[#1F2124] text-gray-400 hover:text-white'
                   }`}
+                type="button"
               >
                 Sign up
               </button>
@@ -555,15 +594,37 @@ export function SignInVendor() {
                     <Typography variant="small" className="text-gray-300 text-sm font-medium mb-2">
                       Contact Number*
                     </Typography>
-                    <input
-                      type="tel"
-                      name="contactNumber"
-                      value={signUpData.contactNumber}
-                      onChange={handleSignUpChange}
-                      className="w-full outline-none rounded-md px-4 py-3 bg-white text-gray-900 border border-gray-300 focus:border-[#C01824] focus:ring-1 focus:ring-[#C01824]"
-                      placeholder="Enter contact number"
-                      required
-                    />
+                    <div className="flex gap-3">
+                      <div className="relative w-[150px] shrink-0">
+                        <select
+                          name="countryDialCode"
+                          value={signUpData.countryDialCode}
+                          onChange={handleSignUpChange}
+                          className="w-full appearance-none outline-none rounded-md px-4 py-3 pr-10 bg-white text-gray-900 border border-gray-300 focus:border-[#C01824] focus:ring-1 focus:ring-[#C01824]"
+                          aria-label="Select country code"
+                        >
+                          {COUNTRY_OPTIONS.map((country) => (
+                            <option key={`${country.code}-${country.dialCode}`} value={country.dialCode}>
+                              {country.code} ({country.dialCode})
+                            </option>
+                          ))}
+                        </select>
+                        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
+                          v
+                        </span>
+                      </div>
+                      <input
+                        type="tel"
+                        name="contactNumber"
+                        value={signUpData.contactNumber}
+                        onChange={handleSignUpChange}
+                        className="flex-1 outline-none rounded-md px-4 py-3 bg-white text-gray-900 border border-gray-300 focus:border-[#C01824] focus:ring-1 focus:ring-[#C01824]"
+                        placeholder="Enter contact number"
+                        inputMode="tel"
+                        maxLength={selectedCountry.maxDigits}
+                        required
+                      />
+                    </div>
                   </div>
 
                   {/* Proceed Button */}

@@ -32,6 +32,7 @@ import {
 } from '@/redux/slices/notificationsSlice'
 import { fetchTerminals } from '@/redux/slices/busesSlice'
 import { fetchSchoolManagementSummary } from '@/redux/slices/schoolSlice'
+import { parseAppDate } from '@/utils/dateTime'
 
 const NOTIFICATION_TYPE_COLORS = {
     alert: { bg: "#FEE2E2", text: "#DC2626" },
@@ -94,7 +95,9 @@ const Notification = () => {
     const formatDate = useCallback((dateStr) => {
         if (!dateStr) return ""
         try {
-            const date = typeof dateStr === "string" ? parseISO(dateStr) : new Date(dateStr)
+            const date =
+                parseAppDate(dateStr) ||
+                (typeof dateStr === "string" ? parseISO(dateStr) : new Date(dateStr))
             return formatDistanceToNow(date, { addSuffix: true })
         } catch {
             return String(dateStr)

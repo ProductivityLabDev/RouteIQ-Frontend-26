@@ -1093,7 +1093,7 @@ const RouteManagement = () => {
                   </div>
                 </MenuHandler>
 
-                <MenuList className="max-h-96 w-72">
+                <MenuList className="z-[1205] max-h-96 w-72 shadow-xl">
                   <div className="p-2">
                     <Input
                       size="md"

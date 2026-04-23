@@ -1,9 +1,11 @@
 import React from "react";
 import { format, isToday, isYesterday } from "date-fns";
+import { parseAppDate } from "@/utils/dateTime";
 
 function formatTime(dateStr) {
   if (!dateStr) return "";
-  const date = new Date(dateStr);
+  const date = parseAppDate(dateStr);
+  if (!date) return "";
   if (isToday(date)) return format(date, "h:mm a");
   if (isYesterday(date)) return "Yesterday";
   return format(date, "MM/dd/yyyy");

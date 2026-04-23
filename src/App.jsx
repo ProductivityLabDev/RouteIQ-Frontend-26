@@ -9,11 +9,12 @@ import { Dashboard, Auth } from "@/layouts";
 import EmployeeManagementRoutes from "./layouts/EmployeeDashboard";
 import LoginAsVendor from "./pages/auth/login-as-vendor";
 import SignInVendor from "./pages/auth/sign-in-vendor";
+import VendorSignUp from "./pages/auth/vendor-sign-up";
 import AcceptInvite from "./pages/auth/accept-invite";
 import Logout from "./pages/auth/logout";
 
 import SchoolDashboard from "./pages/dashboard/Dashboard";
-import { VendorProfile } from "./pages/dashboard/vendor-profile";
+import ProfileEntry from "./pages/dashboard/ProfileEntry";
 import DashboardSubscription from "./pages/dashboard/DashboardSubcription";
 import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
 import PaymentSuccess from "./pages/dashboard/PaymentSuccess";
@@ -69,6 +70,11 @@ function App() {
     <Routes>
       {/* ---------- PUBLIC ---------- */}
       <Route path="/sign-in-vendor" element={<SignInVendor />} />
+      <Route path="/sign-up-vendor" element={<VendorSignUp />} />
+      <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
+      <Route path="/subscription_page" element={<SubscriptionPage />} />
+      <Route path="/merchant" element={<Merchant />} />
+      <Route path="/payment_success" element={<PaymentSuccess />} />
       <Route path="/super-admin/sign-in" element={<SuperAdminSignIn />} />
       <Route path="/invite/accept" element={<AcceptInvite />} />
       <Route path="/accept-invite" element={<AcceptInvite />} />
@@ -92,13 +98,10 @@ function App() {
       <Route path="/dashboard/*" element={<Dashboard />} />
       <Route path="/dashboard" element={<SchoolDashboard />} />
       {/* <Route path="/school_dashboard" element={<SchoolDashboard />} /> */}
-      <Route path="/dashboard_subscription" element={<DashboardSubscription />} />
-      <Route path="/subscription_page" element={<SubscriptionPage />} />
-      <Route path="/merchant" element={<Merchant />} />
-      <Route path="/payment_success" element={<PaymentSuccess />} />
       <Route path="/notification" element={<Notification />} />
       <Route path="/vendorChat" element={<VendorChat />} />
-      <Route path="/vendor-profile" element={<MainLayout><VendorProfile /></MainLayout>} />
+      <Route path="/profile" element={<ProfileEntry />} />
+      <Route path="/vendor-profile" element={<ProfileEntry />} />
       <Route path="/vehicleManagement" element={<VehicleManagement />} />
       <Route path="/DriverManagement" element={<DriverManagement />} />
       <Route path="/EmployeeManagement" element={<EmployeeManagement />} />

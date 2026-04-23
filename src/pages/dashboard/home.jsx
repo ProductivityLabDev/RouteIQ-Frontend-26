@@ -12,12 +12,15 @@ import { useState } from "react";
 import { Menu, MenuHandler, MenuList, MenuItem } from "@material-tailwind/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { chatService } from "@/services/chatService";
+import { parseAppDate } from "@/utils/dateTime";
 
 const formatTimeAgo = (value) => {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  const date = parseAppDate(value);
+  if (!date) return "";
   const diffMs = Date.now() - date.getTime();
+  if (diffMs <= 60000 && diffMs >= -300000) return "just now";
+  if (Number.isNaN(date.getTime())) return "";
   const diffMin = Math.floor(diffMs / 60000);
   if (diffMin < 1) return "just now";
   if (diffMin < 60) return `${diffMin}m ago`;
@@ -55,8 +58,8 @@ export function Home() {
           .slice()
           .sort(
             (a, b) =>
-              new Date(b?.lastMessageAt || b?.updatedAt || 0).getTime() -
-              new Date(a?.lastMessageAt || a?.updatedAt || 0).getTime()
+              (parseAppDate(b?.lastMessageAt || b?.updatedAt)?.getTime() || 0) -
+              (parseAppDate(a?.lastMessageAt || a?.updatedAt)?.getTime() || 0)
           );
         const preview = sorted.slice(0, 2).map((c) => {
           const name =

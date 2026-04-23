@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { useDispatch, useSelector, shallowEqual } from "react-redux";
+import { parseAppDate } from "@/utils/dateTime";
 
 const EMPTY_ARRAY = []; // stable reference — avoids new [] on every render
 import {
@@ -238,8 +239,8 @@ const ChatPanel = ({
   }, []);
   const formatConversationTimestamp = useCallback((value) => {
     if (!value) return "No recent activity";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
+    const date = parseAppDate(value);
+    if (!date) return String(value);
     if (isToday(date)) return `Today, ${format(date, "h:mm a")}`;
     if (isYesterday(date)) return `Yesterday, ${format(date, "h:mm a")}`;
     return format(date, "MMM d, yyyy - h:mm a");

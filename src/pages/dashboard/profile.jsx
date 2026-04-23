@@ -3,6 +3,38 @@ import React, { useState, useEffect, useRef } from "react";
 import { schoolDashboardService } from "@/services/schoolDashboardService";
 import { schoolService } from "@/services/schoolService";
 
+const pickFirst = (...values) =>
+  values.find((value) => value !== undefined && value !== null && value !== "");
+
+const toStringValue = (value) => (value === undefined || value === null ? "" : String(value));
+
+const findOptionId = (items, idCandidates = [], nameCandidates = [], idKeys = [], nameKeys = []) => {
+  const directId = idCandidates.find((value) => value !== undefined && value !== null && value !== "");
+  if (directId !== undefined) return String(directId);
+
+  const normalizedNames = nameCandidates
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  if (normalizedNames.length === 0) return "";
+
+  const matched = (Array.isArray(items) ? items : []).find((item) => {
+    const optionName = nameKeys
+      .map((key) => item?.[key])
+      .find((value) => value !== undefined && value !== null && value !== "");
+
+    return normalizedNames.includes(String(optionName || "").trim().toLowerCase());
+  });
+
+  if (!matched) return "";
+
+  const matchedId = idKeys
+    .map((key) => matched?.[key])
+    .find((value) => value !== undefined && value !== null && value !== "");
+
+  return matchedId !== undefined ? String(matchedId) : "";
+};
+
 export function Profile() {
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -17,6 +49,7 @@ export function Profile() {
   const [citySearch, setCitySearch] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
   const cityRef = useRef(null);
+  const profileSnapshotRef = useRef(null);
 
   useEffect(() => {
     const onOutside = (e) => {
@@ -36,6 +69,35 @@ export function Profile() {
     zipCode: '',
     cityId: '',
   });
+
+  const mapProfileToForm = (profile, stateOptions = states, cityOptions = cities) => {
+    const stateId = findOptionId(
+      stateOptions,
+      [profile?.stateId, profile?.StateId, profile?.state, profile?.State],
+      [profile?.stateName, profile?.StateName, profile?.state, profile?.State],
+      ["StateId", "stateId", "id"],
+      ["StateName", "stateName", "name"]
+    );
+
+    const cityId = findOptionId(
+      cityOptions,
+      [profile?.cityId, profile?.CityId, profile?.city, profile?.City],
+      [profile?.cityName, profile?.CityName, profile?.city, profile?.City],
+      ["CityId", "cityId", "id"],
+      ["CityName", "cityName", "name"]
+    );
+
+    return {
+      instituteName: toStringValue(pickFirst(profile?.instituteName, profile?.InstituteName, profile?.schoolName, profile?.SchoolName)),
+      contactPhone: toStringValue(pickFirst(profile?.contactPhone, profile?.ContactPhone)),
+      mobileNo: toStringValue(pickFirst(profile?.mobileNo, profile?.MobileNo, profile?.officePhone, profile?.OfficePhone)),
+      address: toStringValue(pickFirst(profile?.address, profile?.Address)),
+      stateId,
+      contactEmail: toStringValue(pickFirst(profile?.contactEmail, profile?.ContactEmail, profile?.email, profile?.Email)),
+      zipCode: toStringValue(pickFirst(profile?.zipCode, profile?.ZipCode)),
+      cityId,
+    };
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -71,17 +133,10 @@ export function Profile() {
       try {
         const res = await schoolDashboardService.getProfile();
         const d = res?.data ?? res ?? {};
-        const v = (x) => x ?? '';
+        profileSnapshotRef.current = d;
         setForm((prev) => ({
           ...prev,
-          instituteName: v(d.instituteName ?? d.InstituteName ?? d.schoolName ?? d.SchoolName),
-          contactPhone: v(d.contactPhone ?? d.ContactPhone),
-          mobileNo: v(d.mobileNo ?? d.MobileNo),
-          address: v(d.address ?? d.Address),
-          stateId: String(v(d.stateId ?? d.StateId ?? '')),
-          contactEmail: v(d.contactEmail ?? d.ContactEmail),
-          zipCode: v(d.zipCode ?? d.ZipCode),
-          cityId: String(v(d.cityId ?? d.CityId ?? '')),
+          ...mapProfileToForm(d),
         }));
         const logoUrl = d.logo ?? d.Logo ?? d.logoUrl ?? d.LogoUrl;
         if (logoUrl) setLogoPreview(logoUrl);
@@ -92,6 +147,20 @@ export function Profile() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (!profileSnapshotRef.current) return;
+    if (!states.length && !cities.length) return;
+
+    setForm((prev) => {
+      const mapped = mapProfileToForm(profileSnapshotRef.current, states, cities);
+      return {
+        ...prev,
+        stateId: mapped.stateId || prev.stateId,
+        cityId: mapped.cityId || prev.cityId,
+      };
+    });
+  }, [states, cities]);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -128,6 +197,18 @@ export function Profile() {
       if (form.cityId) fd.append('cityId', form.cityId);
       if (logoFile) fd.append('logo', logoFile);
       await schoolDashboardService.updateProfile(fd);
+      try {
+        const refreshed = await schoolDashboardService.getProfile();
+        const refreshedProfile = refreshed?.data ?? refreshed ?? {};
+        profileSnapshotRef.current = refreshedProfile;
+        setForm((prev) => ({
+          ...prev,
+          ...mapProfileToForm(refreshedProfile, states, cities),
+        }));
+        const refreshedLogo = refreshedProfile.logo ?? refreshedProfile.Logo ?? refreshedProfile.logoUrl ?? refreshedProfile.LogoUrl;
+        if (refreshedLogo) setLogoPreview(refreshedLogo);
+      } catch (refreshError) {
+      }
       setSuccess(true);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to update profile. Please try again.');
@@ -137,9 +218,18 @@ export function Profile() {
   };
 
   return (
-    <>
-      <section>
-        <Card className="lg:p-9 p-3 mt-7 rounded-[6px]" color="white" shadow={true}>
+    <section className="mt-6 w-full">
+      <div className="mb-6">
+        <div className="text-[12px] font-semibold uppercase tracking-[0.24em] text-[#98A2B3]">
+          School Workspace
+        </div>
+        <h1 className="mt-2 text-[28px] font-extrabold text-[#141516]">Edit Profile</h1>
+        <p className="mt-2 max-w-[760px] text-[14px] leading-6 text-[#667085]">
+          Update your school identity, contact information and location details from one place.
+        </p>
+      </div>
+
+      <Card className="mx-auto w-full max-w-[1280px] rounded-[14px] p-5 md:p-8" color="white" shadow={true}>
           <div className="text-center">
             <div className="h-[118px] w-[118px] flex justify-center items-center overflow-hidden mx-auto rounded-full bg-[#ECECEE] relative">
               {loadingProfile ? (
@@ -162,13 +252,13 @@ export function Profile() {
             <p className="pt-2 text-[14px] font-semibold text-[#C01824]">Upload photo</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-8 w-full max-w-[800px] mb-2 mx-auto">
+          <form onSubmit={handleSubmit} className="mx-auto mt-8 mb-2 w-full max-w-[1120px]">
             {loadingProfile && (
               <p className="text-gray-500 text-sm text-center mb-4">Loading profile...</p>
             )}
-            <div className='flex justify-between md:flex-row flex-col lg:space-x-7 md:space-x-2'>
+            <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8'>
               {/* Left column */}
-              <div className="mb-1 flex flex-col gap-6 w-full md:pb-0 pb-2">
+              <div className="mb-1 flex flex-col gap-6 w-full">
                 <Typography variant="paragraph" className="-mb-3 text-[14px] text-[#2C2F32] font-semibold">
                   School Name
                 </Typography>
@@ -359,16 +449,15 @@ export function Profile() {
             <Button
               type="submit"
               disabled={submitting || loadingProfile}
-              className="lg:mt-12 lg:mb-8 mb-5 mt-8 px-20 md:px-32 text-[18px] font-normal capitalize mx-auto flex bg-[#C01824] disabled:opacity-60"
+              className="mt-10 mb-4 flex min-w-[220px] justify-center text-[18px] font-normal capitalize bg-[#C01824] disabled:opacity-60"
               variant='filled'
               size='lg'
             >
               {submitting ? 'Saving...' : 'Save'}
             </Button>
           </form>
-        </Card>
-      </section>
-    </>
+      </Card>
+    </section>
   );
 }
 

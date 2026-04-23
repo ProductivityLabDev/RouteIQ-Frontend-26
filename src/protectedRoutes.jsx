@@ -104,6 +104,7 @@ export default function ProtectedRoute() {
     "SUBSCRIPTION_PAGE",
     "PAYMENT_SUCCESS",
     "PAYMENT-SUCCESS",
+    "PROFILE",
     "VENDOR-PROFILE",
     "VENDORPROFILE",
     // Everyone can access Documents and Feedback

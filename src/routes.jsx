@@ -16,7 +16,7 @@ import {
   Settings,
   FeedbackSupport,
 } from "@/pages/dashboard";
-import { ForgotPassword, SignIn, SignInVendor, SignUp } from "@/pages/auth";
+import { ForgotPassword, SignIn, SignInVendor, SignUp, VendorSignUp } from "@/pages/auth";
 import Logout from "@/pages/auth/logout";
 import NotFound from "@/components/NotFound";
 import { announcementicon, communicationicon, dashboardicon, logouticon, manageicon, routescheduleicon, settingsicon, tripplannericon } from "./assets";
@@ -126,7 +126,7 @@ export const routes = [
         icon: <HomeIcon {...icon} />,
         name: "profile",
         path: "/profile",
-        element: <Navigate to="/vendor-profile" replace />,
+        element: <Navigate to="/profile" replace />,
       },
       {
         icon: <HomeIcon {...icon} />,
@@ -167,6 +167,12 @@ export const routes = [
         name: "vendor sign in",
         path: "/sign-in-vendor",
         element: <SignInVendor />,
+      },
+      {
+        icon: <RectangleStackIcon {...icon} />,
+        name: "vendor sign up",
+        path: "/sign-up-vendor",
+        element: <VendorSignUp />,
       },
     ],
   },

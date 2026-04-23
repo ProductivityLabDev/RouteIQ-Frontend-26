@@ -481,7 +481,7 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
 					<div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
 						<h3 className="text-xl font-bold text-black">Bus QR Code</h3>
-						<p className="mt-2 text-sm text-gray-600">Bus create ho gayi hai. Is QR code ko detail screen ya scanner flow mein use kiya ja sakta hai.</p>
+						<p className="mt-2 text-sm text-gray-600">The bus has been created successfully. This QR code can be used on the detail screen or in the scanner flow.</p>
 						<div className="mt-5 flex justify-center rounded-lg border border-gray-200 bg-[#fafafa] p-4">
 							{createdQr.qrImageUrl ? (
 								<img src={createdQr.qrImageUrl} alt="Bus QR" className="h-56 w-56 object-contain" />

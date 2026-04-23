@@ -7,31 +7,42 @@ import ButtonComponent from "@/components/buttons/CustomButton";
 import { logo } from "@/assets";
 import axios from "axios";
 import { BASE_URL } from "@/configs";
+
 const SubscriptionPage = () => {
   const navigation = useNavigate();
   const location = useLocation();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const selectedCard = location.state?.selectedCard || null;
   const fromPath = location.state?.from || null;
 
-  const vendorSignupId = location?.state?.vendorSignupId || null;
+  const vendorSignupId =
+    location?.state?.vendorSignupId ||
+    sessionStorage.getItem("vendorSignupId") ||
+    null;
 
   const handleSubmit = async () => {
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+    setErrorMessage("");
+
     try {
       const payload = {
-        // vendorSignupId: selectedCard?.vendorSignupId,
-        // packageId: selectedCard?.packageId,
-        // //packageName: selectedCard?.packageName,
         vendorSignupId: vendorSignupId,
-        packageId: 1,
-        amount: 30,
+        packageId: selectedCard?.packageId ?? 1,
+        amount: selectedCard?.amount ?? 30,
         paymentMethod: "Credit Card",
-        transactionId: "txn_123456",
+        transactionId: `txn_${Date.now()}`,
         status: "PENDING"
 
       };
 
-      const response = await axios.post(`${BASE_URL}/signup/vendor/payment`, payload);
+      await axios.post(`${BASE_URL}/signup/vendor/payment`, payload, {
+        timeout: 15000,
+        headers: { "Content-Type": "application/json" },
+      });
 
 
       if (fromPath === "/BillingInvoice") {
@@ -41,7 +52,15 @@ const SubscriptionPage = () => {
       }
 
     } catch (error) {
-      alert("Payment failed. Try again.");
+      if (error.code === "ECONNABORTED") {
+        setErrorMessage("Payment is taking longer than expected. Please try again.");
+      } else {
+        setErrorMessage(
+          error.response?.data?.message || "Payment failed. Please try again."
+        );
+      }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -112,13 +131,30 @@ const SubscriptionPage = () => {
         {/* Pay Button */}
         <Grid container spacing={2} mt={2}>
           <Grid item xs={12}>
+            {errorMessage ? (
+              <Typography
+                sx={{
+                  color: colors?.redColor || "#C01824",
+                  fontSize: "0.95rem",
+                  mb: 1.5,
+                  textAlign: "center",
+                }}
+              >
+                {errorMessage}
+              </Typography>
+            ) : null}
             <ButtonComponent
-              label="Pay now"
+              label={isProcessing ? "Processing payment..." : "Pay now"}
               onClick={handleSubmit}
+              disabled={isProcessing}
               sx={{
-                backgroundColor: colors.darkBlackColor,
+                backgroundColor: isProcessing ? "#3B3B3B" : colors.darkBlackColor,
                 width: "100%",
-                "&:hover": { backgroundColor: colors.darkBlackColor },
+                opacity: isProcessing ? 0.85 : 1,
+                cursor: isProcessing ? "not-allowed" : "pointer",
+                "&:hover": {
+                  backgroundColor: isProcessing ? "#3B3B3B" : colors.darkBlackColor,
+                },
               }}
             />
           </Grid>

@@ -67,7 +67,7 @@ const isPathAllowedInScope = (path = "", scope = "global") => {
 
   const normalizedPath = String(path).toLowerCase();
   const scopePrefixes = {
-    "vendor-dashboard": ["/dashboard", "/vendor-profile", "/vehiclemanagement", "/repair-schedule", "/reported-defects", "/notes", "/employeemanagement", "/drivermanagement", "/schoolmanagement", "/studentmanagement", "/routemanagement", "/routeschedule", "/realtimetracking", "/vendorchat", "/notification", "/accounting", "/billinginvoice", "/glcodes", "/accessmanagement", "/documents", "/feedback"],
+    "vendor-dashboard": ["/dashboard", "/profile", "/vendor-profile", "/vehiclemanagement", "/repair-schedule", "/reported-defects", "/notes", "/employeemanagement", "/drivermanagement", "/schoolmanagement", "/studentmanagement", "/routemanagement", "/routeschedule", "/realtimetracking", "/vendorchat", "/notification", "/accounting", "/billinginvoice", "/glcodes", "/accessmanagement", "/documents", "/feedback"],
     "school-dashboard": ["/dashboard/home", "/dashboard/manage", "/dashboard/route-schedules", "/dashboard/communication", "/dashboard/announcements", "/dashboard/trip-planner", "/dashboard/settings", "/dashboard/feedback-and-support"],
     employee: ["/employeemanagement", "/drivermanagement"],
     school: ["/schoolmanagement", "/studentmanagement"],
@@ -120,6 +120,12 @@ export function DashboardNavbar({ user }) {
 
   const dispatchUser = useDispatch();
   const { user: loggedInUser } = useSelector((state) => state.user);
+  const normalizedRole = String(loggedInUser?.role || "").trim().toUpperCase();
+  const profilePath = "/profile";
+  const profileDescription =
+    normalizedRole === "INSTITUTE" || normalizedRole === "SCHOOL"
+      ? "School profile"
+      : "Vendor profile";
   const displayName = loggedInUser?.nameAndTitle || loggedInUser?.fullName || loggedInUser?.name || loggedInUser?.username || "Guest User";
   const profileImage = loggedInUser?.profileImage || loggedInUser?.logoUrl || loggedInUser?.Logo || profileavatar;
   const profileInitial = String(displayName || "G").trim().charAt(0).toUpperCase() || "G";
@@ -357,9 +363,9 @@ export function DashboardNavbar({ user }) {
     const profileItem = loggedInUser ? [{
       id: "record-my-profile",
       label: loggedInUser?.name || loggedInUser?.username || "My Profile",
-      description: loggedInUser?.email || "Vendor profile",
+      description: loggedInUser?.email || profileDescription,
       meta: "Profile",
-      path: "/vendor-profile",
+      path: profilePath,
       keywords: [loggedInUser?.role, "account", "company profile"],
     }] : [];
     return [
@@ -913,7 +919,7 @@ export function DashboardNavbar({ user }) {
             </MenuHandler>
 
             <MenuList>
-              <Link to="/vendor-profile">
+              <Link to={profilePath}>
                 <MenuItem className="flex items-center gap-2">
                   <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
                   <Typography

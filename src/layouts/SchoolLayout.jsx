@@ -4,12 +4,18 @@ import { CssBaseline, Toolbar, useMediaQuery, useTheme } from "@mui/material";
 import DashboardSidebar from "@/components/schoolDashboardSidebar/SchoolDashboardSidebar";
 import colors from "@/utlis/Colors";
 import { DashboardNavbar } from "@/widgets/layout";
+import { useSelector } from "react-redux";
 // import colors from "../../utlis/Colors";
 
 const MainLayout = ({ children }) => {
     const theme = useTheme();
     const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-    const userRole = 'vendor'
+    const loggedInUser = useSelector((state) => state.user?.user);
+    const normalizedRole = String(loggedInUser?.role || "").trim().toUpperCase();
+    const userRole =
+        normalizedRole === "INSTITUTE" || normalizedRole === "SCHOOL"
+            ? "school"
+            : "vendor";
 
     return (
         <Box sx={{ display: "flex", height: "100vh",  }}>

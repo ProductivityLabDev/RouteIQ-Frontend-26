@@ -5,6 +5,7 @@ import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { MaterialTailwindControllerProvider } from "@/context";
+import FeedbackModalHost from "@/components/FeedbackModalHost";
 
 // Redux & Persist imports
 import { Provider } from "react-redux";
@@ -31,6 +32,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <ThemeProvider theme={theme}>
             <MaterialTailwindControllerProvider>
               <App />
+              <FeedbackModalHost />
             </MaterialTailwindControllerProvider>
           </ThemeProvider>
         </PersistGate>

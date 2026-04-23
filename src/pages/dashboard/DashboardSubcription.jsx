@@ -8,6 +8,13 @@ import ButtonComponent from "@/components/buttons/CustomButton";
 import axios from "axios";
 import { BASE_URL } from "@/configs";
 
+const getVendorSignupIdFromResponse = (responseData) =>
+  responseData?.vendorSignupId ||
+  responseData?.data?.vendorSignupId ||
+  responseData?.data?.VendorSignupId ||
+  responseData?.VendorSignupId ||
+  null;
+
 const DashboardSubcription = () => {
   const [selectedCard, setSelectedCard] = useState(null);
 
@@ -17,7 +24,10 @@ const DashboardSubcription = () => {
   const queryParams = new URLSearchParams(location.search);
   const fromPath = queryParams.get("from");
 
-  const vendorSignupId = location?.state?.vendorSignupId || null;
+  const vendorSignupId =
+    location?.state?.vendorSignupId ||
+    sessionStorage.getItem("vendorSignupId") ||
+    null;
   // const handleSubmit = () => {
   //   if (selectedCard) {
   //     navigation("/subscription_page", {
@@ -40,12 +50,15 @@ const DashboardSubcription = () => {
         //paymentMethod: "Credit Card",
         //transactionId: "txn_" + Date.now(),
         //status: "PENDING",
-        packageName: "Premium Plan"
+        packageName: selectedCard.packageName
       };
 
 
       const response = await axios.post(`${BASE_URL}/signup/vendor/package`, payload);
-      const vendorSignupIdFromApi = response.data?.vendorSignupId;
+      const vendorSignupIdFromApi = getVendorSignupIdFromResponse(response.data) || vendorSignupId;
+      if (vendorSignupIdFromApi) {
+        sessionStorage.setItem("vendorSignupId", String(vendorSignupIdFromApi));
+      }
       navigation("/subscription_page", {
         state: { selectedCard, from: fromPath, vendorSignupId: vendorSignupIdFromApi },
       });
