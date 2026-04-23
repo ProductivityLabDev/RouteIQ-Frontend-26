@@ -557,11 +557,11 @@ const EditDriver = ({ employee, handleCancel, onSaved }) => {
               className={inputCls(errors.positionType, touched.positionType)}
             >
               <option value="">Select position</option>
-              <option value="1">Driver</option>
-              <option value="2">Dispatcher</option>
-              <option value="3">Mechanic</option>
-              <option value="4">Terminal Manager</option>
-              <option value="5">Retailer</option>
+                <option value="1">Driver</option>
+                <option value="2">Mechanic</option>
+                <option value="3">Accountant</option>
+                <option value="4">Manager</option>
+                <option value="5">Terminal Manager</option>
             </select>
           </Field>
 

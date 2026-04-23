@@ -94,9 +94,10 @@ export default function EditTableData({ handleClose, driver }) {
                 <label className="block text-sm font-medium text-black mb-1">Title</label>
                 <select className={cn()} value={formData.positionType} onChange={(e) => handleChange('positionType', e.target.value)}>
                   <option value={1}>Driver</option>
-                  <option value={2}>Dispatcher</option>
-                  <option value={3}>Mechanic</option>
+                  <option value={2}>Mechanic</option>
+                  <option value={3}>Accountant</option>
                   <option value={4}>Manager</option>
+                  <option value={5}>Terminal Manager</option>
                 </select>
               </div>
               <div>
