@@ -84,35 +84,48 @@ export default function SuperAdminDashboard() {
     [stats]
   );
 
-  const salesMax = Math.max(
-    0,
-    ...(stats?.salesChart ?? []).flatMap((item) => [item.organic, item.professional])
-  );
-  const weeklyMax = Math.max(
-    0,
-    ...(stats?.weeklyChart ?? []).flatMap((item) => [item.total, item.partial])
-  );
+  const salesMax = Math.max(0, ...(stats?.salesChart ?? []).map((item) => Number(item.total || 0)));
+  const weeklyMax = Math.max(0, ...(stats?.weeklyChart ?? []).map((item) => Number(item.total || 0)));
   const salesRows = stats?.salesChart?.length
     ? stats.salesChart
     : Array.from({ length: 6 }, (_, index) => ({
         label: `M${index + 1}`,
-        organic: 0,
-        professional: 0,
+        total: 0,
       }));
   const weeklyRows = stats?.weeklyChart?.length
     ? stats.weeklyChart
     : Array.from({ length: 4 }, (_, index) => ({
         label: `W${index + 1}`,
         total: 0,
-        partial: 0,
       }));
   const salesScale = buildScale(salesMax, 4);
   const weeklyScale = buildScale(weeklyMax, 4);
-  const salesTotal = salesRows.reduce(
-    (sum, item) => sum + Number(item.organic || 0) + Number(item.professional || 0),
-    0
-  );
+  const salesTotal = salesRows.reduce((sum, item) => sum + Number(item.total || 0), 0);
   const weeklyTotal = weeklyRows.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const activeSalesPeriods = salesRows.filter((item) => Number(item.total || 0) > 0);
+  const activeWeeklyPeriods = weeklyRows.filter((item) => Number(item.total || 0) > 0);
+  const zeroSalesPeriods = salesRows.length - activeSalesPeriods.length;
+  const zeroWeeklyPeriods = weeklyRows.length - activeWeeklyPeriods.length;
+  const peakSalesPeriod = activeSalesPeriods.reduce(
+    (top, item) => (Number(item.total || 0) > Number(top?.total || 0) ? item : top),
+    null
+  );
+  const peakWeeklyPeriod = activeWeeklyPeriods.reduce(
+    (top, item) => (Number(item.total || 0) > Number(top?.total || 0) ? item : top),
+    null
+  );
+  const averageSalesPeriodTotal = activeSalesPeriods.length
+    ? salesTotal / activeSalesPeriods.length
+    : 0;
+  const averageWeeklyPeriodTotal = activeWeeklyPeriods.length
+    ? weeklyTotal / activeWeeklyPeriods.length
+    : 0;
+  const latestActiveSalesPeriod = [...salesRows]
+    .reverse()
+    .find((item) => Number(item.total || 0) > 0);
+  const latestActiveWeeklyPeriod = [...weeklyRows]
+    .reverse()
+    .find((item) => Number(item.total || 0) > 0);
 
   return (
     <div className="space-y-6">
@@ -148,23 +161,21 @@ export default function SuperAdminDashboard() {
                 {loading ? "--" : formatCurrency(salesTotal)}
               </h3>
               <p className="mt-3 text-sm text-[#7a7f90]">
-                Monthly platform collection split across primary and secondary revenue streams.
+                Monthly platform collections across the reported periods.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-[#fff2f3] px-4 py-2 text-sm font-semibold text-[#c01824]">
                 {salesRows.length} reported periods
               </span>
-              <div className="flex items-center gap-5 rounded-full border border-[#ebe6da] px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-[#f1c7cb]" />
-                  <span className="text-sm font-medium text-[#6f7280]">Primary</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-[#c01824]" />
-                  <span className="text-sm font-medium text-[#6f7280]">Secondary</span>
-                </div>
-              </div>
+              <span className="rounded-full border border-[#ebe6da] px-4 py-2 text-sm font-medium text-[#6f7280]">
+                {activeSalesPeriods.length} active months
+              </span>
+              {peakSalesPeriod ? (
+                <span className="rounded-full border border-[#f3d8dc] bg-[#fff7f8] px-4 py-2 text-sm font-medium text-[#a5121d]">
+                  Peak {peakSalesPeriod.label}: {formatCurrency(peakSalesPeriod.total)}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -190,20 +201,27 @@ export default function SuperAdminDashboard() {
                   {salesRows.map((item) => (
                     <div key={item.label} className="flex h-full flex-1 flex-col justify-end">
                       <div className="mb-3 text-center">
-                        <div className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#c01824] shadow-sm">
-                          {formatCurrency(Number(item.organic || 0) + Number(item.professional || 0))}
+                        <div
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
+                            Number(item.total || 0) > 0
+                              ? "bg-white text-[#c01824]"
+                              : "bg-[#f7f3ed] text-[#9da3af]"
+                          }`}
+                        >
+                          {formatCurrency(Number(item.total || 0))}
                         </div>
                       </div>
-                      <div className="flex items-end justify-center gap-2">
+                      <div className="flex items-end justify-center">
                         <div
-                          className="w-full max-w-[52px] rounded-t-[18px] bg-[#f7d9dc] transition-all"
-                          style={{ height: `${getBarHeight(item.organic, salesMax, 10, 220)}px` }}
-                          title={`${item.label}: Primary ${formatCurrency(item.organic)}`}
-                        />
-                        <div
-                          className="w-full max-w-[52px] rounded-t-[18px] bg-[#c01824] transition-all"
-                          style={{ height: `${getBarHeight(item.professional, salesMax, 10, 220)}px` }}
-                          title={`${item.label}: Secondary ${formatCurrency(item.professional)}`}
+                          className={`w-full max-w-[58px] rounded-t-[18px] transition-all ${
+                            Number(item.total || 0) <= 0
+                              ? "bg-[#efe8dc]"
+                              : peakSalesPeriod?.label === item.label
+                                ? "bg-[#c01824]"
+                                : "bg-[#f3cfd4]"
+                          }`}
+                          style={{ height: `${getBarHeight(item.total, salesMax, 6, 220)}px` }}
+                          title={`${item.label}: ${formatCurrency(item.total)}`}
                         />
                       </div>
                       <div className="mt-3 text-center text-sm font-semibold text-[#4b5568]">
@@ -215,6 +233,53 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
           </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="rounded-[20px] border border-[#ebe6da] bg-[#fffaf7] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b9387]">
+                Peak Month
+              </p>
+              <p className="mt-2 text-lg font-bold text-[#0f1631]">
+                {loading ? "--" : peakSalesPeriod?.label ?? "None"}
+              </p>
+              <p className="mt-1 text-sm text-[#c01824]">
+                {loading ? "--" : formatCurrency(peakSalesPeriod?.total || 0)}
+              </p>
+            </div>
+            <div className="rounded-[20px] border border-[#ebe6da] bg-[#fffaf7] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b9387]">
+                Active-Month Avg
+              </p>
+              <p className="mt-2 text-lg font-bold text-[#0f1631]">
+                {loading ? "--" : formatCurrency(averageSalesPeriodTotal)}
+              </p>
+              <p className="mt-1 text-sm text-[#7a7f90]">
+                based on {activeSalesPeriods.length} active months
+              </p>
+            </div>
+            <div className="rounded-[20px] border border-[#ebe6da] bg-[#fffaf7] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b9387]">
+                Latest Activity
+              </p>
+              <p className="mt-2 text-lg font-bold text-[#0f1631]">
+                {loading ? "--" : latestActiveSalesPeriod?.label ?? "None"}
+              </p>
+              <p className="mt-1 text-sm text-[#7a7f90]">
+                {loading ? "--" : formatCurrency(latestActiveSalesPeriod?.total || 0)}
+              </p>
+            </div>
+            <div className="rounded-[20px] border border-[#ebe6da] bg-[#fffaf7] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b9387]">
+                Zero Months
+              </p>
+              <p className="mt-2 text-lg font-bold text-[#0f1631]">
+                {loading ? "--" : zeroSalesPeriods}
+              </p>
+              <p className="mt-1 text-sm text-[#7a7f90]">
+                no collection reported
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm">
@@ -224,11 +289,16 @@ export default function SuperAdminDashboard() {
                 Weekly Transaction Summary
               </h3>
               <p className="mt-2 text-sm text-[#7a7f90]">
-                Weekly settlement totals with a secondary comparison layer.
+                Weekly settlement totals with a simple week-by-week trend view.
               </p>
             </div>
-            <div className="rounded-full bg-[#fff2f3] px-4 py-2 text-sm font-semibold text-[#c01824]">
-              {loading ? "--" : formatCurrency(weeklyTotal)}
+            <div className="flex flex-col items-end gap-2">
+              <div className="rounded-full bg-[#fff2f3] px-4 py-2 text-sm font-semibold text-[#c01824]">
+                {loading ? "--" : formatCurrency(weeklyTotal)}
+              </div>
+              <div className="text-xs font-medium text-[#7a7f90]">
+                {activeWeeklyPeriods.length} active weeks
+              </div>
             </div>
           </div>
 
@@ -253,19 +323,24 @@ export default function SuperAdminDashboard() {
                 <div className="relative z-10 flex h-full items-end justify-between gap-4">
                   {weeklyRows.map((item) => (
                     <div key={item.label} className="flex h-full flex-1 flex-col justify-end">
-                      <div className="mb-3 text-center text-xs font-semibold text-[#6f7280]">
+                      <div
+                        className={`mb-3 text-center text-xs font-semibold ${
+                          Number(item.total || 0) > 0 ? "text-[#6f7280]" : "text-[#b8b1a5]"
+                        }`}
+                      >
                         {formatCurrency(item.total)}
                       </div>
-                      <div className="flex items-end justify-center gap-2">
+                      <div className="flex items-end justify-center">
                         <div
-                          className="w-full max-w-[34px] rounded-t-full bg-[#6b0d0d]"
-                          style={{ height: `${getBarHeight(item.total, weeklyMax, 18, 210)}px` }}
+                          className={`w-full max-w-[38px] rounded-t-full ${
+                            Number(item.total || 0) <= 0
+                              ? "bg-[#efe8dc]"
+                              : peakWeeklyPeriod?.label === item.label
+                                ? "bg-[#7f0d15]"
+                                : "bg-[#c01824]"
+                          }`}
+                          style={{ height: `${getBarHeight(item.total, weeklyMax, 6, 210)}px` }}
                           title={`${item.label}: Total ${formatCurrency(item.total)}`}
-                        />
-                        <div
-                          className="w-full max-w-[34px] rounded-t-full bg-[#df2b36]"
-                          style={{ height: `${getBarHeight(item.partial, weeklyMax, 12, 160)}px` }}
-                          title={`${item.label}: Secondary ${formatCurrency(item.partial)}`}
                         />
                       </div>
                       <div className="mt-3 text-center text-sm font-semibold text-[#4b5568]">
@@ -275,6 +350,43 @@ export default function SuperAdminDashboard() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="rounded-[20px] border border-[#ebe6da] bg-[#fffaf7] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b9387]">
+                Peak Week
+              </p>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <p className="text-lg font-bold text-[#0f1631]">
+                  {loading ? "--" : peakWeeklyPeriod?.label ?? "None"}
+                </p>
+                <p className="text-sm font-semibold text-[#c01824]">
+                  {loading ? "--" : formatCurrency(peakWeeklyPeriod?.total || 0)}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-[20px] border border-[#ebe6da] bg-[#fffaf7] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b9387]">
+                Weekly Pattern
+              </p>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <p className="text-sm font-medium text-[#0f1631]">
+                  Avg {loading ? "--" : formatCurrency(averageWeeklyPeriodTotal)}
+                </p>
+                <p className="text-sm text-[#7a7f90]">
+                  {loading
+                    ? "--"
+                    : `${activeWeeklyPeriods.length} active / ${zeroWeeklyPeriods} zero weeks`}
+                </p>
+              </div>
+              <p className="mt-2 text-sm text-[#7a7f90]">
+                Latest active week:{" "}
+                <span className="font-semibold text-[#0f1631]">
+                  {loading ? "--" : latestActiveWeeklyPeriod?.label ?? "None"}
+                </span>
+              </p>
             </div>
           </div>
         </div>

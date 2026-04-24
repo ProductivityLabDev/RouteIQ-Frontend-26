@@ -58,6 +58,11 @@ const INITIAL_FORM = {
 
 const HIDDEN_ROLE_KEYS = new Set([
     "ADMINISTRATOR",
+    "PARENT/GUARDIAN",
+    "PARENT_GUARDIAN",
+    "RETAIL",
+    "VIEWER",
+    "VENDOR",
     "SUPER_ADMIN",
     "SUB_ADMIN",
     "SCHOOL",
@@ -91,7 +96,6 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
         const name = String(role.name || "").trim().toUpperCase().replace(/\s+/g, "_");
 
         return (
-            code !== "VENDOR" &&
             !HIDDEN_ROLE_KEYS.has(code) &&
             !HIDDEN_ROLE_KEYS.has(name)
         );

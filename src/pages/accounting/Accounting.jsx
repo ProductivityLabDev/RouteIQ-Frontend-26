@@ -392,7 +392,7 @@ const dispatch = useDispatch();
     if (requestedTab && accountingTab.includes(requestedTab) && requestedTab !== selectedTab) {
       setSelectedTab(requestedTab);
     }
-  }, [requestedTab, selectedTab]);
+  }, [requestedTab]);
 
   useEffect(() => {
     if (!focus?.focusType) return;

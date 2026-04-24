@@ -210,6 +210,15 @@ export const updateEmployeeProfile = createAsyncThunk(
       dispatch(fetchEmployeeProfile());
       return response.data;
     } catch (error) {
+      console.error("Employee profile update failed", {
+        url: "/employee/profile",
+        method: "PATCH",
+        requestData: data,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        responseData: error?.response?.data,
+        message: error?.message,
+      });
       const msg = error.response?.data?.message || "Failed to update profile";
       toast.error(msg);
       return rejectWithValue(msg);

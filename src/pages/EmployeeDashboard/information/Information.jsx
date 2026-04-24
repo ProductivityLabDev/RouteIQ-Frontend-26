@@ -1,13 +1,34 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
 import BankAccountForm from '@/components/BankAccountForm'
 import UpdateBankAccountForm from '@/components/UpdateBankAccountForm'
 import { Button, Typography } from '@material-tailwind/react'
+import { useSearchParams } from 'react-router-dom'
 
 const Information = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [isEditForm, setIsEditForm] = useState(false);
-    const openModal = () => setIsEditForm(true);
-    const closeModal = () => setIsEditForm(false);
+
+    useEffect(() => {
+        setIsEditForm(searchParams.get('mode') === 'edit');
+    }, [searchParams]);
+
+    useEffect(() => {
+        const forceEditMode = () => setIsEditForm(true);
+        window.addEventListener('employee-information-edit', forceEditMode);
+        return () => window.removeEventListener('employee-information-edit', forceEditMode);
+    }, []);
+
+    const openModal = () => {
+        setIsEditForm(true);
+        setSearchParams({ mode: 'edit' });
+    };
+
+    const closeModal = () => {
+        setIsEditForm(false);
+        setSearchParams({});
+    };
+
     return (
         <DashboardLayout>
             <div className='w-[100%] flex flex-row justify-between items-center mb-5'>

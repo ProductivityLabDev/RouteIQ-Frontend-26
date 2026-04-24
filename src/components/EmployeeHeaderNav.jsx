@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import colors from '@/utlis/Colors';
 import { EmployeeDashboardUser } from '@/assets';
 import { MdKeyboardArrowDown } from 'react-icons/md';
@@ -10,11 +10,25 @@ import Cookies from 'js-cookie';
 const EmployeeHeaderNav = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const employeeUser = JSON.parse(localStorage.getItem('employeeUser') || '{}');
   const displayName = employeeUser?.username || employeeUser?.name || 'Employee';
 
   const toggleDropdown = () => setIsOpen(!isOpen);
+
+  const handleEditProfile = (event) => {
+    event.stopPropagation();
+    setIsOpen(false);
+    navigate(
+      {
+        pathname: '/EmployeeDashboard/information',
+        search: '?mode=edit',
+      },
+      { replace: location.pathname === '/EmployeeDashboard/information' }
+    );
+    window.dispatchEvent(new CustomEvent('employee-information-edit'));
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('employeeUser');
@@ -42,7 +56,10 @@ const EmployeeHeaderNav = () => {
         {/* Dropdown */}
         {isOpen && (
           <div className='absolute top-12 right-0 mt-2 w-48 bg-white border border-gray-200 shadow-md rounded-md z-20'>
-            <div className='flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer'>
+            <div
+              onClick={handleEditProfile}
+              className='flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer'
+            >
               <FaRegUser size={20} className='text-gray-600 mr-2' />
               <span className='text-sm text-gray-700'>Edit Profile</span>
             </div>

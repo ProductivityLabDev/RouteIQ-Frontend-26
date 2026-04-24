@@ -118,6 +118,15 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
     const activeLoadingSections = isIncomeStatement ? incomeLoading.statement : loading.sections;
     const activeLoadingSummary = isIncomeStatement ? incomeLoading.statement : loading.summary;
     const activeLoadingChart = isIncomeStatement ? incomeLoading.chartData : loading.chartData;
+    const balanceSheetEquityItems = Array.isArray(sections?.Equity) ? sections.Equity : [];
+    const balanceSheetRevenueFallback = balanceSheetEquityItems.find((item) => {
+        const label = String(item?.label ?? item?.name ?? '').trim().toLowerCase();
+        return label === 'total revenue' || label === 'gross income' || label === 'gross profit';
+    });
+    const balanceSheetNetIncomeFallback = balanceSheetEquityItems.find((item) => {
+        const label = String(item?.label ?? item?.name ?? '').trim().toLowerCase();
+        return label === 'net income' || label === 'net profit';
+    });
 
     // Summary values
     const grossIncome = isIncomeStatement
@@ -128,7 +137,12 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
             incomeStatement?.total_revenue ??
             0
         )
-        : (summary?.grossIncome ?? summary?.gross_income ?? 0);
+        : (
+            balanceSheetRevenueFallback?.amount ??
+            summary?.grossIncome ??
+            summary?.gross_income ??
+            0
+        );
     const netIncome = isIncomeStatement
         ? (
             incomeStatement?.netProfit ??
@@ -137,7 +151,16 @@ export default function FinancialDashboard({ selectedTab = 'Balance Sheet' }) {
             incomeStatement?.net_income ??
             0
         )
-        : (summary?.netIncome ?? summary?.net_income ?? 0);
+        : (
+            balanceSheetNetIncomeFallback?.amount ??
+            sections?.equity?.netIncome ??
+            sections?.equity?.net_income ??
+            summary?.netIncome ??
+            summary?.net_income ??
+            summary?.equity?.netIncome ??
+            summary?.equity?.net_income ??
+            0
+        );
     const changePercent = isIncomeStatement
         ? (
             incomeStatement?.marginPercent ??

@@ -99,10 +99,38 @@ const balanceSheetSlice = createSlice({
   extraReducers: (builder) => {
     // fetchBalanceSheet
     builder
-      .addCase(fetchBalanceSheet.pending, (state) => { state.loading.sections = true; state.error.sections = null; })
+      .addCase(fetchBalanceSheet.pending, (state) => {
+        state.loading.sections = true;
+        state.error.sections = null;
+        state.sections = {
+          CurrentAssets: [],
+          NonCurrentAssets: [],
+          CurrentLiabilities: [],
+          NonCurrentLiabilities: [],
+          Equity: [],
+        };
+        state.summary = null;
+      })
       .addCase(fetchBalanceSheet.fulfilled, (state, action) => {
         state.loading.sections = false;
         if (action.payload) {
+          const equityItems =
+            action.payload.equity?.items ||
+            action.payload.Equity ||
+            [];
+          const revenueFallback = Array.isArray(equityItems)
+            ? equityItems.find((item) => {
+                const label = String(item?.label ?? item?.name ?? "").trim().toLowerCase();
+                return label === "total revenue" || label === "gross income" || label === "gross profit";
+              })
+            : null;
+          const netIncomeFallback = Array.isArray(equityItems)
+            ? equityItems.find((item) => {
+                const label = String(item?.label ?? item?.name ?? "").trim().toLowerCase();
+                return label === "net income" || label === "net profit";
+              })
+            : null;
+
           state.sections.CurrentAssets =
             action.payload.CurrentAssets ||
             action.payload.assets?.current?.items ||
@@ -123,13 +151,28 @@ const balanceSheetSlice = createSlice({
             action.payload.liabilities?.nonCurrent?.items ||
             action.payload.nonCurrentLiabilities?.items ||
             [];
-          state.sections.Equity =
-            action.payload.equity?.items ||
-            action.payload.Equity ||
-            [];
-          state.summary =
-            action.payload.summary ||
-            state.summary;
+          state.sections.Equity = equityItems;
+          state.summary = {
+            ...(state.summary || {}),
+            ...(action.payload.summary || {}),
+            asOfDate: action.payload.asOfDate ?? state.summary?.asOfDate,
+            grossIncome:
+              action.payload.summary?.grossIncome ??
+              action.payload.summary?.gross_income ??
+              revenueFallback?.amount ??
+              state.summary?.grossIncome ??
+              state.summary?.gross_income ??
+              0,
+            netIncome:
+              action.payload.summary?.netIncome ??
+              action.payload.summary?.net_income ??
+              action.payload.equity?.netIncome ??
+              action.payload.equity?.net_income ??
+              netIncomeFallback?.amount ??
+              state.summary?.netIncome ??
+              state.summary?.net_income ??
+              0,
+          };
         }
       })
       .addCase(fetchBalanceSheet.rejected, (state, action) => { state.loading.sections = false; state.error.sections = action.payload; });
@@ -137,7 +180,25 @@ const balanceSheetSlice = createSlice({
     // fetchSummary
     builder
       .addCase(fetchBalanceSheetSummary.pending, (state) => { state.loading.summary = true; state.error.summary = null; })
-      .addCase(fetchBalanceSheetSummary.fulfilled, (state, action) => { state.loading.summary = false; state.summary = action.payload; })
+      .addCase(fetchBalanceSheetSummary.fulfilled, (state, action) => {
+        state.loading.summary = false;
+        state.summary = {
+          ...(state.summary || {}),
+          ...(action.payload || {}),
+          grossIncome:
+            action.payload?.grossIncome ??
+            action.payload?.gross_income ??
+            state.summary?.grossIncome ??
+            state.summary?.gross_income ??
+            0,
+          netIncome:
+            action.payload?.netIncome ??
+            action.payload?.net_income ??
+            state.summary?.netIncome ??
+            state.summary?.net_income ??
+            0,
+        };
+      })
       .addCase(fetchBalanceSheetSummary.rejected, (state, action) => { state.loading.summary = false; state.error.summary = action.payload; });
 
     // fetchChart

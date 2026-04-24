@@ -44,8 +44,8 @@ export interface SuperAdminDashboardStats {
   inactiveVendors: number;
   pendingReviews: number;
   openEscalations: number;
-  salesChart: Array<{ label: string; organic: number; professional: number }>;
-  weeklyChart: Array<{ label: string; total: number; partial: number }>;
+  salesChart: Array<{ label: string; total: number; month?: number; year?: number }>;
+  weeklyChart: Array<{ label: string; total: number; week?: number; year?: number }>;
 }
 
 export interface SuperAdminVendor {
@@ -114,6 +114,7 @@ const normalizeDashboard = (raw: any): SuperAdminDashboardStats => {
       ? salesChartSource.map((item: any, index: number) => ({
           label: String(
             pickFirst(
+              item?.monthLabel,
               item?.label,
               typeof item?.month === "number" ? monthLabels[item.month - 1] : undefined,
               item?.month,
@@ -121,16 +122,16 @@ const normalizeDashboard = (raw: any): SuperAdminDashboardStats => {
               `P${index + 1}`
             )
           ),
-          organic: toNumber(pickFirst(item?.total, item?.organic, item?.red, item?.seriesA, item?.value)),
-          professional: toNumber(
-            pickFirst(item?.secondaryTotal, item?.professional, item?.black, item?.seriesB, item?.secondaryValue, 0)
-          ),
+          total: toNumber(pickFirst(item?.total, item?.organic, item?.red, item?.seriesA, item?.value)),
+          month: typeof item?.month === "number" ? item.month : undefined,
+          year: typeof item?.year === "number" ? item.year : undefined,
         }))
       : [],
     weeklyChart: Array.isArray(weeklyChartSource)
       ? weeklyChartSource.map((item: any, index: number) => ({
           label: String(
             pickFirst(
+              item?.weekLabel,
               item?.label,
               item?.week != null ? `W${item.week}` : undefined,
               item?.day,
@@ -139,9 +140,8 @@ const normalizeDashboard = (raw: any): SuperAdminDashboardStats => {
             )
           ),
           total: toNumber(pickFirst(item?.total, item?.primary, item?.dark, item?.value)),
-          partial: toNumber(
-            pickFirst(item?.partial, item?.secondary, item?.light, item?.secondaryValue, 0)
-          ),
+          week: typeof item?.week === "number" ? item.week : undefined,
+          year: typeof item?.year === "number" ? item.year : undefined,
         }))
       : [],
   };

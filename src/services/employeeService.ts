@@ -318,17 +318,33 @@ export const employeeModuleService = {
 
   // Profile
   getProfile: async () => {
-    const response = await apiClient.get("/employee/profile");
-    return { ok: true, data: response.data?.data as EmployeeProfile };
-  },
+      const response = await apiClient.get("/employee/profile");
+      console.log("Employee profile GET response", {
+        url: "/employee/profile",
+        method: "GET",
+        responseData: response.data,
+      });
+      return { ok: true, data: response.data?.data as EmployeeProfile };
+    },
 
   updateProfile: async (data: FormData | Record<string, unknown>) => {
-    const isFormData = data instanceof FormData;
-    const response = await apiClient.patch("/employee/profile", data, {
-      headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
-    });
-    return { ok: true, data: response.data };
-  },
+      const isFormData = data instanceof FormData;
+      console.log("Employee profile PATCH request", {
+        url: "/employee/profile",
+        method: "PATCH",
+        requestData: data,
+        isFormData,
+      });
+      const response = await apiClient.patch("/employee/profile", data, {
+        headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+      });
+      console.log("Employee profile PATCH response", {
+        url: "/employee/profile",
+        method: "PATCH",
+        responseData: response.data,
+      });
+      return { ok: true, data: response.data };
+    },
 
   // Documents
   getDocuments: async () => {
