@@ -73,9 +73,79 @@ export interface SuperAdminInvite {
   email: string;
   role: string;
   fullName: string;
+  companyName?: string;
+  address?: string;
+  contactName?: string;
+  phone?: string;
+  isUsed?: boolean;
   status: string;
   createdAt?: string;
   expiresAt?: string;
+  usedAt?: string;
+  inviteUrl?: string;
+}
+
+export interface SuperAdminAccountingVendor {
+  id: number | string;
+  name: string;
+  email?: string;
+  companyName?: string;
+}
+
+export interface SuperAdminAccountingInvoice {
+  id: number | string;
+  invoiceNumber: string;
+  type: string;
+  status: string;
+  instituteName: string;
+  amount: number;
+  invoiceDate?: string;
+  dueDate?: string;
+}
+
+export interface SuperAdminWalletTransaction {
+  id: number | string;
+  title: string;
+  amount: number;
+  status: string;
+  date?: string;
+}
+
+export interface SuperAdminWalletSummary {
+  currentBalance: number;
+  totalTopup: number;
+  totalSpent: number;
+  pendingCount: number;
+  recentTransactions: SuperAdminWalletTransaction[];
+}
+
+export interface SuperAdminPayrollSummary {
+  month?: number;
+  year?: number;
+  terminalId?: number | string;
+  terminalName?: string;
+  totalEmployees: number;
+  totalGrossPayroll: number;
+  totalNetPayroll: number;
+  pendingPayrollCount: number;
+  rows: Array<Record<string, any>>;
+}
+
+export interface SuperAdminKpiSummary {
+  revenueLastMonth: number;
+  averageValue: number;
+  newInvoicesThisMonth: number;
+  newApThisMonth: number;
+  newEmployeesThisMonth: number;
+}
+
+export interface SuperAdminPlatformCommissionSummary {
+  totalPlatformCommissionRevenue: number;
+  earnedAmount: number;
+  settledAmount: number;
+  pendingCount: number;
+  tripCommissionCount: number;
+  routeCommissionCount: number;
 }
 
 const normalizeDashboard = (raw: any): SuperAdminDashboardStats => {
@@ -164,7 +234,9 @@ const normalizeVendor = (item: any): SuperAdminVendor => ({
     ) ?? "",
   name: String(
     pickFirst(
+      item?.vendorName,
       item?.VendorName,
+      item?.companyName,
       item?.CompanyName,
       item?.BusinessName,
       item?.Name,
@@ -172,11 +244,13 @@ const normalizeVendor = (item: any): SuperAdminVendor => ({
       "Unnamed Vendor"
     )
   ),
-  companyName: pickFirst(item?.CompanyName, item?.BusinessName, item?.companyName),
+  companyName: pickFirst(item?.companyName, item?.CompanyName, item?.BusinessName),
   email: pickFirst(item?.Email, item?.email),
   contact: String(
     pickFirst(
       item?.ContactInfo,
+      item?.contactPhone,
+      item?.ContactPhone,
       item?.Phone,
       item?.Mobile,
       item?.ContactNumber,
@@ -187,7 +261,7 @@ const normalizeVendor = (item: any): SuperAdminVendor => ({
   ),
   contractNumber: String(pickFirst(item?.ContractNumber, item?.contractNumber, "--")),
   serviceAgreementUrl: String(
-    pickFirst(item?.ServiceAgreementUrl, item?.serviceAgreementUrl, "")
+    pickFirst(item?.serviceAgreement, item?.ServiceAgreement, item?.ServiceAgreementUrl, item?.serviceAgreementUrl, "")
   ),
   status: normalizeStatus(pickFirst(item?.Status, item?.status), pickFirst(item?.IsActive, item?.isActive)),
 });
@@ -201,6 +275,207 @@ const normalizeSubAdmin = (item: any): SuperAdminSubAdmin => ({
     pickFirst(item?.Responsibilities, item?.responsibilities, item?.AllowedModules)
   ),
   status: normalizeStatus(pickFirst(item?.Status, item?.status), pickFirst(item?.IsActive, item?.isActive)),
+});
+
+const normalizeInvite = (item: any, index = 0): SuperAdminInvite => ({
+  id: pickFirst(item?.InviteId, item?.inviteId, item?.Id, item?.id, index) ?? index,
+  email: String(pickFirst(item?.Email, item?.email, "")),
+  role: String(pickFirst(item?.Role, item?.role, "VENDOR")),
+  fullName: String(
+    pickFirst(
+      item?.FullName,
+      item?.fullName,
+      item?.ContactName,
+      item?.contactName,
+      item?.CompanyName,
+      item?.companyName,
+      ""
+    )
+  ),
+  companyName: String(pickFirst(item?.CompanyName, item?.companyName, "")),
+  address: String(pickFirst(item?.Address, item?.address, "")),
+  contactName: String(pickFirst(item?.ContactName, item?.contactName, "")),
+  phone: String(pickFirst(item?.Phone, item?.phone, "")),
+  isUsed:
+    pickFirst(item?.IsUsed, item?.isUsed) === true ||
+    pickFirst(item?.IsUsed, item?.isUsed) === 1 ||
+    pickFirst(item?.IsUsed, item?.isUsed) === "1",
+  status: String(
+    pickFirst(
+      item?.Status,
+      item?.status,
+      pickFirst(item?.IsUsed, item?.isUsed) ? "Accepted" : "Pending"
+    )
+  ),
+  createdAt: pickFirst(item?.CreatedAt, item?.createdAt),
+  expiresAt: pickFirst(item?.ExpiresAt, item?.expiresAt),
+  usedAt: pickFirst(item?.UsedAt, item?.usedAt),
+  inviteUrl: String(pickFirst(item?.inviteUrl, item?.InviteUrl, "")),
+});
+
+const normalizeAccountingVendor = (item: any): SuperAdminAccountingVendor => ({
+  id:
+    pickFirst(
+      item?.VendorId,
+      item?.vendorId,
+      item?.VendorSignupId,
+      item?.vendorSignupId,
+      item?.UserId,
+      item?.userId,
+      item?.Id,
+      item?.id
+    ) ?? "",
+  name: String(
+    pickFirst(
+      item?.vendorName,
+      item?.VendorName,
+      item?.CompanyName,
+      item?.companyName,
+      item?.BusinessName,
+      item?.Name,
+      item?.name,
+      "Unnamed Vendor"
+    )
+  ),
+  email: pickFirst(item?.Email, item?.email, ""),
+  companyName: pickFirst(item?.CompanyName, item?.companyName, item?.BusinessName, item?.vendorName, ""),
+});
+
+const normalizeAccountingInvoice = (item: any): SuperAdminAccountingInvoice => ({
+  id: pickFirst(item?.InvoiceId, item?.invoiceId, item?.Id, item?.id) ?? "",
+  invoiceNumber: String(
+    pickFirst(item?.InvoiceNumber, item?.invoiceNumber, item?.invoiceNo, item?.InvoiceNo, "--")
+  ),
+  type: String(pickFirst(item?.Type, item?.type, item?.InvoiceType, item?.invoiceType, "--")),
+  status: String(pickFirst(item?.Status, item?.status, "--")),
+  instituteName: String(
+    pickFirst(
+      item?.InstituteName,
+      item?.SchoolName,
+      item?.schoolName,
+      item?.instituteName,
+      item?.BillTo,
+      item?.billTo,
+      "--"
+    )
+  ),
+  amount: toCurrency(
+    pickFirst(
+      item?.InvoiceTotal,
+      item?.invoiceTotal,
+      item?.TotalAmount,
+      item?.totalAmount,
+      item?.Amount,
+      item?.amount,
+      item?.Total,
+      item?.total
+    )
+  ),
+  invoiceDate: pickFirst(item?.InvoiceDate, item?.invoiceDate, item?.CreatedAt, item?.createdAt, ""),
+  dueDate: pickFirst(item?.DueDate, item?.dueDate, ""),
+});
+
+const normalizeWalletTransaction = (item: any): SuperAdminWalletTransaction => ({
+  id: pickFirst(item?.TransactionId, item?.transactionId, item?.Id, item?.id) ?? "",
+  title: String(
+    pickFirst(item?.Title, item?.title, item?.Description, item?.description, item?.Type, item?.type, "Transaction")
+  ),
+  amount: toCurrency(pickFirst(item?.Amount, item?.amount, item?.Value, item?.value)),
+  status: String(pickFirst(item?.Status, item?.status, "--")),
+  date: pickFirst(item?.CreatedAt, item?.createdAt, item?.Date, item?.date, ""),
+});
+
+const normalizeWalletSummary = (raw: any): SuperAdminWalletSummary => ({
+  currentBalance: toCurrency(
+    pickFirst(raw?.currentBalance, raw?.walletBalance, raw?.balance, raw?.summary?.currentBalance)
+  ),
+  totalTopup: toCurrency(pickFirst(raw?.totalTopup, raw?.topupAmount, raw?.totalAdded)),
+  totalSpent: toCurrency(pickFirst(raw?.totalSpent, raw?.spentAmount, raw?.totalPaid)),
+  pendingCount: toNumber(pickFirst(raw?.pendingCount, raw?.pendingTransactions, raw?.pending)),
+  recentTransactions: Array.isArray(raw?.recentTransactions)
+    ? raw.recentTransactions.map(normalizeWalletTransaction)
+    : Array.isArray(raw?.transactions)
+    ? raw.transactions.map(normalizeWalletTransaction)
+    : [],
+});
+
+const normalizePayrollSummary = (raw: any): SuperAdminPayrollSummary => ({
+  month: pickFirst(raw?.month, raw?.Month),
+  year: pickFirst(raw?.year, raw?.Year),
+  terminalId: pickFirst(raw?.terminalId, raw?.TerminalId),
+  terminalName: pickFirst(raw?.terminalName, raw?.TerminalName, ""),
+  totalEmployees: toNumber(
+    pickFirst(
+      raw?.totalEmployees,
+      raw?.employeeCount,
+      raw?.totalRecords,
+      raw?.recordCount,
+      raw?.summary?.totalEmployees,
+      raw?.summary?.totalRecords
+    )
+  ),
+  totalGrossPayroll: toCurrency(
+    pickFirst(
+      raw?.totalGrossPayroll,
+      raw?.grossPayroll,
+      raw?.grossAmount,
+      raw?.totalGross,
+      raw?.summary?.totalGrossPayroll,
+      raw?.summary?.totalGross
+    )
+  ),
+  totalNetPayroll: toCurrency(
+    pickFirst(
+      raw?.totalNetPayroll,
+      raw?.netPayroll,
+      raw?.netAmount,
+      raw?.totalNet,
+      raw?.summary?.totalNetPayroll,
+      raw?.summary?.totalNet
+    )
+  ),
+  pendingPayrollCount: toNumber(
+    pickFirst(
+      raw?.pendingPayrollCount,
+      raw?.pendingCount,
+      raw?.pendingPayroll,
+      raw?.statusCounts?.pending,
+      raw?.summary?.pendingPayrollCount,
+      raw?.summary?.statusCounts?.pending
+    )
+  ),
+  rows: Array.isArray(raw?.rows)
+    ? raw.rows
+    : Array.isArray(raw?.items)
+    ? raw.items
+    : Array.isArray(raw?.employees)
+    ? raw.employees
+    : Array.isArray(raw?.payrolls)
+    ? raw.payrolls
+    : Array.isArray(raw?.records)
+    ? raw.records
+    : Array.isArray(raw?.list)
+    ? raw.list
+    : [],
+});
+
+const normalizeKpiSummary = (raw: any): SuperAdminKpiSummary => ({
+  revenueLastMonth: toCurrency(pickFirst(raw?.revenueLastMonth, raw?.lastMonthRevenue)),
+  averageValue: toCurrency(pickFirst(raw?.averageValue, raw?.avgValue, raw?.averageInvoiceValue)),
+  newInvoicesThisMonth: toNumber(pickFirst(raw?.newInvoicesThisMonth, raw?.invoiceCountThisMonth)),
+  newApThisMonth: toNumber(pickFirst(raw?.newApThisMonth, raw?.apCountThisMonth, raw?.newAccountsPayableThisMonth)),
+  newEmployeesThisMonth: toNumber(pickFirst(raw?.newEmployeesThisMonth, raw?.employeeCountThisMonth)),
+});
+
+const normalizePlatformCommissionSummary = (raw: any): SuperAdminPlatformCommissionSummary => ({
+  totalPlatformCommissionRevenue: toCurrency(
+    pickFirst(raw?.totalPlatformCommissionRevenue, raw?.totalCommissionRevenue, raw?.totalRevenue)
+  ),
+  earnedAmount: toCurrency(pickFirst(raw?.earnedAmount, raw?.earned, raw?.totalEarned)),
+  settledAmount: toCurrency(pickFirst(raw?.settledAmount, raw?.settled, raw?.totalSettled)),
+  pendingCount: toNumber(pickFirst(raw?.pendingCount, raw?.pending, raw?.pendingCommissions)),
+  tripCommissionCount: toNumber(pickFirst(raw?.tripCommissionCount, raw?.tripCount)),
+  routeCommissionCount: toNumber(pickFirst(raw?.routeCommissionCount, raw?.routeCount)),
 });
 
 export const superAdminService = {
@@ -315,15 +590,92 @@ export const superAdminService = {
     };
   },
 
-  async createInvite(payload: { email: string; role: string; fullName: string }) {
+  async createInvite(payload: {
+    role: string;
+    companyName: string;
+    address: string;
+    contactName: string;
+    phone: string;
+    email: string;
+  }) {
     const response = await apiClient.post("/super-admin/invites", payload);
-    return response.data?.data ?? response.data;
+    const body = response.data ?? {};
+    return {
+      message: pickFirst(body?.message, body?.data?.message, "Invite sent successfully"),
+      email: pickFirst(body?.email, body?.data?.email, payload.email),
+      inviteUrl: pickFirst(body?.inviteUrl, body?.data?.inviteUrl, ""),
+      data: body?.data ?? {},
+    };
   },
 
   async getInvites(): Promise<SuperAdminInvite[]> {
     const response = await apiClient.get("/super-admin/invites");
     const rows = response.data?.data ?? response.data ?? [];
-    return Array.isArray(rows) ? rows : [];
+    return Array.isArray(rows) ? rows.map(normalizeInvite) : [];
+  },
+
+  async getAccountingVendors(): Promise<SuperAdminAccountingVendor[]> {
+    const response = await apiClient.get("/super-admin/accounting/vendors");
+    const rows = response.data?.data ?? response.data ?? [];
+    return Array.isArray(rows) ? rows.map(normalizeAccountingVendor) : [];
+  },
+
+  async getAccountingInvoices(params: {
+    vendorId: number | string;
+    type?: string;
+    status?: string;
+    instituteId?: number | string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ rows: SuperAdminAccountingInvoice[]; total: number }> {
+    const response = await apiClient.get("/super-admin/accounting/invoices", { params });
+    const body = response.data?.data ?? response.data ?? {};
+    const rows = Array.isArray(body?.rows)
+      ? body.rows
+      : Array.isArray(body?.invoices)
+      ? body.invoices
+      : Array.isArray(body?.items)
+      ? body.items
+      : Array.isArray(body)
+      ? body
+      : [];
+
+    return {
+      rows: rows.map(normalizeAccountingInvoice),
+      total: toNumber(pickFirst(body?.total, response.data?.total, rows.length), rows.length),
+    };
+  },
+
+  async getAccountingWalletSummary(vendorId: number | string): Promise<SuperAdminWalletSummary> {
+    const response = await apiClient.get("/super-admin/accounting/wallet/summary", {
+      params: { vendorId },
+    });
+    return normalizeWalletSummary(response.data?.data ?? response.data ?? {});
+  },
+
+  async getAccountingPayrollSummary(params: {
+    vendorId: number | string;
+    month: number;
+    year: number;
+    terminalId?: number | string;
+  }): Promise<SuperAdminPayrollSummary> {
+    const response = await apiClient.get("/super-admin/accounting/payroll/summary", {
+      params,
+    });
+    return normalizePayrollSummary(response.data?.data ?? response.data ?? {});
+  },
+
+  async getAccountingKpiSummary(vendorId: number | string): Promise<SuperAdminKpiSummary> {
+    const response = await apiClient.get("/super-admin/accounting/kpi/summary", {
+      params: { vendorId },
+    });
+    return normalizeKpiSummary(response.data?.data ?? response.data ?? {});
+  },
+
+  async getPlatformCommissionSummary(): Promise<SuperAdminPlatformCommissionSummary> {
+    const response = await apiClient.get("/super-admin/platform-commissions/summary");
+    return normalizePlatformCommissionSummary(response.data?.data ?? response.data ?? {});
   },
 
   async deleteInvite(id: number | string) {

@@ -9,6 +9,8 @@ import {
   BuildingOffice2Icon,
   ShieldCheckIcon,
   UserPlusIcon,
+  BanknotesIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 const navItems = [
@@ -28,6 +30,18 @@ const navItems = [
     label: "Sub Admin Management",
     path: "/super-admin/sub-admins",
     icon: UserPlusIcon,
+    roles: ["SUPER_ADMIN"],
+  },
+  {
+    label: "Accounting",
+    path: "/super-admin/accounting",
+    icon: BanknotesIcon,
+    roles: ["SUPER_ADMIN"],
+  },
+  {
+    label: "Feedback",
+    path: "/super-admin/feedback",
+    icon: ChatBubbleLeftRightIcon,
     roles: ["SUPER_ADMIN"],
   },
 ];
@@ -104,6 +118,10 @@ export default function SuperAdminLayout() {
                 ? "Vendor Management"
                 : location.pathname.includes("/sub-admins")
                 ? "Sub Admin Management"
+                : location.pathname.includes("/accounting")
+                ? "Accounting"
+                : location.pathname.includes("/feedback")
+                ? "Feedback"
                 : "Super Admin Dashboard"}
             </h2>
           </div>

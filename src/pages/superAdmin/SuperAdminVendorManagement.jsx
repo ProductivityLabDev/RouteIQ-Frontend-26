@@ -11,7 +11,6 @@ import {
 } from "@/configs";
 import { superAdminService } from "@/services/superAdminService";
 import { setUser } from "@/redux/slices/userSlice";
-import InviteManagementPanel from "@/components/invites/InviteManagementPanel";
 
 const emptyContractForm = {
   vendorId: null,
@@ -57,6 +56,23 @@ const RESPONSIBILITY_TO_MODULES = {
   "Access Control": ["ACCESS"],
 };
 
+const managementTabs = ["Vendors", "Access Management"];
+
+const emptyAccessInviteForm = {
+  companyName: "",
+  address: "",
+  contactName: "",
+  phone: "",
+  email: "",
+  role: "VENDOR",
+};
+
+const formatInviteDate = (value) => {
+  if (!value) return "--";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString("en-US");
+};
+
 export default function SuperAdminVendorManagement() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -65,9 +81,16 @@ export default function SuperAdminVendorManagement() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("Vendors");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [savingContract, setSavingContract] = useState(false);
   const [creatingVendor, setCreatingVendor] = useState(false);
+  const [loadingInvites, setLoadingInvites] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [deletingInviteId, setDeletingInviteId] = useState(null);
+  const [inviteLink, setInviteLink] = useState("");
+  const [invites, setInvites] = useState([]);
+  const [accessInviteForm, setAccessInviteForm] = useState(emptyAccessInviteForm);
   const [contractForm, setContractForm] = useState(emptyContractForm);
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -92,8 +115,23 @@ export default function SuperAdminVendorManagement() {
     }
   };
 
+  const loadInvites = async () => {
+    try {
+      setLoadingInvites(true);
+      const rows = await superAdminService.getInvites();
+      setInvites(rows);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to load invites");
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
   useEffect(() => {
     loadVendors();
+    if (currentRole !== "SUB_ADMIN") {
+      loadInvites();
+    }
   }, []);
 
   const filteredVendors = useMemo(() => {
@@ -106,6 +144,25 @@ export default function SuperAdminVendorManagement() {
         .some((value) => String(value).toLowerCase().includes(query))
     );
   }, [search, vendors]);
+
+  const filteredInvites = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return invites;
+
+    return invites.filter((invite) =>
+      [
+        invite.companyName,
+        invite.fullName,
+        invite.contactName,
+        invite.email,
+        invite.phone,
+        invite.address,
+        invite.status,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [invites, search]);
 
   const openVendorWorkspace = async (vendor) => {
     try {
@@ -272,6 +329,68 @@ export default function SuperAdminVendorManagement() {
     }
   };
 
+  const handleSendVendorInvite = async (event) => {
+    event.preventDefault();
+
+    if (
+      !accessInviteForm.companyName.trim() ||
+      !accessInviteForm.address.trim() ||
+      !accessInviteForm.contactName.trim() ||
+      !accessInviteForm.phone.trim() ||
+      !accessInviteForm.email.trim()
+    ) {
+      toast.error("All vendor invite fields are required");
+      return;
+    }
+
+    try {
+      setSendingInvite(true);
+      const response = await superAdminService.createInvite({
+        role: "VENDOR",
+        companyName: accessInviteForm.companyName.trim(),
+        address: accessInviteForm.address.trim(),
+        contactName: accessInviteForm.contactName.trim(),
+        phone: accessInviteForm.phone.trim(),
+        email: accessInviteForm.email.trim(),
+      });
+      toast.success(response?.message || "Invite sent successfully");
+      setInviteLink(response?.inviteUrl || "");
+      setAccessInviteForm(emptyAccessInviteForm);
+      await loadInvites();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to send invite");
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
+  const handleCopyInviteLink = async (value) => {
+    if (!value) {
+      toast.error("Invite link not available");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success("Invite link copied");
+    } catch (error) {
+      toast.error("Failed to copy invite link");
+    }
+  };
+
+  const handleRevokeInvite = async (inviteId) => {
+    try {
+      setDeletingInviteId(inviteId);
+      await superAdminService.deleteInvite(inviteId);
+      toast.success("Invite revoked");
+      await loadInvites();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to revoke invite");
+    } finally {
+      setDeletingInviteId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -288,10 +407,10 @@ export default function SuperAdminVendorManagement() {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search vendors"
+            placeholder={activeTab === "Vendors" ? "Search vendors" : "Search invites"}
             className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824] sm:min-w-[280px]"
           />
-          {currentRole !== "SUB_ADMIN" ? (
+          {currentRole !== "SUB_ADMIN" && activeTab === "Vendors" ? (
             <button
               type="button"
               onClick={() => setShowCreateForm((prev) => !prev)}
@@ -303,7 +422,26 @@ export default function SuperAdminVendorManagement() {
         </div>
       </div>
 
-      {showCreateForm && currentRole !== "SUB_ADMIN" ? (
+      {currentRole !== "SUB_ADMIN" ? (
+        <div className="flex flex-wrap gap-3">
+          {managementTabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`rounded-2xl border px-5 py-2.5 text-sm font-semibold transition ${
+                activeTab === tab
+                  ? "border-[#c01824] bg-[#c01824] text-white"
+                  : "border-[#ddd5c7] bg-white text-[#171a2a] hover:border-[#c01824]"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {activeTab === "Vendors" && showCreateForm && currentRole !== "SUB_ADMIN" ? (
         <form
           onSubmit={handleCreateVendor}
           className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm"
@@ -401,7 +539,7 @@ export default function SuperAdminVendorManagement() {
         </form>
       ) : null}
 
-      {contractForm.vendorId && currentRole !== "SUB_ADMIN" ? (
+      {activeTab === "Vendors" && contractForm.vendorId && currentRole !== "SUB_ADMIN" ? (
         <form
           onSubmit={handleSaveContract}
           className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm"
@@ -470,24 +608,190 @@ export default function SuperAdminVendorManagement() {
         </form>
       ) : null}
 
-      {currentRole !== "SUB_ADMIN" ? (
-        <div className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm">
-          <InviteManagementPanel
-            title="Account Invites"
-            description="Send vendor and sub-admin invite links, and monitor whether they are still pending, accepted, or expired."
-            roleOptions={[
-              { value: "VENDOR", label: "Vendor" },
-              { value: "SUB_ADMIN", label: "Sub Admin" },
-            ]}
-            loadInvites={superAdminService.getInvites}
-            createInvite={superAdminService.createInvite}
-            deleteInvite={superAdminService.deleteInvite}
-            submitLabel="Send Invite"
-            emptyMessage="No super-admin invites have been sent yet."
-          />
+      {activeTab === "Access Management" && currentRole !== "SUB_ADMIN" ? (
+        <div className="space-y-6">
+          <form
+            onSubmit={handleSendVendorInvite}
+            className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h4 className="text-2xl font-bold text-[#171a2a]">Access Management</h4>
+                <p className="mt-1 text-sm text-[#6f7280]">
+                  Invite a new vendor and send their access link directly from this tab.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#171a2a]">Company Name</label>
+                <input
+                  type="text"
+                  value={accessInviteForm.companyName}
+                  onChange={(event) =>
+                    setAccessInviteForm((prev) => ({ ...prev, companyName: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
+                  placeholder="Enter company name"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#171a2a]">Contact Name</label>
+                <input
+                  type="text"
+                  value={accessInviteForm.contactName}
+                  onChange={(event) =>
+                    setAccessInviteForm((prev) => ({ ...prev, contactName: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
+                  placeholder="Enter contact name"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#171a2a]">Phone</label>
+                <input
+                  type="text"
+                  value={accessInviteForm.phone}
+                  onChange={(event) =>
+                    setAccessInviteForm((prev) => ({ ...prev, phone: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
+                  placeholder="+1 312 555 1234"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#171a2a]">Email</label>
+                <input
+                  type="email"
+                  value={accessInviteForm.email}
+                  onChange={(event) =>
+                    setAccessInviteForm((prev) => ({ ...prev, email: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
+                  placeholder="vendor@example.com"
+                />
+              </div>
+              <div className="xl:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-[#171a2a]">Address</label>
+                <textarea
+                  value={accessInviteForm.address}
+                  onChange={(event) =>
+                    setAccessInviteForm((prev) => ({ ...prev, address: event.target.value }))
+                  }
+                  rows={3}
+                  className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
+                  placeholder="123 Main St, Chicago, IL"
+                />
+              </div>
+            </div>
+
+            {inviteLink ? (
+              <div className="mt-6 rounded-2xl border border-[#f0d8da] bg-[#fff7f7] p-4">
+                <p className="text-sm font-semibold text-[#171a2a]">Invite Link</p>
+                <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-center">
+                  <input
+                    type="text"
+                    value={inviteLink}
+                    readOnly
+                    className="w-full rounded-2xl border border-[#ddd5c7] bg-white px-4 py-3 text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleCopyInviteLink(inviteLink)}
+                    className="rounded-2xl border border-[#c01824] px-5 py-3 text-sm font-semibold text-[#c01824] transition hover:bg-[#fff5f6]"
+                  >
+                    Copy Link
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="submit"
+                disabled={sendingInvite}
+                className="rounded-2xl bg-[#c01824] px-6 py-3 font-semibold text-white transition hover:bg-[#a61520] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {sendingInvite ? "Sending..." : "Send Invite"}
+              </button>
+            </div>
+          </form>
+
+          <div className="overflow-hidden rounded-[28px] border border-[#ebe6da] bg-white shadow-sm">
+            <div className="border-b border-[#eee9df] px-8 py-6">
+              <h4 className="text-2xl font-bold text-[#171a2a]">Sent Invites</h4>
+              <p className="mt-1 text-sm text-[#6f7280]">
+                Review sent vendor invites, copy links, and revoke access when needed.
+              </p>
+            </div>
+            <table className="min-w-full">
+              <thead className="bg-[#f3f1eb]">
+                <tr className="text-left text-sm font-semibold uppercase tracking-[0.12em] text-[#6f7280]">
+                  <th className="px-8 py-4">Company Name</th>
+                  <th className="px-8 py-4">Contact Name</th>
+                  <th className="px-8 py-4">Email</th>
+                  <th className="px-8 py-4">Phone</th>
+                  <th className="px-8 py-4">Address</th>
+                  <th className="px-8 py-4">Status</th>
+                  <th className="px-8 py-4">Sent Date</th>
+                  <th className="px-8 py-4">Expiry</th>
+                  <th className="px-8 py-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingInvites ? (
+                  <tr>
+                    <td colSpan={9} className="px-8 py-10 text-center text-lg text-[#6f7280]">
+                      Loading invites...
+                    </td>
+                  </tr>
+                ) : filteredInvites.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-8 py-10 text-center text-lg text-[#6f7280]">
+                      No vendor invites found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvites.map((invite) => (
+                    <tr key={invite.id} className="border-t border-[#eee9df] text-sm text-[#171a2a]">
+                      <td className="px-8 py-5 font-semibold">{invite.companyName || "--"}</td>
+                      <td className="px-8 py-5">{invite.fullName || invite.contactName || "--"}</td>
+                      <td className="px-8 py-5">{invite.email || "--"}</td>
+                      <td className="px-8 py-5">{invite.phone || "--"}</td>
+                      <td className="px-8 py-5">{invite.address || "--"}</td>
+                      <td className="px-8 py-5">{invite.status || "--"}</td>
+                      <td className="px-8 py-5">{formatInviteDate(invite.createdAt)}</td>
+                      <td className="px-8 py-5">{formatInviteDate(invite.expiresAt)}</td>
+                      <td className="px-8 py-5">
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyInviteLink(invite.inviteUrl)}
+                            className="rounded-xl border border-[#c01824] px-4 py-2 text-xs font-semibold text-[#c01824] transition hover:bg-[#fff5f6]"
+                          >
+                            Copy Link
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingInviteId === invite.id}
+                            onClick={() => handleRevokeInvite(invite.id)}
+                            className="rounded-xl border border-[#ddd5c7] px-4 py-2 text-xs font-semibold text-[#171a2a] transition hover:bg-[#f7f5ef] disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {deletingInviteId === invite.id ? "Revoking..." : "Revoke"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 
+      {activeTab === "Vendors" ? (
       <div className="overflow-hidden rounded-[28px] border border-[#ebe6da] bg-white shadow-sm">
         <table className="min-w-full">
           <thead className="bg-[#f3f1eb]">
@@ -583,6 +887,7 @@ export default function SuperAdminVendorManagement() {
           </tbody>
         </table>
       </div>
+      ) : null}
     </div>
   );
 }

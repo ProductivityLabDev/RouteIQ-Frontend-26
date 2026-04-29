@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Typography } from "@material-tailwind/react";
+import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "@/redux/slices/userSlice";
 import { schoolService } from "@/services/schoolService";
@@ -21,6 +22,57 @@ const toStringValue = (value) => (value === undefined || value === null ? "" : S
 const toNumberValue = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
+const PHONE_COUNTRIES = [
+  { code: "US", label: "United States", dialCode: "+1", maxDigits: 10 },
+  { code: "CA", label: "Canada", dialCode: "+1", maxDigits: 10 },
+  { code: "GB", label: "United Kingdom", dialCode: "+44", maxDigits: 10 },
+  { code: "AU", label: "Australia", dialCode: "+61", maxDigits: 9 },
+  { code: "AE", label: "United Arab Emirates", dialCode: "+971", maxDigits: 9 },
+  { code: "SA", label: "Saudi Arabia", dialCode: "+966", maxDigits: 9 },
+  { code: "PK", label: "Pakistan", dialCode: "+92", maxDigits: 10 },
+  { code: "IN", label: "India", dialCode: "+91", maxDigits: 10 },
+];
+
+const getFlagEmoji = (countryCode) =>
+  String.fromCodePoint(...countryCode.toUpperCase().split("").map((char) => 127397 + char.charCodeAt()));
+
+const getCountryByCode = (code) =>
+  PHONE_COUNTRIES.find((country) => country.code === code) || PHONE_COUNTRIES[0];
+
+const buildPhoneValue = (countryCode, digits) => {
+  const cleanDigits = String(digits || "").replace(/\D/g, "");
+  if (!cleanDigits) return "";
+  return `${getCountryByCode(countryCode).dialCode} ${cleanDigits}`.trim();
+};
+
+const isPhoneValid = (countryCode, digits, { required = false } = {}) => {
+  const cleanDigits = String(digits || "").replace(/\D/g, "");
+  if (!cleanDigits) return !required;
+
+  const selectedCountry = getCountryByCode(countryCode);
+  return cleanDigits.length >= 6 && cleanDigits.length <= selectedCountry.maxDigits;
+};
+
+const parsePhoneValue = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return { countryCode: PHONE_COUNTRIES[0].code, digits: "" };
+  }
+
+  const matchedCountry = PHONE_COUNTRIES.find((country) => raw.startsWith(country.dialCode));
+  if (matchedCountry) {
+    return {
+      countryCode: matchedCountry.code,
+      digits: raw.slice(matchedCountry.dialCode.length).replace(/\D/g, "").slice(0, matchedCountry.maxDigits),
+    };
+  }
+
+  return {
+    countryCode: PHONE_COUNTRIES[0].code,
+    digits: raw.replace(/\D/g, "").slice(0, PHONE_COUNTRIES[0].maxDigits),
+  };
 };
 
 const normalizeVendorProfile = (profile, fallbackUser = {}) => {
@@ -53,12 +105,18 @@ const normalizeVendorProfile = (profile, fallbackUser = {}) => {
     email: toStringValue(
       pickFirst(profile?.email, profile?.Email, fallbackUser?.email)
     ),
-    contactPhone: toStringValue(
+    contactPhone: parsePhoneValue(
       pickFirst(profile?.contactNumber, profile?.ContactNumber, fallbackUser?.contactPhone)
-    ),
-    officePhone: toStringValue(
+    ).digits,
+    contactPhoneCountry: parsePhoneValue(
+      pickFirst(profile?.contactNumber, profile?.ContactNumber, fallbackUser?.contactPhone)
+    ).countryCode,
+    officePhone: parsePhoneValue(
       pickFirst(profile?.officePhone, profile?.OfficePhone, fallbackUser?.officePhone)
-    ),
+    ).digits,
+    officePhoneCountry: parsePhoneValue(
+      pickFirst(profile?.officePhone, profile?.OfficePhone, fallbackUser?.officePhone)
+    ).countryCode,
     nameAndTitle: toStringValue(
       pickFirst(profile?.nameAndTitle, profile?.NameAndTitle, fallbackUser?.nameAndTitle)
     ),
@@ -83,8 +141,8 @@ const buildVendorSessionUser = (normalized, fallbackUser = {}) => ({
   username: normalized.username || fallbackUser?.username || "",
   email: normalized.email || fallbackUser?.email || "",
   companyName: normalized.companyName || fallbackUser?.companyName || "",
-  contactPhone: normalized.contactPhone || fallbackUser?.contactPhone || "",
-  officePhone: normalized.officePhone || fallbackUser?.officePhone || "",
+  contactPhone: buildPhoneValue(normalized.contactPhoneCountry, normalized.contactPhone) || fallbackUser?.contactPhone || "",
+  officePhone: buildPhoneValue(normalized.officePhoneCountry, normalized.officePhone) || fallbackUser?.officePhone || "",
   nameAndTitle: normalized.nameAndTitle || fallbackUser?.nameAndTitle || "",
   address: normalized.address || fallbackUser?.address || "",
   stateId: normalized.stateId || fallbackUser?.stateId || "",
@@ -96,10 +154,12 @@ const buildVendorSessionUser = (normalized, fallbackUser = {}) => ({
 
 export function VendorProfile() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const loggedInUser = useSelector((state) => state.user?.user);
   const vendorUser = useMemo(() => loggedInUser || readJson("vendor") || {}, [loggedInUser]);
   const profileBootstrapUserRef = useRef(vendorUser);
   const cityRef = useRef(null);
+  const initialProfileRef = useRef(null);
 
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
@@ -113,6 +173,7 @@ export function VendorProfile() {
   const [loadingCities, setLoadingCities] = useState(false);
   const [citySearch, setCitySearch] = useState("");
   const [cityOpen, setCityOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -120,13 +181,65 @@ export function VendorProfile() {
     companyName: "",
     email: "",
     contactPhone: "",
+    contactPhoneCountry: PHONE_COUNTRIES[0].code,
     officePhone: "",
+    officePhoneCountry: PHONE_COUNTRIES[0].code,
     nameAndTitle: "",
     address: "",
     stateId: "",
     cityId: "",
     zipCode: "",
   });
+
+  const isDirty = useMemo(() => {
+    const initialProfile = initialProfileRef.current;
+    if (!initialProfile) return false;
+
+    const formChanged = Object.keys(form).some((key) => form[key] !== initialProfile[key]);
+    const logoChanged = Boolean(logoFile);
+
+    return formChanged || logoChanged;
+  }, [form, logoFile]);
+
+  const isContactPhoneValid = useMemo(
+    () => isPhoneValid(form.contactPhoneCountry, form.contactPhone, { required: true }),
+    [form.contactPhoneCountry, form.contactPhone]
+  );
+
+  const isOfficePhoneValid = useMemo(
+    () => isPhoneValid(form.officePhoneCountry, form.officePhone),
+    [form.officePhoneCountry, form.officePhone]
+  );
+
+  const resetFormToInitial = () => {
+    const initialProfile = initialProfileRef.current;
+    if (!initialProfile) return;
+
+    setForm((prev) => ({ ...prev, ...initialProfile }));
+    setLogoPreview(initialProfile.logoUrl || null);
+    setLogoFile(null);
+    setCitySearch("");
+    setCityOpen(false);
+    setSuccess(false);
+    setError("");
+  };
+
+  const beginEditing = () => {
+    if (isEditing) return;
+    setIsEditing(true);
+    setSuccess(false);
+    setError("");
+  };
+
+  const activateEditingOnPointer = (event) => {
+    if (isEditing) return;
+    event.preventDefault();
+    beginEditing();
+    const target = event.currentTarget;
+    window.requestAnimationFrame(() => {
+      target?.focus?.();
+    });
+  };
 
   useEffect(() => {
     const onOutside = (event) => {
@@ -145,10 +258,12 @@ export function VendorProfile() {
         setLoadingProfile(true);
         const response = await vendorService.getProfile();
         const normalized = normalizeVendorProfile(response?.data, bootstrapUser);
+        initialProfileRef.current = normalized;
         setForm((prev) => ({ ...prev, ...normalized }));
         setLogoPreview(normalized.logoUrl || null);
       } catch (loadError) {
         const fallbackProfile = normalizeVendorProfile({}, bootstrapUser);
+        initialProfileRef.current = fallbackProfile;
         setForm((prev) => ({ ...prev, ...fallbackProfile }));
         setLogoPreview(fallbackProfile.logoUrl || null);
         setError(loadError?.response?.data?.message || "Failed to load vendor profile.");
@@ -191,7 +306,25 @@ export function VendorProfile() {
   }, []);
 
   const handleChange = (event) => {
-    setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+    const { name, value } = event.target;
+
+    if (name === "contactPhone" || name === "officePhone") {
+      const selectedCountry = getCountryByCode(form[`${name}Country`]);
+      setForm((prev) => ({
+        ...prev,
+        [name]: String(value || "").replace(/\D/g, "").slice(0, selectedCountry.maxDigits),
+      }));
+    } else if (name === "contactPhoneCountry" || name === "officePhoneCountry") {
+      const phoneField = name === "contactPhoneCountry" ? "contactPhone" : "officePhone";
+      const selectedCountry = getCountryByCode(value);
+      setForm((prev) => ({
+        ...prev,
+        [name]: value,
+        [phoneField]: String(prev[phoneField] || "").replace(/\D/g, "").slice(0, selectedCountry.maxDigits),
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
     setSuccess(false);
     setError("");
   };
@@ -219,12 +352,26 @@ export function VendorProfile() {
 
     try {
       const submittedForm = { ...form };
+      if (!isContactPhoneValid) {
+        setSubmitting(false);
+        setError(`Contact phone must be 6-${getCountryByCode(submittedForm.contactPhoneCountry).maxDigits} digits.`);
+        return;
+      }
+
+      if (!isOfficePhoneValid) {
+        setSubmitting(false);
+        setError(`Office phone must be 6-${getCountryByCode(submittedForm.officePhoneCountry).maxDigits} digits.`);
+        return;
+      }
+
+      const contactPhoneValue = buildPhoneValue(submittedForm.contactPhoneCountry, submittedForm.contactPhone);
+      const officePhoneValue = buildPhoneValue(submittedForm.officePhoneCountry, submittedForm.officePhone);
       const payload = {
         fullName: submittedForm.fullName.trim() || undefined,
         username: submittedForm.username.trim() || undefined,
         companyName: submittedForm.companyName.trim() || undefined,
-        contactNumber: submittedForm.contactPhone.trim() || undefined,
-        officePhone: submittedForm.officePhone.trim() || undefined,
+        contactNumber: contactPhoneValue || undefined,
+        officePhone: officePhoneValue || undefined,
         nameAndTitle: submittedForm.nameAndTitle.trim() || undefined,
         address: submittedForm.address.trim() || undefined,
         zipCode: submittedForm.zipCode.trim() || undefined,
@@ -266,8 +413,8 @@ export function VendorProfile() {
           username: submittedForm.username,
           companyName: submittedForm.companyName,
           email: submittedForm.email,
-          contactNumber: submittedForm.contactPhone,
-          officePhone: submittedForm.officePhone,
+          contactNumber: contactPhoneValue,
+          officePhone: officePhoneValue,
           nameAndTitle: submittedForm.nameAndTitle,
           address: submittedForm.address,
           zipCode: submittedForm.zipCode,
@@ -284,6 +431,10 @@ export function VendorProfile() {
 
       setForm((prev) => ({ ...prev, ...normalized, email: submittedForm.email || normalized.email }));
       setLogoPreview(nextLogoUrl || normalized.logoUrl || null);
+      initialProfileRef.current = {
+        ...normalized,
+        email: submittedForm.email || normalized.email,
+      };
 
       const nextVendorUser = {
         ...buildVendorSessionUser(
@@ -301,6 +452,7 @@ export function VendorProfile() {
       const token = localStorage.getItem("token");
       dispatch(setUser({ user: nextVendorUser, token }));
       setSuccess(true);
+      navigate("/dashboard");
     } catch (submitError) {
       setError(submitError?.response?.data?.message || "Failed to save vendor profile.");
     } finally {
@@ -334,7 +486,7 @@ export function VendorProfile() {
                   {form.email || "No email added"}
                 </div>
                 <div className="rounded-full bg-white/10 px-4 py-2 text-[13px] font-medium text-white/90">
-                  {form.contactPhone || "No phone added"}
+                  {buildPhoneValue(form.contactPhoneCountry, form.contactPhone) || "No phone added"}
                 </div>
                 <div className="rounded-full bg-white/10 px-4 py-2 text-[13px] font-medium text-white/90">
                   {form.companyName || "Company not set"}
@@ -403,8 +555,12 @@ export function VendorProfile() {
                       name="fullName"
                       value={form.fullName}
                       onChange={handleChange}
+                      onMouseDown={activateEditingOnPointer}
+                      onFocus={beginEditing}
+                      onClick={beginEditing}
+                      readOnly={!isEditing}
                       placeholder="Enter your full name"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                      className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
                     />
                   </div>
                   <div>
@@ -416,8 +572,12 @@ export function VendorProfile() {
                       name="username"
                       value={form.username}
                       onChange={handleChange}
+                      onMouseDown={activateEditingOnPointer}
+                      onFocus={beginEditing}
+                      onClick={beginEditing}
+                      readOnly={!isEditing}
                       placeholder="Enter username"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                      className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
                     />
                   </div>
                   <div>
@@ -429,8 +589,12 @@ export function VendorProfile() {
                       name="companyName"
                       value={form.companyName}
                       onChange={handleChange}
+                      onMouseDown={activateEditingOnPointer}
+                      onFocus={beginEditing}
+                      onClick={beginEditing}
+                      readOnly={!isEditing}
                       placeholder="Enter company name"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                      className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
                     />
                   </div>
                   <div>
@@ -442,22 +606,57 @@ export function VendorProfile() {
                       name="nameAndTitle"
                       value={form.nameAndTitle}
                       onChange={handleChange}
+                      onMouseDown={activateEditingOnPointer}
+                      onFocus={beginEditing}
+                      onClick={beginEditing}
+                      readOnly={!isEditing}
                       placeholder="Enter name and title"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                      className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
                     />
                   </div>
                   <div>
                     <Typography variant="paragraph" className="mb-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#475467]">
                       Contact Phone
                     </Typography>
-                    <input
-                      type="tel"
-                      name="contactPhone"
-                      value={form.contactPhone}
-                      onChange={handleChange}
-                      placeholder="Enter contact phone number"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
-                    />
+                    <div className="flex gap-3">
+                      <select
+                        name="contactPhoneCountry"
+                        value={form.contactPhoneCountry}
+                        onChange={handleChange}
+                        onMouseDown={(event) => {
+                          if (!isEditing) {
+                            event.preventDefault();
+                            beginEditing();
+                          }
+                        }}
+                        className={`w-[180px] shrink-0 rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-pointer bg-[#F9FAFB]"}`}
+                      >
+                        {PHONE_COUNTRIES.map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {getFlagEmoji(country.code)} {country.code} ({country.dialCode})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="tel"
+                        name="contactPhone"
+                        value={form.contactPhone}
+                        onChange={handleChange}
+                        onMouseDown={activateEditingOnPointer}
+                        onFocus={beginEditing}
+                        onClick={beginEditing}
+                        readOnly={!isEditing}
+                        inputMode="numeric"
+                        maxLength={getCountryByCode(form.contactPhoneCountry).maxDigits}
+                        placeholder={`Enter ${getCountryByCode(form.contactPhoneCountry).maxDigits}-digit contact number`}
+                        className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
+                      />
+                    </div>
+                    {isEditing && !isContactPhoneValid ? (
+                      <p className="mt-2 text-[12px] text-[#C01824]">
+                        Contact phone must be 6-{getCountryByCode(form.contactPhoneCountry).maxDigits} digits.
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <Typography variant="paragraph" className="mb-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#475467]">
@@ -477,14 +676,45 @@ export function VendorProfile() {
                     <Typography variant="paragraph" className="mb-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#475467]">
                       Office Phone
                     </Typography>
-                    <input
-                      type="tel"
-                      name="officePhone"
-                      value={form.officePhone}
-                      onChange={handleChange}
-                      placeholder="Enter office phone number"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
-                    />
+                    <div className="flex gap-3">
+                      <select
+                        name="officePhoneCountry"
+                        value={form.officePhoneCountry}
+                        onChange={handleChange}
+                        onMouseDown={(event) => {
+                          if (!isEditing) {
+                            event.preventDefault();
+                            beginEditing();
+                          }
+                        }}
+                        className={`w-[180px] shrink-0 rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-pointer bg-[#F9FAFB]"}`}
+                      >
+                        {PHONE_COUNTRIES.map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {getFlagEmoji(country.code)} {country.code} ({country.dialCode})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="tel"
+                        name="officePhone"
+                        value={form.officePhone}
+                        onChange={handleChange}
+                        onMouseDown={activateEditingOnPointer}
+                        onFocus={beginEditing}
+                        onClick={beginEditing}
+                        readOnly={!isEditing}
+                        inputMode="numeric"
+                        maxLength={getCountryByCode(form.officePhoneCountry).maxDigits}
+                        placeholder={`Enter ${getCountryByCode(form.officePhoneCountry).maxDigits}-digit office number`}
+                        className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
+                      />
+                    </div>
+                    {isEditing && !isOfficePhoneValid ? (
+                      <p className="mt-2 text-[12px] text-[#C01824]">
+                        Office phone must be 6-{getCountryByCode(form.officePhoneCountry).maxDigits} digits.
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <Typography variant="paragraph" className="mb-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#475467]">
@@ -495,8 +725,12 @@ export function VendorProfile() {
                       name="zipCode"
                       value={form.zipCode}
                       onChange={handleChange}
+                      onMouseDown={activateEditingOnPointer}
+                      onFocus={beginEditing}
+                      onClick={beginEditing}
+                      readOnly={!isEditing}
                       placeholder="Enter ZIP code"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                      className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -508,8 +742,12 @@ export function VendorProfile() {
                       name="address"
                       value={form.address}
                       onChange={handleChange}
+                      onMouseDown={activateEditingOnPointer}
+                      onFocus={beginEditing}
+                      onClick={beginEditing}
+                      readOnly={!isEditing}
                       placeholder="Enter your address"
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                      className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-text bg-[#F9FAFB]"}`}
                     />
                   </div>
                   <div>
@@ -520,7 +758,13 @@ export function VendorProfile() {
                       name="stateId"
                       value={form.stateId}
                       onChange={handleChange}
-                      className="w-full rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                      onMouseDown={(event) => {
+                        if (!isEditing) {
+                          event.preventDefault();
+                          beginEditing();
+                        }
+                      }}
+                      className={`w-full rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-pointer bg-[#F9FAFB]"}`}
                     >
                       <option value="">{loadingStates ? "Loading..." : "Select state"}</option>
                       {states.map((state) => {
@@ -541,19 +785,26 @@ export function VendorProfile() {
                     <div className="relative">
                       <div
                         role="button"
-                        tabIndex={0}
-                        onClick={() => setCityOpen((prev) => !prev)}
+                        tabIndex={isEditing ? 0 : -1}
+                        onClick={() => {
+                          if (!isEditing) {
+                            beginEditing();
+                            return;
+                          }
+                          setCityOpen((prev) => !prev);
+                        }}
                         onKeyDown={(event) => {
+                          if (!isEditing) return;
                           if (event.key === "Enter") setCityOpen((prev) => !prev);
                         }}
-                        className="flex min-h-[50px] w-full items-center justify-between rounded-[10px] border border-[#D0D5DD] bg-white px-4 py-3 text-[15px] text-[#101828] outline-none transition focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]"
+                        className={`flex min-h-[50px] w-full items-center justify-between rounded-[10px] border border-[#D0D5DD] px-4 py-3 text-[15px] text-[#101828] outline-none transition ${isEditing ? "bg-white focus:border-[#C01824] focus:ring-2 focus:ring-[#F3D3D6]" : "cursor-pointer bg-[#F9FAFB]"}`}
                       >
                         <span className={form.cityId ? "text-[#101828]" : "text-gray-400"}>
                           {loadingCities ? "Loading..." : form.cityId ? getCityName(form.cityId) : "Select city"}
                         </span>
                         <span className="text-gray-500">{cityOpen ? "▲" : "▼"}</span>
                       </div>
-                      {cityOpen && (
+                      {isEditing && cityOpen && (
                         <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-[10px] border border-[#D0D5DD] bg-white shadow-lg">
                           <input
                             type="text"
@@ -615,7 +866,7 @@ export function VendorProfile() {
                         {form.email || "No email"}
                       </div>
                       <div className="mt-1 text-[14px] text-[#667085]">
-                        {form.contactPhone || "No phone"}
+                        {buildPhoneValue(form.contactPhoneCountry, form.contactPhone) || "No phone"}
                       </div>
                     </div>
                   </div>
@@ -623,15 +874,36 @@ export function VendorProfile() {
                   {error ? <p className="mt-5 text-sm text-[#C01824]">{error}</p> : null}
                   {success ? <p className="mt-5 text-sm text-green-600">Vendor profile saved successfully.</p> : null}
 
-                  <Button
-                    type="submit"
-                    disabled={submitting || loadingProfile}
-                    className="mt-6 flex w-full items-center justify-center rounded-[10px] bg-[#C01824] py-3 text-[17px] font-semibold capitalize shadow-md shadow-red-200"
-                    variant="filled"
-                    size="lg"
-                  >
-                    {submitting ? "Saving..." : loadingProfile ? "Loading..." : "Save Changes"}
-                  </Button>
+                  <div className="mt-6 space-y-3">
+                    {isEditing ? (
+                      <Button
+                        type="submit"
+                        disabled={submitting || loadingProfile || !isDirty || !isContactPhoneValid || !isOfficePhoneValid}
+                        className="flex w-full items-center justify-center rounded-[10px] bg-[#C01824] py-3 text-[17px] font-semibold capitalize shadow-md shadow-red-200"
+                        variant="filled"
+                        size="lg"
+                      >
+                        {submitting ? "Saving..." : loadingProfile ? "Loading..." : "Save Changes"}
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (isEditing && isDirty) {
+                          resetFormToInitial();
+                          setIsEditing(false);
+                          return;
+                        }
+                        navigate("/dashboard");
+                      }}
+                      disabled={submitting}
+                      className="flex w-full items-center justify-center rounded-[10px] border border-[#D0D5DD] bg-white py-3 text-[16px] font-semibold capitalize text-[#344054] shadow-none"
+                      variant="outlined"
+                      size="lg"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               </div>
             </form>

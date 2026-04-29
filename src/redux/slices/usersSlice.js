@@ -7,14 +7,21 @@ import { decodeToken } from "@/redux/authHelper";
 const MODULE_NAME_TO_ID = {
   VEHICLE: 1,
   EMPLOYEE: 2,
-  SCHOOL: 3,
-  ROUTE: 4,
-  TRACKING: 5,
-  SCHEDULING: 6,
+  SCHOOL: 4,
+  ROUTE: 3,
+  TRACKING: 6,
+  SCHEDULING: 3,
   CHATS: 7,
-  ACCOUNTING: 8,
-  STUDENT: 9,
-  ACCESS: 10,
+  ACCOUNTING: 5,
+  STUDENT: 4,
+  ACCESS: 9,
+  VEHICLES: 1,
+  DRIVERS: 2,
+  ROUTES: 3,
+  STUDENTS: 4,
+  INVOICES: 5,
+  CHAT: 7,
+  RFQ: 8,
   FEEDBACK: 11,
   DOCUMENTS: 12,
 };
@@ -23,7 +30,7 @@ const MODULE_NAME_TO_ID = {
 const convertModulesToIds = (modules) => {
   if (!Array.isArray(modules) || modules.length === 0) return [];
   
-  return modules.map(module => {
+  const ids = modules.map(module => {
     if (typeof module === 'number') return module;
     const moduleName = typeof module === 'string' ? module.toUpperCase().trim() : null;
     if (moduleName && MODULE_NAME_TO_ID[moduleName]) {
@@ -35,6 +42,8 @@ const convertModulesToIds = (modules) => {
     }
     return null;
   }).filter(id => id !== null && !isNaN(id));
+
+  return [...new Set(ids)];
 };
 
 // Helper to extract vendorId from token
@@ -98,6 +107,7 @@ export const createUser = createAsyncThunk(
       
       const payload = {
         username: userData.username,
+        password: String(userData.password || ""),
         roleCode: userData.roleCode,
         terminalIds: terminalIds,
         moduleIds: moduleIds,

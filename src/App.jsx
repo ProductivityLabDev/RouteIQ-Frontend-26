@@ -49,6 +49,8 @@ import SuperAdminSignIn from "./pages/superAdmin/SuperAdminSignIn";
 import SuperAdminDashboard from "./pages/superAdmin/SuperAdminDashboard";
 import SuperAdminVendorManagement from "./pages/superAdmin/SuperAdminVendorManagement";
 import SuperAdminSubAdmins from "./pages/superAdmin/SuperAdminSubAdmins";
+import SuperAdminAccounting from "./pages/superAdmin/SuperAdminAccounting";
+import SuperAdminFeedback from "./pages/superAdmin/SuperAdminFeedback";
 
 import ProtectedRoute from "./protectedRoutes";
 
@@ -90,6 +92,8 @@ function App() {
           <Route path="dashboard" element={<SuperAdminDashboard />} />
           <Route path="vendors" element={<SuperAdminVendorManagement />} />
           <Route path="sub-admins" element={<SuperAdminSubAdmins />} />
+          <Route path="accounting" element={<SuperAdminAccounting />} />
+          <Route path="feedback" element={<SuperAdminFeedback />} />
           <Route index element={<Navigate to="/super-admin/dashboard" replace />} />
         </Route>
       </Route>

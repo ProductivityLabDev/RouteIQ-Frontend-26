@@ -11,21 +11,22 @@ const DEPARTMENTS = ["Vehicle", "Employee", "School", "Route", "Tracking", "Sche
 const MODULE_ID_TO_NAME = {
     1: "VEHICLE",
     2: "EMPLOYEE",
-    3: "SCHOOL",
-    4: "ROUTE",
-    5: "TRACKING",
-    6: "SCHEDULING",
+    3: "ROUTE",
+    4: "SCHOOL",
+    5: "ACCOUNTING",
+    6: "TRACKING",
     7: "CHATS",
-    8: "ACCOUNTING",
 };
 const MODULE_NAME_ALIASES = {
     "VEHICLE MANAGEMENT": "VEHICLE",
     VEHICLES: "VEHICLE",
     "EMPLOYEE MANAGEMENT": "EMPLOYEE",
+    "DRIVER MANAGEMENT": "EMPLOYEE",
     EMPLOYEES: "EMPLOYEE",
     DRIVER: "EMPLOYEE",
     DRIVERS: "EMPLOYEE",
     "SCHOOL MANAGEMENT": "SCHOOL",
+    "STUDENT MANAGEMENT": "SCHOOL",
     SCHOOLS: "SCHOOL",
     STUDENT: "SCHOOL",
     STUDENTS: "SCHOOL",
@@ -40,7 +41,15 @@ const MODULE_NAME_ALIASES = {
     CHATS: "CHATS",
     COMMUNICATION: "CHATS",
     ACCOUNTING: "ACCOUNTING",
+    BILLING: "ACCOUNTING",
+    INVOICE: "ACCOUNTING",
     INVOICES: "ACCOUNTING",
+    "BILLING & INVOICING": "ACCOUNTING",
+    "BILLING AND INVOICING": "ACCOUNTING",
+};
+const SHARED_MODULE_SELECTIONS = {
+    ROUTE: ["ROUTE", "SCHEDULING"],
+    SCHEDULING: ["ROUTE", "SCHEDULING"],
 };
 
 const INITIAL_FORM = {
@@ -139,26 +148,37 @@ const CreateAccessCard = ({ setCreateAccess, editUser }) => {
     const normalizeModules = (rawModules) => {
         if (!Array.isArray(rawModules)) return [];
 
-        return rawModules
-            .map((module) => {
-                if (typeof module === "number") return MODULE_ID_TO_NAME[module] || null;
+        const normalized = rawModules
+            .flatMap((module) => {
+                if (typeof module === "number") {
+                    const mapped = MODULE_ID_TO_NAME[module] || null;
+                    return mapped ? (SHARED_MODULE_SELECTIONS[mapped] || [mapped]) : [];
+                }
                 if (typeof module === "string") {
                     const normalized = module.toUpperCase().trim();
-                    if (MODULE_ID_TO_NAME[Number(normalized)]) return MODULE_ID_TO_NAME[Number(normalized)];
-                    return MODULE_NAME_ALIASES[normalized] || normalized;
+                    const byId = MODULE_ID_TO_NAME[Number(normalized)];
+                    if (byId) return SHARED_MODULE_SELECTIONS[byId] || [byId];
+                    const mapped = MODULE_NAME_ALIASES[normalized] || normalized;
+                    return SHARED_MODULE_SELECTIONS[mapped] || [mapped];
                 }
                 if (module && typeof module === "object") {
                     const candidateName = module.name || module.Name || module.code || module.Code || module.moduleName || module.ModuleName;
                     if (typeof candidateName === "string") {
                         const normalizedName = candidateName.toUpperCase().trim();
-                        return MODULE_NAME_ALIASES[normalizedName] || normalizedName;
+                        const mapped = MODULE_NAME_ALIASES[normalizedName] || normalizedName;
+                        return SHARED_MODULE_SELECTIONS[mapped] || [mapped];
                     }
                     const candidateId = Number(module.id || module.Id || module.moduleId || module.ModuleId);
-                    if (!Number.isNaN(candidateId)) return MODULE_ID_TO_NAME[candidateId] || null;
+                    if (!Number.isNaN(candidateId)) {
+                        const mapped = MODULE_ID_TO_NAME[candidateId] || null;
+                        return mapped ? (SHARED_MODULE_SELECTIONS[mapped] || [mapped]) : [];
+                    }
                 }
-                return null;
+                return [];
             })
             .filter(Boolean);
+
+        return [...new Set(normalized)];
     };
 
     const normalizeTerminalIds = (rawTerminalValue) => {

@@ -6,11 +6,20 @@ import { IoMdThumbsDown, IoMdThumbsUp } from "react-icons/io";
 import { VendorFeedbackChatMessage } from '@/components/VendorFeedbackMessage';
 import vendorFeedbackService from '@/services/vendorFeedbackService';
 import { toast } from 'react-hot-toast';
+import { useSelector } from 'react-redux';
 
 const TYPE_TABS = [
   { label: "School Feedback", value: "School" },
   { label: "Driver Feedback", value: "Driver" },
   { label: "Parent Feedback", value: "Parent" },
+];
+
+const COMPANY_FEEDBACK_TYPES = [
+  "Complaint",
+  "Suggestion",
+  "Issue",
+  "Appreciation",
+  "General",
 ];
 
 const statusColors = {
@@ -25,6 +34,9 @@ const ratingColors = {
 };
 
 const Feedback = () => {
+  const { user } = useSelector((state) => state.user);
+  const normalizedRole = String(user?.role || "").trim().toUpperCase();
+  const isVendor = normalizedRole !== "INSTITUTE" && normalizedRole !== "SCHOOL";
   const [activeTab, setActiveTab] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({ total: 0, positive: 0, negative: 0 });
@@ -34,6 +46,13 @@ const Feedback = () => {
   const [loadingList, setLoadingList] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [submittingCompanyFeedback, setSubmittingCompanyFeedback] = useState(false);
+  const [companyFeedbackForm, setCompanyFeedbackForm] = useState({
+    feedbackType: 'Complaint',
+    subject: '',
+    message: '',
+    rating: 'Negative',
+  });
 
   const activeType = TYPE_TABS[activeTab]?.value;
 
@@ -138,10 +157,121 @@ const Feedback = () => {
     [feedbackList]
   );
 
+  const handleCompanyFeedbackSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!companyFeedbackForm.subject.trim() || !companyFeedbackForm.message.trim()) {
+      toast.error('Subject and message are required');
+      return;
+    }
+
+    try {
+      setSubmittingCompanyFeedback(true);
+      const response = await vendorFeedbackService.submitCompanyFeedback({
+        feedbackType: companyFeedbackForm.feedbackType,
+        subject: companyFeedbackForm.subject.trim(),
+        message: companyFeedbackForm.message.trim(),
+        rating: companyFeedbackForm.rating,
+      });
+      toast.success(response.message || 'Feedback sent successfully');
+      setCompanyFeedbackForm({
+        feedbackType: 'Complaint',
+        subject: '',
+        message: '',
+        rating: 'Negative',
+      });
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to send company feedback');
+    } finally {
+      setSubmittingCompanyFeedback(false);
+    }
+  };
+
   return (
     <MainLayout>
       <section className='w-full min-h-screen'>
         <h1 className="text-[24px] md:text-[32px] font-semibold leading-[1.3] my-6">Feedback</h1>
+
+        {isVendor ? (
+          <div className="mb-6 rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="mb-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9A6B3A]">Company Feedback</p>
+              <h2 className="mt-1 text-[24px] font-semibold text-[#202224]">Send Feedback To Company</h2>
+              <p className="mt-2 text-sm text-[#6B7280]">
+                Share complaints, billing concerns, or improvement suggestions directly with the company.
+              </p>
+            </div>
+
+            <form onSubmit={handleCompanyFeedbackSubmit} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#202224]">Feedback Type</label>
+                <select
+                  value={companyFeedbackForm.feedbackType}
+                  onChange={(event) =>
+                    setCompanyFeedbackForm((prev) => ({ ...prev, feedbackType: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 py-3 text-sm outline-none"
+                >
+                  {COMPANY_FEEDBACK_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#202224]">Rating</label>
+                <select
+                  value={companyFeedbackForm.rating}
+                  onChange={(event) =>
+                    setCompanyFeedbackForm((prev) => ({ ...prev, rating: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 py-3 text-sm outline-none"
+                >
+                  <option value="Negative">Negative</option>
+                  <option value="Positive">Positive</option>
+                </select>
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-[#202224]">Subject</label>
+                <input
+                  type="text"
+                  value={companyFeedbackForm.subject}
+                  onChange={(event) =>
+                    setCompanyFeedbackForm((prev) => ({ ...prev, subject: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 py-3 text-sm outline-none"
+                  placeholder="Billing issue"
+                />
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-[#202224]">Message</label>
+                <textarea
+                  rows={5}
+                  value={companyFeedbackForm.message}
+                  onChange={(event) =>
+                    setCompanyFeedbackForm((prev) => ({ ...prev, message: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 py-3 text-sm outline-none"
+                  placeholder="Need clarification on monthly charges"
+                />
+              </div>
+
+              <div className="lg:col-span-2 flex justify-end">
+                <Button
+                  type="submit"
+                  className="rounded-xl bg-[#C01824] px-6 py-3 text-sm font-semibold shadow-none"
+                  disabled={submittingCompanyFeedback}
+                >
+                  {submittingCompanyFeedback ? 'Sending...' : 'Send Feedback'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        ) : null}
 
         <div className='grid grid-cols-1 xl:grid-cols-[240px_360px_minmax(0,1fr)] gap-5 w-full h-[calc(100vh-150px)]'>
           <div className='bg-white rounded-2xl border shadow-sm p-4 xl:h-full mb-4 xl:mb-0'>

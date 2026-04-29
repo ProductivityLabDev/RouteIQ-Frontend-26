@@ -40,5 +40,7 @@ export const routeTitles = {
   '/super-admin/dashboard': 'Route IQ - Super Admin Dashboard',
   '/super-admin/vendors': 'Route IQ - Vendor Management',
   '/super-admin/sub-admins': 'Route IQ - Sub Admin Management',
+  '/super-admin/accounting': 'Route IQ - Super Admin Accounting',
+  '/super-admin/feedback': 'Route IQ - Super Admin Feedback',
   '*': 'Route Iq - Not Found',
 };

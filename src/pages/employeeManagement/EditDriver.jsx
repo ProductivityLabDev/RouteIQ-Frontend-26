@@ -746,7 +746,7 @@ const EditDriver = ({ employee, handleCancel, onSaved }) => {
           <Field label="Pay Type" required error={errors.payTypeId} touched={touched.payTypeId}>
             <select
               name="payTypeId"
-              value={formData.payTypeId}
+              value={formData.paydTypeId}
               onChange={handleChange}
               onBlur={handleBlur}
               className={inputCls(errors.payTypeId, touched.payTypeId)}
