@@ -395,6 +395,30 @@ const dispatch = useDispatch();
   }, [requestedTab]);
 
   useEffect(() => {
+    setSelectedInvoiceData(null);
+    setInvoiceForm(false);
+    setSchoolInvoice(false);
+    setCreateInvoice(false);
+    setCreateBatchInvoice(false);
+    setBatchInvoice(false);
+    setEditInvoice(false);
+
+    if (selectedTab !== "School Invoices") {
+      setSchoolData(false);
+      setSelectedInstituteId(null);
+      setSelectedSchoolName("");
+      setSelectedSchoolInvoiceIds([]);
+      setIsOpen(null);
+    }
+
+    if (selectedTab !== "Trip invoices") {
+      setIsTripInvoice(false);
+      setSelectedTripInvoiceIds([]);
+      setActiveTripTerminalId("");
+    }
+  }, [selectedTab]);
+
+  useEffect(() => {
     if (!focus?.focusType) return;
 
     if (focus.focusType === "terminal") {
@@ -440,7 +464,7 @@ const dispatch = useDispatch();
     setSelectedInvoiceData(null);
   };
   const handleExport = () => {
-    if ((selectedTab === "School Invoices" || schoolData) && selectedSchoolInvoiceIds.length > 0) {
+    if (selectedTab === "School Invoices" && schoolData && selectedSchoolInvoiceIds.length > 0) {
       dispatch(exportSchoolInvoice({ id: selectedSchoolInvoiceIds[0], format: tripExportFormat }));
       closeModal();
       return;
@@ -826,7 +850,7 @@ const dispatch = useDispatch();
             </ButtonGroup>
             {/* ---------------- Header of Card --------------- */}
             <div className="flex justify-between items-center my-3 pb-2">
-              {schoolData ? (
+              {selectedTab === "School Invoices" && schoolData ? (
                 <div className="flex w-full justify-between items-center  mt-3 pb-2">
                   <div className="flex items-center gap-2">
                     <MdOutlineKeyboardArrowLeft
@@ -949,7 +973,7 @@ const dispatch = useDispatch();
                                     </div>
                                 </div>
                             } */}
-            {schoolData ? (
+            {selectedTab === "School Invoices" && schoolData ? (
               <div className="w-full p-4 bg-white h-[66vh] rounded-xl">
                 <div className="bg-white shadow-md rounded-xl w-full h-[45vh] overflow-hidden border border-[#D9D9D9]">
                   <div className="w-full overflow-x-auto">

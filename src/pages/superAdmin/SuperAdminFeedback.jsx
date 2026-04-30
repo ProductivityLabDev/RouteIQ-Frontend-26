@@ -19,7 +19,25 @@ const FEEDBACK_TYPES = ["Complaint", "Suggestion", "Issue", "Appreciation", "Gen
 const formatDateTime = (value) => {
   if (!value) return "--";
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString("en-US");
+  return Number.isNaN(parsed.getTime())
+    ? String(value)
+    : parsed.toLocaleString("en-US", {
+        month: "numeric",
+        day: "numeric",
+        year: "2-digit",
+      });
+};
+
+const formatTime = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? ""
+    : parsed.toLocaleString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
 };
 
 const StatCard = ({ label, value }) => (
@@ -232,7 +250,7 @@ export default function SuperAdminFeedback() {
                   <th className="px-5 py-4">Company / Contact</th>
                   <th className="px-5 py-4">Type</th>
                   <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Date</th>
+                  <th className="w-[96px] px-4 py-4 text-right">Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,7 +285,14 @@ export default function SuperAdminFeedback() {
                           {item.Status || "--"}
                         </span>
                       </td>
-                      <td className="px-5 py-4">{formatDateTime(item.CreatedAt)}</td>
+                      <td className="w-[96px] px-4 py-4 text-right align-top">
+                        <div className="text-xs font-medium leading-4 text-[#5d6372]">
+                          {formatDateTime(item.CreatedAt)}
+                        </div>
+                        <div className="mt-1 text-[11px] leading-4 text-[#9aa1af]">
+                          {formatTime(item.CreatedAt) || "--"}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
