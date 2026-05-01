@@ -46,10 +46,11 @@ const accountsReceivableSlice = createSlice({
   initialState: {
     invoices: { total: 0, data: [], limit: 20, offset: 0 },
     invoiceDetail: null,
+    /** Keys: String(invoiceId) — only that row's Mark Paid shows loading/disabled */
+    markPaidPendingById: {},
     loading: {
       invoices: false,
       invoiceDetail: false,
-      markPaid: false,
     },
     error: {
       invoices: null,
@@ -73,15 +74,29 @@ const accountsReceivableSlice = createSlice({
       .addCase(fetchInvoiceDetail.fulfilled, (state, action) => { state.loading.invoiceDetail = false; state.invoiceDetail = action.payload; })
       .addCase(fetchInvoiceDetail.rejected, (state, action) => { state.loading.invoiceDetail = false; state.error.invoiceDetail = action.payload; });
 
-    // markInvoicePaid
+    // markInvoicePaid — per-row pending; patch only the matching invoice (invoiceId or id)
     builder
-      .addCase(markInvoicePaid.pending, (state) => { state.loading.markPaid = true; state.error.markPaid = null; })
+      .addCase(markInvoicePaid.pending, (state, action) => {
+        state.markPaidPendingById[String(action.meta.arg)] = true;
+        state.error.markPaid = null;
+      })
       .addCase(markInvoicePaid.fulfilled, (state, action) => {
-        state.loading.markPaid = false;
-        const invoice = state.invoices.data.find((i) => i.id === action.payload);
+        const idStr = String(action.payload);
+        delete state.markPaidPendingById[idStr];
+        const numericId = action.payload;
+        const invoice = state.invoices.data.find(
+          (i) =>
+            i.invoiceId === numericId ||
+            i.id === numericId ||
+            String(i.invoiceId) === idStr ||
+            String(i.id) === idStr
+        );
         if (invoice) invoice.status = "Paid";
       })
-      .addCase(markInvoicePaid.rejected, (state, action) => { state.loading.markPaid = false; state.error.markPaid = action.payload; });
+      .addCase(markInvoicePaid.rejected, (state, action) => {
+        delete state.markPaidPendingById[String(action.meta.arg)];
+        state.error.markPaid = action.payload;
+      });
   },
 });
 

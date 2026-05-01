@@ -39,8 +39,49 @@ export const schoolInvoicesService = {
     offset?: number;
   }): Promise<ApiResponse<{ total: number; data: any[] }>> => {
     const response = await apiClient.get("/school-invoices", { params });
-    const raw = response.data?.data?.invoices;
-    return { ok: true, data: { total: response.data?.data?.total, data: Array.isArray(raw) ? raw : [] } };
+    const envelope = response.data as Record<string, unknown> | undefined;
+    // Supports { ok, data: { total, invoices } } or flat { total, invoices }
+    const inner = envelope?.data as Record<string, unknown> | undefined;
+    const body =
+      inner &&
+      typeof inner === "object" &&
+      (Array.isArray(inner.invoices as unknown[]) ||
+        Array.isArray(inner.items as unknown[]) ||
+        typeof inner.total === "number")
+        ? inner
+        : (envelope as Record<string, unknown> | undefined);
+    const raw =
+      (body?.invoices as unknown[]) ??
+      (body?.items as unknown[]) ??
+      (body?.rows as unknown[]) ??
+      (Array.isArray(body) ? body : []);
+    const list = Array.isArray(raw)
+      ? raw.map((inv) => {
+          if (!inv || typeof inv !== "object") return inv;
+          // Backend repeats list-level count on each row; strip so UI never treats it as invoice total
+          const { total: _stripCountDup, ...rest } = inv as Record<string, unknown>;
+          return rest;
+        })
+      : [];
+    const totalRaw =
+      (typeof body?.total === "number" ? body.total : undefined) ??
+      (typeof body?.count === "number" ? body.count : undefined) ??
+      (typeof envelope?.meta === "object" && envelope.meta !== null && "total" in envelope.meta
+        ? Number((envelope.meta as Record<string, unknown>).total)
+        : undefined) ??
+      (typeof envelope?.total === "number" ? envelope.total : undefined);
+    const total =
+      typeof totalRaw === "number" && !Number.isNaN(totalRaw)
+        ? totalRaw
+        : list.length;
+    return { ok: true, data: { total, data: list } };
+  },
+
+  getInvoiceDetail: async (id: number | string) => {
+    const response = await apiClient.get("/invoices", {
+      params: { id },
+    });
+    return { ok: true, data: response.data?.data };
   },
 
   createInvoice: async (data: any) => {

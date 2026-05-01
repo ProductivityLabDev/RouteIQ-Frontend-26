@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TranspportVan } from '@/assets';
 import { Typography, Button } from '@material-tailwind/react';
 import { Box } from '@mui/material';
@@ -27,7 +27,108 @@ const statusClassName = (status) => {
   return "bg-gray-100 text-gray-800";
 };
 
-const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, editInvoice, handleBatchInvoice, batchInvoice }) => {
+const toDateInputValue = (value) => {
+  if (!value) return "";
+  const s = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+};
+
+const buildEditFormFromInvoice = (invoice) => {
+  if (!invoice) return null;
+  const rawItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
+  const lineItems =
+    rawItems.length > 0
+      ? rawItems.map((item, idx) => {
+          const lid = item.LineItemId ?? item.lineItemId ?? item.id;
+          return {
+            id: lid != null && lid !== "" ? lid : idx + 1,
+            itemDescription: pick(item.ItemDescription, item.itemDescription, item.routeDescription, "") || "",
+            glCodeId: String(pick(item.GLCodeId, item.glCodeId, "") ?? ""),
+            unitPrice:
+              pick(item.UnitPrice, item.unitPrice, "") === "" || pick(item.UnitPrice, item.unitPrice, "") === undefined
+                ? ""
+                : String(pick(item.UnitPrice, item.unitPrice, "")),
+            quantity:
+              pick(item.Quantity, item.quantity, "") === "" || pick(item.Quantity, item.quantity, "") === undefined
+                ? ""
+                : String(pick(item.Quantity, item.quantity, "")),
+            totalAmount:
+              pick(item.TotalAmount, item.totalAmount, "") === "" || pick(item.TotalAmount, item.totalAmount, "") === undefined
+                ? ""
+                : String(pick(item.TotalAmount, item.totalAmount, "")),
+            tripId: String(pick(item.TripId, item.tripId, "") ?? ""),
+          };
+        })
+      : [
+          {
+            id: 1,
+            itemDescription: "",
+            glCodeId: "",
+            unitPrice: "",
+            quantity: "",
+            totalAmount: "",
+            tripId: "",
+          },
+        ];
+
+  const headerGl = pick(
+    invoice.GLCodeId,
+    invoice.glCodeId,
+    rawItems[0]?.GLCodeId,
+    rawItems[0]?.glCodeId,
+    ""
+  );
+  const subNum = Number(pick(invoice.SubTotal, invoice.subTotal, 0));
+  const taxNum = Number(pick(invoice.TaxAmount, invoice.taxAmount, 0));
+
+  return {
+    terminalId: String(
+      pick(invoice.TerminalId, invoice.terminalId, invoice.InstituteTerminalId, invoice.instituteTerminalId, "") ?? ""
+    ),
+    glCodeId: headerGl !== "" && headerGl !== undefined && headerGl !== null ? String(headerGl) : "",
+    invoiceDate: toDateInputValue(pick(invoice.InvoiceDate, invoice.invoiceDate, invoice.date)),
+    dueDate: toDateInputValue(pick(invoice.DueDate, invoice.dueDate)),
+    billFrom: pick(invoice.BillFrom, invoice.billFrom, "RouteIQ Inc") || "",
+    billTo: pick(invoice.BillTo, invoice.billTo, invoice.companyName, "") || "",
+    subTotal: subNum ? String(Number(subNum.toFixed(2))) : "",
+    taxAmount: taxNum ? String(Number(taxNum.toFixed(2))) : "",
+    notes: pick(invoice.Notes, invoice.notes, "") || "",
+    lineItems,
+  };
+};
+
+const InvoiceForm = ({
+  handleback,
+  schoolInvoice,
+  invoiceData,
+  setEditInvoice,
+  editInvoice,
+  handleBatchInvoice,
+  batchInvoice,
+  terminals = [],
+  glCodes = [],
+  selectedSchoolName = "",
+}) => {
+  const editFormSeed = useMemo(() => buildEditFormFromInvoice(invoiceData), [invoiceData]);
+  const [editFormData, setEditFormData] = useState(editFormSeed);
+
+  useEffect(() => {
+    if (editInvoice && editFormSeed) {
+      setEditFormData(editFormSeed);
+    }
+  }, [editInvoice, editFormSeed]);
+
+  const handleEditFormChange = (field, value) => {
+    setEditFormData((prev) => {
+      const base = prev ?? editFormSeed;
+      if (!base) return { [field]: value };
+      return { ...base, [field]: value };
+    });
+  };
+
+  const effectiveEditForm = editFormData ?? editFormSeed;
   const invoiceId = pick(invoiceData?.InvoiceId, invoiceData?.invoiceId, invoiceData?.id);
   const invoiceNumber = pick(invoiceData?.InvoiceNumber, invoiceData?.invoiceNumber, invoiceData?.invoiceNo, invoiceId, '12501');
   const billTo = pick(invoiceData?.BillTo, invoiceData?.billTo, invoiceData?.companyName, 'Maplebrook Country Day School');
@@ -41,7 +142,11 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
   const subTotal = formatCurrency(pick(invoiceData?.SubTotal, invoiceData?.subTotal, 0));
   const taxAmount = formatCurrency(pick(invoiceData?.TaxAmount, invoiceData?.taxAmount, 0));
   const termsOfPayment = pick(invoiceData?.PaymentTerms, invoiceData?.paymentTerms, 'Within 15 days');
-  const notes = pick(invoiceData?.Notes, invoiceData?.notes, 'No notes available.');
+    const notes = pick(
+      invoiceData?.Notes,
+      invoiceData?.notes,
+      'Payment is due by the stated deadline. Please review all invoice details carefully and contact us promptly if you notice any discrepancy. Late or partial payments may affect service continuity under the applicable agreement.'
+    );
   const status = pick(invoiceData?.Status, invoiceData?.status, 'Open');
   const billFrom = pick(invoiceData?.BillFrom, invoiceData?.billFrom, 'RouteIQ Inc');
   const terminalName = pick(invoiceData?.terminalName, invoiceData?.TerminalName, invoiceData?.schoolName, '-');
@@ -89,7 +194,16 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
               </div>
             </div>
           </div>
-          <EditInvoiceForm batchInvoice={batchInvoice} />
+          <EditInvoiceForm
+            batchInvoice={batchInvoice}
+            schoolInvoice={schoolInvoice}
+            selectedSchoolName={selectedSchoolName}
+            terminals={terminals}
+            glCodes={glCodes}
+            formData={effectiveEditForm}
+            onFormChange={handleEditFormChange}
+            isEditing
+          />
         </div>
       ) : (
         <>
@@ -100,66 +214,66 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
             </Typography>
           </div>
           {invoiceData && (
-            <div className="mt-4 grid grid-cols-1 gap-4 rounded-xl border border-[#E7EAF3] bg-[#F8FAFC] p-4 md:grid-cols-5">
+            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl border border-[#E7EAF3] bg-[#F8FAFC] p-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-x-8">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">Bill Date</div>
-                <div className="mt-1 text-sm font-semibold text-[#141516]">{billDate}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Bill Date</div>
+                <div className="mt-1.5 text-[15px] font-semibold leading-snug text-[#141516]">{billDate}</div>
+              </div>
+              <div className="min-w-0 lg:col-span-1">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Bill To</div>
+                <div className="mt-1.5 text-[15px] font-semibold leading-snug text-[#141516] break-words">{billTo}</div>
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">Bill To</div>
-                <div className="mt-1 text-sm font-semibold text-[#141516]">{billTo}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Invoice Type</div>
+                <div className="mt-1.5 text-[15px] font-semibold leading-snug text-[#141516]">{invoiceType}</div>
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">Invoice Type</div>
-                <div className="mt-1 text-sm font-semibold text-[#141516]">{invoiceType}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">GL Code</div>
+                <div className="mt-1.5 text-[15px] font-semibold leading-snug text-[#141516]">{glCode}{glCodeName ? ` - ${glCodeName}` : ''}</div>
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">GL Code</div>
-                <div className="mt-1 text-sm font-semibold text-[#141516]">{glCode}{glCodeName ? ` - ${glCodeName}` : ''}</div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">Invoice Total</div>
-                <div className="mt-1 text-sm font-semibold text-[#141516]">{totalAmount}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A94A6]">Invoice Total</div>
+                <div className="mt-1.5 text-[15px] font-semibold leading-snug text-[#C01824]">{totalAmount}</div>
               </div>
             </div>
           )}
-          <div className='bg-white rounded-lg shadow-md p-4 my-3 w-full'>
-            <Box className="flex items-center mb-4">
-              <div className='flex flex-row justify-between w-[100%] h-[26vh]'>
-                <div className='flex flex-row justify-center w-[40%] h-[20vh] gap-2 items-center'>
-                  <img src={TranspportVan} alt="Transport Vendor" className="mr-4 h-[80px] w-[100px]" />
-                  <div>
-                    <Typography variant="h4">{vendorTitle}</Typography>
-                    <Typography variant="h6" className='text-[#667085] text-[12px] font-normal'>{vendorName}</Typography>
-                    <Typography variant="body2" className='text-[#667085] text-[12px] font-normal'>{billFrom}</Typography>
-                    <Typography variant="body2" className='text-[#667085] text-[12px] font-normal'>{vendorPhone} | {vendorEmail}</Typography>
-                    <Typography variant="body2" className='text-[#667085] text-[12px] font-semibold'>Created By: {createdByName}</Typography>
-                    <Typography variant="body2" className='text-[#667085] text-[12px] font-semibold'>Status: {status}</Typography>
+          <div className="my-4 w-full rounded-xl border border-[#E7EAF3] bg-white p-6 shadow-md md:p-8">
+            <Box className="mb-8 border-b border-[#EEF1F6] pb-8">
+              <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:justify-between">
+                <div className="flex min-w-0 flex-1 flex-row items-start gap-5">
+                  <img src={TranspportVan} alt="Transport Vendor" className="h-[76px] w-[96px] shrink-0 object-contain" />
+                  <div className="min-w-0 space-y-1.5">
+                    <Typography variant="h5" className="text-[#141516] !font-bold !tracking-tight">{vendorTitle}</Typography>
+                    <Typography variant="body2" className="!text-[13px] !text-[#667085]">{vendorName}</Typography>
+                    <Typography variant="body2" className="!text-[13px] !text-[#667085]">{billFrom}</Typography>
+                    <Typography variant="body2" className="!text-[13px] !text-[#667085]">{vendorPhone} | {vendorEmail}</Typography>
+                    <Typography variant="body2" className="!text-[13px] !font-semibold !text-[#445164]">Created By: {createdByName}</Typography>
+                    <Typography variant="body2" className="!text-[13px] !font-semibold !text-[#445164]">Status: {status}</Typography>
                   </div>
                 </div>
-                <div className='w-[100%] flex flex-row justify-end gap-20'>
-                  <div className='flex flex-col w-[35%] items-end gap-4'>
-                    <div className='bg-[#F4F5F6] w-[120px] h-[35px] rounded-[8px] pt-2'>
-                      <Typography variant="lead" className='font-bold text-[12px] text-[#000] text-center'>{`${invoiceNumber}`}</Typography>
+                <div className="flex shrink-0 flex-col gap-6 sm:flex-row sm:items-start xl:gap-8">
+                  <div className="flex flex-col items-end gap-3 sm:min-w-[140px]">
+                    <div className="rounded-lg bg-[#F4F5F6] px-4 py-2.5">
+                      <Typography variant="body2" className="!text-center !text-[13px] !font-bold !text-[#141516]">{`${invoiceNumber}`}</Typography>
                     </div>
-                    <div className='flex flex-col items-end'>
-                      <Typography variant="h6" className='text-[#667085] weight-[500] text-[13px]'>Total Amount</Typography>
-                      <Typography variant="h5" className='text-[#333843] weight-[700] text-[19px]'>{totalAmount}</Typography>
+                    <div className="flex flex-col items-end text-right">
+                      <Typography variant="body2" className="!text-[13px] !font-medium !text-[#667085]">Total Amount</Typography>
+                      <Typography variant="h5" className="!mt-1 !text-[22px] !font-bold !text-[#141516]">{totalAmount}</Typography>
                     </div>
                   </div>
-                  <div className='flex flex-col gap-3 w-[30%]'>
+                  <div className="flex w-full min-w-[260px] max-w-[340px] flex-col gap-4">
                     {schoolInvoice && (
-                      <div className="bg-white rounded-2xl shadow-lg w-full max-w-[500px] p-6 border border-gray-200">
-                        <div className="flex flex-col gap-4">
+                      <div className="w-full rounded-xl border border-[#E7EAF3] bg-[#FAFBFD] p-5 shadow-sm">
+                        <div className="flex flex-col gap-3">
                           <Button
-                            className="bg-[#C01824] hover:bg-[#a8141e] transition-all duration-300 text-white px-6 py-3 capitalize text-sm md:text-base font-medium rounded-lg flex items-center justify-center"
+                            className="bg-[#C01824] hover:bg-[#a8141e] text-white capitalize text-sm font-medium rounded-lg"
                             variant="filled"
                             size="md"
                           >
                             Send
                           </Button>
                           <Button
-                            className="bg-[#C01824] hover:bg-[#a8141e] transition-all duration-300 text-white px-6 py-3 capitalize text-sm md:text-base font-medium rounded-lg flex items-center justify-center"
+                            className="bg-[#C01824] hover:bg-[#a8141e] text-white capitalize text-sm font-medium rounded-lg"
                             variant="filled"
                             size="md"
                             onClick={() => setEditInvoice(true)}
@@ -167,7 +281,7 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
                             Edit Invoice
                           </Button>
                           <Button
-                            className="bg-[#C01824] hover:bg-[#a8141e] transition-all duration-300 text-white px-6 py-3 capitalize text-sm md:text-base font-medium rounded-lg flex items-center justify-center"
+                            className="bg-[#C01824] hover:bg-[#a8141e] text-white capitalize text-sm font-medium rounded-lg"
                             variant="filled"
                             size="md"
                             onClick={handleBatchInvoice}
@@ -177,35 +291,33 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
                         </div>
                       </div>
                     )}
-                    <div className="bg-white rounded-lg shadow-md w-[100%] max-w-[400px]">
-                      <div className="mt-2">
-                        <h3 className="text-gray-800 text-lg ps-4 font-bold mb-4 border-grey p-3">
-                          Summary
-                        </h3>
-                        <div className="space-y-2">
-                          <div className="flex justify-between p-3 bg-[#FAFAFA]">
-                            <span className="text-black-600 text-md font-bold">Total</span>
-                            <span className="text-gray-800 text-md font-medium">{totalAmount}</span>
-                          </div>
-                          <div className="flex justify-between p-4">
-                            <span className="text-black-600 text-md font-bold">Invoice #{invoiceNumber}</span>
-                          </div>
-                          <div className="flex justify-between w-[79%] ms-10">
-                            <span className="text-gray-600 text-md font-medium">No. of Buses</span>
-                            <span className="text-gray-800 text-md font-bold">{noOfBuses}</span>
-                          </div>
-                          <div className="flex justify-between w-[79%] ms-10">
-                            <span className="text-gray-600 text-md font-medium">Total Amount</span>
-                            <span className="text-gray-800 text-md font-bold">{subTotal}</span>
-                          </div>
-                          <div className="flex justify-between w-[79%] ms-10">
-                            <span className="text-gray-600 text-md font-medium">Total VAT</span>
-                            <span className="text-gray-800 text-md font-bold">{taxAmount}</span>
-                          </div>
-                          <div className="flex justify-between w-[80%] ms-9 py-4 border-t border-grey">
-                            <span className="text-black-600 text-md font-bold">Total Price</span>
-                            <span className="text-gray-800 text-md font-bold">{totalAmount}</span>
-                          </div>
+                    <div className="w-full rounded-xl border border-[#E7EAF3] bg-[#FAFBFD] shadow-sm">
+                      <h3 className="border-b border-[#EEF1F6] px-4 py-3 text-base font-bold text-[#141516]">
+                        Summary
+                      </h3>
+                      <div className="space-y-0 px-1 pb-2">
+                        <div className="flex justify-between px-4 py-3">
+                          <span className="text-sm font-bold text-[#141516]">Total</span>
+                          <span className="text-sm font-semibold text-[#333843]">{totalAmount}</span>
+                        </div>
+                        <div className="px-4 py-2">
+                          <span className="text-sm font-bold text-[#141516]">Invoice #{invoiceNumber}</span>
+                        </div>
+                        <div className="flex justify-between px-4 py-2">
+                          <span className="text-sm text-[#667085]">No. of Buses</span>
+                          <span className="text-sm font-semibold text-[#141516]">{noOfBuses}</span>
+                        </div>
+                        <div className="flex justify-between px-4 py-2">
+                          <span className="text-sm text-[#667085]">Total Amount</span>
+                          <span className="text-sm font-semibold text-[#141516]">{subTotal}</span>
+                        </div>
+                        <div className="flex justify-between px-4 py-2">
+                          <span className="text-sm text-[#667085]">Total VAT</span>
+                          <span className="text-sm font-semibold text-[#141516]">{taxAmount}</span>
+                        </div>
+                        <div className="mx-3 flex justify-between border-t border-[#EEF1F6] px-1 py-4">
+                          <span className="text-sm font-bold text-[#141516]">Total Price</span>
+                          <span className="text-sm font-bold text-[#141516]">{totalAmount}</span>
                         </div>
                       </div>
                     </div>
@@ -213,42 +325,42 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
                 </div>
               </div>
             </Box>
-            <Box className="mb-4 gap-7 flex flex-row">
-              <div className='bg-[#FAFAFA] rounded-lg shadow-md p-5 w-[16%] h-[25vh] flex flex-col'>
-                <Typography variant="h6" className='text-[#667085] font-normal'>Bill Date</Typography>
-                <Typography variant="body2" className='font-semibold'>{billDate}</Typography>
-                <Typography variant="body2" className='text-[#667085] font-semibold'>Delivery Date</Typography>
-                <Typography variant="body2" className='font-normal'>{deliveryDate}</Typography>
-                <Typography variant="body2" className='text-[#667085] font-semibold'>Terms of Payment</Typography>
-                <Typography variant="body2" className='font-normal'>{termsOfPayment}</Typography>
-                <Typography variant="body2" className='text-[#667085] font-semibold'>Payment Deadline</Typography>
-                <Typography variant="body2" className='font-semibold'>{dueDate}</Typography>
+            <Box className="mb-8 flex flex-col gap-6 lg:flex-row lg:gap-8">
+              <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-[#E7EAF3] bg-[#FAFAFA] p-5 lg:max-w-[300px] lg:flex-1">
+                <Typography variant="body2" className="!text-[12px] !font-medium !text-[#667085]">Bill Date</Typography>
+                <Typography variant="body1" className="!text-[15px] !font-semibold !text-[#141516]">{billDate}</Typography>
+                <Typography variant="body2" className="!mt-2 !text-[12px] !font-medium !text-[#667085]">Delivery Date</Typography>
+                <Typography variant="body1" className="!text-[15px] !text-[#141516]">{deliveryDate}</Typography>
+                <Typography variant="body2" className="!mt-2 !text-[12px] !font-medium !text-[#667085]">Terms of Payment</Typography>
+                <Typography variant="body1" className="!text-[15px] !text-[#141516]">{termsOfPayment}</Typography>
+                <Typography variant="body2" className="!mt-2 !text-[12px] !font-medium !text-[#667085]">Payment Deadline</Typography>
+                <Typography variant="body1" className="!text-[15px] !font-semibold !text-[#141516]">{dueDate}</Typography>
               </div>
-              <Box className="mb-4 m-3">
-                <Typography variant="h6" className='text-[#667085] text-[12px] font-normal'>Billing Address</Typography>
-                <Typography variant="h6" className='text-[#333843] text-[14px] font-semibold'>{billTo}</Typography>
-                <Typography variant="body2" className='text-[#667085] text-[14px] font-normal'>{terminalName}</Typography>
-                <Typography variant="body2" className='text-[#667085] text-[14px] font-normal'>{invoiceType} | {status}</Typography>
-                <Typography variant="body2" className='font-semibold text-[#667085] text-[14]'>Bill From: {billFrom}</Typography>
-                <Typography variant="body2" className='font-semibold text-[#667085] text-[14]'>GL Code: {glCode}{glCodeName ? ` - ${glCodeName}` : ''}</Typography>
-                <Typography variant="body2" className='text-[#667085] text-[12px]'>Note</Typography>
-                <Typography variant="body2" className='font-medium text-[#333843] text-[12px] break-words w-[500px]'>{notes}</Typography>
+              <Box className="min-w-0 flex-1 rounded-xl border border-[#E7EAF3] bg-[#FAFBFC] p-5 lg:p-6">
+                <Typography variant="body2" className="!text-[12px] !font-medium !text-[#667085]">Billing Address</Typography>
+                <Typography variant="h6" className="!mt-1 !text-[17px] !font-bold !text-[#141516]">{billTo}</Typography>
+                <Typography variant="body2" className="!mt-2 !text-[14px] !leading-relaxed !text-[#667085]">{terminalName}</Typography>
+                <Typography variant="body2" className="!mt-3 !text-[14px] !text-[#667085]">{invoiceType} · {status}</Typography>
+                <Typography variant="body2" className="!mt-4 !text-[14px] !font-semibold !text-[#445164]">Bill From: {billFrom}</Typography>
+                <Typography variant="body2" className="!mt-1 !text-[14px] !font-semibold !text-[#445164]">GL Code: {glCode}{glCodeName ? ` - ${glCodeName}` : ''}</Typography>
+                <Typography variant="body2" className="!mt-5 !text-[12px] !font-medium !text-[#667085]">Note</Typography>
+                <Typography variant="body2" className="!mt-1 !max-w-3xl !text-[14px] !leading-relaxed !text-[#333843]">{notes}</Typography>
               </Box>
             </Box>
-            <div className="overflow-x-auto">
-              <table className={`${schoolInvoice ? 'min-w-[70%]' : 'min-w-full'} mt-[100px]`}>
-                <thead className="bg-[#FAFAFA]">
+            <div className="overflow-x-auto rounded-xl border border-[#E7EAF3]">
+              <table className="min-w-full">
+                <thead className="bg-[#F4F5F7]">
                   <tr>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">NO.</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">Assignment</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">GL Code ID</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">Description</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">Vehicle</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">BUSES</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">UNIT PRICE</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">QUANTITY</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">TOTAL AMOUNT</th>
-                    <th className="px-6 py-3 border-b text-left text-[11px] font-medium text-[#667085]">STATUS</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">NO.</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Assignment</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">GL Code ID</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Description</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Vehicle</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Buses</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Unit Price</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Quantity</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Total Amount</th>
+                    <th className="whitespace-nowrap px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-[#667085]">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,18 +368,18 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
                     const rowStatus = pick(item.status, status);
                     const isApiLineItem = item.LineItemId || item.InvoiceId || item.assignmentName;
                     return (
-                      <tr key={item.LineItemId || index} className='bg-[tranparent]'>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{index + 1}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{pick(item.assignmentName, item.routeNumber, "-")}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{pick(item.GLCodeId, item.glCodeId, item.tripNumber, "-")}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{pick(item.ItemDescription, item.itemDescription, item.routeDescription, "-")}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{pick(item.VehicleName, item.vehicleName, item.NumberPlate, item.numberPlate, item.tripDescription, "-")}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{isApiLineItem ? noOfBuses : pick(item.buses, "-")}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{isApiLineItem ? formatCurrency(pick(item.UnitPrice, item.unitPrice, 0)) : pick(item.unitPrice, "-")}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{pick(item.Quantity, item.quantity, item.mileage, 0)}</td>
-                        <td className="px-6 py-4 border-b border-gray-300 text-sm font-medium text-gray-900">{isApiLineItem ? formatCurrency(pick(item.TotalAmount, item.totalAmount, 0)) : pick(item.totalAmount, "-")}</td>
-                        <td className="px-6 py-4 border-b border-gray-300">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusClassName(rowStatus)}`}>
+                      <tr key={item.LineItemId || index} className="bg-white hover:bg-[#FAFBFD]/80">
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm font-medium text-[#141516]">{index + 1}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm text-[#141516]">{pick(item.assignmentName, item.routeNumber, "-")}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm text-[#141516]">{pick(item.GLCodeId, item.glCodeId, item.tripNumber, "-")}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm text-[#141516]">{pick(item.ItemDescription, item.itemDescription, item.routeDescription, "-")}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm text-[#141516]">{pick(item.VehicleName, item.vehicleName, item.NumberPlate, item.numberPlate, item.tripDescription, "-")}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm text-[#141516]">{isApiLineItem ? noOfBuses : pick(item.buses, "-")}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm text-[#141516]">{isApiLineItem ? formatCurrency(pick(item.UnitPrice, item.unitPrice, 0)) : pick(item.unitPrice, "-")}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm text-[#141516]">{pick(item.Quantity, item.quantity, item.mileage, 0)}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5 text-sm font-semibold text-[#141516]">{isApiLineItem ? formatCurrency(pick(item.TotalAmount, item.totalAmount, 0)) : pick(item.totalAmount, "-")}</td>
+                        <td className="border-b border-[#EEF1F6] px-5 py-3.5">
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusClassName(rowStatus)}`}>
                             {rowStatus}
                           </span>
                         </td>
@@ -276,33 +388,13 @@ const InvoiceForm = ({ handleback, schoolInvoice, invoiceData, setEditInvoice, e
                   })}
                 </tbody>
               </table>
-              <div className="mt-4 flex flex-row w-[85%] justify-between h-[17vh]">
-                <div className="mt-4 flex flex-col">
-                  <p className="text-sm font-medium text-gray-700">Terms & Conditions</p>
-                  <p className="text-sm font-medium text-[#333843]">
-                    {notes}
-                  </p>
-                </div>
-                <div className='flex flex-col gap-4 w-[20%]'>
-                  <div className='flex flex-row justify-between w-[100%]'>
-                    <Typography variant="body2" className='font-normal text-[#667085]'>No. of Buses</Typography>
-                    <Typography variant="body2" className='font-normal text-[#000]'>{noOfBuses}</Typography>
-                  </div>
-                  <div className='flex flex-row justify-between w-[100%]'>
-                    <Typography variant="body2" className='font-normal text-[#667085]'>Total Amount</Typography>
-                    <Typography variant="body2" className='font-normal text-[#000]'>{subTotal}</Typography>
-                  </div>
-                  <div className='flex flex-row justify-between w-[100%]'>
-                    <Typography variant="body2" className='font-normal text-[#667085]'>Total VAT</Typography>
-                    <Typography variant="body2" className='font-normal text-[#000]'>{taxAmount}</Typography>
-                  </div>
-                  <div className='flex flex-row justify-between w-[100%]'>
-                    <Typography variant="body2" className='font-bold text-[#000]'>Total Price</Typography>
-                    <Typography variant="body2" className='font-bold text-[#000]'>{totalAmount}</Typography>
-                  </div>
+            </div>
+              <div className="mt-8 rounded-xl border border-[#E7EAF3] bg-[#FAFBFD] p-5 md:p-6">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#141516]">Terms &amp; Conditions</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#333843]">{notes}</p>
                 </div>
               </div>
-            </div>
           </div>
         </>
       )}

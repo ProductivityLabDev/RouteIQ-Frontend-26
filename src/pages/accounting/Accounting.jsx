@@ -8,13 +8,13 @@ import {
   schoolInvoices,
   terminalTab,
 } from "@/data/dummyData";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchGlCodes } from "@/redux/slices/payrollSlice";
 import { addExpense, fetchWalletSummary, fetchWalletBalance, fetchWalletTransactions } from "@/redux/slices/accountsPayableSlice";
-import { fetchInvoices, markInvoicePaid } from "@/redux/slices/accountsReceivableSlice";
-import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, createSchoolInvoice, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
-import { fetchTripInvoiceTerminals, fetchTripInvoices, createTripInvoice, batchTripInvoice, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
+import { fetchInvoices, fetchInvoiceDetail, markInvoicePaid } from "@/redux/slices/accountsReceivableSlice";
+import { fetchInvoiceTerminals, fetchSchoolsByTerminal, fetchSchoolInvoices, fetchSchoolInvoiceDetail, createSchoolInvoice, sendSchoolInvoice, deleteSchoolInvoice, exportSchoolInvoice, importSchoolInvoices } from "@/redux/slices/schoolInvoicesSlice";
+import { fetchTripInvoiceTerminals, fetchTripInvoices, fetchTripInvoiceDetail, createTripInvoice, batchTripInvoice, sendTripInvoice, deleteTripInvoice, exportTripInvoice, importTripInvoices } from "@/redux/slices/tripInvoicesSlice";
 import { fetchGenerateReport } from "@/redux/slices/reportsSlice";
 import {
   fetchTerminalSummary,
@@ -85,6 +85,7 @@ const Accounting = () => {
   const [schoolData, setSchoolData] = useState(false);
   const [selectedInstituteId, setSelectedInstituteId] = useState(null);
   const [selectedSchoolName, setSelectedSchoolName] = useState('');
+  const [selectedSchoolTerminalId, setSelectedSchoolTerminalId] = useState("");
   const [schoolInvoice, setSchoolInvoice] = useState(false);
   const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
   const [terminalInvoiceModalOpen, setTerminalInvoiceModalOpen] = useState(false);
@@ -102,6 +103,19 @@ const Accounting = () => {
   const [activeTripTerminalId, setActiveTripTerminalId] = useState("");
   const [tripExportFormat, setTripExportFormat] = useState("pdf");
   const [tripBatchNotes, setTripBatchNotes] = useState("");
+  const buildTripInvoiceDraft = (overrides = {}) => ({
+    terminalId: activeTripTerminalId || "",
+    glCodeId: "",
+    invoiceDate: new Date().toISOString().slice(0, 10),
+    dueDate: new Date().toISOString().slice(0, 10),
+    billFrom: "RouteIQ Inc",
+    billTo: "",
+    subTotal: "",
+    taxAmount: "",
+    notes: "",
+    lineItems: [{ id: 1, itemDescription: "", quantity: "", unitPrice: "", totalAmount: "", tripId: "", glCodeId: "" }],
+    ...overrides,
+  });
   const [tripInvoiceForm, setTripInvoiceForm] = useState({
     terminalId: "",
     glCodeId: "",
@@ -127,6 +141,8 @@ const Accounting = () => {
     limit: 20,
     offset: 0,
   });
+  const SCHOOL_INVOICE_PAGE_SIZE = 20;
+  const [schoolInvoicePage, setSchoolInvoicePage] = useState(1);
   const [terminalInvoiceForm, setTerminalInvoiceForm] = useState({
     terminalId: "",
     glCodeId: "",
@@ -160,7 +176,12 @@ const Accounting = () => {
 const dispatch = useDispatch();
   const { glCodes, loading, error } = useSelector((state) => state.payroll);
   const { walletSummary, walletBalance, walletTransactions, loading: apLoading, error: apError } = useSelector((state) => state.accountsPayable);
-  const { invoices, loading: arLoading, error: arError } = useSelector((state) => state.accountsReceivable);
+  const {
+    invoices,
+    loading: arLoading,
+    error: arError,
+    markPaidPendingById,
+  } = useSelector((state) => state.accountsReceivable);
   const { terminals, schools: siSchools, invoices: siInvoices, loading: siLoading } = useSelector((state) => state.schoolInvoices);
   const { terminals: tripTerminals, invoices: tripInvoices, loading: tiLoading } = useSelector((state) => state.tripInvoices);
   const { generateReport, loading: grLoading } = useSelector((state) => state.reports);
@@ -190,6 +211,13 @@ const dispatch = useDispatch();
     (isTerminal !== null && isTerminal !== false && termList[isTerminal]
       ? termList[isTerminal]
       : termList[0]);
+  const activeSchoolTerminal =
+    selectedTab === "School Invoices" && isOpen !== null && isOpen !== false && terminals[isOpen]
+      ? terminals[isOpen]
+      : null;
+  const activeSchoolTerminalId = activeSchoolTerminal
+    ? String(activeSchoolTerminal.TerminalId || activeSchoolTerminal.terminalId || activeSchoolTerminal.id || "")
+    : "";
   const activeTrackTerminalId = activeTrackTerminal ? String(activeTrackTerminal.id || activeTrackTerminal.terminalId || "") : "";
   const activeTrackTerminalName =
     activeTrackTerminal?.name || activeTrackTerminal?.terminalName || "Terminal 1";
@@ -274,11 +302,24 @@ const dispatch = useDispatch();
     }
   }, [dispatch, selectedTab]);
 
+  useLayoutEffect(() => {
+    setSchoolInvoicePage(1);
+  }, [selectedInstituteId]);
+
   useEffect(() => {
-    if (selectedInstituteId) {
-      dispatch(fetchSchoolInvoices({ instituteId: selectedInstituteId, limit: 20, offset: 0 }));
-    }
-  }, [dispatch, selectedInstituteId]);
+    if (!selectedInstituteId) return;
+    dispatch(
+      fetchSchoolInvoices({
+        instituteId: selectedInstituteId,
+        limit: SCHOOL_INVOICE_PAGE_SIZE,
+        offset: (schoolInvoicePage - 1) * SCHOOL_INVOICE_PAGE_SIZE,
+      })
+    );
+  }, [dispatch, selectedInstituteId, schoolInvoicePage]);
+
+  useEffect(() => {
+    setSelectedSchoolInvoiceIds([]);
+  }, [schoolInvoicePage, selectedInstituteId]);
 
   useEffect(() => {
     if (tripTerminals.length > 0 && !tripInvoiceForm.terminalId) {
@@ -287,6 +328,21 @@ const dispatch = useDispatch();
       setTripInvoiceForm((prev) => ({ ...prev, terminalId }));
     }
   }, [tripTerminals, tripInvoiceForm.terminalId]);
+
+  useEffect(() => {
+    if (!(createInvoice && schoolInvoice && schoolData)) return;
+    const terminalId = String(selectedSchoolTerminalId || activeSchoolTerminalId || "");
+    if (!terminalId) return;
+    if (String(tripInvoiceForm.terminalId || "") === terminalId) return;
+    setTripInvoiceForm((prev) => ({ ...prev, terminalId }));
+  }, [
+    createInvoice,
+    schoolInvoice,
+    schoolData,
+    selectedSchoolTerminalId,
+    activeSchoolTerminalId,
+    tripInvoiceForm.terminalId,
+  ]);
 
   useEffect(() => {
     if (selectedTab === 'Terminal') {
@@ -407,6 +463,7 @@ const dispatch = useDispatch();
       setSchoolData(false);
       setSelectedInstituteId(null);
       setSelectedSchoolName("");
+      setSelectedSchoolTerminalId("");
       setSelectedSchoolInvoiceIds([]);
       setIsOpen(null);
     }
@@ -485,10 +542,27 @@ const dispatch = useDispatch();
   };
   const handleSchoolBack = () => {
     setSchoolData(!schoolData);
+    setSelectedSchoolTerminalId("");
   };
   const handleInvoiceList = async (invoice = null) => {
     const invoiceId = invoice?.invoiceId || invoice?.InvoiceId || invoice?.id;
     let nextInvoice = invoice;
+    let isSchoolDetail = false;
+
+    if (selectedTab === "School Invoices" && schoolData && invoiceId) {
+      const result = await dispatch(fetchSchoolInvoiceDetail(invoiceId));
+      if (result.meta.requestStatus === "fulfilled") {
+        nextInvoice = result.payload;
+      }
+      isSchoolDetail = true;
+    }
+
+    if (selectedTab === "Trip invoices" && invoiceId) {
+      const result = await dispatch(fetchTripInvoiceDetail(invoiceId));
+      if (result.meta.requestStatus === "fulfilled") {
+        nextInvoice = result.payload;
+      }
+    }
 
     if (selectedTab === "Terminal" && selectedTerminalTab === "Terminal Invoices" && invoiceId) {
       const result = await dispatch(fetchTerminalInvoiceById(invoiceId));
@@ -498,25 +572,14 @@ const dispatch = useDispatch();
     }
 
     setSelectedInvoiceData(nextInvoice);
-    setSchoolInvoice(true);
+    setSchoolInvoice(isSchoolDetail);
     setInvoiceForm(true);
   };
   const handleTripInvoiceFormChange = (field, value) => {
     setTripInvoiceForm((prev) => ({ ...prev, [field]: value }));
   };
-  const resetTripInvoiceDraft = () => {
-    setTripInvoiceForm((prev) => ({
-      terminalId: prev.terminalId || activeTripTerminalId || "",
-      glCodeId: "",
-      invoiceDate: new Date().toISOString().slice(0, 10),
-      dueDate: new Date().toISOString().slice(0, 10),
-      billFrom: "RouteIQ Inc",
-      billTo: "",
-      subTotal: "",
-      taxAmount: "",
-      notes: "",
-      lineItems: [{ id: 1, itemDescription: "", quantity: "", unitPrice: "", totalAmount: "", tripId: "", glCodeId: "" }],
-    }));
+  const resetTripInvoiceDraft = (overrides = {}) => {
+    setTripInvoiceForm(buildTripInvoiceDraft(overrides));
     setTripBatchNotes("");
   };
   const handleBatchInvoice = () => {
@@ -595,20 +658,52 @@ const dispatch = useDispatch();
   const backCreateBatchInvoice = () => {
     setCreateBatchInvoice(false);
     setBatchInvoice(false);
+    resetTripInvoiceDraft();
   };
   const handleCreateInvoice = () => {
+    const isSchoolInvoiceContext = selectedTab === "School Invoices" && schoolData;
     setEditInvoice(true);
     setCreateInvoice(true);
     setCreateBatchInvoice(false);
     setBatchInvoice(false);
-    setTripInvoiceForm((prev) => ({
-      ...prev,
-      terminalId: activeTripTerminalId || prev.terminalId,
-    }));
+    setSchoolInvoice(isSchoolInvoiceContext);
+    resetTripInvoiceDraft(
+      isSchoolInvoiceContext
+        ? { billTo: selectedSchoolName || "", terminalId: selectedSchoolTerminalId || activeSchoolTerminalId || "" }
+        : { terminalId: activeTripTerminalId || "" }
+    );
   };
+  const handleViewAccountsReceivableInvoice = async (invoice) => {
+      if (!invoice) return;
+      const invoiceId = invoice?.invoiceId ?? invoice?.InvoiceId ?? invoice?.id;
+      let nextInvoice = {
+        ...invoice,
+        type: invoice.invoiceType ?? invoice.type,
+        invoiceTotal: invoice.totalAmount ?? invoice.invoiceTotal,
+        date: invoice.invoiceDate ?? invoice.date,
+        terminalName: invoice.instituteName ?? invoice.terminalName,
+      };
+
+      if (invoiceId) {
+        const result = await dispatch(fetchInvoiceDetail(invoiceId));
+        if (result.meta?.requestStatus === "fulfilled" && result.payload) {
+          nextInvoice = result.payload;
+        }
+      }
+
+      setSelectedInvoiceData(nextInvoice);
+      setSchoolInvoice(false);
+      setEditInvoice(false);
+      setCreateInvoice(false);
+      setCreateBatchInvoice(false);
+      setBatchInvoice(false);
+      setInvoiceForm(true);
+    };
   const handlebackCreateInvoice = () => {
     setCreateInvoice(false);
     setEditInvoice(false);
+    setSchoolInvoice(false);
+    resetTripInvoiceDraft();
   };
   const handleTripInvoiceSelection = (invoiceId, checked) => {
     setSelectedTripInvoiceIds((prev) =>
@@ -671,6 +766,7 @@ const dispatch = useDispatch();
     if (result.meta.requestStatus === "fulfilled") {
       setCreateInvoice(false);
       setEditInvoice(false);
+      setSchoolInvoice(false);
       resetTripInvoiceDraft();
       if (payload.terminalId) {
         dispatch(fetchTripInvoices({ terminalId: payload.terminalId, limit: 20, offset: 0 }));
@@ -717,9 +813,17 @@ const dispatch = useDispatch();
     if (result.meta.requestStatus === "fulfilled") {
       setCreateInvoice(false);
       setEditInvoice(false);
+      setSchoolInvoice(false);
       resetTripInvoiceDraft();
       if (selectedInstituteId) {
-        dispatch(fetchSchoolInvoices({ instituteId: selectedInstituteId, limit: 20, offset: 0 }));
+        setSchoolInvoicePage(1);
+        dispatch(
+          fetchSchoolInvoices({
+            instituteId: selectedInstituteId,
+            limit: SCHOOL_INVOICE_PAGE_SIZE,
+            offset: 0,
+          })
+        );
       }
     }
   };
@@ -736,6 +840,19 @@ const dispatch = useDispatch();
     if (selectedTripInvoiceIds.length === 0) return;
     await Promise.all(selectedTripInvoiceIds.map((invoiceId) => dispatch(sendTripInvoice(invoiceId))));
   };
+  const handleSendSchoolInvoices = async () => {
+    if (selectedSchoolInvoiceIds.length === 0 || !selectedInstituteId) return;
+    await Promise.all(
+      selectedSchoolInvoiceIds.map((invoiceId) => dispatch(sendSchoolInvoice(Number(invoiceId))))
+    );
+    dispatch(
+      fetchSchoolInvoices({
+        instituteId: selectedInstituteId,
+        limit: SCHOOL_INVOICE_PAGE_SIZE,
+        offset: (schoolInvoicePage - 1) * SCHOOL_INVOICE_PAGE_SIZE,
+      })
+    );
+  };
   const toggleExpand = (name) => {
     if (expandedVendor === name) {
       setExpandedVendor(null);
@@ -743,6 +860,25 @@ const dispatch = useDispatch();
       setExpandedVendor(name);
     }
   };
+
+  const schoolInvoiceRows = Array.isArray(siInvoices?.data) ? siInvoices.data : [];
+  const schoolInvoiceTotalRaw = siInvoices?.total;
+  const schoolInvoiceTotal =
+    typeof schoolInvoiceTotalRaw === "number" && !Number.isNaN(schoolInvoiceTotalRaw)
+      ? schoolInvoiceTotalRaw
+      : null;
+  const schoolInvoiceRangeStart =
+    schoolInvoiceRows.length === 0 ? 0 : (schoolInvoicePage - 1) * SCHOOL_INVOICE_PAGE_SIZE + 1;
+  const schoolInvoiceRangeEnd =
+    schoolInvoiceRows.length === 0
+      ? 0
+      : (schoolInvoicePage - 1) * SCHOOL_INVOICE_PAGE_SIZE + schoolInvoiceRows.length;
+  const schoolInvoiceCanPrev = schoolInvoicePage > 1;
+  const schoolInvoiceCanNext =
+    schoolInvoiceTotal != null
+      ? schoolInvoicePage * SCHOOL_INVOICE_PAGE_SIZE < schoolInvoiceTotal
+      : schoolInvoiceRows.length === SCHOOL_INVOICE_PAGE_SIZE;
+
   return (
     <MainLayout>
       <section className="w-full h-full mt-8">
@@ -809,7 +945,10 @@ const dispatch = useDispatch();
             </div>
             <EditInvoiceForm
               batchInvoice={batchInvoice}
-              terminals={tripTerminals}
+              schoolInvoice={schoolInvoice}
+              selectedSchoolName={selectedSchoolName}
+              terminals={schoolInvoice ? terminals : tripTerminals}
+              glCodes={glCodes}
               selectedInvoiceIds={selectedTripInvoiceIds}
               batchNotes={tripBatchNotes}
               onBatchNotesChange={setTripBatchNotes}
@@ -826,6 +965,9 @@ const dispatch = useDispatch();
             editInvoice={editInvoice}
             handleBatchInvoice={handleBatchInvoice}
             batchInvoice={batchInvoice}
+            terminals={schoolInvoice ? terminals : tripTerminals}
+            glCodes={glCodes}
+            selectedSchoolName={selectedSchoolName}
           />
         ) : (
           <>
@@ -869,8 +1011,10 @@ const dispatch = useDispatch();
                       className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
                       variant="filled"
                       size="lg"
+                      onClick={handleSendSchoolInvoices}
+                      disabled={siLoading.send || selectedSchoolInvoiceIds.length === 0}
                     >
-                      Send
+                      {siLoading.send ? "Sending..." : "Send"}
                     </Button>
                     <Button
                       className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center"
@@ -974,9 +1118,9 @@ const dispatch = useDispatch();
                                 </div>
                             } */}
             {selectedTab === "School Invoices" && schoolData ? (
-              <div className="w-full p-4 bg-white h-[66vh] rounded-xl">
-                <div className="bg-white shadow-md rounded-xl w-full h-[45vh] overflow-hidden border border-[#D9D9D9]">
-                  <div className="w-full overflow-x-auto">
+              <div className="w-full p-4 bg-white rounded-xl">
+                <div className="flex w-full flex-col rounded-xl border border-[#D9D9D9] bg-white shadow-md">
+                  <div className="max-h-[min(55vh,720px)] w-full overflow-auto">
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="bg-gray-100">
@@ -1076,6 +1220,38 @@ const dispatch = useDispatch();
                       </tbody>
                     </table>
                   </div>
+                  <div className="flex flex-col gap-3 border-t border-[#D9D9D9] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <Typography className="text-sm font-medium text-[#202224]/70">
+                      {schoolInvoiceRows.length === 0 && !siLoading.invoices
+                        ? "No invoices"
+                        : schoolInvoiceTotal != null
+                          ? `Showing ${schoolInvoiceRangeStart}–${schoolInvoiceRangeEnd} of ${schoolInvoiceTotal}`
+                          : `Showing ${schoolInvoiceRangeStart}–${schoolInvoiceRangeEnd}`}
+                    </Typography>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        className="border-[#D9D9D9] text-[#141516] capitalize"
+                        disabled={!schoolInvoiceCanPrev || siLoading.invoices}
+                        onClick={() => setSchoolInvoicePage((p) => Math.max(1, p - 1))}
+                      >
+                        Previous
+                      </Button>
+                      <span className="min-w-[72px] text-center text-sm font-semibold text-[#141516]">
+                        Page {schoolInvoicePage}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outlined"
+                        className="border-[#D9D9D9] text-[#141516] capitalize"
+                        disabled={!schoolInvoiceCanNext || siLoading.invoices}
+                        onClick={() => setSchoolInvoicePage((p) => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1151,14 +1327,16 @@ const dispatch = useDispatch();
                         </div>
                       </div>
                       {isOpen === index && (
-                        <SchoolInvoiceList
-                          handleSchoolBack={handleSchoolBack}
-                          setSchoolData={setSchoolData}
-                          setSelectedInstituteId={setSelectedInstituteId}
-                          setSelectedSchoolName={setSelectedSchoolName}
-                          schools={siSchools?.data || []}
-                          loadingSchools={siLoading.schools}
-                        />
+                          <SchoolInvoiceList
+                            handleSchoolBack={handleSchoolBack}
+                            setSchoolData={setSchoolData}
+                            setSelectedInstituteId={setSelectedInstituteId}
+                            setSelectedSchoolName={setSelectedSchoolName}
+                            setSelectedSchoolTerminalId={setSelectedSchoolTerminalId}
+                            terminalId={terminal.TerminalId || terminal.terminalId || terminal.id}
+                            schools={siSchools?.data || []}
+                            loadingSchools={siLoading.schools}
+                          />
                       )}
                     </div>
                   ))}
@@ -1994,18 +2172,26 @@ const dispatch = useDispatch();
                               <td className="px-4 py-4 text-center">
                                 <div className="flex items-center justify-center gap-2">
                                   <button
+                                    type="button"
                                     className="bg-[#C01824] text-white px-3 py-1 rounded text-xs font-medium"
-                                    onClick={handleCreateInvoice}
+                                    onClick={() => handleViewAccountsReceivableInvoice(invoice)}
                                   >
-                                    Create Invoice
+                                    View Invoice
                                   </button>
                                   {invoice.status !== 'Paid' ? (
                                     <button
-                                      className="bg-green-600 text-white px-3 py-1 rounded text-xs font-medium disabled:opacity-60"
-                                      onClick={() => dispatch(markInvoicePaid(invoice.invoiceId))}
-                                      disabled={arLoading.markPaid}
+                                      type="button"
+                                      className="bg-green-600 text-white px-3 py-1 rounded text-xs font-medium disabled:opacity-60 min-w-[88px]"
+                                      onClick={() =>
+                                        dispatch(markInvoicePaid(invoice.invoiceId ?? invoice.id))
+                                      }
+                                      disabled={
+                                        !!markPaidPendingById[String(invoice.invoiceId ?? invoice.id)]
+                                      }
                                     >
-                                      Mark Paid
+                                      {markPaidPendingById[String(invoice.invoiceId ?? invoice.id)]
+                                        ? '…'
+                                        : 'Mark Paid'}
                                     </button>
                                   ) : (
                                     <span className="text-[#0BA071] font-medium text-xs">✓ Paid</span>

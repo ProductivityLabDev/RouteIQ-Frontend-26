@@ -3,12 +3,32 @@ import { schoolsNames } from '@/data/dummyData';
 import React, { useState } from 'react';
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa6";
 
-export default function SchoolInvoiceList({ handleSchoolBack, setSchoolData, setSelectedInstituteId, setSelectedSchoolName, schools = [], loadingSchools = false }) {
+export default function SchoolInvoiceList({
+  handleSchoolBack,
+  setSchoolData,
+  setSelectedInstituteId,
+  setSelectedSchoolName,
+  setSelectedSchoolTerminalId,
+  terminalId,
+  schools = [],
+  loadingSchools = false,
+}) {
   const [schoolNameTable, setSchoolNameTable] = useState(false);
 
   const handleSchoolClick = (school) => {
     if (setSelectedInstituteId) setSelectedInstituteId(school.instituteId);
     if (setSelectedSchoolName) setSelectedSchoolName(school.instituteName);
+    if (setSelectedSchoolTerminalId) {
+      setSelectedSchoolTerminalId(
+        String(
+          school.TerminalId ||
+          school.terminalId ||
+          school.terminalID ||
+          terminalId ||
+          ""
+        )
+      );
+    }
     setSchoolData(true);
   };
 

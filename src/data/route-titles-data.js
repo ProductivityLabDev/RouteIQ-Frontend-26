@@ -31,6 +31,7 @@ export const routeTitles = {
   '/RouteSchedule': 'Route IQ - RouteSchedule',
   '/BillingInvoice': 'Route IQ - BillingInvoice',
   '/GlCodes': 'Route IQ - GlCodes',
+  '/accounting': 'Route IQ - Accounting',
   '/feedback': 'Route IQ - Feedback',
   "/EmployeeDashboard": "Login Employee",
   "/EmployeeDashboard/profileInformation": "Employee Profile Information",

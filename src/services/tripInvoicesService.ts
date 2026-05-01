@@ -31,6 +31,13 @@ export const tripInvoicesService = {
     };
   },
 
+  getInvoiceDetail: async (id: number | string) => {
+    const response = await apiClient.get("/invoices", {
+      params: { id },
+    });
+    return { ok: true, data: response.data?.data };
+  },
+
   createInvoice: async (data: any) => {
     const response = await apiClient.post("/trip-invoices", data);
     return { ok: true, data: response.data?.data };

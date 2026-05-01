@@ -399,6 +399,19 @@ export const payrollService = {
     const params: Record<string, any> = { limit, offset };
     if (search) params.search = search;
     const response = await apiClient.get("/gl-codes/history", { params });
-    return { ok: true, data: response.data?.data };
+    const payload = response.data?.data ?? response.data ?? {};
+    const history = Array.isArray(payload)
+      ? payload
+      : payload.history ?? payload.data ?? payload.items ?? payload.rows ?? [];
+    const total = Number(payload.total ?? payload.count ?? history.length ?? 0);
+    return {
+      ok: true,
+      data: {
+        total,
+        history: Array.isArray(history) ? history : [],
+        limit: Number(payload.limit ?? limit),
+        offset: Number(payload.offset ?? offset),
+      },
+    };
   },
 };

@@ -37,6 +37,18 @@ export const createTripInvoice = createAsyncThunk(
   }
 );
 
+export const fetchTripInvoiceDetail = createAsyncThunk(
+  "tripInvoices/fetchInvoiceDetail",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await tripInvoicesService.getInvoiceDetail(id);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch invoice detail");
+    }
+  }
+);
+
 export const sendTripInvoice = createAsyncThunk(
   "tripInvoices/sendInvoice",
   async (id, { rejectWithValue }) => {

@@ -49,6 +49,18 @@ export const createSchoolInvoice = createAsyncThunk(
   }
 );
 
+export const fetchSchoolInvoiceDetail = createAsyncThunk(
+  "schoolInvoices/fetchSchoolInvoiceDetail",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await schoolInvoicesService.getInvoiceDetail(id);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch invoice detail");
+    }
+  }
+);
+
 export const batchSchoolInvoice = createAsyncThunk(
   "schoolInvoices/batchSchoolInvoice",
   async (data, { rejectWithValue }) => {

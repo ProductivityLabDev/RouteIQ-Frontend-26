@@ -44,7 +44,7 @@ export const accountsReceivableService = {
   },
 
   getInvoiceDetail: async (id: number): Promise<ApiResponse<Invoice>> => {
-    const response = await apiClient.get(`/accounts-receivable/${id}`);
+    const response = await apiClient.get("/invoices", { params: { id } });
     return { ok: true, data: response.data?.data };
   },
 
