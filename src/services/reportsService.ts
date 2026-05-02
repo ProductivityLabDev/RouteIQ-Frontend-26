@@ -2,6 +2,8 @@ import { apiClient } from "@/configs/api";
 
 export const reportsService = {
   getGenerateReport: async (params?: {
+    category?: "Employees" | "SchoolInvoices" | "TripInvoices" | "AccountsReceivable" | "AccountsPayable" | "GLCodes";
+    dataType?: "Table";
     year?: number;
     month?: number;
     search?: string;

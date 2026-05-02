@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   accountingTab,
-  generateReportEmployeesData,
   glCodesTab,
   InvoicesData,
   payementTablesData,
@@ -163,15 +162,23 @@ const Accounting = () => {
   // Generate Report filters
   const [grSearch, setGrSearch] = useState('');
   const [grSortBy, setGrSortBy] = useState('name');
+  const [grDataType, setGrDataType] = useState('Table');
+  const [grCategory, setGrCategory] = useState('Employees');
   const [grYear, setGrYear] = useState(new Date().getFullYear());
   const [grMonth, setGrMonth] = useState(new Date().getMonth() + 1);
   const [grSortOpen, setGrSortOpen] = useState(false);
+  const [grDataTypeOpen, setGrDataTypeOpen] = useState(false);
+  const [grCategoryOpen, setGrCategoryOpen] = useState(false);
   const [grYearOpen, setGrYearOpen] = useState(false);
   const [grMonthOpen, setGrMonthOpen] = useState(false);
 
   const grMonthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const grYearOptions = [2022,2023,2024,2025,2026,2027];
-  const grSortOptions = [{ label: 'Name', value: 'name' }, { label: 'Invoice Total', value: 'invoiceTotal' }, { label: 'Work Hours', value: 'workHours' }];
+  const grSortLabelMap = {
+    name: 'Name',
+    invoiceTotal: 'Invoice Total',
+    workHours: 'Work Hours',
+  };
 
 const dispatch = useDispatch();
   const { glCodes, loading, error } = useSelector((state) => state.payroll);
@@ -193,6 +200,49 @@ const dispatch = useDispatch();
     loading: termLoading,
     error: termError,
   } = useSelector((state) => state.terminalTab);
+  const generateReportSupported = generateReport?.supported || {};
+  const grSortOptions = (generateReportSupported.sortBy || ['name', 'invoiceTotal', 'workHours']).map((value) => ({
+    label: grSortLabelMap[value] || value,
+    value,
+  }));
+  const grCategoryOptions = generateReportSupported.categories || [
+    'Employees',
+    'SchoolInvoices',
+    'TripInvoices',
+    'AccountsReceivable',
+    'AccountsPayable',
+    'GLCodes',
+  ];
+  const grDataTypeOptions = generateReportSupported.dataTypes || ['Table'];
+  const generateReportColumns = Array.isArray(generateReport?.columns)
+    ? generateReport.columns
+    : Array.isArray(generateReport?.items) && generateReport.items.length > 0
+      ? Object.keys(generateReport.items[0]).map((key) => ({
+          key,
+          label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase()).trim(),
+        }))
+      : [];
+  const generateReportItems = Array.isArray(generateReport?.items) ? generateReport.items : [];
+  const formatGenerateReportValue = (column, value) => {
+    if (value === null || value === undefined || value === '') return '--';
+    const key = String(column?.key || '').toLowerCase();
+    const label = String(column?.label || '').toLowerCase();
+    if ((key.includes('date') || label.includes('date')) && !Number.isNaN(new Date(value).getTime())) {
+      return format(new Date(value), 'M/d/yyyy');
+    }
+    if (
+      (key.includes('amount') ||
+        key.includes('total') ||
+        key.includes('revenue') ||
+        label.includes('amount') ||
+        label.includes('total')) &&
+      typeof value === 'number'
+    ) {
+      return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    if (typeof value === 'number') return Number(value).toLocaleString('en-US');
+    return String(value);
+  };
   const filteredGlCodes = glCodes.filter((item) => {
     const search = glCodeSearch.trim().toLowerCase();
     if (!search) return true;
@@ -398,9 +448,18 @@ const dispatch = useDispatch();
 
   useEffect(() => {
     if (selectedTab === 'Generate Report') {
-      dispatch(fetchGenerateReport({ year: grYear, month: grMonth, search: grSearch || undefined, sortBy: grSortBy, limit: 20, offset: 0 }));
+      dispatch(fetchGenerateReport({
+        category: grCategory,
+        dataType: grDataType,
+        year: grYear,
+        month: grMonth,
+        search: grSearch || undefined,
+        sortBy: grSortBy,
+        limit: 20,
+        offset: 0,
+      }));
     }
-  }, [dispatch, selectedTab, grYear, grMonth, grSearch, grSortBy]);
+  }, [dispatch, selectedTab, grCategory, grDataType, grYear, grMonth, grSearch, grSortBy]);
 
   const importInputRef = React.useRef(null);
   const handleImportFile = (e) => {
@@ -2227,25 +2286,52 @@ const dispatch = useDispatch();
                     />
                   </div>
 
-                  {/* Data Type (static) */}
-                  <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
-                    <span className="text-gray-500 text-sm mr-1">Data Type : </span>
-                    <span className="font-medium">Table</span>
-                    <FaChevronDown className="ml-auto text-gray-500" />
+                  {/* Data Type */}
+                  <div className="relative min-w-[220px]">
+                    <button
+                      onClick={() => {
+                        setGrDataTypeOpen((p) => !p);
+                        setGrSortOpen(false);
+                        setGrYearOpen(false);
+                        setGrMonthOpen(false);
+                        setGrCategoryOpen(false);
+                      }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center gap-2 px-4 py-2 w-full min-w-[220px]"
+                    >
+                      <span className="text-gray-500 text-sm shrink-0">Data Type :</span>
+                      <span className="font-medium truncate">{grDataType}</span>
+                      <FaChevronDown className="ml-auto shrink-0 text-gray-500" />
+                    </button>
+                    {grDataTypeOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-full min-w-[220px] bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        {grDataTypeOptions.map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => {
+                              setGrDataType(type);
+                              setGrDataTypeOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grDataType === type ? 'font-bold text-[#C01824]' : ''}`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Sort By */}
-                  <div className="relative">
+                  <div className="relative min-w-[220px]">
                     <button
-                      onClick={() => { setGrSortOpen((p) => !p); setGrYearOpen(false); setGrMonthOpen(false); }}
-                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52"
+                      onClick={() => { setGrSortOpen((p) => !p); setGrYearOpen(false); setGrMonthOpen(false); setGrDataTypeOpen(false); setGrCategoryOpen(false); }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center gap-2 px-4 py-2 w-full min-w-[220px]"
                     >
-                      <span className="text-gray-500 text-sm mr-1">Sort by : </span>
-                      <span className="font-medium">{grSortOptions.find(o => o.value === grSortBy)?.label}</span>
-                      <FaChevronDown className="ml-auto text-gray-500" />
+                      <span className="text-gray-500 text-sm shrink-0">Sort by :</span>
+                      <span className="font-medium truncate">{grSortOptions.find(o => o.value === grSortBy)?.label || grSortBy}</span>
+                      <FaChevronDown className="ml-auto shrink-0 text-gray-500" />
                     </button>
                     {grSortOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                      <div className="absolute top-full left-0 mt-1 w-full min-w-[220px] bg-white border border-gray-200 rounded-md shadow-lg z-20">
                         {grSortOptions.map((opt) => (
                           <button key={opt.value} onClick={() => { setGrSortBy(opt.value); setGrSortOpen(false); }}
                             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grSortBy === opt.value ? 'font-bold text-[#C01824]' : ''}`}>
@@ -2257,17 +2343,17 @@ const dispatch = useDispatch();
                   </div>
 
                   {/* Year */}
-                  <div className="relative">
+                  <div className="relative min-w-[220px]">
                     <button
-                      onClick={() => { setGrYearOpen((p) => !p); setGrSortOpen(false); setGrMonthOpen(false); }}
-                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52"
+                      onClick={() => { setGrYearOpen((p) => !p); setGrSortOpen(false); setGrMonthOpen(false); setGrDataTypeOpen(false); setGrCategoryOpen(false); }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center gap-2 px-4 py-2 w-full min-w-[220px]"
                     >
-                      <span className="text-gray-500 text-sm mr-1">Year : </span>
-                      <span className="font-medium">{grYear}</span>
-                      <FaChevronDown className="ml-auto text-gray-500" />
+                      <span className="text-gray-500 text-sm shrink-0">Year :</span>
+                      <span className="font-medium truncate">{grYear}</span>
+                      <FaChevronDown className="ml-auto shrink-0 text-gray-500" />
                     </button>
                     {grYearOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                      <div className="absolute top-full left-0 mt-1 w-full min-w-[220px] bg-white border border-gray-200 rounded-md shadow-lg z-20">
                         {grYearOptions.map((y) => (
                           <button key={y} onClick={() => { setGrYear(y); setGrYearOpen(false); }}
                             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grYear === y ? 'font-bold text-[#C01824]' : ''}`}>
@@ -2279,17 +2365,17 @@ const dispatch = useDispatch();
                   </div>
 
                   {/* Month */}
-                  <div className="relative">
+                  <div className="relative min-w-[220px]">
                     <button
-                      onClick={() => { setGrMonthOpen((p) => !p); setGrSortOpen(false); setGrYearOpen(false); }}
-                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52"
+                      onClick={() => { setGrMonthOpen((p) => !p); setGrSortOpen(false); setGrYearOpen(false); setGrDataTypeOpen(false); setGrCategoryOpen(false); }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center gap-2 px-4 py-2 w-full min-w-[220px]"
                     >
-                      <span className="text-gray-500 text-sm mr-1">Month : </span>
-                      <span className="font-medium">{grMonthNames[grMonth - 1]}</span>
-                      <FaChevronDown className="ml-auto text-gray-500" />
+                      <span className="text-gray-500 text-sm shrink-0">Month :</span>
+                      <span className="font-medium truncate">{grMonthNames[grMonth - 1]}</span>
+                      <FaChevronDown className="ml-auto shrink-0 text-gray-500" />
                     </button>
                     {grMonthOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-20 max-h-56 overflow-y-auto">
+                      <div className="absolute top-full left-0 mt-1 w-full min-w-[220px] bg-white border border-gray-200 rounded-md shadow-lg z-20 max-h-56 overflow-y-auto">
                         {grMonthNames.map((m, i) => (
                           <button key={m} onClick={() => { setGrMonth(i + 1); setGrMonthOpen(false); }}
                             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grMonth === i + 1 ? 'font-bold text-[#C01824]' : ''}`}>
@@ -2300,61 +2386,81 @@ const dispatch = useDispatch();
                     )}
                   </div>
 
-                  {/* Category (static) */}
-                  <div className="relative bg-white rounded-md border border-[#D9D9D9] flex items-center px-4 py-2 w-52">
-                    <span className="text-gray-500 text-sm mr-1">Category : </span>
-                    <span className="font-medium">Employees</span>
-                    <FaChevronDown className="ml-auto text-gray-500" />
+                  {/* Category */}
+                  <div className="relative min-w-[240px]">
+                    <button
+                      onClick={() => {
+                        setGrCategoryOpen((p) => !p);
+                        setGrSortOpen(false);
+                        setGrYearOpen(false);
+                        setGrMonthOpen(false);
+                        setGrDataTypeOpen(false);
+                      }}
+                      className="bg-white rounded-md border border-[#D9D9D9] flex items-center gap-2 px-4 py-2 w-full min-w-[240px]"
+                    >
+                      <span className="text-gray-500 text-sm shrink-0">Category :</span>
+                      <span className="font-medium truncate">{grCategory}</span>
+                      <FaChevronDown className="ml-auto shrink-0 text-gray-500" />
+                    </button>
+                    {grCategoryOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-full min-w-[240px] bg-white border border-gray-200 rounded-md shadow-lg z-20 max-h-56 overflow-y-auto">
+                        {grCategoryOptions.map((category) => (
+                          <button
+                            key={category}
+                            onClick={() => {
+                              setGrCategory(category);
+                              setGrCategoryOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${grCategory === category ? 'font-bold text-[#C01824]' : ''}`}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Data Table */}
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="grid grid-cols-8 bg-[#EEEEEE] text-gray-800 font-medium text-sm">
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Name</div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">GL Code</div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Working Days</div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Work Hours</div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Present Days</div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Absent Days</div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Leaves</div>
-                    <div className="py-4 px-6 text-[#141516] text-[14px] font-bold">Invoice Total</div>
-                  </div>
+                <div className="bg-white rounded-lg shadow overflow-auto">
+                  {generateReportColumns.length > 0 && (
+                    <div
+                      className="grid bg-[#EEEEEE] text-gray-800 font-medium text-sm"
+                      style={{ gridTemplateColumns: `repeat(${generateReportColumns.length}, minmax(160px, 1fr))` }}
+                    >
+                      {generateReportColumns.map((column) => (
+                        <div key={column.key} className="py-4 px-6 text-[#141516] text-[14px] font-bold">
+                          {column.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {grLoading.generateReport && (
                     <div className="py-8 text-center text-gray-400">Loading...</div>
                   )}
-                  {!grLoading.generateReport && (generateReport.items || []).length === 0 && (
+                  {!grLoading.generateReport && generateReportItems.length === 0 && (
                     <div className="py-8 text-center text-gray-400">No records found</div>
                   )}
 
-                  {(generateReport.items || []).map((employee) => (
-                    <div key={employee.employeeId} className="grid grid-cols-8 border-t border-[#D9D9D9]">
-                      <div className="py-4 px-6 flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-gray-200 mr-3 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
-                          {employee.name?.charAt(0) || '?'}
+                  {generateReportItems.map((item, index) => (
+                    <div
+                      key={item.id || item.employeeId || item.invoiceId || item.arId || item.apId || item.glCodeId || `${grCategory}-${index}`}
+                      className="grid border-t border-[#D9D9D9]"
+                      style={{ gridTemplateColumns: `repeat(${Math.max(generateReportColumns.length, 1)}, minmax(160px, 1fr))` }}
+                    >
+                      {generateReportColumns.map((column) => (
+                        <div key={column.key} className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
+                          {formatGenerateReportValue(column, item?.[column.key])}
                         </div>
-                        <span className="text-[#141516] text-[14px] font-semibold">{employee.name}</span>
-                      </div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        {employee.glCode}
-                        <div className="text-xs text-gray-400">{employee.glCodeName}</div>
-                      </div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.workingDays}</div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.workHours}</div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.presentDays}</div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.absentDays}</div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">{employee.leaves}</div>
-                      <div className="py-4 px-6 text-[#141516] text-[14px] font-semibold">
-                        ${Number(employee.invoiceTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </div>
+                      ))}
                     </div>
                   ))}
                 </div>
 
-                {generateReport.total > 0 && (
+                {Number(generateReport?.total || 0) > 0 && (
                   <div className="mt-3 text-sm text-gray-500 text-right">
-                    Total: {generateReport.total} record{generateReport.total !== 1 ? 's' : ''}
+                    Total: {Number(generateReport.total)} record{Number(generateReport.total) !== 1 ? 's' : ''}
                   </div>
                 )}
               </div>
