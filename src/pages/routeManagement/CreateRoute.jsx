@@ -12,10 +12,10 @@ import {
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { FaArrowLeft } from "react-icons/fa6";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { createRoute } from "@/redux/slices/routesSlice";
+import { createRoute, fetchRouteManagementTerminals } from "@/redux/slices/routesSlice";
 import { fetchSchoolManagementSummary } from "@/redux/slices/schoolSlice";
 import { fetchStudentsByInstitute } from "@/redux/slices/studentSlice";
-import { fetchBuses, fetchDrivers } from "@/redux/slices/busesSlice";
+import { fetchDriverBuses, fetchDrivers } from "@/redux/slices/busesSlice";
 import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
 import { routeService } from "@/services/routeService";
 import { toast } from "react-hot-toast";
@@ -413,15 +413,33 @@ const StudentSeatSelection = ({
         setSelectedBusName(""); // clear bus name so user picks from driver's buses only
     };
 
+    const getBusId = (bus) =>
+        bus?.BusId ??
+        bus?.id ??
+        bus?.Id ??
+        bus?.VehicleId ??
+        bus?.vehicleId ??
+        bus?.VehicleID;
+
+    const getBusLabel = (bus, fallbackId) =>
+        bus?.VehicleName ||
+        bus?.vehicleName ||
+        bus?.name ||
+        bus?.NumberPlate ||
+        bus?.numberPlate ||
+        bus?.BusNumber ||
+        bus?.busNumber ||
+        `Bus ${fallbackId}`;
+
     const handleSelectBus = (bus) => {
-        const id = bus.BusId || bus.id || bus.VehicleId || bus.VehicleID;
+        const id = getBusId(bus);
         
         if (id) {
             setRouteForm((prev) => ({
                 ...prev,
                 busId: parseInt(id, 10),
             }));
-            setSelectedBusName(bus.VehicleName || bus.name || `Bus ${id}`);
+            setSelectedBusName(getBusLabel(bus, id));
         } else {
             alert("This bus record is missing an ID. Please check Vehicle Management.");
         }
@@ -564,12 +582,18 @@ const StudentSeatSelection = ({
                     } else {
                         setSmartMatching(prev => ({ ...prev, loading: false }));
                         const totalSearched = coordinateResponse.data?.totalSearched || response.data?.totalSearched || 0;
-                        toast.error(`No students found. Searched ${totalSearched} students. Check: 1) Address format matches exactly 2) Student belongs to selected school 3) Student has address in database.`);
+                        const searchedAddress = normalizedPickup || normalizedDropoff || "selected route address";
+                        toast.error(
+                            `No students found. Searched ${totalSearched} students. Check: 1) Address "${searchedAddress}" matches student records 2) Student belongs to selected school 3) Student has address in database.`
+                        );
                     }
                 } else {
                     setSmartMatching(prev => ({ ...prev, loading: false }));
                     const totalSearched = response.data?.totalSearched || 0;
-                    toast.error(`No students found. Searched ${totalSearched} students. Check: 1) Address "N Knox Avenue street 42" matches exactly in database 2) Student belongs to selected school.`);
+                    const searchedAddress = normalizedPickup || normalizedDropoff || "selected route address";
+                    toast.error(
+                        `No students found. Searched ${totalSearched} students. Check: 1) Address "${searchedAddress}" matches student records 2) Student belongs to selected school.`
+                    );
                 }
             }
         } catch (error) {
@@ -616,19 +640,14 @@ const StudentSeatSelection = ({
             if (editRoute && editingRouteId) {
                 const payload = {
                     routeName: routeForm.routeName,
-                    routeNumber: routeForm.routeNumber,
-                    startLocation: hiddenRouteFields.pickup,
-                    endLocation: hiddenRouteFields.dropoff,
-                    driverId: Number(routeForm.driverId),
-                    vehicleId: Number(routeForm.busId),
-                    date: hiddenRouteFields.routeDate,
-                    time: hiddenRouteFields.routeTime,
+                    studentIds: selectedStudents.map((id) => Number(id)).filter((id) => Number.isFinite(id)),
                 };
 
                 const response = await routeService.updateRoute(Number(editingRouteId), payload);
                 if (response?.ok !== false) {
+                    await dispatch(fetchRouteManagementTerminals());
                     toast.success("Route updated successfully!");
-                    if (onBack) onBack();
+                    if (onBack) onBack(true);
                 } else {
                     toast.error(response?.message || "Failed to update route");
                 }
@@ -652,9 +671,10 @@ const StudentSeatSelection = ({
 
                 const result = await dispatch(createRoute(payload));
                 if (createRoute.fulfilled.match(result)) {
+                    await dispatch(fetchRouteManagementTerminals());
                     toast.success("Route created successfully!");
                     setSelectedStudents([]);
-                    if (onBack) onBack();
+                    if (onBack) onBack(true);
                 } else {
                     toast.error(result.payload || "Failed to create route");
                 }
@@ -667,24 +687,40 @@ const StudentSeatSelection = ({
         }
     };
 
-    // Buses filtered by selected driver (sirf us driver ki buses jo assign hain)
     const busesForSelectedDriver = React.useMemo(() => {
-        if (!realBuses || realBuses.length === 0) return [];
-        const driverId = routeForm.driverId ? Number(routeForm.driverId) : null;
-        if (!driverId) return [];
-        return realBuses.filter((bus) => {
-            const busDriverId = bus.DriverId ?? bus.driverId ?? bus.AssignedDriverId ?? bus.assignedDriverId;
-            if (busDriverId == null) return false;
-            return Number(busDriverId) === driverId;
-        });
-    }, [realBuses, routeForm.driverId]);
+        if (!Array.isArray(realBuses)) return [];
+        return realBuses
+            .map((bus) => {
+                const id = getBusId(bus);
+                return id
+                    ? {
+                        ...bus,
+                        __id: Number(id),
+                        __label: getBusLabel(bus, id),
+                    }
+                    : null;
+            })
+            .filter(Boolean);
+    }, [realBuses]);
 
     // Load schools, drivers and buses for dropdown on mount
     useEffect(() => {
         dispatch(fetchSchoolManagementSummary());
         dispatch(fetchDrivers());
-        dispatch(fetchBuses());
     }, [dispatch]);
+
+    useEffect(() => {
+        if (routeForm.driverId) {
+            dispatch(fetchDriverBuses(Number(routeForm.driverId)));
+        }
+    }, [dispatch, routeForm.driverId]);
+
+    useEffect(() => {
+        if (!routeForm.driverId || routeForm.busId || !Array.isArray(busesForSelectedDriver)) return;
+        if (busesForSelectedDriver.length === 1) {
+            handleSelectBus(busesForSelectedDriver[0]);
+        }
+    }, [busesForSelectedDriver, routeForm.busId, routeForm.driverId]);
 
     // Scroll to selected item when dropdown opens
     useEffect(() => {
@@ -1315,8 +1351,8 @@ const StudentSeatSelection = ({
                                                     </MenuItem>
                                                 ) : busesForSelectedDriver.length > 0 ? (
                                                     busesForSelectedDriver.map((bus) => (
-                                                        <MenuItem key={bus.BusId || bus.id} onClick={() => handleSelectBus(bus)}>
-                                                            {bus.VehicleName || bus.NumberPlate || `Bus ${bus.BusId || bus.id}`}
+                                                        <MenuItem key={bus.__id} onClick={() => handleSelectBus(bus)}>
+                                                            {bus.__label}
                                                         </MenuItem>
                                                     ))
                                                 ) : (

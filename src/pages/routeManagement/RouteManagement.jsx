@@ -136,6 +136,7 @@ const RouteManagement = () => {
   const [isOpen, setIsOpen] = useState(null);
   const [tripsByTerminal, setTripsByTerminal] = useState({});
   const [tripsLoadingByTerminal, setTripsLoadingByTerminal] = useState({});
+  const [routeRefreshVersion, setRouteRefreshVersion] = useState(0);
 
   // Add terminal modal
   const [isAddTerminalModalOpen, setIsAddTerminalModalOpen] = useState(false);
@@ -423,7 +424,11 @@ const RouteManagement = () => {
     }
   };
 
-  const handleBackClick = () => {
+  const handleBackClick = (shouldRefresh = false) => {
+    if (shouldRefresh) {
+      dispatch(fetchRouteManagementTerminals());
+      setRouteRefreshVersion((prev) => prev + 1);
+    }
     setOpenMapScreen(false);
     setIsCreateRoute(false);
     setIsEditRoute(false);
@@ -949,6 +954,7 @@ const RouteManagement = () => {
                           institutes={terminal.institutes || []}
                           handleMapScreenClick={handleMapScreenClick}
                           handleEditRoute={handleEditRoute}
+                          refreshVersion={routeRefreshVersion}
                         />
                       </div>
                     )

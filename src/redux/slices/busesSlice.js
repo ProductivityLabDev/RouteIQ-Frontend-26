@@ -80,6 +80,19 @@ export const fetchBuses = createAsyncThunk(
   }
 );
 
+export const fetchDriverBuses = createAsyncThunk(
+  "buses/fetchDriverBuses",
+  async (employeeId, { rejectWithValue }) => {
+    try {
+      if (!employeeId) return [];
+      const response = await busService.getBusesByDriverEmployeeId(Number(employeeId));
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch driver buses");
+    }
+  }
+);
+
 // Async thunk to create bus
 export const createBus = createAsyncThunk(
   "buses/createBus",
@@ -283,6 +296,20 @@ const busesSlice = createSlice({
       .addCase(fetchBuses.rejected, (state, action) => {
         state.loading.buses = false;
         state.error.buses = action.payload || "Failed to fetch buses";
+        state.buses = [];
+      })
+      .addCase(fetchDriverBuses.pending, (state) => {
+        state.loading.buses = true;
+        state.error.buses = null;
+      })
+      .addCase(fetchDriverBuses.fulfilled, (state, action) => {
+        state.loading.buses = false;
+        state.buses = action.payload;
+        state.error.buses = null;
+      })
+      .addCase(fetchDriverBuses.rejected, (state, action) => {
+        state.loading.buses = false;
+        state.error.buses = action.payload || "Failed to fetch driver buses";
         state.buses = [];
       })
       // Create bus

@@ -23,13 +23,7 @@ export interface CreateRoutePayload {
 
 export interface UpdateRoutePayload {
   routeName: string;
-  routeNumber: string;
-  startLocation: string;
-  endLocation: string;
-  driverId: number;
-  vehicleId: number;
-  date: string;
-  time: string;
+  studentIds?: number[];
 }
 
 // Backend DTO → sp_CreateRouteWithStudents (@PickupLat, @PickupLng, @DropoffLat, @DropoffLng, @DropoffTime)

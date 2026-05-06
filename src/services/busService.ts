@@ -162,6 +162,14 @@ export const busService = {
     };
   },
 
+  getBusesByDriverEmployeeId: async (employeeId: number): Promise<ApiResponse<Bus[]>> => {
+    const response = await apiClient.get(`/institute/driver-buses/${employeeId}`);
+    return {
+      ok: true,
+      data: response.data?.data || response.data || [],
+    };
+  },
+
   getBusByVehicleId: async (vehicleId: number): Promise<ApiResponse<Bus>> => {
     const response = await apiClient.get(`/institute/bus/${vehicleId}`);
     return {

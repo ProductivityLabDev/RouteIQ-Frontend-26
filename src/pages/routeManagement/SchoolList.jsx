@@ -6,7 +6,7 @@ import { fetchInstituteRoutes, fetchRouteStudents } from '@/redux/slices/routesS
 import { routeService } from "@/services/routeService";
 import { toast } from "react-hot-toast";
 
-export default function SchoolList({ institutes = [], handleMapScreenClick, handleEditRoute }) {
+export default function SchoolList({ institutes = [], handleMapScreenClick, handleEditRoute, refreshVersion = 0 }) {
     const [openSchoolId, setOpenSchoolId] = useState(null);
     const [expandedRoutes, setExpandedRoutes] = useState({});
     const [routeTabTime, setRouteTabTime] = useState({}); // { [routeKey]: 'AM' | 'PM' }
@@ -81,6 +81,11 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
             dispatch(fetchInstituteRoutes(openSchoolId));
         }
     }, [openSchoolId, routesByInstitute, loading, dispatch]);
+
+    useEffect(() => {
+        if (!openSchoolId || !refreshVersion) return;
+        dispatch(fetchInstituteRoutes(openSchoolId));
+    }, [dispatch, openSchoolId, refreshVersion]);
 
     const handleRouteToggle = (route) => {
         const routeId = route?.routeId || route?.RouteId || route?.routeID || route?.id;
