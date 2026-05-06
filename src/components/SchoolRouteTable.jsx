@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { AnimalIcon, ViewMap } from '@/assets';
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HiOutlineDotsVertical } from "react-icons/hi";
-import EditModal from './EditModal';
 import { apiClient } from "@/configs/api";
+import { useNavigate } from "react-router-dom";
 
 const STUDENTS_PER_PAGE = 10;
 
@@ -36,6 +36,7 @@ export default function SchoolRouteTable({
   routesLoadingByInstitute = {},
   terminalName = "",
 }) {
+  const navigate = useNavigate();
   const [expandedInstitutes, setExpandedInstitutes] = useState({});
   const [expandedRoutes, setExpandedRoutes] = useState({});
   const [studentsByRoute, setStudentsByRoute] = useState({});
@@ -44,7 +45,6 @@ export default function SchoolRouteTable({
   const [searchByRoute, setSearchByRoute] = useState({});
   const [activeTabByRoute, setActiveTabByRoute] = useState({});
   const [openMenuIndex, setOpenMenuIndex] = useState(null);
-  const [isEditOpen, setIsEditOpen] = useState(false);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
   const getInstituteId = (inst) =>
@@ -100,11 +100,6 @@ export default function SchoolRouteTable({
           : Array.isArray(response?.data)
           ? response.data
           : [];
-        console.log("[RouteSchedule][SchoolRouteTable] raw students response:", {
-          routeId,
-          response: response?.data,
-          rows: list,
-        });
         setStudentsByRoute(prev => ({ ...prev, [routeId]: list }));
       } catch (e) {
         setStudentsByRoute(prev => ({ ...prev, [routeId]: [] }));
@@ -155,12 +150,6 @@ export default function SchoolRouteTable({
       };
     });
 
-    console.log("[RouteSchedule][SchoolRouteTable] mapped table rows:", {
-      driverName,
-      totalRows: mappedRows.length,
-      rows: mappedRows,
-    });
-
     return mappedRows;
   };
 
@@ -185,9 +174,19 @@ export default function SchoolRouteTable({
       : "bg-gray-200 hover:bg-gray-300 text-black px-4 py-2 rounded text-sm font-bold";
   };
 
-  const handleModal = () => {
-    setIsEditOpen(false);
+  const handleOpenEditRoute = (route, institute) => {
+    if (!route) return;
     setOpenMenuIndex(null);
+    navigate("/RouteManagement", {
+      state: {
+        openEditRoute: true,
+        editRoutePayload: {
+          ...route,
+          instituteId: getInstituteId(institute),
+          instituteName: institute?.InstituteName || institute?.instituteName || "",
+        },
+      },
+    });
   };
 
   // ─── Loading / Empty states ─────────────────────────────────────────────────
@@ -456,7 +455,7 @@ export default function SchoolRouteTable({
                                             {openMenuIndex === globalIdx && (
                                               <div className="absolute top-full mt-1 right-0 w-28 bg-white border rounded shadow z-20">
                                                 <button
-                                                  onClick={() => setIsEditOpen(true)}
+                                                  onClick={() => handleOpenEditRoute(route, inst)}
                                                   className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
                                                 >
                                                   Edit
@@ -520,8 +519,6 @@ export default function SchoolRouteTable({
                                 </button>
                               </div>
                             )}
-
-                            <EditModal isOpen={isEditOpen} onClose={handleModal} />
                           </div>
                         )}
                       </div>

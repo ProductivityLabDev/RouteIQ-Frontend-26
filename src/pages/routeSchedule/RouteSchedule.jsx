@@ -527,6 +527,24 @@ const RouteSchedule = () => {
   const getTerminalId = (terminal) =>
     terminal?.TerminalId ?? terminal?.terminalId ?? terminal?.id ?? null;
 
+  const getTerminalName = (terminal) =>
+    terminal?.TerminalName ??
+    terminal?.terminalName ??
+    terminal?.name ??
+    terminal?.Name ??
+    terminal?.TerminalCode ??
+    terminal?.terminalCode ??
+    "";
+
+  const renderTerminalName = (terminal) => {
+    const terminalName = getTerminalName(terminal);
+    if (terminalName) return terminalName;
+
+    return (
+      <span className="inline-flex h-6 w-32 animate-pulse rounded bg-gray-200" />
+    );
+  };
+
   const handleTripSaved = () => {
     if (selectedTerminalId) {
       fetchTripsForTerminal(selectedTerminalId, activeTab);
@@ -716,7 +734,7 @@ const RouteSchedule = () => {
                       </svg>
                     </button>
                     <h2 className="font-medium text-gray-800 text-lg">
-                      {terminal?.TerminalName || terminal?.terminalName || "Terminal 1"}
+                      {renderTerminalName(terminal)}
                     </h2>
                     <button
                       className="text-gray-600 hover:text-gray-800"
@@ -1109,14 +1127,14 @@ const RouteSchedule = () => {
                     </>
                   ) : (
                     <div className="w-full bg-white border-t border-gray-200 shadow-sm">
-                      <SchoolRouteTable
-                        handleMapScreenClick={handleMapScreenClick}
-                        institutes={institutesByTerminal[getTerminalId(terminal)] || []}
-                        loading={institutesLoadingByTerminal[getTerminalId(terminal)] || false}
-                        routesByInstitute={routesByInstitute}
-                        routesLoadingByInstitute={routesLoadingByInstitute}
-                        terminalName={terminal?.TerminalName || terminal?.terminalName || ""}
-                      />
+                        <SchoolRouteTable
+                          handleMapScreenClick={handleMapScreenClick}
+                          institutes={institutesByTerminal[getTerminalId(terminal)] || []}
+                          loading={institutesLoadingByTerminal[getTerminalId(terminal)] || false}
+                          routesByInstitute={routesByInstitute}
+                          routesLoadingByInstitute={routesLoadingByInstitute}
+                          terminalName={getTerminalName(terminal)}
+                        />
                     </div>
                   ))}
               </div>

@@ -29,6 +29,7 @@ import { FaArrowDown, FaArrowUp, FaPlus } from "react-icons/fa";
 import { FaEllipsisVertical } from "react-icons/fa6";
 import { HiOutlineLocationMarker } from "react-icons/hi";
 import { Toaster, toast } from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   burgerBar,
@@ -100,6 +101,8 @@ const resolveRouteMapType = (routeOrTrip) => {
 
 const RouteManagement = () => {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const {
     terminalsHierarchy,
@@ -454,6 +457,15 @@ const RouteManagement = () => {
       dispatch(fetchRouteStudents({ routeId: resolvedId, type: "AM", limit: 100, offset: 0 }));
     }
   };
+
+  useEffect(() => {
+    const incomingRoute = location.state?.editRoutePayload;
+    const shouldOpenEdit = location.state?.openEditRoute;
+    if (!shouldOpenEdit || !incomingRoute) return;
+
+    handleEditRoute(incomingRoute);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, navigate, location.pathname]);
 
   const closeCard = () => setShowCard(false);
 
