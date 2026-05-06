@@ -29,6 +29,7 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
         matchedStudents: [],
         assigningStudentId: null,
     });
+    const [lastAppliedRefreshVersion, setLastAppliedRefreshVersion] = useState(0);
 
     const displayInstitutes = useMemo(() => {
         if (Array.isArray(institutes) && institutes.length > 0) return institutes;
@@ -83,9 +84,30 @@ export default function SchoolList({ institutes = [], handleMapScreenClick, hand
     }, [openSchoolId, routesByInstitute, loading, dispatch]);
 
     useEffect(() => {
-        if (!openSchoolId || !refreshVersion) return;
+        if (!openSchoolId || !refreshVersion || refreshVersion === lastAppliedRefreshVersion) return;
+        setLastAppliedRefreshVersion(refreshVersion);
         dispatch(fetchInstituteRoutes(openSchoolId));
-    }, [dispatch, openSchoolId, refreshVersion]);
+        const openInstituteRoutes = Array.isArray(routesByInstitute?.[openSchoolId])
+            ? routesByInstitute[openSchoolId]
+            : [];
+
+        openInstituteRoutes.forEach((route, index) => {
+            const routeId = getRouteId(route);
+            const routeKey = `route-${routeId || index}`;
+            if (!routeId || !expandedRoutes[routeKey]) return;
+
+            const currentType = getTabTime(routeKey);
+            const currentPage = getRoutePage(routeId);
+            dispatch(
+                fetchRouteStudents({
+                    routeId,
+                    type: currentType,
+                    limit: PAGE_SIZE,
+                    offset: (currentPage - 1) * PAGE_SIZE,
+                })
+            );
+        });
+    }, [dispatch, openSchoolId, refreshVersion, lastAppliedRefreshVersion]);
 
     const handleRouteToggle = (route) => {
         const routeId = route?.routeId || route?.RouteId || route?.routeID || route?.id;

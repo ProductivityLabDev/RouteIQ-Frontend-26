@@ -12,7 +12,7 @@ import {
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { FaArrowLeft } from "react-icons/fa6";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { createRoute, fetchRouteManagementTerminals } from "@/redux/slices/routesSlice";
+import { createRoute, fetchRouteManagementTerminals, fetchRouteStudents } from "@/redux/slices/routesSlice";
 import { fetchSchoolManagementSummary } from "@/redux/slices/schoolSlice";
 import { fetchStudentsByInstitute } from "@/redux/slices/studentSlice";
 import { fetchDriverBuses, fetchDrivers } from "@/redux/slices/busesSlice";
@@ -645,6 +645,14 @@ const StudentSeatSelection = ({
 
                 const response = await routeService.updateRoute(Number(editingRouteId), payload);
                 if (response?.ok !== false) {
+                    await dispatch(
+                        fetchRouteStudents({
+                            routeId: Number(editingRouteId),
+                            type: "AM",
+                            limit: 100,
+                            offset: 0,
+                        })
+                    );
                     await dispatch(fetchRouteManagementTerminals());
                     toast.success("Route updated successfully!");
                     if (onBack) onBack(true);
