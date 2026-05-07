@@ -1,8 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { superAdminService } from "@/services/superAdminService";
+import SuperAdminInvoiceForm from "@/components/SuperAdminInvoiceForm";
 
 const tabs = ["Overview", "Invoices", "Payroll"];
+const DEFAULT_INVOICE_FILTERS = {
+  type: "",
+  status: "",
+  instituteId: "",
+  search: "",
+  limit: 20,
+  offset: 0,
+};
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -101,20 +110,53 @@ export default function SuperAdminAccounting() {
   const [kpiSummary, setKpiSummary] = useState(null);
   const [platformSummary, setPlatformSummary] = useState(null);
   const [dashboardStats, setDashboardStats] = useState(null);
+  const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
+  const [createInvoiceSubmitting, setCreateInvoiceSubmitting] = useState(false);
+  const [invoiceLookupsLoaded, setInvoiceLookupsLoaded] = useState(false);
+  const [glCodes, setGlCodes] = useState([]);
+  const [schoolTerminals, setSchoolTerminals] = useState([]);
+  const [tripTerminals, setTripTerminals] = useState([]);
+  const [schoolsByTerminal, setSchoolsByTerminal] = useState({});
+  const [invoiceFilterSchools, setInvoiceFilterSchools] = useState([]);
+  const [vendorSchools, setVendorSchools] = useState([]);
+  const [invoiceSchoolsLoading, setInvoiceSchoolsLoading] = useState(false);
+  const [invoiceLookupWarning, setInvoiceLookupWarning] = useState("");
+  const [invoiceExporting, setInvoiceExporting] = useState({ id: "", format: "" });
 
-  const [invoiceFilters, setInvoiceFilters] = useState({
-    type: "",
-    status: "",
-    instituteId: "",
-    search: "",
-    limit: 20,
-    offset: 0,
-  });
+  const [invoiceFilters, setInvoiceFilters] = useState(DEFAULT_INVOICE_FILTERS);
   const [payrollFilters, setPayrollFilters] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     terminalId: "",
   });
+
+  const fetchVendorScopedData = useCallback(
+    async (vendorId, nextInvoiceFilters = invoiceFilters, nextPayrollFilters = payrollFilters) => {
+      const invoiceParams = {
+        vendorId,
+        type: nextInvoiceFilters.type || undefined,
+        status: nextInvoiceFilters.status || undefined,
+        search: nextInvoiceFilters.search.trim() || undefined,
+        limit: nextInvoiceFilters.limit,
+        offset: nextInvoiceFilters.offset,
+      };
+
+      const [invoiceData, walletData, payrollData, kpiData] = await Promise.all([
+        superAdminService.getAccountingInvoices(invoiceParams),
+        superAdminService.getAccountingWalletSummary(vendorId),
+        superAdminService.getAccountingPayrollSummary({
+          vendorId,
+          month: nextPayrollFilters.month,
+          year: nextPayrollFilters.year,
+          terminalId: nextPayrollFilters.terminalId || undefined,
+        }),
+        superAdminService.getAccountingKpiSummary(vendorId),
+      ]);
+
+      return { invoiceData, walletData, payrollData, kpiData };
+    },
+    [invoiceFilters, payrollFilters]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -174,24 +216,11 @@ export default function SuperAdminAccounting() {
     const loadVendorScopedData = async () => {
       try {
         setSectionLoading(true);
-        const [invoiceData, walletData, payrollData, kpiData] = await Promise.all([
-          superAdminService.getAccountingInvoices({
-            vendorId: selectedVendorId,
-            ...invoiceFilters,
-            search: invoiceFilters.search.trim() || undefined,
-            type: invoiceFilters.type || undefined,
-            status: invoiceFilters.status || undefined,
-            instituteId: invoiceFilters.instituteId || undefined,
-          }),
-          superAdminService.getAccountingWalletSummary(selectedVendorId),
-          superAdminService.getAccountingPayrollSummary({
-            vendorId: selectedVendorId,
-            month: payrollFilters.month,
-            year: payrollFilters.year,
-            terminalId: payrollFilters.terminalId || undefined,
-          }),
-          superAdminService.getAccountingKpiSummary(selectedVendorId),
-        ]);
+        const { invoiceData, walletData, payrollData, kpiData } = await fetchVendorScopedData(
+          selectedVendorId,
+          invoiceFilters,
+          payrollFilters
+        );
 
         if (!mounted) return;
         setInvoices(invoiceData.rows);
@@ -210,12 +239,269 @@ export default function SuperAdminAccounting() {
     return () => {
       mounted = false;
     };
-  }, [selectedVendorId, invoiceFilters, payrollFilters]);
+  }, [selectedVendorId, invoiceFilters, payrollFilters, fetchVendorScopedData]);
+
+  useEffect(() => {
+    setInvoiceLookupsLoaded(false);
+    setGlCodes([]);
+    setSchoolTerminals([]);
+    setTripTerminals([]);
+    setSchoolsByTerminal({});
+    setInvoiceFilterSchools([]);
+    setVendorSchools([]);
+    setInvoiceSchoolsLoading(false);
+    setInvoiceLookupWarning("");
+    setInvoiceFilters(DEFAULT_INVOICE_FILTERS);
+  }, [selectedVendorId]);
+
+  useEffect(() => {
+    if (!Array.isArray(invoices) || invoices.length === 0) return;
+
+    setInvoiceFilterSchools((prev) => {
+      const seen = new Set(prev.map((school) => String(school.id || school.name)));
+      const next = [...prev];
+
+      invoices.forEach((invoice) => {
+        const name = String(invoice?.instituteName || "").trim();
+        if (!name || name === "--") return;
+        const key = `name:${name.toLowerCase()}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        next.push({
+          id: key,
+          name,
+        });
+      });
+
+      return next;
+    });
+  }, [invoices]);
+
+  useEffect(() => {
+    if (!invoiceFilters.instituteId) return;
+    const stillExists = invoiceFilterSchools.some(
+      (school) => String(school.id) === String(invoiceFilters.instituteId)
+    );
+    if (!stillExists) {
+      setInvoiceFilters((prev) => ({ ...prev, instituteId: "", offset: 0 }));
+    }
+  }, [invoiceFilterSchools, invoiceFilters.instituteId]);
+
+  useEffect(() => {
+    if (!selectedVendorId || activeTab !== "Invoices") return;
+    let mounted = true;
+
+    const normalizeSchool = (school) => ({
+      id:
+        school?.instituteId ??
+        school?.InstituteId ??
+        school?.id ??
+        school?.Id ??
+        "",
+      name:
+        school?.instituteName ??
+        school?.InstituteName ??
+        school?.schoolName ??
+        school?.SchoolName ??
+        school?.name ??
+        school?.Name ??
+        `School ${school?.instituteId ?? school?.id ?? ""}`,
+    });
+
+    const loadInvoiceSchools = async () => {
+      try {
+        setInvoiceSchoolsLoading(true);
+        const terminals = await superAdminService.getAccountingSchoolTerminals(selectedVendorId);
+        if (!mounted) return;
+        setSchoolTerminals(terminals);
+
+        if (!Array.isArray(terminals) || terminals.length === 0) {
+          setVendorSchools([]);
+          return;
+        }
+
+        const schoolResults = await Promise.allSettled(
+          terminals.map((terminal) =>
+            superAdminService.getAccountingSchoolsByTerminal(
+              terminal?.terminalId ??
+                terminal?.TerminalId ??
+                terminal?.id ??
+                terminal?.Id,
+              {
+                vendorId: selectedVendorId,
+                search: "",
+                limit: 100,
+                offset: 0,
+              }
+            )
+          )
+        );
+
+        if (!mounted) return;
+
+        const mergedSchools = schoolResults.flatMap((result) =>
+          result.status === "fulfilled" ? result.value : []
+        );
+
+        const deduped = [];
+        const seen = new Set();
+
+        mergedSchools.forEach((school) => {
+          const normalized = normalizeSchool(school);
+          const key = String(normalized.id || normalized.name);
+          if (!normalized.id && !normalized.name) return;
+          if (seen.has(key)) return;
+          seen.add(key);
+          deduped.push(normalized);
+        });
+
+        setVendorSchools(deduped);
+      } catch {
+        if (mounted) {
+          setVendorSchools([]);
+        }
+      } finally {
+        if (mounted) {
+          setInvoiceSchoolsLoading(false);
+        }
+      }
+    };
+
+    loadInvoiceSchools();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedVendorId, activeTab]);
+
+  const loadInvoiceLookups = useCallback(async () => {
+    if (invoiceLookupsLoaded || !selectedVendorId) return;
+    const [glCodeResult, schoolTerminalResult, tripTerminalResult] = await Promise.allSettled([
+      superAdminService.getAccountingGlCodes(selectedVendorId),
+      superAdminService.getAccountingSchoolTerminals(selectedVendorId),
+      superAdminService.getAccountingTripTerminals(selectedVendorId),
+    ]);
+
+    setGlCodes(glCodeResult.status === "fulfilled" ? glCodeResult.value : []);
+    setSchoolTerminals(schoolTerminalResult.status === "fulfilled" ? schoolTerminalResult.value : []);
+    setTripTerminals(tripTerminalResult.status === "fulfilled" ? tripTerminalResult.value : []);
+    setInvoiceLookupsLoaded(true);
+
+    if (
+      glCodeResult.status === "rejected" ||
+      schoolTerminalResult.status === "rejected" ||
+      tripTerminalResult.status === "rejected"
+    ) {
+      setInvoiceLookupWarning(
+        "Some invoice lookups are not available for super admin. You can still enter IDs manually."
+      );
+    } else {
+      setInvoiceLookupWarning("");
+    }
+  }, [invoiceLookupsLoaded, selectedVendorId]);
+
+  const loadSchoolsByTerminal = useCallback(async (terminalId) => {
+    if (!terminalId || !selectedVendorId || schoolsByTerminal[terminalId]) return;
+    const rows = await superAdminService.getAccountingSchoolsByTerminal(terminalId, {
+      vendorId: selectedVendorId,
+      search: "",
+      limit: 20,
+      offset: 0,
+    });
+    setSchoolsByTerminal((prev) => ({
+      ...prev,
+      [terminalId]: rows,
+    }));
+  }, [schoolsByTerminal, selectedVendorId]);
+
+  const handleOpenCreateInvoice = async () => {
+    if (!selectedVendorId) {
+      toast.error("Select a vendor first");
+      return;
+    }
+
+    try {
+      await loadInvoiceLookups();
+      setIsCreateInvoiceOpen(true);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to load invoice form data");
+    }
+  };
+
+  const handleCreateInvoice = async (payload) => {
+    try {
+      setCreateInvoiceSubmitting(true);
+      await superAdminService.createAccountingInvoice(payload);
+      toast.success("Invoice created successfully");
+      setIsCreateInvoiceOpen(false);
+
+      setSectionLoading(true);
+      const { invoiceData, walletData, payrollData, kpiData } = await fetchVendorScopedData(
+        selectedVendorId,
+        invoiceFilters,
+        payrollFilters
+      );
+      setInvoices(invoiceData.rows);
+      setInvoiceTotal(invoiceData.total);
+      setWalletSummary(walletData);
+      setPayrollSummary(payrollData);
+      setKpiSummary(kpiData);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to create invoice");
+    } finally {
+      setCreateInvoiceSubmitting(false);
+      setSectionLoading(false);
+    }
+  };
+
+  const handleExportInvoice = async (invoiceId, format) => {
+    if (!selectedVendorId || !invoiceId) {
+      toast.error("Missing vendor or invoice");
+      return;
+    }
+
+    try {
+      setInvoiceExporting({ id: String(invoiceId), format });
+      const { blob, filename } = await superAdminService.exportAccountingInvoice(
+        invoiceId,
+        selectedVendorId,
+        format
+      );
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `super-admin-invoice-${invoiceId}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Invoice exported as ${format.toUpperCase()}`);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to export invoice");
+    } finally {
+      setInvoiceExporting({ id: "", format: "" });
+    }
+  };
 
   const selectedVendor = useMemo(
     () => vendors.find((vendor) => String(vendor.id) === String(selectedVendorId)) || null,
     [vendors, selectedVendorId]
   );
+
+  const selectedInvoiceSchool = useMemo(
+    () =>
+      invoiceFilterSchools.find((school) => String(school.id) === String(invoiceFilters.instituteId)) || null,
+    [invoiceFilterSchools, invoiceFilters.instituteId]
+  );
+
+  const visibleInvoices = useMemo(() => {
+    if (!selectedInvoiceSchool) return invoices;
+    const target = String(selectedInvoiceSchool.name || "").trim().toLowerCase();
+    return invoices.filter(
+      (invoice) => String(invoice.instituteName || "").trim().toLowerCase() === target
+    );
+  }, [invoices, selectedInvoiceSchool]);
+
+  const visibleInvoiceTotal = selectedInvoiceSchool ? visibleInvoices.length : invoiceTotal;
 
   const recentTransactions = walletSummary?.recentTransactions || [];
   const payrollRows = payrollSummary?.rows || [];
@@ -234,7 +520,10 @@ export default function SuperAdminAccounting() {
             </label>
             <select
               value={selectedVendorId}
-              onChange={(event) => setSelectedVendorId(event.target.value)}
+              onChange={(event) => {
+                setInvoiceFilters(DEFAULT_INVOICE_FILTERS);
+                setSelectedVendorId(event.target.value);
+              }}
               className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm font-medium text-[#171a2a] outline-none"
               disabled={vendorLoading || vendors.length === 0}
             >
@@ -369,52 +658,78 @@ export default function SuperAdminAccounting() {
           title="Invoices"
           subtitle="Vendor-scoped invoice listing through super admin accounting endpoints."
           actions={
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-              <select
-                value={invoiceFilters.type}
-                onChange={(event) =>
-                  setInvoiceFilters((prev) => ({ ...prev, type: event.target.value, offset: 0 }))
-                }
-                className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
-              >
-                <option value="">All Types</option>
-                <option value="School">School</option>
-                <option value="Trip">Trip</option>
-              </select>
-              <select
-                value={invoiceFilters.status}
-                onChange={(event) =>
-                  setInvoiceFilters((prev) => ({ ...prev, status: event.target.value, offset: 0 }))
-                }
-                className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
-              >
-                <option value="">All Statuses</option>
-                <option value="Paid">Paid</option>
-                <option value="Pending">Pending</option>
-                <option value="Overdue">Overdue</option>
-              </select>
-              <input
-                type="text"
-                value={invoiceFilters.instituteId}
-                onChange={(event) =>
-                  setInvoiceFilters((prev) => ({ ...prev, instituteId: event.target.value, offset: 0 }))
-                }
-                placeholder="Institute id"
-                className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
-              />
-              <input
-                type="text"
-                value={invoiceFilters.search}
-                onChange={(event) =>
-                  setInvoiceFilters((prev) => ({ ...prev, search: event.target.value, offset: 0 }))
-                }
-                placeholder="Search invoice..."
-                className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
-              />
+            <div className="flex w-full flex-col gap-3">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleOpenCreateInvoice}
+                  disabled={!selectedVendorId}
+                  className="rounded-2xl bg-[#c01824] px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Create Invoice
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <select
+                  value={invoiceFilters.type}
+                  onChange={(event) =>
+                    setInvoiceFilters((prev) => ({ ...prev, type: event.target.value, offset: 0 }))
+                  }
+                  className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
+                >
+                  <option value="">All Types</option>
+                  <option value="School">School</option>
+                  <option value="Trip">Trip</option>
+                  <option value="Batch">Batch</option>
+                  <option value="Terminal">Terminal</option>
+                  <option value="Retailer">Retailer</option>
+                </select>
+                <select
+                  value={invoiceFilters.status}
+                  onChange={(event) =>
+                    setInvoiceFilters((prev) => ({ ...prev, status: event.target.value, offset: 0 }))
+                  }
+                  className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Open">Open</option>
+                  <option value="Overdue">Overdue</option>
+                </select>
+                  <select
+                    value={invoiceFilters.instituteId}
+                    onChange={(event) =>
+                      setInvoiceFilters((prev) => ({ ...prev, instituteId: event.target.value, offset: 0 }))
+                    }
+                    className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
+                    disabled={!selectedVendorId}
+                  >
+                    <option value="">
+                      {!selectedVendorId
+                        ? "Select vendor first"
+                        : "All Schools"}
+                    </option>
+                    {invoiceFilterSchools.map((school) => (
+                      <option key={school.id} value={school.id}>
+                        {school.name}
+                      </option>
+                    ))}
+                  </select>
+                <input
+                  type="text"
+                  value={invoiceFilters.search}
+                  onChange={(event) =>
+                    setInvoiceFilters((prev) => ({ ...prev, search: event.target.value, offset: 0 }))
+                  }
+                  placeholder="Search invoice..."
+                  className="rounded-2xl border border-[#e6dfd2] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171a2a] outline-none"
+                />
+              </div>
             </div>
           }
         >
-          <div className="mb-4 text-sm text-[#7c7a73]">Total invoices: {invoiceTotal}</div>
+          <div className="mb-4 text-sm text-[#7c7a73]">Total invoices: {visibleInvoiceTotal}</div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left">
               <thead>
@@ -426,39 +741,75 @@ export default function SuperAdminAccounting() {
                   <th className="px-4 py-3">Due</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Amount</th>
+                  <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {sectionLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-sm text-[#7c7a73]">
+                    <td colSpan={8} className="px-4 py-6 text-sm text-[#7c7a73]">
                       Loading invoices...
                     </td>
                   </tr>
-                ) : invoices.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-6 text-sm text-[#7c7a73]">
-                      No invoices found for the selected filters.
-                    </td>
-                  </tr>
-                ) : (
-                  invoices.map((invoice) => (
-                    <tr key={invoice.id} className="border-b border-[#f1ede5] text-sm text-[#171a2a]">
-                      <td className="px-4 py-4 font-semibold">{invoice.invoiceNumber}</td>
-                      <td className="px-4 py-4">{invoice.type}</td>
-                      <td className="px-4 py-4">{invoice.instituteName}</td>
-                      <td className="px-4 py-4">{formatDate(invoice.invoiceDate)}</td>
-                      <td className="px-4 py-4">{formatDate(invoice.dueDate)}</td>
-                      <td className="px-4 py-4">{invoice.status}</td>
-                      <td className="px-4 py-4 text-right font-semibold">{formatCurrency(invoice.amount)}</td>
+                  ) : visibleInvoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-6 text-sm text-[#7c7a73]">
+                        No invoices found for the selected filters.
+                      </td>
                     </tr>
-                  ))
-                )}
+                  ) : (
+                    visibleInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="border-b border-[#f1ede5] text-sm text-[#171a2a]">
+                        <td className="px-4 py-4 font-semibold">{invoice.invoiceNumber}</td>
+                        <td className="px-4 py-4">{invoice.type}</td>
+                        <td className="px-4 py-4">{invoice.instituteName}</td>
+                        <td className="px-4 py-4">{formatDate(invoice.invoiceDate)}</td>
+                        <td className="px-4 py-4">{formatDate(invoice.dueDate)}</td>
+                        <td className="px-4 py-4">{invoice.status}</td>
+                        <td className="px-4 py-4 text-right font-semibold">{formatCurrency(invoice.amount)}</td>
+                        <td className="px-4 py-4">
+                          <div className="flex justify-end gap-2 whitespace-nowrap">
+                            {["pdf", "csv", "excel"].map((format) => {
+                              const isLoading =
+                                invoiceExporting.id === String(invoice.id) &&
+                                invoiceExporting.format === format;
+                              return (
+                                <button
+                                  key={format}
+                                  type="button"
+                                  onClick={() => handleExportInvoice(invoice.id, format)}
+                                  disabled={Boolean(invoiceExporting.id)}
+                                  className="rounded-xl border border-[#e6dfd2] bg-[#fbfaf7] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[#171a2a] transition hover:bg-[#f3efe7] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {isLoading ? "..." : format}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
               </tbody>
             </table>
           </div>
         </SectionCard>
       ) : null}
+
+      <SuperAdminInvoiceForm
+        open={isCreateInvoiceOpen}
+        onClose={() => setIsCreateInvoiceOpen(false)}
+        onSubmit={handleCreateInvoice}
+        submitting={createInvoiceSubmitting}
+        vendor={selectedVendor}
+        lookupWarning={invoiceLookupWarning}
+        glCodes={glCodes}
+        schoolTerminals={schoolTerminals}
+        tripTerminals={tripTerminals}
+        vendorSchools={vendorSchools}
+        schoolsByTerminal={schoolsByTerminal}
+        loadSchoolsByTerminal={loadSchoolsByTerminal}
+      />
 
       {activeTab === "Payroll" ? (
         <SectionCard

@@ -103,6 +103,38 @@ export interface SuperAdminAccountingInvoice {
   dueDate?: string;
 }
 
+export interface SuperAdminAccountingCreateInvoicePayload {
+  vendorId: number | string;
+  invoiceType: string;
+  instituteId?: number;
+  tripId?: number;
+  terminalId?: number;
+  retailId?: number;
+  glCodeId?: number;
+  invoiceDate?: string;
+  dueDate?: string;
+  deliveryDate?: string;
+  invoiceMode?: string;
+  paymentTerms?: string;
+  billFrom?: string;
+  billTo?: string;
+  noOfBuses?: number;
+  subTotal?: number;
+  taxAmount?: number;
+  totalAmount?: number;
+  notes?: string;
+  lineItems: Array<{
+    itemDescription: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
+    routeId?: number;
+    glCodeId?: number;
+  }>;
+}
+
+export type SuperAdminAccountingExportFormat = "pdf" | "csv" | "excel";
+
 export interface SuperAdminWalletTransaction {
   id: number | string;
   title: string;
@@ -147,6 +179,20 @@ export interface SuperAdminPlatformCommissionSummary {
   tripCommissionCount: number;
   routeCommissionCount: number;
 }
+
+const extractFilename = (contentDisposition?: string, fallback = "invoice-export") => {
+  if (!contentDisposition) return fallback;
+  const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1]);
+    } catch {
+      return utfMatch[1];
+    }
+  }
+  const basicMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return basicMatch?.[1] || fallback;
+};
 
 const normalizeDashboard = (raw: any): SuperAdminDashboardStats => {
   const stats = raw?.stats ?? raw?.summary ?? raw ?? {};
@@ -645,6 +691,74 @@ export const superAdminService = {
       rows: rows.map(normalizeAccountingInvoice),
       total: toNumber(pickFirst(body?.total, response.data?.total, rows.length), rows.length),
     };
+  },
+
+  async createAccountingInvoice(payload: SuperAdminAccountingCreateInvoicePayload) {
+    const response = await apiClient.post("/super-admin/accounting/invoices", payload);
+    return response.data?.data ?? response.data;
+  },
+
+  async exportAccountingInvoice(
+    invoiceId: number | string,
+    vendorId: number | string,
+    format: SuperAdminAccountingExportFormat = "pdf"
+  ) {
+    const response = await apiClient.get(`/super-admin/accounting/invoices/${invoiceId}/export`, {
+      params: { vendorId, format },
+      responseType: "blob",
+    });
+
+    return {
+      blob: response.data,
+      filename: extractFilename(
+        response.headers?.["content-disposition"],
+        `super-admin-invoice-${invoiceId}.${format}`
+      ),
+    };
+  },
+
+  async getAccountingGlCodes(vendorId: number | string) {
+    const response = await apiClient.get("/super-admin/accounting/gl-codes", {
+      params: { vendorId },
+    });
+    const body = response.data?.data ?? response.data ?? [];
+    const rows = body?.items ?? body?.rows ?? body;
+    return Array.isArray(rows) ? rows : [];
+  },
+
+  async getAccountingSchoolTerminals(vendorId: number | string) {
+    const response = await apiClient.get("/super-admin/accounting/school-terminals", {
+      params: { vendorId },
+    });
+    const rows = response.data?.data ?? response.data ?? [];
+    return Array.isArray(rows) ? rows : [];
+  },
+
+  async getAccountingSchoolsByTerminal(
+    terminalId: number | string,
+    params: {
+      vendorId: number | string;
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ) {
+    const response = await apiClient.get(
+      `/super-admin/accounting/school-terminals/${terminalId}/schools`,
+      { params }
+    );
+    const body = response.data?.data ?? response.data ?? {};
+    const rows = body?.schools ?? body?.items ?? body?.rows ?? body?.data ?? body;
+    return Array.isArray(rows) ? rows : [];
+  },
+
+  async getAccountingTripTerminals(vendorId: number | string) {
+    const response = await apiClient.get("/super-admin/accounting/trip-terminals", {
+      params: { vendorId },
+    });
+    const body = response.data?.data ?? response.data ?? [];
+    const rows = body?.items ?? body?.rows ?? body;
+    return Array.isArray(rows) ? rows : [];
   },
 
   async getAccountingWalletSummary(vendorId: number | string): Promise<SuperAdminWalletSummary> {
