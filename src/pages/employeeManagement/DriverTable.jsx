@@ -91,7 +91,27 @@ export default function DriverTable({ terminalId, handleEdit }) {
     const benefits = pick(driver.benefits, driver.Benefits) || {};
     return {
       ...driver,
-      employeeId:           pick(driver.employeeId,    driver.EmployeeId),
+      employeeId:           pick(
+        driver.employeeId,
+        driver.EmployeeId,
+        driver.employeeID,
+        driver.EmployeeID,
+        driver.empId,
+        driver.EmpId,
+        driver.employee_id,
+        driver.Employee_Id,
+        driver.EmployeeIDValue,
+        driver.payrollEmployeeId,
+        driver.PayrollEmployeeId,
+        driver.driverEmployeeId,
+        driver.DriverEmployeeId,
+        driver.employee?.employeeId,
+        driver.employee?.EmployeeId,
+        driver.employee?.employeeID,
+        driver.employee?.EmployeeID,
+        driver.employee?.empId,
+        driver.employee?.EmpId
+      ),
       name:                 pick(driver.name,          driver.Name),
       payCycle:             pick(driver.payCycle,      driver.PayCycle),
       payType:              pick(driver.payType,       driver.PayType),

@@ -21,8 +21,6 @@ import {
 } from "@material-tailwind/react";
 import { format } from "date-fns";
 import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { updateRFQStatus } from "@/redux/slices/rfqSlice";
 import { DayPicker } from "react-day-picker";
 import { FaArrowDown, FaArrowUp, FaPlus } from "react-icons/fa";
 import { FaEllipsisVertical } from "react-icons/fa6";
@@ -34,11 +32,9 @@ import { apiClient } from "@/configs/api";
 import { routeSchedulingService } from "@/services/routeSchedulingService";
 
 const RouteSchedule = () => {
-  const dispatch = useDispatch();
-  const { updating: rfqUpdating } = useSelector((s) => s.rfq);
   const [approvingId, setApprovingId] = useState(null);
   const [approveModal, setApproveModal] = useState(null); // { trip, tid }
-  const [approveForm, setApproveForm] = useState({ quotedAmount: '', vehicleId: '', driverId: '' });
+  const [approveForm, setApproveForm] = useState({ vehicleId: '', driverId: '' });
   const [selectedTab, setSelectedTab] = useState("Trip Schedules");
   const [date, setDate] = useState();
   const [active, setActive] = useState(1);
@@ -168,36 +164,57 @@ const RouteSchedule = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isModalOpen]);
 
-  const handleApproveClick = (trip) => {
-    setApproveForm({ quotedAmount: '', vehicleId: '', driverId: '' });
-    setApproveModal({ trip });
+  const handleApproveClick = (trip, terminalId) => {
+    setApproveForm({ vehicleId: '', driverId: '' });
+    setApproveModal({ trip, terminalId: terminalId ?? null });
   };
 
-  const handleApproveConfirm = (e) => {
+  const handleApproveConfirm = async (e) => {
     e.preventDefault();
-    const id = approveModal?.trip?.tripId ?? approveModal?.trip?.id;
-    if (!id) return;
-    setApprovingId(id);
-    dispatch(updateRFQStatus({
-      id,
-      payload: {
-        status: 'Accepted',
-        quotedAmount: Number(approveForm.quotedAmount),
-        vehicleId: Number(approveForm.vehicleId),
-        driverId: Number(approveForm.driverId),
-      }
-    })).finally(() => {
-      setApprovingId(null);
-      setApproveModal(null);
-    });
-  };
-
-  const handleRejectClick = (trip) => {
+    const trip = approveModal?.trip;
     const id = trip?.tripId ?? trip?.id;
     if (!id) return;
     setApprovingId(id);
-    dispatch(updateRFQStatus({ id, payload: { status: 'Rejected' } }))
-      .finally(() => setApprovingId(null));
+    try {
+      const payload = {
+        status: 'Approved',
+        vehicleId: Number(approveForm.vehicleId),
+        driverId: Number(approveForm.driverId),
+      };
+      const instituteId = trip?.instituteId ?? trip?.InstituteId ?? trip?.instituteID ?? trip?.InstituteID ?? null;
+      if (instituteId != null) {
+        await routeSchedulingService.updateVendorSchoolTripStatus(id, payload);
+      } else {
+        await routeSchedulingService.updateTrip(id, payload);
+      }
+      const terminalId = approveModal?.terminalId ?? getTerminalId(approveModal?.trip);
+      if (terminalId) {
+        await fetchTripsForTerminal(terminalId, activeTab);
+      }
+      setApproveModal(null);
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleRejectClick = async (trip, terminalId) => {
+    const id = trip?.tripId ?? trip?.id;
+    if (!id) return;
+    setApprovingId(id);
+    try {
+      const instituteId = trip?.instituteId ?? trip?.InstituteId ?? trip?.instituteID ?? trip?.InstituteID ?? null;
+      if (instituteId != null) {
+        await routeSchedulingService.updateVendorSchoolTripStatus(id, { status: 'Rejected' });
+      } else {
+        await routeSchedulingService.updateTrip(id, { status: 'Rejected' });
+      }
+      const activeTerminalId = terminalId ?? getTerminalId(trip);
+      if (activeTerminalId) {
+        await fetchTripsForTerminal(activeTerminalId, activeTab);
+      }
+    } finally {
+      setApprovingId(null);
+    }
   };
 
   const handleEllipsisClick = (event, trip, terminalId) => {
@@ -788,6 +805,8 @@ const RouteSchedule = () => {
                         const toRow = (t) => ({
                           id: t.id ?? t.TripId ?? t.tripId,
                           tripId: t.TripId ?? t.tripId ?? t.id ?? t.Id,
+                          instituteId: t.InstituteId ?? t.instituteId ?? t.InstituteID ?? t.instituteID ?? null,
+                          createdBy: t.CreatedBy ?? t.createdBy ?? null,
                           tripName: t.tripName ?? t.TripName ?? "",
                           flag: t.flag,
                           flagColor: t.flagColor ?? t.FlagColor ?? "",
@@ -1023,14 +1042,14 @@ const RouteSchedule = () => {
                                       <div className="flex items-center gap-1">
                                         <button
                                           disabled={approvingId === (trip.tripId ?? trip.id)}
-                                          onClick={() => handleApproveClick(trip)}
+                                          onClick={() => handleApproveClick(trip, tid)}
                                           className="bg-[#28A745] text-white text-[11px] px-2 py-1 rounded disabled:opacity-50"
                                         >
                                           Approve
                                         </button>
                                         <button
                                           disabled={approvingId === (trip.tripId ?? trip.id)}
-                                          onClick={() => handleRejectClick(trip)}
+                                          onClick={() => handleRejectClick(trip, tid)}
                                           className="bg-[#C01824] text-white text-[11px] px-2 py-1 rounded disabled:opacity-50"
                                         >
                                           Reject
@@ -1158,21 +1177,12 @@ const RouteSchedule = () => {
       {/* Approve Modal */}
       {approveModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-[360px] shadow-xl">
-            <h2 className="text-[20px] font-bold text-[#202224] mb-4">Approve Trip</h2>
-            <form onSubmit={handleApproveConfirm} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-[13px] font-semibold text-[#2C2F32] mb-1">Quoted Amount</label>
-                <input
-                  type="number" required placeholder="e.g. 800"
-                  value={approveForm.quotedAmount}
-                  onChange={(e) => setApproveForm(p => ({ ...p, quotedAmount: e.target.value }))}
-                  className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-2.5 px-3 bg-[#F5F6FA]"
-                />
-              </div>
-              <div>
-                <label className="block text-[13px] font-semibold text-[#2C2F32] mb-1">Vehicle ID</label>
-                <input
+            <div className="bg-white rounded-lg p-6 w-[360px] shadow-xl">
+              <h2 className="text-[20px] font-bold text-[#202224] mb-4">Approve Trip</h2>
+              <form onSubmit={handleApproveConfirm} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-[13px] font-semibold text-[#2C2F32] mb-1">Vehicle ID</label>
+                  <input
                   type="number" required placeholder="e.g. 100"
                   value={approveForm.vehicleId}
                   onChange={(e) => setApproveForm(p => ({ ...p, vehicleId: e.target.value }))}
@@ -1188,17 +1198,19 @@ const RouteSchedule = () => {
                   className="w-full outline-none border border-[#D5D5D5] rounded-[6px] py-2.5 px-3 bg-[#F5F6FA]"
                 />
               </div>
-              <div className="flex justify-end gap-3 mt-1">
-                <button type="button" onClick={() => setApproveModal(null)}
-                  className="px-5 py-2 border-2 border-[#C01824] text-[#C01824] rounded-[6px] text-sm">
-                  Cancel
-                </button>
-                <button type="submit" disabled={rfqUpdating}
-                  className="px-5 py-2 bg-[#28A745] text-white rounded-[6px] text-sm disabled:opacity-50">
-                  {rfqUpdating ? 'Approving...' : 'Confirm'}
-                </button>
-              </div>
-            </form>
+                <div className="flex justify-end gap-3 mt-1">
+                  <button type="button" onClick={() => setApproveModal(null)}
+                    className="px-5 py-2 border-2 border-[#C01824] text-[#C01824] rounded-[6px] text-sm">
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={approvingId === (approveModal?.trip?.tripId ?? approveModal?.trip?.id)}
+                    className="px-5 py-2 bg-[#28A745] text-white rounded-[6px] text-sm disabled:opacity-50">
+                    {approvingId === (approveModal?.trip?.tripId ?? approveModal?.trip?.id) ? 'Approving...' : 'Confirm'}
+                  </button>
+                </div>
+              </form>
           </div>
         </div>
       )}

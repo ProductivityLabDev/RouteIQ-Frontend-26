@@ -42,6 +42,12 @@ export interface UpdateTripDto extends CreateTripDto {
   status?: string;
 }
 
+export interface VendorSchoolTripStatusDto {
+  status: "Approved" | "Rejected" | "Canceled" | "Pending";
+  vehicleId?: number;
+  driverId?: number;
+}
+
 export interface TripListItem {
   id?: number;
   TripId?: number;
@@ -105,7 +111,7 @@ export const routeSchedulingService = {
     tripId: number | string,
     dto: UpdateTripDto
   ): Promise<ApiResponse<{ ok: boolean; message: string }>> => {
-    const response = await apiClient.put(`/route-scheduling/trips/${tripId}`, dto);
+    const response = await apiClient.patch(`/route-scheduling/trips/${tripId}`, dto);
     const raw = response.data;
     const data = raw?.data ?? raw;
     return {
@@ -113,6 +119,22 @@ export const routeSchedulingService = {
       data: {
         ok: data?.ok ?? true,
         message: data?.message ?? "Trip updated successfully",
+      },
+    };
+  },
+
+  updateVendorSchoolTripStatus: async (
+    tripId: number | string,
+    dto: VendorSchoolTripStatusDto
+  ): Promise<ApiResponse<{ ok: boolean; message: string }>> => {
+    const response = await apiClient.patch(`/vendor/school-trips/${tripId}/status`, dto);
+    const raw = response.data;
+    const data = raw?.data ?? raw;
+    return {
+      ok: true,
+      data: {
+        ok: data?.ok ?? raw?.ok ?? true,
+        message: data?.message ?? raw?.message ?? "Trip status updated successfully",
       },
     };
   },

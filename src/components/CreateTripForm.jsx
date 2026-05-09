@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { schoolDashboardService } from '@/services/schoolDashboardService';
 import { routeSchedulingService } from '@/services/routeSchedulingService';
 import { Toaster, toast } from 'react-hot-toast';
 
 const TripBookingForm = ({ handleCancel, mode = "create", initialData = null, tripId = null, onSaved }) => {
+  const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
   const [buses, setBuses] = useState([]);
   const [formData, setFormData] = useState({
@@ -154,6 +156,11 @@ const TripBookingForm = ({ handleCancel, mode = "create", initialData = null, tr
   };
 
   const str = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : undefined);
+  const normalizedPath = location.pathname.toLowerCase();
+  const isSchoolTripFlow =
+    normalizedPath.includes('/tripplanner') ||
+    normalizedPath.includes('/trip-planner') ||
+    normalizedPath.includes('/dashboard/trip-planner');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -164,15 +171,38 @@ const TripBookingForm = ({ handleCancel, mode = "create", initialData = null, tr
       toast.error('Pickup date/time, Pickup Location and Destination Location are required.');
       return;
     }
-    const dto = {
-      tripName: str(formData.companyGroupName) || str(formData.name) || 'School Trip',
+    const endTime = toISO(formData.returnDate, formData.returnTime);
+    const baseDto = {
       startTime,
       pickupLocation,
       dropoffLocation,
-      ...(str(formData.pickupAddress) && { pickupAddress: formData.pickupAddress }),
-      ...(str(formData.destinationAddress) && { dropoffAddress: formData.destinationAddress }),
+      ...(str(formData.companyGroupName) && { companyName: formData.companyGroupName }),
+      ...(str(formData.phoneNumber) && { phoneNumber: formData.phoneNumber }),
+      ...(str(formData.emailAddress) && { emailAddress: formData.emailAddress }),
+      ...(str(formData.tripType) && { tripType: formData.tripType }),
+      ...(num(formData.noOfBuses) != null && { noOfBuses: num(formData.noOfBuses) }),
       ...(num(formData.noOfPassengers) != null && { noOfPersons: num(formData.noOfPassengers) }),
+      ...(num(formData.wheelchairRequired) != null && {
+        wheelchairLiftRequired: num(formData.wheelchairRequired),
+      }),
+      ...(endTime && { endTime }),
+      ...(str(formData.typeOfGroup) && { groupType: formData.typeOfGroup }),
+      ...(str(formData.name) && { busName: formData.name }),
+      ...(str(formData.pickupAddress) && { pickupAddress: formData.pickupAddress }),
+      ...(str(formData.pickupCity) && { pickupCity: formData.pickupCity }),
+      ...(str(formData.pickupState) && { pickupState: formData.pickupState }),
+      ...(str(formData.pickupZip) && { pickupZip: formData.pickupZip }),
+      ...(str(formData.destinationAddress) && { dropoffAddress: formData.destinationAddress }),
+      ...(str(formData.destinationCity) && { destinationCity: formData.destinationCity }),
+      ...(str(formData.destinationState) && { destinationState: formData.destinationState }),
+      ...(str(formData.destinationZip) && { destinationZip: formData.destinationZip }),
       ...(str(formData.instructions) && { specialInstructions: formData.instructions }),
+      ...(str(formData.howReferred) && { referralSource: formData.howReferred }),
+      ...(num(formData.vehicleId) != null && { vehicleId: num(formData.vehicleId) }),
+    };
+    const schoolCreateDto = {
+      tripName: str(formData.companyGroupName) || 'School Trip',
+      ...baseDto,
     };
     setSubmitting(true);
     try {
@@ -206,11 +236,15 @@ const TripBookingForm = ({ handleCancel, mode = "create", initialData = null, tr
         };
         await routeSchedulingService.updateTrip(tripId, updateDto);
         toast.success("Trip updated successfully.");
-      } else {
-        const res = await schoolDashboardService.createTrip(dto);
-        const tripNumber = res?.data?.data?.tripNumber ?? res?.data?.tripNumber;
-        toast.success(tripNumber ? `Trip created: ${tripNumber}` : 'Trip created successfully.');
-      }
+        } else if (isSchoolTripFlow) {
+          const res = await schoolDashboardService.createTrip(schoolCreateDto);
+          const tripNumber = res?.data?.tripNumber || res?.data?.data?.tripNumber;
+          toast.success(tripNumber ? `Trip created: ${tripNumber}` : 'Trip request submitted successfully.');
+        } else {
+          const res = await routeSchedulingService.createTrip(baseDto);
+          const tripNumber = res?.data?.tripNumber;
+          toast.success(tripNumber ? `Trip created: ${tripNumber}` : 'Trip created successfully.');
+        }
       if (typeof onSaved === "function") onSaved();
       handleCancel();
     } catch (err) {
