@@ -31,12 +31,20 @@ export default function SuperAdminSubAdmins() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
     role: roleOptions[0],
     responsibilities: ["Accounting"],
   });
+
+  const defaultForm = {
+    name: "",
+    email: "",
+    role: roleOptions[0],
+    responsibilities: ["Accounting"],
+  };
 
   const loadSubAdmins = async () => {
     try {
@@ -79,32 +87,82 @@ export default function SuperAdminSubAdmins() {
     });
   };
 
-  const handleCreate = async (event) => {
+  const resetFormState = () => {
+    setForm(defaultForm);
+    setEditingItem(null);
+    setShowForm(false);
+  };
+
+  const startEdit = (item) => {
+    setEditingItem(item);
+    setForm({
+      name: item.name || "",
+      email: item.email || "",
+      role: item.role || roleOptions[0],
+      responsibilities:
+        item.responsibilities?.length ? item.responsibilities : defaultForm.responsibilities,
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim() || !form.email.trim()) {
-      toast.error("Name and email are required");
-      return;
-    }
 
     try {
       setSaving(true);
-      await superAdminService.createSubAdmin({
-        name: form.name.trim(),
-        email: form.email.trim(),
-        role: form.role,
-        responsibilities: form.responsibilities,
-      });
-      toast.success("Sub admin created successfully");
-      setForm({
-        name: "",
-        email: "",
-        role: roleOptions[0],
-        responsibilities: ["Accounting"],
-      });
-      setShowForm(false);
+      if (editingItem) {
+        const payload = {};
+        const trimmedName = form.name.trim();
+        const originalName = String(editingItem.name || "").trim();
+        const originalRole = editingItem.role || "";
+        const originalResponsibilities = Array.isArray(editingItem.responsibilities)
+          ? editingItem.responsibilities
+          : [];
+
+        if (trimmedName && trimmedName !== originalName) {
+          payload.fullName = trimmedName;
+        }
+
+        if (form.role !== originalRole) {
+          payload.role = form.role;
+        }
+
+        if (
+          JSON.stringify([...form.responsibilities].sort()) !==
+          JSON.stringify([...originalResponsibilities].sort())
+        ) {
+          payload.responsibilities = form.responsibilities;
+        }
+
+        if (!Object.keys(payload).length) {
+          toast.error("No changes to update");
+          return;
+        }
+
+        await superAdminService.updateSubAdmin(editingItem.id, payload);
+        toast.success("Sub admin updated successfully");
+      } else {
+        if (!form.name.trim() || !form.email.trim()) {
+          toast.error("Name and email are required");
+          return;
+        }
+
+        await superAdminService.createSubAdmin({
+          fullName: form.name.trim(),
+          email: form.email.trim(),
+          role: form.role,
+          responsibilities: form.responsibilities,
+        });
+        toast.success("Sub admin created successfully");
+      }
+
+      resetFormState();
       await loadSubAdmins();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to create sub admin");
+      toast.error(
+        error?.response?.data?.message ||
+          (editingItem ? "Failed to update sub admin" : "Failed to create sub admin")
+      );
     } finally {
       setSaving(false);
     }
@@ -133,18 +191,37 @@ export default function SuperAdminSubAdmins() {
         </div>
         <button
           type="button"
-          onClick={() => setShowForm((prev) => !prev)}
+          onClick={() => {
+            if (showForm) {
+              resetFormState();
+              return;
+            }
+            setEditingItem(null);
+            setForm(defaultForm);
+            setShowForm(true);
+          }}
           className="rounded-2xl bg-[#c01824] px-6 py-4 text-lg font-semibold text-white transition hover:bg-[#a61520]"
         >
-          {showForm ? "Close Form" : "Add Sub Admin"}
+          {showForm ? (editingItem ? "Close Edit" : "Close Form") : "Add Sub Admin"}
         </button>
       </div>
 
       {showForm ? (
         <form
-          onSubmit={handleCreate}
+          onSubmit={handleSubmit}
           className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm"
         >
+          <div className="mb-6">
+            <h4 className="text-2xl font-bold text-[#171a2a]">
+              {editingItem ? "Edit Sub Admin" : "Add Sub Admin"}
+            </h4>
+            <p className="text-sm text-[#6f7280]">
+              {editingItem
+                ? "Update assigned team member details and responsibilities."
+                : "Create a delegated admin with scoped responsibilities."}
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-semibold text-[#171a2a]">
@@ -171,6 +248,7 @@ export default function SuperAdminSubAdmins() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, email: event.target.value }))
                 }
+                disabled={Boolean(editingItem)}
                 className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
                 placeholder="Enter email"
               />
@@ -218,13 +296,26 @@ export default function SuperAdminSubAdmins() {
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={resetFormState}
+              className="rounded-2xl border border-[#ddd5c7] px-6 py-3 font-semibold text-[#171a2a] transition hover:bg-[#f7f4ee]"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={saving}
               className="rounded-2xl bg-[#c01824] px-6 py-3 font-semibold text-white transition hover:bg-[#a61520] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {saving ? "Creating..." : "Create Sub Admin"}
+              {saving
+                ? editingItem
+                  ? "Updating..."
+                  : "Creating..."
+                : editingItem
+                ? "Update Sub Admin"
+                : "Create Sub Admin"}
             </button>
           </div>
         </form>
@@ -304,15 +395,24 @@ export default function SuperAdminSubAdmins() {
                       {item.status}
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        type="button"
-                        onClick={() => toggleStatus(item)}
-                        className="rounded-xl border border-[#c01824] px-4 py-2 text-sm font-semibold text-[#c01824] transition hover:bg-[#fff2f3]"
-                      >
-                        {String(item.status).toLowerCase() === "active"
-                          ? "Deactivate"
-                          : "Activate"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          className="rounded-xl border border-[#171a2a] px-4 py-2 text-sm font-semibold text-[#171a2a] transition hover:bg-[#f7f4ee]"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleStatus(item)}
+                          className="rounded-xl border border-[#c01824] px-4 py-2 text-sm font-semibold text-[#c01824] transition hover:bg-[#fff2f3]"
+                        >
+                          {String(item.status).toLowerCase() === "active"
+                            ? "Deactivate"
+                            : "Activate"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

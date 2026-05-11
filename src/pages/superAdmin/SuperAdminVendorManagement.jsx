@@ -598,24 +598,28 @@ export default function SuperAdminVendorManagement() {
               : "Monitor vendors, update contract details, and open vendor workspaces directly."}
           </p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={activeTab === "Vendors" ? "Search vendors" : "Search invites"}
-            className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824] sm:min-w-[280px]"
-          />
-          {currentRole !== "SUB_ADMIN" && activeTab === "Vendors" ? (
-            <button
-              type="button"
-              onClick={() => setShowCreateForm((prev) => !prev)}
-              className="rounded-2xl bg-[#c01824] px-6 py-4 text-lg font-semibold text-white transition hover:bg-[#a61520]"
-            >
-              {showCreateForm ? "Close Form" : "Add New Vendor"}
-            </button>
-          ) : null}
-        </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={activeTab === "Vendors" ? "Search vendors" : "Search invites"}
+              className="w-full rounded-2xl border border-[#ddd5c7] bg-white px-5 py-4 text-sm outline-none transition placeholder:text-[#b4ab9e] focus:border-[#c01824] sm:min-w-[300px] lg:min-w-[340px]"
+            />
+            {currentRole !== "SUB_ADMIN" && activeTab === "Vendors" ? (
+              <button
+                type="button"
+                onClick={() => setShowCreateForm((prev) => !prev)}
+                className={`inline-flex min-h-[58px] items-center justify-center rounded-2xl px-6 py-4 text-sm font-semibold text-white transition sm:min-w-[142px] ${
+                  showCreateForm
+                    ? "bg-[#a61520] hover:bg-[#8f111b]"
+                    : "bg-[#c01824] hover:bg-[#a61520]"
+                }`}
+              >
+                {showCreateForm ? "Close Form" : "Add New Vendor"}
+              </button>
+            ) : null}
+          </div>
       </div>
 
       {currentRole !== "SUB_ADMIN" ? (

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { superAdminService } from "@/services/superAdminService";
 
@@ -25,8 +26,10 @@ const buildScale = (maxValue, steps = 4) => {
 };
 
 export default function SuperAdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeSummaryIndex, setActiveSummaryIndex] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -59,20 +62,34 @@ export default function SuperAdminDashboard() {
         title: "Net Income",
         value: formatCurrency(stats?.netIncome),
         change: `${stats?.activeVendors ?? 0} active vendors`,
+        onClick: () => navigate("/super-admin/vendors"),
+        detailTitle: "Vendor Activity",
+        detailBody: `${stats?.activeVendors ?? 0} vendors are currently active across the platform. Use this shortcut to jump directly into vendor management.`,
+        actionLabel: "View Vendors",
       },
       {
         title: "Total Schools",
         value: String(stats?.totalSchools ?? 0),
         change: `${stats?.pendingReviews ?? 0} pending reviews`,
+        onClick: () => navigate("/super-admin/feedback?status=Pending"),
+        detailTitle: "Pending Reviews",
+        detailBody: `${stats?.pendingReviews ?? 0} reviews are still waiting for attention. This shortcut opens feedback already filtered to Pending.`,
+        actionLabel: "Review Pending",
       },
       {
         title: "Resolved Issues",
         value: String(stats?.resolvedIssues ?? 0),
         change: `${stats?.openEscalations ?? 0} open escalations`,
+        onClick: () => navigate("/super-admin/feedback?status=Open"),
+        detailTitle: "Open Escalations",
+        detailBody: `${stats?.openEscalations ?? 0} escalations are still open. This shortcut opens the feedback workspace filtered to Open items.`,
+        actionLabel: "View Escalations",
       },
     ],
-    [stats]
+    [navigate, stats]
   );
+
+  const activeSummary = summaryCards[activeSummaryIndex] || summaryCards[0];
 
   const vendorStats = useMemo(
     () => [
@@ -130,26 +147,89 @@ export default function SuperAdminDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        {summaryCards.map((card) => (
+        {summaryCards.map((card, index) => (
           <div
             key={card.title}
-            className="rounded-[28px] border border-[#ebe6da] bg-white p-8 shadow-sm"
+            role="button"
+            tabIndex={0}
+            onClick={() => setActiveSummaryIndex(index)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setActiveSummaryIndex(index);
+              }
+            }}
+            className={`group cursor-pointer rounded-[28px] border bg-white p-8 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md ${
+              activeSummaryIndex === index
+                ? "border-[#c01824] shadow-md ring-1 ring-[#f3d8dc]"
+                : "border-[#ebe6da]"
+            }`}
           >
             <div className="flex items-center justify-between">
               <h3 className="text-2xl font-semibold text-[#171a2a]">{card.title}</h3>
               <div className="flex gap-2">
-                <span className="h-3 w-3 rounded-full bg-[#f1c7cb]" />
-                <span className="h-3 w-3 rounded-full bg-[#c01824]" />
+                <span
+                  className={`h-3 w-3 rounded-full ${
+                    activeSummaryIndex === index ? "bg-[#f1c7cb]" : "bg-[#efe8dc]"
+                  }`}
+                />
+                <span
+                  className={`h-3 w-3 rounded-full ${
+                    activeSummaryIndex === index ? "bg-[#c01824]" : "bg-[#e7ddd0]"
+                  }`}
+                />
               </div>
             </div>
             <p className="mt-12 text-5xl font-bold tracking-tight text-[#0f1631]">
               {loading ? "--" : card.value}
             </p>
-            <p className="mt-6 text-lg font-medium text-[#c01824]">
-              {loading ? "Loading..." : card.change}
-            </p>
+            {loading ? (
+              <p className="mt-6 text-lg font-medium text-[#c01824]">Loading...</p>
+            ) : (
+              <div className="mt-6 flex items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={card.onClick}
+                  className="text-left text-lg font-medium text-[#c01824] underline-offset-4 transition hover:underline"
+                >
+                  {card.change}
+                </button>
+                <button
+                  type="button"
+                  onClick={card.onClick}
+                  className="rounded-full border border-[#f3d8dc] bg-[#fff7f8] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#c01824] transition group-hover:border-[#c01824] group-hover:bg-white"
+                >
+                  View
+                </button>
+              </div>
+            )}
           </div>
         ))}
+      </div>
+
+      <div className="rounded-[28px] border border-[#ebe6da] bg-white px-8 py-6 shadow-sm">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8e8a80]">
+              Active Summary
+            </p>
+            <h3 className="mt-2 text-2xl font-bold text-[#171a2a]">
+              {loading ? "Loading..." : activeSummary?.detailTitle}
+            </h3>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-[#7a7f90]">
+              {loading ? "Loading dashboard details..." : activeSummary?.detailBody}
+            </p>
+          </div>
+          {!loading && activeSummary ? (
+            <button
+              type="button"
+              onClick={activeSummary.onClick}
+              className="rounded-2xl border border-[#f3d8dc] bg-[#fff7f8] px-5 py-3 text-sm font-semibold text-[#c01824] transition hover:bg-white"
+            >
+              {activeSummary.actionLabel}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import vendorFeedbackService from "@/services/vendorFeedbackService";
 
 const statusColors = {
@@ -48,6 +49,7 @@ const StatCard = ({ label, value }) => (
 );
 
 export default function SuperAdminFeedback() {
+  const location = useLocation();
   const [stats, setStats] = useState({ total: 0, positive: 0, negative: 0, open: 0, resolved: 0 });
   const [filters, setFilters] = useState({
     search: "",
@@ -75,6 +77,15 @@ export default function SuperAdminFeedback() {
       setLoadingStats(false);
     }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const statusFromQuery = params.get("status") || "";
+    setFilters((prev) => {
+      if (prev.status === statusFromQuery) return prev;
+      return { ...prev, status: statusFromQuery, offset: 0 };
+    });
+  }, [location.search]);
 
   const loadList = async () => {
     try {

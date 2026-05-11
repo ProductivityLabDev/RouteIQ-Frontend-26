@@ -314,7 +314,9 @@ const normalizeVendor = (item: any): SuperAdminVendor => ({
 
 const normalizeSubAdmin = (item: any): SuperAdminSubAdmin => ({
   id: pickFirst(item?.SubAdminId, item?.UserId, item?.Id, item?.id) ?? "",
-  name: String(pickFirst(item?.Name, item?.FullName, item?.name, "Unnamed Sub Admin")),
+  name: String(
+    pickFirst(item?.fullName, item?.FullName, item?.Name, item?.name, "Unnamed Sub Admin")
+  ),
   email: String(pickFirst(item?.Email, item?.email, "--")),
   role: String(pickFirst(item?.Role, item?.RoleName, item?.role, "Sub Admin")),
   responsibilities: normalizeResponsibilities(
@@ -576,7 +578,7 @@ export const superAdminService = {
   },
 
   async createSubAdmin(payload: {
-    name: string;
+    fullName: string;
     email: string;
     role: string;
     responsibilities: string[];
@@ -585,10 +587,21 @@ export const superAdminService = {
     return response.data;
   },
 
+  async updateSubAdmin(
+    id: number | string,
+    payload: {
+      fullName?: string;
+      role?: string;
+      responsibilities?: string[];
+    }
+  ) {
+    const response = await apiClient.patch(`/super-admin/sub-admins/${id}`, payload);
+    return response.data?.data ?? response.data;
+  },
+
   async updateSubAdminStatus(id: number | string, isActive: boolean) {
     const response = await apiClient.patch(`/super-admin/sub-admins/${id}/status`, {
       isActive,
-      status: isActive ? "Active" : "Inactive",
     });
     return response.data;
   },
