@@ -12,6 +12,7 @@ export default function SuperAdminSignIn() {
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -135,13 +136,65 @@ export default function SuperAdminSignIn() {
             <label className="mb-2 block text-sm font-semibold text-[#171a2a]">
               Password
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 outline-none transition focus:border-[#c01824]"
-              placeholder="Enter password"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full rounded-2xl border border-[#ddd5c7] px-4 py-3 pr-12 outline-none transition focus:border-[#c01824]"
+                placeholder="Enter password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#8e8a80] transition hover:text-[#171a2a]"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-5 w-5"
+                  >
+                    <path d="M3 3l18 18" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M10.58 10.58A2 2 0 0013.42 13.42"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9.88 5.09A10.94 10.94 0 0112 4.91c5.05 0 9.27 3.11 10.8 7.5a11.59 11.59 0 01-3.04 4.57"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M6.61 6.61A11.62 11.62 0 001.2 12.41c.89 2.57 2.77 4.73 5.27 6.06A11.26 11.26 0 0012 19.91c1.59 0 3.11-.31 4.49-.88"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="h-5 w-5"
+                  >
+                    <path
+                      d="M1.2 12.41C2.73 8.02 6.95 4.91 12 4.91s9.27 3.11 10.8 7.5c-1.53 4.39-5.75 7.5-10.8 7.5s-9.27-3.11-10.8-7.5z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="12" cy="12.41" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {error ? <p className="text-sm font-medium text-[#c01824]">{error}</p> : null}
