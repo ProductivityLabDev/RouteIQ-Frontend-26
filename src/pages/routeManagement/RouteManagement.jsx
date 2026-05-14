@@ -42,6 +42,7 @@ import {
 
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { createTerminal } from "@/redux/slices/busesSlice";
+import { busService } from "@/services/busService";
 import {
   fetchRouteManagementTerminals,
   fetchRouteMap,
@@ -143,8 +144,11 @@ const RouteManagement = () => {
 
   // Add terminal modal
   const [isAddTerminalModalOpen, setIsAddTerminalModalOpen] = useState(false);
+  const [terminalModalMode, setTerminalModalMode] = useState("create");
+  const [editingTerminalId, setEditingTerminalId] = useState(null);
   const [terminalForm, setTerminalForm] = useState(INITIAL_TERMINAL_FORM);
   const [terminalErrors, setTerminalErrors] = useState({});
+  const [isTerminalFormSubmitting, setIsTerminalFormSubmitting] = useState(false);
   const [citySearch, setCitySearch] = useState("");
   const [terminalAddressAutocomplete, setTerminalAddressAutocomplete] = useState(null);
   const [isFetchingTerminalLocation, setIsFetchingTerminalLocation] = useState(false);
@@ -178,6 +182,8 @@ const RouteManagement = () => {
     setTerminalForm(INITIAL_TERMINAL_FORM);
     setTerminalErrors({});
     setCitySearch("");
+    setTerminalModalMode("create");
+    setEditingTerminalId(null);
   };
 
   const handleCloseAddTerminalModal = () => {
@@ -189,6 +195,37 @@ const RouteManagement = () => {
     const { name, value } = e.target;
     setTerminalForm((prev) => ({ ...prev, [name]: value }));
     if (terminalErrors[name]) setTerminalErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const resolveStateSelectValue = (rawState) => {
+    const source = String(rawState || "").trim();
+    if (!source) return "";
+
+    const allStates = Array.isArray(states) ? states : [];
+    const matched = allStates.find((state) => {
+      const id = String(state.StateId || state.stateId || state.id || "").trim();
+      const name = String(state.StateName || state.stateName || state.name || "").trim();
+      const code = String(state.StateCode || state.stateCode || state.code || state.Abbreviation || state.abbreviation || "").trim();
+      const normalized = source.toLowerCase();
+      return (
+        id === source ||
+        name.toLowerCase() === normalized ||
+        code.toLowerCase() === normalized
+      );
+    });
+
+    return matched ? String(matched.StateId || matched.stateId || matched.id || "") : source;
+  };
+
+  const resolveStatePayloadValue = (rawState) => {
+    const source = String(rawState || "").trim();
+    if (!source) return "";
+
+    const allStates = Array.isArray(states) ? states : [];
+    const matched = allStates.find((state) => String(state.StateId || state.stateId || state.id || "") === source);
+    return matched
+      ? String(matched.StateName || matched.stateName || matched.name || source).trim()
+      : source;
   };
 
   const applyAddressComponentsToTerminalForm = (formattedAddress, addressComponents = []) => {
@@ -286,10 +323,15 @@ const RouteManagement = () => {
   const handleCreateTerminalSubmit = async () => {
     const name = String(terminalForm.name || "").trim();
     const code = String(terminalForm.code || "").trim();
+    const city = String(terminalForm.city || "").trim();
+    const stateSelection = String(terminalForm.state || "").trim();
+    const state = terminalModalMode === "edit" ? resolveStatePayloadValue(terminalForm.state) : stateSelection;
 
     const errs = {};
     if (!name) errs.name = "Terminal Name is required";
     if (!code) errs.code = "Terminal Code is required";
+    if (!city) errs.city = "City is required";
+    if (!stateSelection) errs.state = "State is required";
 
     if (Object.keys(errs).length > 0) {
       setTerminalErrors(errs);
@@ -297,25 +339,75 @@ const RouteManagement = () => {
     }
 
     try {
+      setIsTerminalFormSubmitting(true);
       const payload = {
         name,
         code,
         address: terminalForm.address ? String(terminalForm.address).trim() : undefined,
-        city: terminalForm.city ? String(terminalForm.city).trim() : undefined,
-        state: terminalForm.state ? String(terminalForm.state).trim() : undefined,
+        city,
+        state,
         zipCode: terminalForm.zipCode ? String(terminalForm.zipCode).trim() : undefined,
       };
 
-      const result = await dispatch(createTerminal(payload));
-      if (createTerminal.fulfilled.match(result)) {
-        toast.success("Terminal created successfully!");
+      if (terminalModalMode === "edit" && editingTerminalId) {
+        await busService.updateTerminal(editingTerminalId, payload);
+        toast.success("Terminal updated successfully!");
         handleCloseAddTerminalModal();
         dispatch(fetchRouteManagementTerminals());
       } else {
-        toast.error(String(result.payload || "Failed to create terminal"));
+        const result = await dispatch(createTerminal(payload));
+        if (createTerminal.fulfilled.match(result)) {
+          toast.success("Terminal created successfully!");
+          handleCloseAddTerminalModal();
+          dispatch(fetchRouteManagementTerminals());
+        } else {
+          toast.error(String(result.payload || "Failed to create terminal"));
+        }
       }
     } catch (err) {
-      toast.error(err?.message || "Failed to create terminal");
+      const message = err?.response?.data?.message;
+      toast.error(Array.isArray(message) ? message.join(", ") : message || err?.message || "Failed to save terminal");
+    } finally {
+      setIsTerminalFormSubmitting(false);
+    }
+  };
+
+  const handleOpenCreateTerminalModal = () => {
+    resetTerminalForm();
+    setIsAddTerminalModalOpen(true);
+  };
+
+  const handleOpenEditTerminalModal = async (terminal) => {
+    const terminalId = Number(terminal?.terminalId || terminal?.TerminalId || 0);
+    if (!terminalId) {
+      toast.error("Terminal details could not be loaded");
+      return;
+    }
+
+    try {
+      setIsTerminalFormSubmitting(true);
+      setTerminalErrors({});
+      const response = await busService.getTerminals();
+      const allTerminals = Array.isArray(response?.data) ? response.data : [];
+      const matched = allTerminals.find((item) => Number(item?.TerminalId ?? item?.terminalId ?? item?.id) === terminalId);
+      const source = matched || terminal;
+
+      setTerminalModalMode("edit");
+      setEditingTerminalId(terminalId);
+      setTerminalForm({
+        name: String(source?.TerminalName ?? source?.terminalName ?? source?.name ?? "").trim(),
+        code: String(source?.TerminalCode ?? source?.terminalCode ?? source?.code ?? "").trim(),
+        address: String(source?.Address ?? source?.address ?? "").trim(),
+        city: String(source?.City ?? source?.city ?? "").trim(),
+        state: resolveStateSelectValue(source?.State ?? source?.state ?? ""),
+        zipCode: String(source?.ZipCode ?? source?.zipCode ?? "").trim(),
+      });
+      setCitySearch("");
+      setIsAddTerminalModalOpen(true);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to load terminal details");
+    } finally {
+      setIsTerminalFormSubmitting(false);
     }
   };
 
@@ -831,10 +923,7 @@ const RouteManagement = () => {
                   className="bg-[#C01824] md:!px-10 !py-3 capitalize text-sm md:text-[16px] font-normal flex items-center gap-2"
                   variant="filled"
                   size="lg"
-                  onClick={() => {
-                    resetTerminalForm();
-                    setIsAddTerminalModalOpen(true);
-                  }}
+                  onClick={handleOpenCreateTerminalModal}
                 >
                   <FaPlus size={16} />
                   Add Terminal
@@ -879,7 +968,10 @@ const RouteManagement = () => {
                         {terminal.terminalName || `Terminal ${terminal.terminalId || index + 1}`}
                       </h2>
 
-                      <button className="text-gray-600 hover:text-gray-800" onClick={() => setIsOpen(index === isOpen ? null : index)}>
+                      <button
+                        className="text-gray-600 hover:text-gray-800"
+                        onClick={() => handleOpenEditTerminalModal(terminal)}
+                      >
                         {/* edit icon */}
                         <svg width="20" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M3.27702 20.6328C3.01105 20.6328 2.78653 20.5278 2.60348 20.318C2.42056 20.1079 2.3291 19.8503 2.3291 19.5451V17.1006C2.3291 16.8114 2.3766 16.535 2.4716 16.2714C2.56646 16.0079 2.70195 15.7753 2.87806 15.5733L13.3191 3.61121C13.4924 3.42443 13.6848 3.28132 13.8962 3.18188C14.1074 3.08244 14.3292 3.03271 14.5614 3.03271C14.7903 3.03271 15.0139 3.08244 15.2322 3.18188C15.4504 3.28132 15.6426 3.43049 15.8087 3.62938L17.1687 5.19657C17.342 5.38334 17.4694 5.60295 17.5508 5.85538C17.6322 6.10765 17.6729 6.36096 17.6729 6.61531C17.6729 6.88177 17.6322 7.13715 17.5508 7.38145C17.4694 7.62592 17.342 7.8476 17.1687 8.04648L6.74848 20.0029C6.5725 20.205 6.36966 20.3604 6.13994 20.4693C5.91035 20.5783 5.66952 20.6328 5.41744 20.6328H3.27702ZM14.5556 7.94823L15.7222 6.61531L14.5506 5.26517L13.3789 6.60384L14.5556 7.94823Z" fill="#1C1B1F" />
@@ -986,8 +1078,8 @@ const RouteManagement = () => {
       <VendorGlobalModal
         isOpen={isAddTerminalModalOpen}
         onClose={handleCloseAddTerminalModal}
-        title="Add New Terminal"
-        primaryButtonText="Create"
+        title={terminalModalMode === "edit" ? "Edit Terminal" : "Add New Terminal"}
+        primaryButtonText={terminalModalMode === "edit" ? "Update" : "Create"}
         secondaryButtonText="Cancel"
         onPrimaryAction={handleCreateTerminalSubmit}
       >
@@ -1094,7 +1186,7 @@ const RouteManagement = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col">
               <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
-                City
+                City <span className="text-red-500">*</span>
               </Typography>
               <Menu placement="bottom-start">
                 <MenuHandler>
@@ -1104,7 +1196,8 @@ const RouteManagement = () => {
                       placeholder="Select City (search)"
                       readOnly
                       value={terminalForm.city || ""}
-                      className="cursor-pointer !border-t-blue-gray-200 focus:!border-t-gray-900"
+                      error={!!terminalErrors.city}
+                      className={terminalErrors.city ? "cursor-pointer !border-red-400 focus:!border-red-500" : "cursor-pointer !border-t-blue-gray-200 focus:!border-t-gray-900"}
                       labelProps={{ className: "before:content-none after:content-none" }}
                       crossOrigin={undefined}
                     />
@@ -1143,7 +1236,10 @@ const RouteManagement = () => {
                           return (
                             <MenuItem
                               key={city.CityId || city.cityId || city.id || name}
-                              onClick={() => setTerminalForm((prev) => ({ ...prev, city: name }))}
+                              onClick={() => {
+                                setTerminalForm((prev) => ({ ...prev, city: name }));
+                                setTerminalErrors((prev) => ({ ...prev, city: "" }));
+                              }}
                             >
                               {name}
                             </MenuItem>
@@ -1153,16 +1249,20 @@ const RouteManagement = () => {
                   </div>
                 </MenuList>
               </Menu>
+              {terminalErrors.city && <p className="text-red-500 text-xs mt-1">{terminalErrors.city}</p>}
             </div>
 
             <div className="flex flex-col">
               <Typography variant="small" color="blue-gray" className="mb-2 font-medium text-left">
-                State
+                State <span className="text-red-500">*</span>
               </Typography>
               <select
-                className="h-11 w-full rounded-md border border-blue-gray-200 bg-transparent px-3 text-sm text-blue-gray-700 outline-none focus:border-gray-900"
+                className={`h-11 w-full rounded-md border bg-transparent px-3 text-sm text-blue-gray-700 outline-none ${terminalErrors.state ? "border-red-400 focus:border-red-500" : "border-blue-gray-200 focus:border-gray-900"}`}
                 value={terminalForm.state || ""}
-                onChange={(e) => setTerminalForm((prev) => ({ ...prev, state: e.target.value }))}
+                onChange={(e) => {
+                  setTerminalForm((prev) => ({ ...prev, state: e.target.value }));
+                  setTerminalErrors((prev) => ({ ...prev, state: "" }));
+                }}
               >
                 <option value="" disabled>
                   {employeeLoading?.states ? "Loading states..." : "Select State"}
@@ -1177,6 +1277,7 @@ const RouteManagement = () => {
                   );
                 })}
               </select>
+              {terminalErrors.state && <p className="text-red-500 text-xs mt-1">{terminalErrors.state}</p>}
             </div>
 
             <div className="flex flex-col md:col-span-2">

@@ -31,6 +31,7 @@ export default function DriverTable({ terminalId, handleEdit }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [requestModalEmployeeId, setRequestModalEmployeeId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [nameSortOrder, setNameSortOrder] = useState('asc');
 
   // Generate payroll modal (single driver)
   const [generateModal, setGenerateModal] = useState(null); // driver object
@@ -152,9 +153,16 @@ export default function DriverTable({ terminalId, handleEdit }) {
     };
   });
 
-  const totalPages = Math.max(1, Math.ceil(drivers.length / itemsPerPage));
+  const sortedDrivers = [...drivers].sort((a, b) => {
+    const left = String(a?.name || '').trim().toLowerCase();
+    const right = String(b?.name || '').trim().toLowerCase();
+    const comparison = left.localeCompare(right, undefined, { sensitivity: 'base' });
+    return nameSortOrder === 'asc' ? comparison : -comparison;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedDrivers.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentDrivers = drivers.slice(startIndex, startIndex + itemsPerPage);
+  const currentDrivers = sortedDrivers.slice(startIndex, startIndex + itemsPerPage);
 
   const firstDriver = drivers[0];
   const routeRateValue = pick(normalizedRates?.routeRate, detail?.settings?.routeRate, detail?.settings?.RouteRate, detail?.routeRate, firstDriver?.routeRate);
@@ -270,6 +278,10 @@ export default function DriverTable({ terminalId, handleEdit }) {
   const closeDropdown = () => setActiveDropdown(null);
   const openRequestModal = (employeeId) => { if (employeeId) setRequestModalEmployeeId(employeeId); };
   const closeRequestModal = () => setRequestModalEmployeeId(null);
+  const toggleNameSort = () => {
+    setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setCurrentPage(1);
+  };
 
   const renderPageNumbers = () => {
     const pages = [];
@@ -407,7 +419,19 @@ export default function DriverTable({ terminalId, handleEdit }) {
           <table className="min-w-full bg-white">
             <thead className="bg-gray-100">
               <tr>
-                {["Title","Name","Requests","Work Hours","Terminal assigned","Pay Cycle","Pay Type","Job","Fedral Tax",
+                <th className="px-10 py-1 border whitespace-nowrap">Title</th>
+                <th
+                  className="px-10 py-1 border whitespace-nowrap cursor-pointer select-none"
+                  onClick={toggleNameSort}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    Name
+                    <span className="text-xs text-[#C01824] font-semibold">
+                      {nameSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                    </span>
+                  </span>
+                </th>
+                {["Requests","Work Hours","Terminal assigned","Pay Cycle","Pay Type","Job","Fedral Tax",
                   "State Tax","Local Tax","SSN","Pay Status","YTD","Current Pay Period","Current Pay Period Time","Pay Stub","401K","Company Match",
                   "Health Insurance","Savings Account","Reimbursement","Action"
                 ].map((head) => (
@@ -524,7 +548,7 @@ export default function DriverTable({ terminalId, handleEdit }) {
       </div>
 
       {/* Pagination */}
-      {drivers.length > 0 && (
+      {sortedDrivers.length > 0 && (
         <div className="mt-4 flex justify-center">{renderPageNumbers()}</div>
       )}
 

@@ -106,7 +106,7 @@ export const createBus = createAsyncThunk(
 
       const undercarriageStorageNum = busData.undercarriageStorage === 'yes' ? 1 : busData.undercarriageStorage === 'no' ? 0 : null;
 
-      let driverIdValue = 1;
+      let driverIdValue = null;
       if (busData.driver) {
         const parsed = parseInt(busData.driver, 10);
         if (!isNaN(parsed)) driverIdValue = parsed;

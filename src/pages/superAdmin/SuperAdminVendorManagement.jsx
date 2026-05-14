@@ -82,6 +82,7 @@ export default function SuperAdminVendorManagement() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [vendorSortOrder, setVendorSortOrder] = useState("asc");
   const [activeTab, setActiveTab] = useState("Vendors");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [savingContract, setSavingContract] = useState(false);
@@ -138,14 +139,21 @@ export default function SuperAdminVendorManagement() {
 
   const filteredVendors = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return vendors;
-
-    return vendors.filter((vendor) =>
+    const matchedVendors = !query
+      ? vendors
+      : vendors.filter((vendor) =>
       [vendor.name, vendor.contact, vendor.contractNumber, vendor.email, vendor.status]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
     );
-  }, [search, vendors]);
+
+    return [...matchedVendors].sort((firstVendor, secondVendor) => {
+      const firstName = String(firstVendor?.name || "").trim().toLowerCase();
+      const secondName = String(secondVendor?.name || "").trim().toLowerCase();
+      const compared = firstName.localeCompare(secondName);
+      return vendorSortOrder === "desc" ? compared * -1 : compared;
+    });
+  }, [search, vendorSortOrder, vendors]);
 
   const filteredInvites = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -827,7 +835,20 @@ export default function SuperAdminVendorManagement() {
         <table className="min-w-full">
           <thead className="bg-[#f3f1eb]">
             <tr className="text-left text-lg font-semibold text-[#171a2a]">
-              <th className="px-8 py-6">Vendor</th>
+              <th className="px-8 py-6">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVendorSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                  }
+                  className="inline-flex items-center gap-2 font-semibold text-[#171a2a] transition hover:text-[#c01824]"
+                >
+                  <span>Vendor</span>
+                  <span className="text-sm text-[#6f7280]">
+                    {vendorSortOrder === "asc" ? "A-Z" : "Z-A"}
+                  </span>
+                </button>
+              </th>
               <th className="px-8 py-6">Contract Number</th>
               <th className="px-8 py-6">Contact Info</th>
               <th className="px-8 py-6">Service Agreement</th>

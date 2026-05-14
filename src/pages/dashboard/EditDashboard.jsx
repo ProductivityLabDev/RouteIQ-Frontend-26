@@ -9,6 +9,19 @@ const OPTION_TO_WIDGET_KEY = {
     'Routes': 'routesTable',
     'Invoices': 'invoicesTable',
     'Drivers': 'driversTable',
+    'Total # of vehicle defects (ability to select date range)': 'vehicleDefectsCard',
+    'Total number of trips to be scheduled': 'scheduledTripsCard',
+    'Total driver hrs per terminal': 'driverHoursPerTerminalCard',
+    'Profit/Loss statement': 'profitLossStatementCard',
+    'Profit/Loss per terminal': 'profitLossPerTerminalCard',
+    'Total accounts payable (date range)': 'accountsPayableCard',
+    'Accounts payable per terminal (date range)': 'accountsPayablePerTerminalCard',
+    'Total accounts receivable (date range)': 'accountsReceivableCard',
+    'Accounts receivable per terminal (date range)': 'accountsReceivablePerTerminalCard',
+    'Total Pending (quotes $)': 'pendingQuotesCard',
+    'Pending quotes (number of quotes that are:) 7 day old, 14 days old, greater than 30 days old': 'pendingQuotesAgeCard',
+    'Total Pending (quotes $) per terminal': 'pendingQuotesPerTerminalCard',
+    'Total number of schedule conflicts per terminal': 'scheduleConflictsPerTerminalCard',
 };
 
 const DEFAULT_WIDGETS = {
@@ -19,6 +32,19 @@ const DEFAULT_WIDGETS = {
     routesTable: true,
     invoicesTable: true,
     driversTable: true,
+    vehicleDefectsCard: false,
+    scheduledTripsCard: false,
+    driverHoursPerTerminalCard: false,
+    profitLossStatementCard: false,
+    profitLossPerTerminalCard: false,
+    accountsPayableCard: false,
+    accountsPayablePerTerminalCard: false,
+    accountsReceivableCard: false,
+    accountsReceivablePerTerminalCard: false,
+    pendingQuotesCard: false,
+    pendingQuotesAgeCard: false,
+    pendingQuotesPerTerminalCard: false,
+    scheduleConflictsPerTerminalCard: false,
 };
 
 const buildSelectedOptions = (visibleWidgets = {}) => {
@@ -44,6 +70,19 @@ const EditDashboard = ({ onBack, visibleWidgets, onSave }) => {
         routesTable: selectedOptions['Routes'],
         invoicesTable: selectedOptions['Invoices'],
         driversTable: selectedOptions['Drivers'],
+        vehicleDefectsCard: selectedOptions['Total # of vehicle defects (ability to select date range)'],
+        scheduledTripsCard: selectedOptions['Total number of trips to be scheduled'],
+        driverHoursPerTerminalCard: selectedOptions['Total driver hrs per terminal'],
+        profitLossStatementCard: selectedOptions['Profit/Loss statement'],
+        profitLossPerTerminalCard: selectedOptions['Profit/Loss per terminal'],
+        accountsPayableCard: selectedOptions['Total accounts payable (date range)'],
+        accountsPayablePerTerminalCard: selectedOptions['Accounts payable per terminal (date range)'],
+        accountsReceivableCard: selectedOptions['Total accounts receivable (date range)'],
+        accountsReceivablePerTerminalCard: selectedOptions['Accounts receivable per terminal (date range)'],
+        pendingQuotesCard: selectedOptions['Total Pending (quotes $)'],
+        pendingQuotesAgeCard: selectedOptions['Pending quotes (number of quotes that are:) 7 day old, 14 days old, greater than 30 days old'],
+        pendingQuotesPerTerminalCard: selectedOptions['Total Pending (quotes $) per terminal'],
+        scheduleConflictsPerTerminalCard: selectedOptions['Total number of schedule conflicts per terminal'],
     }), [selectedOptions]);
 
     const handleChange = (option) => {

@@ -206,7 +206,7 @@ const AddBusInfoForm = ({ handleCancel, refreshBuses, editBus }) => {
 			return;
 		}
 
-		const busData = { ...formData, driver: formData.driver || '1', undercarriageStorage: storageOption };
+		const busData = { ...formData, driver: formData.driver || '', undercarriageStorage: storageOption };
 
 		try {
 			if (isEditMode) {

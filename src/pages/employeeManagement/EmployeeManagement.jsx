@@ -65,6 +65,7 @@ const EmployeeManagement = () => {
   const [employees, setEmployees]     = useState([]);
   const [loading, setLoading]         = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [nameSortOrder, setNameSortOrder] = useState('asc');
   const itemsPerPage = 8;
 
   // Context menu
@@ -116,9 +117,21 @@ const EmployeeManagement = () => {
   }, []);
 
   // ── Pagination ──────────────────────────────────────────────────────────
-  const totalPages   = Math.max(1, Math.ceil(employees.length / itemsPerPage));
+  const sortedEmployees = [...employees].sort((a, b) => {
+    const left = String(a?.Name || a?.name || '').trim().toLowerCase();
+    const right = String(b?.Name || b?.name || '').trim().toLowerCase();
+    const comparison = left.localeCompare(right, undefined, { sensitivity: 'base' });
+    return nameSortOrder === 'asc' ? comparison : -comparison;
+  });
+
+  const totalPages   = Math.max(1, Math.ceil(sortedEmployees.length / itemsPerPage));
   const startIndex   = (currentPage - 1) * itemsPerPage;
-  const pageEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
+  const pageEmployees = sortedEmployees.slice(startIndex, startIndex + itemsPerPage);
+
+  const toggleNameSort = () => {
+    setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     if (!employees.length || addEmployee || editEmployee || showPayroll) return;
@@ -237,7 +250,18 @@ const EmployeeManagement = () => {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                      <th className="px-4 py-3 whitespace-nowrap">Name</th>
+                        <th
+                          className="px-4 py-3 whitespace-nowrap cursor-pointer select-none"
+                          onClick={toggleNameSort}
+                        >
+                          <span className="inline-flex items-center gap-2 rounded-md border border-[#f1d2d5] bg-[#fff7f7] px-2 py-1 text-[#2c2f32] transition hover:border-[#C01824] hover:bg-[#fff1f2]">
+                            <span>Name</span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#C01824] px-2 py-[2px] text-[10px] font-bold text-white normal-case shadow-sm">
+                              <span aria-hidden="true">{nameSortOrder === 'asc' ? '↑' : '↓'}</span>
+                              {nameSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                            </span>
+                          </span>
+                        </th>
                       <th className="px-4 py-3 whitespace-nowrap">Title</th>
                       <th className="px-4 py-3 whitespace-nowrap">Phone</th>
                       <th className="px-4 py-3 whitespace-nowrap">Email</th>
@@ -290,7 +314,7 @@ const EmployeeManagement = () => {
               {/* Pagination */}
               <div className="flex items-center justify-between px-4 py-3 border-t mt-auto">
                 <p className="text-xs text-gray-500">
-                  Showing {startIndex + 1}–{Math.min(startIndex + itemsPerPage, employees.length)} of {employees.length} employees
+                  Showing {startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedEmployees.length)} of {sortedEmployees.length} employees
                 </p>
                 <div className="flex items-center gap-1">
                   <button

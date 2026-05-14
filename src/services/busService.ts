@@ -67,7 +67,7 @@ export interface CreateBusPayload {
   noOfPassenger: number | null;
   vinNo: string | null;
   mileage: number | null;
-  driverId: number;
+  driverId: number | null;
   driverName: string | null;
   fuelTypeId: number | null;
   insuranceExpiration: string | null;
@@ -148,6 +148,38 @@ export const busService = {
       State: state ?? null,
       ZipCode: zipCode ?? null,
     });
+    return {
+      ok: true,
+      data: response.data,
+    };
+  },
+
+  updateTerminal: async (
+    terminalId: number | string,
+    payload: CreateTerminalPayload
+  ): Promise<ApiResponse<any>> => {
+    const terminalCode =
+      (payload.code ?? payload.TerminalCode ?? undefined)?.toString().trim() || undefined;
+    const terminalName =
+      (payload.name ?? payload.TerminalName ?? undefined)?.toString().trim() || undefined;
+    const address =
+      (payload.address ?? payload.Address ?? undefined)?.toString().trim() || undefined;
+    const city =
+      (payload.city ?? payload.City ?? undefined)?.toString().trim() || undefined;
+    const state =
+      (payload.state ?? payload.State ?? undefined)?.toString().trim() || undefined;
+    const zipCode =
+      (payload.zipCode ?? payload.ZipCode ?? undefined)?.toString().trim() || undefined;
+
+    const body: Record<string, string> = {};
+    if (terminalCode !== undefined) body.TerminalCode = terminalCode;
+    if (terminalName !== undefined) body.TerminalName = terminalName;
+    if (address !== undefined) body.Address = address;
+    if (city !== undefined) body.City = city;
+    if (state !== undefined) body.State = state;
+    if (zipCode !== undefined) body.ZipCode = zipCode;
+
+    const response = await apiClient.patch(`/terminals/${terminalId}`, body);
     return {
       ok: true,
       data: response.data,
